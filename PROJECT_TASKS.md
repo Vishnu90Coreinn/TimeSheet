@@ -29,7 +29,7 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 - [x] **TSK-RBAC-001** Define role entities and seed baseline roles.
 - [x] **TSK-RBAC-002** Implement user-role mapping table and APIs.
 - [x] **TSK-RBAC-003** Implement permission enforcement attributes/policies on APIs.
-- [ ] **TSK-RBAC-004** Add frontend role guards for menu/routes/actions.
+- [x] **TSK-RBAC-004** Add frontend role guards for menu/routes/actions.
 - [ ] **TSK-RBAC-005** Add test coverage for access control matrix.
 
 ### E1-F3 User and Hierarchy Management

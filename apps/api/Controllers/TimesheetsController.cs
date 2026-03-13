@@ -41,7 +41,8 @@ public class TimesheetsController(TimeSheetDbContext dbContext) : ControllerBase
             return StatusCode(StatusCodes.Status403Forbidden, new { message = "Inactive users cannot submit timesheets." });
         }
 
-        return Ok(new { message = "Timesheet submitted successfully." });
+        return StatusCode(
+            StatusCodes.Status501NotImplemented,
+            new { message = "Timesheet submission persistence is not implemented yet." });
     }
 }
-

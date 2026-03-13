@@ -110,4 +110,42 @@ public class AuthIntegrationTests : IClassFixture<CustomWebApplicationFactory>
 
         Assert.Equal(HttpStatusCode.Forbidden, submitResponse.StatusCode);
     }
+
+    [Fact]
+    public async Task SubmitTimesheet_WhenUserIsActiveAndPersistenceNotImplemented_ReturnsNotImplemented()
+    {
+        using var setupScope = _factory.Services.CreateScope();
+        var db = setupScope.ServiceProvider.GetRequiredService<TimeSheetDbContext>();
+        var hasher = setupScope.ServiceProvider.GetRequiredService<IPasswordHasher>();
+
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            Username = "employee.two",
+            Email = "employee.two@timesheet.local",
+            EmployeeId = "EMP-200",
+            PasswordHash = hasher.Hash("employee123"),
+            Role = "employee",
+            IsActive = true
+        };
+
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+
+        using var client = _factory.CreateClient();
+
+        var loginResponse = await client.PostAsJsonAsync("/api/v1/auth/login", new LoginRequest(user.Username, "employee123"));
+        Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
+
+        var loginPayload = await loginResponse.Content.ReadFromJsonAsync<LoginResponse>();
+        Assert.NotNull(loginPayload);
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", loginPayload!.AccessToken);
+
+        var submitResponse = await client.PostAsJsonAsync(
+            "/api/v1/timesheets/submit",
+            new SubmitTimesheetRequest(DateOnly.FromDateTime(DateTime.UtcNow.Date), "Daily update"));
+
+        Assert.Equal(HttpStatusCode.NotImplemented, submitResponse.StatusCode);
+    }
 }

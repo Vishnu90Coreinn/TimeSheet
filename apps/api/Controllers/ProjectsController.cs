@@ -24,6 +24,18 @@ public class ProjectsController(TimeSheetDbContext dbContext) : ControllerBase
         return Ok(projects);
     }
 
+    [HttpGet("{id:guid}")]
+    public async Task<ActionResult<ProjectResponse>> GetById(Guid id)
+    {
+        var project = await dbContext.Projects.AsNoTracking().SingleOrDefaultAsync(p => p.Id == id);
+        if (project is null)
+        {
+            return NotFound();
+        }
+
+        return Ok(new ProjectResponse(project.Id, project.Name, project.Code, project.IsActive, project.IsArchived));
+    }
+
     [Authorize(Roles = "admin")]
     [HttpPost]
     public async Task<ActionResult<ProjectResponse>> Create([FromBody] UpsertProjectRequest request)
@@ -48,6 +60,44 @@ public class ProjectsController(TimeSheetDbContext dbContext) : ControllerBase
     }
 
     [Authorize(Roles = "admin")]
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpsertProjectRequest request)
+    {
+        var project = await dbContext.Projects.SingleOrDefaultAsync(x => x.Id == id);
+        if (project is null)
+        {
+            return NotFound();
+        }
+
+        var duplicateCode = await dbContext.Projects.AnyAsync(p => p.Id != id && p.Code == request.Code);
+        if (duplicateCode)
+        {
+            return Conflict(new { message = "Project code already exists." });
+        }
+
+        project.Name = request.Name.Trim();
+        project.Code = request.Code.Trim();
+        project.IsActive = request.IsActive && !project.IsArchived;
+        await dbContext.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [Authorize(Roles = "admin")]
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var project = await dbContext.Projects.SingleOrDefaultAsync(x => x.Id == id);
+        if (project is null)
+        {
+            return NotFound();
+        }
+
+        dbContext.Projects.Remove(project);
+        await dbContext.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [Authorize(Roles = "admin")]
     [HttpPost("{id:guid}/archive")]
     public async Task<IActionResult> Archive(Guid id)
     {
@@ -62,5 +112,47 @@ public class ProjectsController(TimeSheetDbContext dbContext) : ControllerBase
         await dbContext.SaveChangesAsync();
 
         return NoContent();
+    }
+
+    [Authorize(Roles = "admin")]
+    [HttpPut("{id:guid}/members")]
+    public async Task<IActionResult> SetMembers(Guid id, [FromBody] AssignProjectMembersRequest request)
+    {
+        var project = await dbContext.Projects.Include(x => x.Members).SingleOrDefaultAsync(x => x.Id == id);
+        if (project is null)
+        {
+            return NotFound();
+        }
+
+        var userIds = request.UserIds.Distinct().ToList();
+        var existingUsers = await dbContext.Users.Where(u => userIds.Contains(u.Id)).Select(u => u.Id).ToListAsync();
+        if (existingUsers.Count != userIds.Count)
+        {
+            return BadRequest(new { message = "One or more users do not exist." });
+        }
+
+        dbContext.ProjectMembers.RemoveRange(project.Members);
+        project.Members = userIds.Select(uid => new ProjectMember { ProjectId = project.Id, UserId = uid }).ToList();
+        await dbContext.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpGet("{id:guid}/members")]
+    public async Task<ActionResult<IEnumerable<ProjectMemberResponse>>> GetMembers(Guid id)
+    {
+        var projectExists = await dbContext.Projects.AnyAsync(p => p.Id == id);
+        if (!projectExists)
+        {
+            return NotFound();
+        }
+
+        var members = await dbContext.ProjectMembers.AsNoTracking()
+            .Where(pm => pm.ProjectId == id)
+            .Include(pm => pm.User)
+            .OrderBy(pm => pm.User.Username)
+            .Select(pm => new ProjectMemberResponse(pm.UserId, pm.User.Username, pm.User.Email, pm.User.IsActive))
+            .ToListAsync();
+
+        return Ok(members);
     }
 }

@@ -47,22 +47,6 @@ button {
   flex-wrap: wrap;
 }
 
-.table-wrap {
-  overflow-x: auto;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-th,
-td {
-  border-bottom: 1px solid #dbe3ef;
-  text-align: left;
-  padding: 8px;
-}
-
 .error {
   color: #b91c1c;
 }

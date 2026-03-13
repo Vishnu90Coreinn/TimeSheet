@@ -20,6 +20,7 @@ public class User
     public User? Manager { get; set; }
     public ICollection<User> DirectReports { get; set; } = new List<User>();
 
+    public ICollection<ProjectMember> ProjectMemberships { get; set; } = new List<ProjectMember>();
     public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 }

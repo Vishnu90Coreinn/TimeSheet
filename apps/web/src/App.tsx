@@ -1,5 +1,9 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
+type Session = { accessToken: string; refreshToken: string; username: string; role: string };
+type User = { id: string; username: string; email: string; role: string; isActive: boolean };
+type Project = { id: string; name: string; code: string; isActive: boolean; isArchived: boolean };
+type TaskCategory = { id: string; name: string; isActive: boolean };
 type Session = {
   accessToken: string;
   refreshToken: string;
@@ -31,390 +35,161 @@ type User = {
   managerUsername: string | null;
 };
 
-type Role = { id: string; name: string };
-type Department = { id: string; name: string; isActive: boolean };
-type WorkPolicy = { id: string; name: string; dailyExpectedMinutes: number; isActive: boolean };
+type View = "dashboard" | "projects" | "categories";
 
-type UserForm = {
-  username: string;
-  email: string;
-  employeeId: string;
-  password: string;
-  role: string;
-  isActive: boolean;
-  departmentId: string;
-  workPolicyId: string;
-  managerId: string;
-};
-
-const API_BASE_URL = "http://localhost:5000/api/v1";
-
-export type View = "dashboard" | "admin";
-export type AppRole = "admin" | "manager" | "employee";
-
-const VIEW_ACCESS: Record<View, AppRole[]> = {
-  dashboard: ["admin", "manager", "employee"],
-  admin: ["admin"]
-};
-
-const defaultForm: UserForm = {
-  username: "",
-  email: "",
-  employeeId: "",
-  password: "",
-  role: "",
-  isActive: true,
-  departmentId: "",
-  workPolicyId: "",
-  managerId: ""
-};
-
-export function hasViewAccess(role: AppRole, view: View) {
-  return VIEW_ACCESS[view].includes(role);
-}
-
-export function canManageUsers(role: AppRole) {
-  return role === "admin";
-}
+const API_BASE = "http://localhost:5000/api/v1";
 
 export function App() {
   const [identifier, setIdentifier] = useState("admin");
   const [password, setPassword] = useState("admin123");
   const [error, setError] = useState("");
   const [session, setSession] = useState<Session | null>(null);
-  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [view, setView] = useState<View>("dashboard");
+  const [me, setMe] = useState<User | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [categories, setCategories] = useState<TaskCategory[]>([]);
+  const [projectForm, setProjectForm] = useState({ name: "", code: "", isActive: true });
+  const [categoryForm, setCategoryForm] = useState({ name: "", isActive: true });
 
-  const [users, setUsers] = useState<User[]>([]);
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [workPolicies, setWorkPolicies] = useState<WorkPolicy[]>([]);
-  const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
-  const [roleFilter, setRoleFilter] = useState<string>("all");
-  const [editingUserId, setEditingUserId] = useState<string | null>(null);
-  const [userForm, setUserForm] = useState<UserForm>(defaultForm);
-  const [adminFeedback, setAdminFeedback] = useState("");
-  const refreshInFlightRef = useRef<Promise<Session | null> | null>(null);
-
-  const activeRole = session?.role ?? null;
-  const canAccessCurrentView = activeRole ? hasViewAccess(activeRole, view) : false;
-  const userManagementAllowed = activeRole ? canManageUsers(activeRole) : false;
+  const isAdmin = session?.role === "admin";
 
   useEffect(() => {
-    const savedToken = localStorage.getItem("accessToken");
-    const savedRefreshToken = localStorage.getItem("refreshToken");
-    const savedUser = localStorage.getItem("username");
-    const savedRole = localStorage.getItem("role") as AppRole | null;
-
-    if (savedToken && savedRefreshToken && savedUser && savedRole) {
-      setSession({ accessToken: savedToken, refreshToken: savedRefreshToken, username: savedUser, role: savedRole });
+    const accessToken = localStorage.getItem("accessToken");
+    const refreshToken = localStorage.getItem("refreshToken");
+    const username = localStorage.getItem("username");
+    const role = localStorage.getItem("role") as AppRole | null;
+    if (accessToken && refreshToken && username && role) {
+      setSession({ accessToken, refreshToken, username, role });
     }
   }, []);
 
   useEffect(() => {
     if (!session) {
-      setCurrentUser(null);
       return;
     }
-
-    void fetchCurrentUser(session);
-  }, [session]);
-
-  useEffect(() => {
-    if (!activeRole) {
-      return;
+    void loadMe();
+    void loadTimesheetOptions();
+    if (isAdmin) {
+      void loadProjectAdmin();
+      void loadCategoryAdmin();
     }
+  }, [session, isAdmin]);
 
-    if (!hasViewAccess(activeRole, view)) {
-      setView("dashboard");
-    }
-  }, [activeRole, view]);
+  const nav = useMemo(() => ["dashboard", ...(isAdmin ? ["projects", "categories"] : [])] as View[], [isAdmin]);
 
-  useEffect(() => {
-    if (view !== "admin" || !userManagementAllowed) {
-      return;
-    }
-
-    void loadAdminData();
-  }, [view, session, userManagementAllowed]);
-
-  const filteredUsers = useMemo(() => {
-    return users.filter((user) => {
-      const statusMatch = statusFilter === "all" || (statusFilter === "active" ? user.isActive : !user.isActive);
-      const roleMatch = roleFilter === "all" || user.role === roleFilter;
-      return statusMatch && roleMatch;
-    });
-  }, [users, roleFilter, statusFilter]);
-
-  async function fetchCurrentUser(activeSession: Session) {
-    try {
-      const response = await authedFetch("/auth/me", { method: "GET" }, activeSession);
-      if (!response.ok) {
-        throw new Error("Your session has expired. Please sign in again.");
-      }
-
-      const data = (await response.json()) as CurrentUser;
-      setCurrentUser(data);
-    } catch (message) {
-      setError((message as Error).message);
-      await onLogout();
-    }
-  }
-
-  async function refreshSession(refreshToken: string) {
-    if (!refreshInFlightRef.current) {
-      refreshInFlightRef.current = (async () => {
-        const refreshResponse = await fetch(`${API_BASE_URL}/auth/refresh`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ refreshToken })
-        });
-
-        if (!refreshResponse.ok) {
-          return null;
-        }
-
-        const refreshed = await refreshResponse.json();
-        const nextSession: Session = {
-          accessToken: refreshed.accessToken,
-          refreshToken: refreshed.refreshToken,
-          username: refreshed.username,
-          role: refreshed.role as AppRole
-        };
-
-        persistSession(nextSession);
-        setSession(nextSession);
-        return nextSession;
-      })().finally(() => {
-        refreshInFlightRef.current = null;
-      });
-    }
-
-    return refreshInFlightRef.current;
-  }
-
-  async function authedFetch(path: string, options: RequestInit, activeSession?: Session) {
-    const authSession = activeSession ?? session;
-    if (!authSession) {
-      throw new Error("Not authenticated.");
-    }
-
-    const firstResponse = await fetch(`${API_BASE_URL}${path}`, {
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...(options.headers ?? {}),
-        Authorization: `Bearer ${authSession.accessToken}`
-      }
-    });
-
-    if (firstResponse.status !== 401) {
-      return firstResponse;
-    }
-
-    const refreshed = await refreshSession(authSession.refreshToken);
-    if (!refreshed) {
-      return firstResponse;
-    }
-
-    return fetch(`${API_BASE_URL}${path}`, {
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...(options.headers ?? {}),
-        Authorization: `Bearer ${refreshed.accessToken}`
-      }
-    });
-  }
-
-  async function loadAdminData() {
-    if (!userManagementAllowed) {
-      setAdminFeedback("You do not have permission to manage users.");
-      return;
-    }
-
-    try {
-      setAdminFeedback("");
-      const [usersResponse, rolesResponse, departmentsResponse, policiesResponse] = await Promise.all([
-        authedFetch(`/users?q=${encodeURIComponent(query)}`, { method: "GET" }),
-        authedFetch("/roles", { method: "GET" }),
-        authedFetch("/masters/departments", { method: "GET" }),
-        authedFetch("/masters/work-policies", { method: "GET" })
-      ]);
-
-      if (!usersResponse.ok || !rolesResponse.ok || !departmentsResponse.ok || !policiesResponse.ok) {
-        throw new Error("Failed to load admin user management data.");
-      }
-
-      const nextUsers = (await usersResponse.json()) as User[];
-      const nextRoles = (await rolesResponse.json()) as Role[];
-      const nextDepartments = (await departmentsResponse.json()) as Department[];
-      const nextPolicies = (await policiesResponse.json()) as WorkPolicy[];
-
-      setUsers(nextUsers);
-      setRoles(nextRoles);
-      setDepartments(nextDepartments);
-      setWorkPolicies(nextPolicies);
-
-      if (!editingUserId && nextRoles.length > 0) {
-        setUserForm((prev) => ({ ...prev, role: prev.role || nextRoles[0].name }));
-      }
-    } catch (loadError) {
-      setAdminFeedback((loadError as Error).message);
-    }
-  }
-
-  function startCreate() {
-    if (!userManagementAllowed) {
-      setAdminFeedback("You do not have permission to create users.");
-      return;
-    }
-
-    setEditingUserId(null);
-    setAdminFeedback("");
-    setUserForm({ ...defaultForm, role: roles[0]?.name ?? "" });
-  }
-
-  function startEdit(user: User) {
-    if (!userManagementAllowed) {
-      setAdminFeedback("You do not have permission to edit users.");
-      return;
-    }
-
-    setEditingUserId(user.id);
-    setAdminFeedback("");
-    setUserForm({
-      username: user.username,
-      email: user.email,
-      employeeId: user.employeeId,
-      password: "",
-      role: user.role,
-      isActive: user.isActive,
-      departmentId: user.departmentId ?? "",
-      workPolicyId: user.workPolicyId ?? "",
-      managerId: user.managerId ?? ""
-    });
-  }
-
-  async function submitUserForm(event: FormEvent) {
-    event.preventDefault();
-
-    if (!userManagementAllowed) {
-      setAdminFeedback("You do not have permission to save users.");
-      return;
-    }
-
-    setAdminFeedback("");
-
-    const payload = {
-      username: userForm.username,
-      email: userForm.email,
-      employeeId: userForm.employeeId,
-      role: userForm.role,
-      isActive: userForm.isActive,
-      departmentId: userForm.departmentId || null,
-      workPolicyId: userForm.workPolicyId || null,
-      managerId: userForm.managerId || null
-    };
-
-    const response = editingUserId
-      ? await authedFetch(`/users/${editingUserId}`, { method: "PUT", body: JSON.stringify(payload) })
-      : await authedFetch("/users", { method: "POST", body: JSON.stringify({ ...payload, password: userForm.password }) });
-
-    if (!response.ok) {
-      const body = (await response.json().catch(() => ({ message: "Unknown error" }))) as { message?: string };
-      setAdminFeedback(body.message ?? "Unable to save user.");
-      return;
-    }
-
-    setAdminFeedback(editingUserId ? "User updated successfully." : "User created successfully.");
-    startCreate();
-    await loadAdminData();
-  }
-
-  async function toggleActive(user: User) {
-    if (!userManagementAllowed) {
-      setAdminFeedback("You do not have permission to change user status.");
-      return;
-    }
-
-    setAdminFeedback("");
-
-    const response = await authedFetch(`/users/${user.id}`, {
-      method: "PUT",
-      body: JSON.stringify({
-        username: user.username,
-        email: user.email,
-        employeeId: user.employeeId,
-        role: user.role,
-        isActive: !user.isActive,
-        departmentId: user.departmentId,
-        workPolicyId: user.workPolicyId,
-        managerId: user.managerId
-      })
-    });
-
-    if (!response.ok) {
-      setAdminFeedback("Failed to update user status.");
-      return;
-    }
-
-    setAdminFeedback(`User ${user.username} is now ${user.isActive ? "inactive" : "active"}.`);
-    await loadAdminData();
-  }
-
-  function persistSession(auth: Session) {
-    localStorage.setItem("accessToken", auth.accessToken);
-    localStorage.setItem("refreshToken", auth.refreshToken);
-    localStorage.setItem("username", auth.username);
-    localStorage.setItem("role", auth.role);
-  }
-
-  async function onLogin(event: FormEvent) {
-    event.preventDefault();
+  async function onLogin(e: FormEvent) {
+    e.preventDefault();
     setError("");
-
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+    const response = await fetch(`${API_BASE}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ identifier, password })
     });
-
     if (!response.ok) {
-      setError("Invalid username or password.");
+      setError("Invalid username/email or password.");
       return;
     }
-
-    const data = (await response.json()) as Session;
-    persistSession(data);
-    setSession(data);
-    setView("dashboard");
+    const data = await response.json();
+    const nextSession = {
+      accessToken: data.accessToken,
+      refreshToken: data.refreshToken,
+      username: data.username,
+      role: data.role
+    };
+    persistSession(nextSession);
+    setSession(nextSession);
   }
 
-  async function onLogout() {
-    if (session?.refreshToken) {
-      await fetch(`${API_BASE_URL}/auth/logout`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken: session.refreshToken })
-      }).catch(() => undefined);
+  function persistSession(nextSession: Session) {
+    localStorage.setItem("accessToken", nextSession.accessToken);
+    localStorage.setItem("refreshToken", nextSession.refreshToken);
+    localStorage.setItem("username", nextSession.username);
+    localStorage.setItem("role", nextSession.role);
+  }
+
+  async function authed(path: string, init?: RequestInit) {
+    const response = await fetch(`${API_BASE}${path}`, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session?.accessToken}`,
+        ...(init?.headers ?? {})
+      }
+    });
+    return response;
+  }
+
+  async function loadMe() {
+    const response = await authed("/auth/me");
+    if (response.ok) {
+      setMe(await response.json());
     }
-
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("username");
-    localStorage.removeItem("role");
-    setSession(null);
-    setCurrentUser(null);
-    setView("dashboard");
   }
 
-  return (
-    <main>
-      {!session ? (
-        <form className="container card" onSubmit={onLogin}>
-          <h1>TimeSheet Login</h1>
+  async function loadTimesheetOptions() {
+    await authed("/timesheets/entry-options");
+  }
+
+  async function loadProjectAdmin() {
+    const response = await authed("/projects");
+    if (response.ok) {
+      setProjects(await response.json());
+    }
+  }
+
+  async function loadCategoryAdmin() {
+    const response = await authed("/task-categories/admin");
+    if (response.ok) {
+      setCategories(await response.json());
+    }
+  }
+
+  async function createProject(e: FormEvent) {
+    e.preventDefault();
+    const response = await authed("/projects", { method: "POST", body: JSON.stringify(projectForm) });
+    if (response.ok) {
+      setProjectForm({ name: "", code: "", isActive: true });
+      await loadProjectAdmin();
+    }
+  }
+
+  async function archiveProject(id: string) {
+    const response = await authed(`/projects/${id}/archive`, { method: "POST" });
+    if (response.ok) {
+      await loadProjectAdmin();
+    }
+  }
+
+  async function createCategory(e: FormEvent) {
+    e.preventDefault();
+    const response = await authed("/task-categories", { method: "POST", body: JSON.stringify(categoryForm) });
+    if (response.ok) {
+      setCategoryForm({ name: "", isActive: true });
+      await loadCategoryAdmin();
+    }
+  }
+
+  async function toggleCategory(category: TaskCategory) {
+    const response = await authed(`/task-categories/${category.id}`, {
+      method: "PUT",
+      body: JSON.stringify({ name: category.name, isActive: !category.isActive })
+    });
+    if (response.ok) {
+      await loadCategoryAdmin();
+    }
+  }
+
+  async function logout() {
+    localStorage.clear();
+    setSession(null);
+    setMe(null);
+  }
+
+  if (!session) {
+    return (
+      <main className="container">
+        <h1>TimeSheet Login</h1>
+        <form className="card" onSubmit={onLogin}>
           <label>
             Username or email
             <input value={identifier} onChange={(e) => setIdentifier(e.target.value)} />
@@ -424,180 +199,66 @@ export function App() {
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
           </label>
           <button type="submit">Sign in</button>
-          {error ? <p className="error">{error}</p> : null}
+          {error && <p className="error">{error}</p>}
         </form>
-      ) : (
-        <section className="container card">
-          <h1>Welcome, {session.username}</h1>
-          <p>
-            Logged in role: <strong>{session.role}</strong>
-          </p>
+      </main>
+    );
+  }
 
-          <nav className="actions wrap">
-            {hasViewAccess(session.role, "dashboard") && (
-              <button type="button" onClick={() => setView("dashboard")}>Dashboard</button>
-            )}
-            {hasViewAccess(session.role, "admin") && (
-              <button type="button" onClick={() => setView("admin")}>Admin</button>
-            )}
-          </nav>
+  return (
+    <main className="container">
+      <div className="actions wrap">
+        {nav.map((v) => (
+          <button key={v} onClick={() => setView(v)}>
+            {v}
+          </button>
+        ))}
+        <button onClick={() => void logout()}>Logout</button>
+      </div>
 
-          {view === "dashboard" ? (
-            <section>
-              <h2>Dashboard</h2>
-              <p>You are signed in and can submit your timesheets from here.</p>
-              {currentUser ? (
-                <p>
-                  Employee ID: <strong>{currentUser.employeeId}</strong>
-                </p>
-              ) : null}
-            </section>
-          ) : null}
+      {view === "dashboard" && (
+        <section>
+          <h2>Dashboard</h2>
+          <p>Welcome {me?.username ?? session.username}</p>
+          <p>Role: {session.role}</p>
+          {!isAdmin && <p>Role-based guard active: admin modules are hidden.</p>}
+        </section>
+      )}
 
-          {view === "admin" && canAccessCurrentView ? (
-            <section className="admin-area">
-              <h2>User management</h2>
+      {view === "projects" && isAdmin && (
+        <section>
+          <h2>Project Admin</h2>
+          <form className="actions" onSubmit={createProject}>
+            <input placeholder="Name" value={projectForm.name} onChange={(e) => setProjectForm((p) => ({ ...p, name: e.target.value }))} />
+            <input placeholder="Code" value={projectForm.code} onChange={(e) => setProjectForm((p) => ({ ...p, code: e.target.value }))} />
+            <button type="submit">Create</button>
+          </form>
+          <ul>
+            {projects.map((project) => (
+              <li key={project.id}>
+                {project.name} ({project.code}) - {project.isArchived ? "archived" : project.isActive ? "active" : "inactive"}
+                {!project.isArchived && <button onClick={() => void archiveProject(project.id)}>Archive</button>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
-              <div className="actions wrap">
-                <input
-                  placeholder="Search username/email/employee ID"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                />
-                <button type="button" onClick={() => void loadAdminData()}>Search</button>
-                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as "all" | "active" | "inactive") }>
-                  <option value="all">All statuses</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-                <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
-                  <option value="all">All roles</option>
-                  {roles.map((role) => (
-                    <option key={role.id} value={role.name}>
-                      {role.name}
-                    </option>
-                  ))}
-                </select>
-                <button type="button" onClick={startCreate}>New user</button>
-              </div>
-
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Username</th>
-                      <th>Email</th>
-                      <th>Employee ID</th>
-                      <th>Role</th>
-                      <th>Status</th>
-                      <th>Manager</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredUsers.map((user) => (
-                      <tr key={user.id}>
-                        <td>{user.username}</td>
-                        <td>{user.email}</td>
-                        <td>{user.employeeId}</td>
-                        <td>{user.role}</td>
-                        <td>{user.isActive ? "Active" : "Inactive"}</td>
-                        <td>{user.managerUsername ?? "-"}</td>
-                        <td className="actions">
-                          <button type="button" onClick={() => startEdit(user)}>Edit</button>
-                          <button type="button" onClick={() => void toggleActive(user)}>
-                            {user.isActive ? "Deactivate" : "Activate"}
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <form onSubmit={submitUserForm} className="card">
-                <h3>{editingUserId ? "Edit user" : "Create user"}</h3>
-                <label>
-                  Username
-                  <input value={userForm.username} onChange={(e) => setUserForm((prev) => ({ ...prev, username: e.target.value }))} required />
-                </label>
-                <label>
-                  Email
-                  <input type="email" value={userForm.email} onChange={(e) => setUserForm((prev) => ({ ...prev, email: e.target.value }))} required />
-                </label>
-                <label>
-                  Employee ID
-                  <input value={userForm.employeeId} onChange={(e) => setUserForm((prev) => ({ ...prev, employeeId: e.target.value }))} required />
-                </label>
-                {!editingUserId && (
-                  <label>
-                    Password
-                    <input type="password" value={userForm.password} onChange={(e) => setUserForm((prev) => ({ ...prev, password: e.target.value }))} required />
-                  </label>
-                )}
-                <label>
-                  Role
-                  <select value={userForm.role} onChange={(e) => setUserForm((prev) => ({ ...prev, role: e.target.value }))} required>
-                    {roles.map((role) => (
-                      <option key={role.id} value={role.name}>
-                        {role.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Department
-                  <select value={userForm.departmentId} onChange={(e) => setUserForm((prev) => ({ ...prev, departmentId: e.target.value }))}>
-                    <option value="">None</option>
-                    {departments.filter((department) => department.isActive).map((department) => (
-                      <option key={department.id} value={department.id}>
-                        {department.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Work policy
-                  <select value={userForm.workPolicyId} onChange={(e) => setUserForm((prev) => ({ ...prev, workPolicyId: e.target.value }))}>
-                    <option value="">None</option>
-                    {workPolicies.filter((policy) => policy.isActive).map((policy) => (
-                      <option key={policy.id} value={policy.id}>
-                        {policy.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Reporting manager
-                  <select value={userForm.managerId} onChange={(e) => setUserForm((prev) => ({ ...prev, managerId: e.target.value }))}>
-                    <option value="">None</option>
-                    {users.filter((user) => user.id !== editingUserId).map((user) => (
-                      <option key={user.id} value={user.id}>
-                        {user.username}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={userForm.isActive}
-                    onChange={(e) => setUserForm((prev) => ({ ...prev, isActive: e.target.checked }))}
-                  />
-                  Active user
-                </label>
-                <button type="submit">{editingUserId ? "Save changes" : "Create user"}</button>
-              </form>
-
-              {adminFeedback && <p className={adminFeedback.toLowerCase().includes("fail") ? "error" : "success"}>{adminFeedback}</p>}
-            </section>
-          ) : null}
-
-          {view === "admin" && !canAccessCurrentView ? (
-            <p className="error">You do not have permission to access the admin area.</p>
-          ) : null}
-
-          <button onClick={() => void onLogout()}>Logout</button>
+      {view === "categories" && isAdmin && (
+        <section>
+          <h2>Task Category Admin</h2>
+          <form className="actions" onSubmit={createCategory}>
+            <input placeholder="Name" value={categoryForm.name} onChange={(e) => setCategoryForm((p) => ({ ...p, name: e.target.value }))} />
+            <button type="submit">Create</button>
+          </form>
+          <ul>
+            {categories.map((category) => (
+              <li key={category.id}>
+                {category.name} ({category.isActive ? "active" : "inactive"})
+                <button onClick={() => void toggleCategory(category)}>Toggle status</button>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
     </main>

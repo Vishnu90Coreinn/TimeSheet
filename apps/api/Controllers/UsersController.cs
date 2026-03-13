@@ -118,10 +118,18 @@ public class UsersController(TimeSheetDbContext dbContext, IPasswordHasher passw
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateUserRequest request)
     {
-        var user = await dbContext.Users.SingleOrDefaultAsync(u => u.Id == id);
+        var user = await dbContext.Users
+            .Include(u => u.UserRoles)
+            .SingleOrDefaultAsync(u => u.Id == id);
         if (user is null)
         {
             return NotFound();
+        }
+
+        var role = await dbContext.Roles.SingleOrDefaultAsync(r => r.Name == request.Role);
+        if (role is null)
+        {
+            return BadRequest(new { message = "Invalid role." });
         }
 
         var duplicateExists = await dbContext.Users.AnyAsync(u => u.Id != id &&
@@ -144,6 +152,8 @@ public class UsersController(TimeSheetDbContext dbContext, IPasswordHasher passw
         user.DepartmentId = request.DepartmentId;
         user.WorkPolicyId = request.WorkPolicyId;
         user.ManagerId = request.ManagerId;
+
+        SyncUserRole(user, role.Id);
 
         await WriteAuditLogAsync("UserUpdated", "User", user.Id.ToString(), $"Updated user {user.Username}");
         await dbContext.SaveChangesAsync();
@@ -200,18 +210,28 @@ public class UsersController(TimeSheetDbContext dbContext, IPasswordHasher passw
             return NotFound();
         }
 
-        if (await dbContext.UserRoles.AnyAsync(ur => ur.UserId == id && ur.RoleId == role.Id))
+        if (user.Role == request.RoleName && user.UserRoles.Count == 1 && user.UserRoles.Any(ur => ur.RoleId == role.Id))
         {
             return Conflict(new { message = "Role already assigned." });
         }
 
-        dbContext.UserRoles.Add(new UserRole { UserId = id, RoleId = role.Id });
+        SyncUserRole(user, role.Id);
         user.Role = request.RoleName;
 
         await WriteAuditLogAsync("RoleAssigned", "User", user.Id.ToString(), $"Assigned role {role.Name} to {user.Username}");
         await dbContext.SaveChangesAsync();
 
         return NoContent();
+    }
+
+    private void SyncUserRole(User user, Guid roleId)
+    {
+        dbContext.UserRoles.RemoveRange(user.UserRoles);
+        user.UserRoles.Clear();
+
+        var userRole = new UserRole { UserId = user.Id, RoleId = roleId };
+        dbContext.UserRoles.Add(userRole);
+        user.UserRoles.Add(userRole);
     }
 
     private async Task WriteAuditLogAsync(string action, string entityType, string entityId, string details)

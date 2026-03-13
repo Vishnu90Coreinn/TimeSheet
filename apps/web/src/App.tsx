@@ -1,5 +1,12 @@
 import { useState } from "react";
 
+type LoginResponse = {
+  accessToken: string;
+  userId: string;
+  username: string;
+  role: string;
+};
+
 export function App() {
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("admin123");
@@ -7,7 +14,7 @@ export function App() {
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
-    const response = await fetch("http://localhost:5000/api/v1/auth/login", {
+    const response = await fetch("https://localhost:7012/api/v1/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password })
@@ -16,8 +23,8 @@ export function App() {
       setMessage("Login failed");
       return;
     }
-    const data = await response.json();
-    setMessage(`Logged in as ${data.user.username} (${data.user.role})`);
+    const data = (await response.json()) as LoginResponse;
+    setMessage(`Logged in as ${data.username} (${data.role})`);
   }
 
   return (

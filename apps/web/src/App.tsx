@@ -394,11 +394,14 @@ export function App() {
 
   async function onLogout() {
     if (session?.refreshToken) {
-      await fetch(`${API_BASE_URL}/auth/logout`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken: session.refreshToken })
-      }).catch(() => undefined);
+      await authedFetch(
+        "/auth/logout",
+        {
+          method: "POST",
+          body: JSON.stringify({ refreshToken: session.refreshToken })
+        },
+        session
+      ).catch(() => undefined);
     }
 
     localStorage.removeItem("accessToken");

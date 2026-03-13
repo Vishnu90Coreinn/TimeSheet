@@ -15,17 +15,18 @@ public class AttendanceCalculationService : IAttendanceCalculationService
     {
         var grossMinutes = sessions.Sum(s =>
         {
-            var end = s.Status == WorkSessionStatus.Active
-                ? (s.CheckOutAtUtc ?? nowUtc)
-                : s.CheckOutAtUtc;
+            if (s.Status == WorkSessionStatus.Active)
+            {
+                var activeEndUtc = s.CheckOutAtUtc ?? nowUtc;
+                return (int)Math.Max(0, (activeEndUtc - s.CheckInAtUtc).TotalMinutes);
+            }
 
-            if (end is not DateTime endUtc)
+            if (!s.CheckOutAtUtc.HasValue)
             {
                 return 0;
             }
 
-            var minutes = (int)Math.Max(0, (endUtc - s.CheckInAtUtc).TotalMinutes);
-            return minutes;
+            return (int)Math.Max(0, (s.CheckOutAtUtc.Value - s.CheckInAtUtc).TotalMinutes);
         });
 
         var breakMinutes = sessions.SelectMany(s => s.Breaks).Sum(b =>

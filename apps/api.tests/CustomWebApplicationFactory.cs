@@ -11,8 +11,6 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 {
     private readonly string _databaseName = $"TimeSheetTests-{Guid.NewGuid()}";
 
-    private readonly string _databaseName = $"TimeSheetTests-{Guid.NewGuid()}";
-
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");

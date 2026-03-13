@@ -6,7 +6,8 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 - Track work by Epic → Feature → Task.
 - Keep task IDs stable for issue tracking.
 - Mark status with: `TODO`, `IN_PROGRESS`, `DONE`, `BLOCKED`.
-- Recommended branch naming: `feature/<TASK-ID>-short-name`.
+- Recommended branch naming: `feature/<featureNameOrID>` for feature work and `bugfix/<bugNameOrID>` for bug work.
+- Before merge, complete code review and run lint, tests, and build to ensure no breaking changes.
 
 ---
 

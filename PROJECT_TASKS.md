@@ -37,7 +37,7 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 - [x] **TSK-USER-002** Implement user CRUD APIs with validation (unique email/employee ID).
 - [x] **TSK-USER-003** Implement reporting manager mapping and retrieval APIs.
 - [ ] **TSK-USER-004** Build admin user management UI (list/search/filter/create/edit/activate/deactivate).
-- [ ] **TSK-USER-005** Enforce “inactive users cannot submit timesheets”.
+- [x] **TSK-USER-005** Enforce “inactive users cannot submit timesheets”.
 - [x] **TSK-USER-006** Add audit logging for user admin actions.
 
 ---

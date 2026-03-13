@@ -194,17 +194,25 @@ export function App() {
     return refreshInFlightRef.current;
   }
 
-  async function authedFetch(path: string, options: RequestInit, activeSession?: Session) {
+  type AuthedRequestOptions = RequestInit | ((authSession: Session) => RequestInit);
+
+  function resolveAuthedOptions(options: AuthedRequestOptions, authSession: Session): RequestInit {
+    return typeof options === "function" ? options(authSession) : options;
+  }
+
+  async function authedFetch(path: string, options: AuthedRequestOptions, activeSession?: Session) {
     const authSession = activeSession ?? session;
     if (!authSession) {
       throw new Error("Not authenticated.");
     }
 
+    const firstRequestOptions = resolveAuthedOptions(options, authSession);
+
     const firstResponse = await fetch(`${API_BASE_URL}${path}`, {
-      ...options,
+      ...firstRequestOptions,
       headers: {
         "Content-Type": "application/json",
-        ...(options.headers ?? {}),
+        ...(firstRequestOptions.headers ?? {}),
         Authorization: `Bearer ${authSession.accessToken}`
       }
     });
@@ -218,11 +226,13 @@ export function App() {
       return firstResponse;
     }
 
+    const retryRequestOptions = resolveAuthedOptions(options, refreshed);
+
     return fetch(`${API_BASE_URL}${path}`, {
-      ...options,
+      ...retryRequestOptions,
       headers: {
         "Content-Type": "application/json",
-        ...(options.headers ?? {}),
+        ...(retryRequestOptions.headers ?? {}),
         Authorization: `Bearer ${refreshed.accessToken}`
       }
     });
@@ -396,10 +406,10 @@ export function App() {
     if (session?.refreshToken) {
       await authedFetch(
         "/auth/logout",
-        {
+        (authSession) => ({
           method: "POST",
-          body: JSON.stringify({ refreshToken: session.refreshToken })
-        },
+          body: JSON.stringify({ refreshToken: authSession.refreshToken })
+        }),
         session
       ).catch(() => undefined);
     }

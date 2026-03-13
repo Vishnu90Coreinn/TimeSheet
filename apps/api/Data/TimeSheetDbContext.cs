@@ -15,6 +15,8 @@ public class TimeSheetDbContext(DbContextOptions<TimeSheetDbContext> options) : 
     public DbSet<Department> Departments => Set<Department>();
     public DbSet<WorkPolicy> WorkPolicies => Set<WorkPolicy>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<WorkSession> WorkSessions => Set<WorkSession>();
+    public DbSet<BreakEntry> BreakEntries => Set<BreakEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -86,6 +88,28 @@ public class TimeSheetDbContext(DbContextOptions<TimeSheetDbContext> options) : 
             entity.HasKey(x => x.Id);
             entity.HasIndex(x => x.Name).IsUnique();
             entity.Property(x => x.Name).HasMaxLength(120).IsRequired();
+        });
+
+        modelBuilder.Entity<WorkSession>(entity =>
+        {
+            entity.ToTable("WorkSessions");
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => new { x.UserId, x.WorkDate });
+            entity.HasOne(x => x.User)
+                .WithMany(u => u.WorkSessions)
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<BreakEntry>(entity =>
+        {
+            entity.ToTable("BreakEntries");
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => x.WorkSessionId);
+            entity.HasOne(x => x.WorkSession)
+                .WithMany(ws => ws.Breaks)
+                .HasForeignKey(x => x.WorkSessionId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<AuditLog>(entity =>

@@ -1,0 +1,80 @@
+using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using TimeSheet.Api.Data;
+using TimeSheet.Api.Dtos;
+using TimeSheet.Api.Models;
+using TimeSheet.Api.Services;
+using Xunit;
+
+namespace TimeSheet.Api.Tests;
+
+public class AttendanceIntegrationTests : IClassFixture<CustomWebApplicationFactory>
+{
+    private readonly CustomWebApplicationFactory _factory;
+
+    public AttendanceIntegrationTests(CustomWebApplicationFactory factory)
+    {
+        _factory = factory;
+    }
+
+    [Fact]
+    public async Task CheckIn_PreventsDuplicateActiveSession()
+    {
+        using var client = await CreateAuthedEmployeeClient("employee.att.1");
+
+        var first = await client.PostAsJsonAsync("/api/v1/attendance/check-in", new CheckInRequest(null));
+        var duplicate = await client.PostAsJsonAsync("/api/v1/attendance/check-in", new CheckInRequest(null));
+
+        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, duplicate.StatusCode);
+    }
+
+    [Fact]
+    public async Task BreakSequence_ValidatesOverlapAndOrder()
+    {
+        using var client = await CreateAuthedEmployeeClient("employee.att.2");
+
+        await client.PostAsJsonAsync("/api/v1/attendance/check-in", new CheckInRequest(DateTime.UtcNow.AddHours(-4)));
+        var start = await client.PostAsJsonAsync("/api/v1/attendance/breaks/start", new StartBreakRequest(DateTime.UtcNow.AddHours(-2)));
+        var duplicateStart = await client.PostAsJsonAsync("/api/v1/attendance/breaks/start", new StartBreakRequest(DateTime.UtcNow.AddHours(-1)));
+        var end = await client.PostAsJsonAsync("/api/v1/attendance/breaks/end", new EndBreakRequest(DateTime.UtcNow.AddHours(-1).AddMinutes(30)));
+
+        Assert.Equal(HttpStatusCode.OK, start.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, duplicateStart.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, end.StatusCode);
+    }
+
+    private async Task<HttpClient> CreateAuthedEmployeeClient(string username)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<TimeSheetDbContext>();
+        var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
+
+        var role = await db.Roles.SingleAsync(r => r.Name == "employee");
+        var policy = await db.WorkPolicies.FirstAsync();
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            Username = username,
+            Email = $"{username}@timesheet.local",
+            EmployeeId = $"{username}-id",
+            PasswordHash = hasher.Hash("employee123"),
+            Role = "employee",
+            WorkPolicyId = policy.Id,
+            IsActive = true
+        };
+        db.Users.Add(user);
+        db.UserRoles.Add(new UserRole { UserId = user.Id, RoleId = role.Id });
+        await db.SaveChangesAsync();
+
+        var client = _factory.CreateClient();
+        var login = await client.PostAsJsonAsync("/api/v1/auth/login", new LoginRequest(username, "employee123"));
+        var payload = await login.Content.ReadFromJsonAsync<LoginResponse>();
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", payload!.AccessToken);
+        return client;
+    }
+}

@@ -38,12 +38,19 @@ public static class DbInitializer
                 Id = Guid.NewGuid(),
                 Name = "Standard 8 Hours",
                 DailyExpectedMinutes = 480,
+                FixedLunchDeductionMinutes = 45,
+                LowGrossThresholdMinutes = 300,
+                SkipLunchDeductionForLowGross = true,
+                AllowManualBreakEdits = true,
                 IsActive = true
             });
         }
 
         if (!await db.Users.AnyAsync())
         {
+            var policyId = db.WorkPolicies.Local.FirstOrDefault()?.Id
+                ?? await db.WorkPolicies.Select(x => x.Id).FirstOrDefaultAsync();
+
             var adminUser = new User
             {
                 Id = Guid.NewGuid(),
@@ -52,7 +59,8 @@ public static class DbInitializer
                 EmployeeId = "EMP-0001",
                 PasswordHash = hasher.Hash("admin123"),
                 Role = "admin",
-                IsActive = true
+                IsActive = true,
+                WorkPolicyId = policyId == Guid.Empty ? null : policyId
             };
 
             db.Users.Add(adminUser);

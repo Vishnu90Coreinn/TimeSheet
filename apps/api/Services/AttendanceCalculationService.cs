@@ -23,7 +23,9 @@ public class AttendanceCalculationService : IAttendanceCalculationService
             {
                 return 0;
             }
-            var minutes = (int)Math.Max(0, (end - s.CheckInAtUtc).TotalMinutes);
+
+            var endUtc = end.Value;
+            var minutes = (int)Math.Max(0, (endUtc - s.CheckInAtUtc).TotalMinutes);
             return minutes;
         });
 

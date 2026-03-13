@@ -12,7 +12,7 @@ public static class DbInitializer
         var db = scope.ServiceProvider.GetRequiredService<TimeSheetDbContext>();
         var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
 
-        await db.Database.MigrateAsync();
+        await db.Database.EnsureCreatedAsync();
 
         if (!await db.Users.AnyAsync())
         {
@@ -20,10 +20,23 @@ public static class DbInitializer
             {
                 Id = Guid.NewGuid(),
                 Username = "admin",
+                Email = "admin@timesheet.local",
+                EmployeeId = "EMP-0001",
                 PasswordHash = hasher.Hash("admin123"),
-                Role = "admin"
+                Role = "admin",
+                IsActive = true
             });
-            await db.SaveChangesAsync();
         }
+
+        if (!await db.TaskCategories.AnyAsync())
+        {
+            db.TaskCategories.AddRange(
+                new TaskCategory { Id = Guid.NewGuid(), Name = "Development", IsActive = true },
+                new TaskCategory { Id = Guid.NewGuid(), Name = "Meetings", IsActive = true },
+                new TaskCategory { Id = Guid.NewGuid(), Name = "Support", IsActive = true }
+            );
+        }
+
+        await db.SaveChangesAsync();
     }
 }

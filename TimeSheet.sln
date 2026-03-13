@@ -4,12 +4,18 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TimeSheet.Api", "apps\\api\\TimeSheet.Api.csproj", "{94B1F97E-1F95-4B4A-A180-5D2A001AE6F2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TimeSheet.Api.Tests", "apps\api.tests\TimeSheet.Api.Tests.csproj", "{A48C0F43-DB91-4C26-A3A0-1E1186D7C650}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A48C0F43-DB91-4C26-A3A0-1E1186D7C650}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A48C0F43-DB91-4C26-A3A0-1E1186D7C650}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A48C0F43-DB91-4C26-A3A0-1E1186D7C650}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A48C0F43-DB91-4C26-A3A0-1E1186D7C650}.Release|Any CPU.Build.0 = Release|Any CPU
 		{94B1F97E-1F95-4B4A-A180-5D2A001AE6F2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{94B1F97E-1F95-4B4A-A180-5D2A001AE6F2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{94B1F97E-1F95-4B4A-A180-5D2A001AE6F2}.Release|Any CPU.ActiveCfg = Release|Any CPU

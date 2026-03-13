@@ -19,12 +19,11 @@ public class AttendanceCalculationService : IAttendanceCalculationService
                 ? (s.CheckOutAtUtc ?? nowUtc)
                 : s.CheckOutAtUtc;
 
-            if (end is null)
+            if (end is not DateTime endUtc)
             {
                 return 0;
             }
 
-            var endUtc = end.Value;
             var minutes = (int)Math.Max(0, (endUtc - s.CheckInAtUtc).TotalMinutes);
             return minutes;
         });

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type Session = {
   accessToken: string;
@@ -81,6 +81,7 @@ export function App() {
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [userForm, setUserForm] = useState<UserForm>(defaultForm);
   const [adminFeedback, setAdminFeedback] = useState("");
+  const refreshInFlightRef = useRef<Promise<Session | null> | null>(null);
 
   useEffect(() => {
     const savedToken = localStorage.getItem("accessToken");
@@ -134,27 +135,35 @@ export function App() {
   }
 
   async function refreshSession(refreshToken: string) {
-    const refreshResponse = await fetch(`${API_BASE_URL}/auth/refresh`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refreshToken })
-    });
+    if (!refreshInFlightRef.current) {
+      refreshInFlightRef.current = (async () => {
+        const refreshResponse = await fetch(`${API_BASE_URL}/auth/refresh`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refreshToken })
+        });
 
-    if (!refreshResponse.ok) {
-      return null;
+        if (!refreshResponse.ok) {
+          return null;
+        }
+
+        const refreshed = await refreshResponse.json();
+        const nextSession = {
+          accessToken: refreshed.accessToken,
+          refreshToken: refreshed.refreshToken,
+          username: refreshed.username,
+          role: refreshed.role
+        };
+
+        persistSession(nextSession);
+        setSession(nextSession);
+        return nextSession;
+      })().finally(() => {
+        refreshInFlightRef.current = null;
+      });
     }
 
-    const refreshed = await refreshResponse.json();
-    const nextSession = {
-      accessToken: refreshed.accessToken,
-      refreshToken: refreshed.refreshToken,
-      username: refreshed.username,
-      role: refreshed.role
-    };
-
-    persistSession(nextSession);
-    setSession(nextSession);
-    return nextSession;
+    return refreshInFlightRef.current;
   }
 
   async function authedFetch(path: string, options: RequestInit, activeSession?: Session) {

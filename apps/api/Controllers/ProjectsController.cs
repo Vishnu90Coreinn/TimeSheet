@@ -131,8 +131,25 @@ public class ProjectsController(TimeSheetDbContext dbContext) : ControllerBase
             return BadRequest(new { message = "One or more users do not exist." });
         }
 
-        dbContext.ProjectMembers.RemoveRange(project.Members);
-        project.Members = userIds.Select(uid => new ProjectMember { ProjectId = project.Id, UserId = uid }).ToList();
+        var targetUserIds = userIds.ToHashSet();
+        var membershipsToRemove = project.Members
+            .Where(member => !targetUserIds.Contains(member.UserId))
+            .ToList();
+        dbContext.ProjectMembers.RemoveRange(membershipsToRemove);
+
+        var existingMemberUserIds = project.Members
+            .Select(member => member.UserId)
+            .ToHashSet();
+        var membershipsToAdd = targetUserIds
+            .Where(userId => !existingMemberUserIds.Contains(userId))
+            .Select(userId => new ProjectMember { ProjectId = project.Id, UserId = userId })
+            .ToList();
+
+        if (membershipsToAdd.Count > 0)
+        {
+            dbContext.ProjectMembers.AddRange(membershipsToAdd);
+        }
+
         await dbContext.SaveChangesAsync();
         return NoContent();
     }

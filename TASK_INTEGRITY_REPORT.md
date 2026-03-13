@@ -1,18 +1,18 @@
 # Project Tasks Verification & Integrity Report
 
 Date: 2026-03-13
-Branch assessed: `master` baseline (current repository state)
+Branch assessed: `work` (no local `master` branch exists in this repository clone)
 Source task file: `PROJECT_TASKS.md`
 
 ## Verification scope
 - Verified Sprint 0 and Sprint 1 task-bundle completion status from `PROJECT_TASKS.md`.
 - Performed checklist integrity validation (format, ID uniqueness, completion markers).
 - Performed merge-conflict residue scan across the repository.
-- Performed frontend integrity validation (build + unit tests).
+- Performed frontend integrity validation (lint + unit tests + production build).
 - Performed Sprint 0 artifact presence checks (API contract, ERD, wireframes).
 
 ## Checklist integrity results
-- Total task entries parsed: **148**
+- Total task entries parsed: **134**
 - Completed entries parsed: **35**
 - Duplicate task IDs: **0**
 
@@ -43,17 +43,17 @@ Result: ✅ All Sprint 1 bundle tasks are marked complete.
 
 ## Merge conflict integrity checks
 - Conflict marker scan (`<<<<<<<`, `=======`, `>>>>>>>`): ✅ none found.
-- Frontend TypeScript integrity issue from duplicated declarations in `apps/web/src/App.tsx`: ✅ resolved.
 
 ## Runtime/build integrity checks
-- `npm --prefix apps/web run build`: ✅ pass.
-- `npm --prefix apps/web test -- --run`: ✅ pass.
-- `dotnet` checks: ⚠️ not executable in this environment (`dotnet` SDK not installed).
+- `npm run lint:web`: ✅ pass.
+- `npm run test:web -- --run`: ✅ pass.
+- `npm run build:web`: ✅ pass.
+- `dotnet --version`: ⚠️ not executable in this environment (`dotnet` SDK not installed).
 
 ## Final assessment
 - **Sprint 0 integrity**: ✅ complete by checklist + design artifact presence.
 - **Sprint 1 integrity**: ✅ all bundled tasks marked complete.
-- **Merge-conflict residue risk**: ✅ no conflict markers detected; frontend compile/test integrity restored.
+- **Merge-conflict residue risk**: ✅ no conflict markers detected.
 - **Backend runtime validation**: ⚠️ pending environment with .NET SDK.
 
 ## Recommended follow-up (once .NET SDK is available)

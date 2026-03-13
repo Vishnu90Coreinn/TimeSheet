@@ -14,9 +14,37 @@ public static class DbInitializer
 
         await db.Database.EnsureCreatedAsync();
 
+        if (!await db.Roles.AnyAsync())
+        {
+            db.Roles.AddRange(
+                new Role { Id = Guid.NewGuid(), Name = "admin" },
+                new Role { Id = Guid.NewGuid(), Name = "manager" },
+                new Role { Id = Guid.NewGuid(), Name = "employee" }
+            );
+        }
+
+        if (!await db.Departments.AnyAsync())
+        {
+            db.Departments.AddRange(
+                new Department { Id = Guid.NewGuid(), Name = "Engineering", IsActive = true },
+                new Department { Id = Guid.NewGuid(), Name = "Operations", IsActive = true }
+            );
+        }
+
+        if (!await db.WorkPolicies.AnyAsync())
+        {
+            db.WorkPolicies.Add(new WorkPolicy
+            {
+                Id = Guid.NewGuid(),
+                Name = "Standard 8 Hours",
+                DailyExpectedMinutes = 480,
+                IsActive = true
+            });
+        }
+
         if (!await db.Users.AnyAsync())
         {
-            db.Users.Add(new User
+            var adminUser = new User
             {
                 Id = Guid.NewGuid(),
                 Username = "admin",
@@ -25,6 +53,16 @@ public static class DbInitializer
                 PasswordHash = hasher.Hash("admin123"),
                 Role = "admin",
                 IsActive = true
+            };
+
+            db.Users.Add(adminUser);
+            await db.SaveChangesAsync();
+
+            var adminRole = await db.Roles.SingleAsync(r => r.Name == "admin");
+            db.UserRoles.Add(new UserRole
+            {
+                UserId = adminUser.Id,
+                RoleId = adminRole.Id
             });
         }
 

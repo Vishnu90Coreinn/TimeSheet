@@ -23,7 +23,7 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 - [x] **TSK-AUTH-007** Build React login page and error states.
 - [x] **TSK-AUTH-008** Add protected route handling in frontend.
 - [x] **TSK-AUTH-009** Add logout behavior and token/session cleanup.
-- [ ] **TSK-AUTH-010** Add auth integration tests (valid login, invalid login, unauthorized route).
+- [x] **TSK-AUTH-010** Add auth integration tests (valid login, invalid login, unauthorized route).
 
 ### E1-F2 Roles and Permissions
 - [x] **TSK-RBAC-001** Define role entities and seed baseline roles.

@@ -7,6 +7,7 @@ public class TimeSheetDbContext(DbContextOptions<TimeSheetDbContext> options) : 
 {
     public DbSet<User> Users => Set<User>();
     public DbSet<Project> Projects => Set<Project>();
+    public DbSet<ProjectMember> ProjectMembers => Set<ProjectMember>();
     public DbSet<TaskCategory> TaskCategories => Set<TaskCategory>();
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<UserRole> UserRoles => Set<UserRole>();
@@ -104,6 +105,14 @@ public class TimeSheetDbContext(DbContextOptions<TimeSheetDbContext> options) : 
             entity.HasIndex(x => x.Code).IsUnique();
             entity.Property(x => x.Name).HasMaxLength(200).IsRequired();
             entity.Property(x => x.Code).HasMaxLength(50).IsRequired();
+        });
+
+        modelBuilder.Entity<ProjectMember>(entity =>
+        {
+            entity.ToTable("ProjectMembers");
+            entity.HasKey(x => new { x.ProjectId, x.UserId });
+            entity.HasOne(x => x.Project).WithMany(x => x.Members).HasForeignKey(x => x.ProjectId);
+            entity.HasOne(x => x.User).WithMany(x => x.ProjectMemberships).HasForeignKey(x => x.UserId);
         });
 
         modelBuilder.Entity<TaskCategory>(entity =>

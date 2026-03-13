@@ -29,8 +29,8 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 - [x] **TSK-RBAC-001** Define role entities and seed baseline roles.
 - [x] **TSK-RBAC-002** Implement user-role mapping table and APIs.
 - [x] **TSK-RBAC-003** Implement permission enforcement attributes/policies on APIs.
-- [ ] **TSK-RBAC-004** Add frontend role guards for menu/routes/actions.
-- [ ] **TSK-RBAC-005** Add test coverage for access control matrix.
+- [x] **TSK-RBAC-004** Add frontend role guards for menu/routes/actions.
+- [x] **TSK-RBAC-005** Add test coverage for access control matrix.
 
 ### E1-F3 User and Hierarchy Management
 - [x] **TSK-USER-001** Create User, Department, and WorkPolicy master schemas.
@@ -76,18 +76,18 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 
 ### E3-F1 Project Master
 - [x] **TSK-PRJ-001** Create Project schema with required fields and statuses.
-- [ ] **TSK-PRJ-002** Implement project CRUD + archive APIs.
-- [ ] **TSK-PRJ-003** Implement project-member assignment APIs.
-- [ ] **TSK-PRJ-004** Enforce active project visibility in timesheet entry.
-- [ ] **TSK-PRJ-005** Build admin project management UI.
-- [ ] **TSK-PRJ-006** Add tests for date validations and archive behavior.
+- [x] **TSK-PRJ-002** Implement project CRUD + archive APIs.
+- [x] **TSK-PRJ-003** Implement project-member assignment APIs.
+- [x] **TSK-PRJ-004** Enforce active project visibility in timesheet entry.
+- [x] **TSK-PRJ-005** Build admin project management UI.
+- [x] **TSK-PRJ-006** Add tests for date validations and archive behavior.
 
 ### E3-F2 Task Categories
 - [x] **TSK-TASK-001** Create TaskCategory schema.
 - [x] **TSK-TASK-002** Seed default task categories from FRS.
-- [ ] **TSK-TASK-003** Implement category CRUD APIs.
-- [ ] **TSK-TASK-004** Enforce active-only categories in timesheet forms.
-- [ ] **TSK-TASK-005** Build admin task category UI.
+- [x] **TSK-TASK-003** Implement category CRUD APIs.
+- [x] **TSK-TASK-004** Enforce active-only categories in timesheet forms.
+- [x] **TSK-TASK-005** Build admin task category UI.
 
 ---
 
@@ -240,13 +240,13 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 
 ### E12-F1 Architecture and Code Quality
 - [x] **TSK-ENG-001** Set up backend solution structure (API/Application/Domain/Infrastructure).
-- [ ] **TSK-ENG-002** Set up frontend module structure (auth/dashboard/attendance/timesheet/etc.).
+- [x] **TSK-ENG-002** Set up frontend module structure (auth/dashboard/attendance/timesheet/etc.).
 - [ ] **TSK-ENG-003** Add API versioning and standardized error response format.
 - [ ] **TSK-ENG-004** Add request validation framework.
 - [ ] **TSK-ENG-005** Add structured logging and correlation IDs.
 
 ### E12-F2 Database and Migration
-- [ ] **TSK-DB-001** Create normalized SQL Server schema scripts/migrations.
+- [x] **TSK-DB-001** Create normalized SQL Server schema scripts/migrations.
 - [ ] **TSK-DB-002** Add seed data for roles, statuses, leave types, task categories.
 - [ ] **TSK-DB-003** Add database indexing for report-heavy queries.
 

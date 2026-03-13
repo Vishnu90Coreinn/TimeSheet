@@ -9,7 +9,6 @@ body {
 
 .container {
   max-width: 1100px;
-  max-width: 1100px;
   margin: 48px auto;
   background: #fff;
   border-radius: 12px;
@@ -23,8 +22,6 @@ body {
   gap: 12px;
 }
 
-input,
-select {
 input,
 select {
   width: 100%;
@@ -50,30 +47,6 @@ button {
   flex-wrap: wrap;
 }
 
-.table-wrap {
-  overflow-x: auto;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-th,
-td {
-  border-bottom: 1px solid #dbe3ef;
-  text-align: left;
-  padding: 8px;
-}
-
 .error {
   color: #b91c1c;
-}
-
-.success {
-  color: #065f46;
-}
-
-.success {
-  color: #065f46;
 }

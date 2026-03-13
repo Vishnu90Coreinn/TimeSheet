@@ -7,4 +7,6 @@ public class Project
     public string Code { get; set; } = string.Empty;
     public bool IsActive { get; set; } = true;
     public bool IsArchived { get; set; }
+
+    public ICollection<ProjectMember> Members { get; set; } = new List<ProjectMember>();
 }

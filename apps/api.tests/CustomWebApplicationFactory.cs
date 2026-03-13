@@ -9,6 +9,8 @@ namespace TimeSheet.Api.Tests;
 
 public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 {
+    private readonly string _databaseName = $"TimeSheetTests-{Guid.NewGuid()}";
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
@@ -17,7 +19,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             services.RemoveAll<DbContextOptions<TimeSheetDbContext>>();
 
             services.AddDbContext<TimeSheetDbContext>(options =>
-                options.UseInMemoryDatabase($"TimeSheetTests-{Guid.NewGuid()}"));
+                options.UseInMemoryDatabase(_databaseName));
         });
     }
 }

@@ -4,6 +4,36 @@ type Session = { accessToken: string; refreshToken: string; username: string; ro
 type User = { id: string; username: string; email: string; role: string; isActive: boolean };
 type Project = { id: string; name: string; code: string; isActive: boolean; isArchived: boolean };
 type TaskCategory = { id: string; name: string; isActive: boolean };
+type Session = {
+  accessToken: string;
+  refreshToken: string;
+  username: string;
+  role: AppRole;
+};
+
+type CurrentUser = {
+  id: string;
+  username: string;
+  email: string;
+  employeeId: string;
+  role: string;
+  isActive: boolean;
+};
+
+type User = {
+  id: string;
+  username: string;
+  email: string;
+  employeeId: string;
+  role: string;
+  isActive: boolean;
+  departmentId: string | null;
+  departmentName: string | null;
+  workPolicyId: string | null;
+  workPolicyName: string | null;
+  managerId: string | null;
+  managerUsername: string | null;
+};
 
 type View = "dashboard" | "projects" | "categories";
 
@@ -27,7 +57,7 @@ export function App() {
     const accessToken = localStorage.getItem("accessToken");
     const refreshToken = localStorage.getItem("refreshToken");
     const username = localStorage.getItem("username");
-    const role = localStorage.getItem("role");
+    const role = localStorage.getItem("role") as AppRole | null;
     if (accessToken && refreshToken && username && role) {
       setSession({ accessToken, refreshToken, username, role });
     }

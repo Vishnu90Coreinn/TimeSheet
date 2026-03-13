@@ -18,27 +18,27 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 - [x] **TSK-AUTH-002** Implement login endpoint (email/username + password).
 - [x] **TSK-AUTH-003** Add password hashing + verification service.
 - [x] **TSK-AUTH-004** Implement JWT token generation and validation.
-- [ ] **TSK-AUTH-005** Add refresh token strategy (or short-lived token policy).
+- [x] **TSK-AUTH-005** Add refresh token strategy (or short-lived token policy).
 - [x] **TSK-AUTH-006** Add secure auth middleware and unauthorized response standards.
 - [x] **TSK-AUTH-007** Build React login page and error states.
-- [ ] **TSK-AUTH-008** Add protected route handling in frontend.
+- [x] **TSK-AUTH-008** Add protected route handling in frontend.
 - [x] **TSK-AUTH-009** Add logout behavior and token/session cleanup.
 - [ ] **TSK-AUTH-010** Add auth integration tests (valid login, invalid login, unauthorized route).
 
 ### E1-F2 Roles and Permissions
-- [ ] **TSK-RBAC-001** Define role entities and seed baseline roles.
-- [ ] **TSK-RBAC-002** Implement user-role mapping table and APIs.
+- [x] **TSK-RBAC-001** Define role entities and seed baseline roles.
+- [x] **TSK-RBAC-002** Implement user-role mapping table and APIs.
 - [x] **TSK-RBAC-003** Implement permission enforcement attributes/policies on APIs.
 - [ ] **TSK-RBAC-004** Add frontend role guards for menu/routes/actions.
 - [ ] **TSK-RBAC-005** Add test coverage for access control matrix.
 
 ### E1-F3 User and Hierarchy Management
-- [ ] **TSK-USER-001** Create User, Department, and WorkPolicy master schemas.
-- [ ] **TSK-USER-002** Implement user CRUD APIs with validation (unique email/employee ID).
-- [ ] **TSK-USER-003** Implement reporting manager mapping and retrieval APIs.
+- [x] **TSK-USER-001** Create User, Department, and WorkPolicy master schemas.
+- [x] **TSK-USER-002** Implement user CRUD APIs with validation (unique email/employee ID).
+- [x] **TSK-USER-003** Implement reporting manager mapping and retrieval APIs.
 - [ ] **TSK-USER-004** Build admin user management UI (list/search/filter/create/edit/activate/deactivate).
 - [ ] **TSK-USER-005** Enforce “inactive users cannot submit timesheets”.
-- [ ] **TSK-USER-006** Add audit logging for user admin actions.
+- [x] **TSK-USER-006** Add audit logging for user admin actions.
 
 ---
 

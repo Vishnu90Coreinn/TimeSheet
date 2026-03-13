@@ -37,6 +37,11 @@ button {
   cursor: pointer;
 }
 
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
 .error {
   color: #b91c1c;
 }

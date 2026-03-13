@@ -14,21 +14,21 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 ## Epic E1 — Foundation and Access
 
 ### E1-F1 Authentication and Session
-- [ ] **TSK-AUTH-001** Create backend auth module skeleton (`/auth`) with layered architecture wiring.
-- [ ] **TSK-AUTH-002** Implement login endpoint (email/username + password).
-- [ ] **TSK-AUTH-003** Add password hashing + verification service.
-- [ ] **TSK-AUTH-004** Implement JWT token generation and validation.
+- [x] **TSK-AUTH-001** Create backend auth module skeleton (`/auth`) with layered architecture wiring.
+- [x] **TSK-AUTH-002** Implement login endpoint (email/username + password).
+- [x] **TSK-AUTH-003** Add password hashing + verification service.
+- [x] **TSK-AUTH-004** Implement JWT token generation and validation.
 - [ ] **TSK-AUTH-005** Add refresh token strategy (or short-lived token policy).
-- [ ] **TSK-AUTH-006** Add secure auth middleware and unauthorized response standards.
-- [ ] **TSK-AUTH-007** Build React login page and error states.
+- [x] **TSK-AUTH-006** Add secure auth middleware and unauthorized response standards.
+- [x] **TSK-AUTH-007** Build React login page and error states.
 - [ ] **TSK-AUTH-008** Add protected route handling in frontend.
-- [ ] **TSK-AUTH-009** Add logout behavior and token/session cleanup.
+- [x] **TSK-AUTH-009** Add logout behavior and token/session cleanup.
 - [ ] **TSK-AUTH-010** Add auth integration tests (valid login, invalid login, unauthorized route).
 
 ### E1-F2 Roles and Permissions
 - [ ] **TSK-RBAC-001** Define role entities and seed baseline roles.
 - [ ] **TSK-RBAC-002** Implement user-role mapping table and APIs.
-- [ ] **TSK-RBAC-003** Implement permission enforcement attributes/policies on APIs.
+- [x] **TSK-RBAC-003** Implement permission enforcement attributes/policies on APIs.
 - [ ] **TSK-RBAC-004** Add frontend role guards for menu/routes/actions.
 - [ ] **TSK-RBAC-005** Add test coverage for access control matrix.
 
@@ -75,7 +75,7 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 ## Epic E3 — Project and Task Masters
 
 ### E3-F1 Project Master
-- [ ] **TSK-PRJ-001** Create Project schema with required fields and statuses.
+- [x] **TSK-PRJ-001** Create Project schema with required fields and statuses.
 - [ ] **TSK-PRJ-002** Implement project CRUD + archive APIs.
 - [ ] **TSK-PRJ-003** Implement project-member assignment APIs.
 - [ ] **TSK-PRJ-004** Enforce active project visibility in timesheet entry.
@@ -83,8 +83,8 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 - [ ] **TSK-PRJ-006** Add tests for date validations and archive behavior.
 
 ### E3-F2 Task Categories
-- [ ] **TSK-TASK-001** Create TaskCategory schema.
-- [ ] **TSK-TASK-002** Seed default task categories from FRS.
+- [x] **TSK-TASK-001** Create TaskCategory schema.
+- [x] **TSK-TASK-002** Seed default task categories from FRS.
 - [ ] **TSK-TASK-003** Implement category CRUD APIs.
 - [ ] **TSK-TASK-004** Enforce active-only categories in timesheet forms.
 - [ ] **TSK-TASK-005** Build admin task category UI.
@@ -239,7 +239,7 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 ## Epic E12 — Engineering Quality, Delivery, and DevOps
 
 ### E12-F1 Architecture and Code Quality
-- [ ] **TSK-ENG-001** Set up backend solution structure (API/Application/Domain/Infrastructure).
+- [x] **TSK-ENG-001** Set up backend solution structure (API/Application/Domain/Infrastructure).
 - [ ] **TSK-ENG-002** Set up frontend module structure (auth/dashboard/attendance/timesheet/etc.).
 - [ ] **TSK-ENG-003** Add API versioning and standardized error response format.
 - [ ] **TSK-ENG-004** Add request validation framework.

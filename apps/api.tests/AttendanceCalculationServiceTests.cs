@@ -51,6 +51,29 @@ public class AttendanceCalculationServiceTests
         Assert.Equal(675, totals.NetMinutes);
     }
 
+
+    [Fact]
+    public void IgnoresMissingCheckoutSessionWithoutCheckoutTimestamp()
+    {
+        var workDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1));
+        var start = workDate.ToDateTime(new TimeOnly(9, 0), DateTimeKind.Utc);
+
+        var staleSession = new WorkSession
+        {
+            CheckInAtUtc = start,
+            CheckOutAtUtc = null,
+            WorkDate = workDate,
+            Status = WorkSessionStatus.MissingCheckout
+        };
+
+        var totals = _service.Calculate([staleSession], new WorkPolicy { FixedLunchDeductionMinutes = 45 }, DateTime.UtcNow);
+
+        Assert.Equal(0, totals.GrossMinutes);
+        Assert.Equal(0, totals.FixedLunchMinutes);
+        Assert.Equal(0, totals.BreakMinutes);
+        Assert.Equal(0, totals.NetMinutes);
+    }
+
     [Fact]
     public void SkipsLunch_WhenGrossBelowThreshold()
     {

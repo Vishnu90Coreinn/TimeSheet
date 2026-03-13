@@ -15,7 +15,14 @@ public class AttendanceCalculationService : IAttendanceCalculationService
     {
         var grossMinutes = sessions.Sum(s =>
         {
-            var end = s.CheckOutAtUtc ?? nowUtc;
+            var end = s.Status == WorkSessionStatus.Active
+                ? (s.CheckOutAtUtc ?? nowUtc)
+                : s.CheckOutAtUtc;
+
+            if (end is null)
+            {
+                return 0;
+            }
             var minutes = (int)Math.Max(0, (end - s.CheckInAtUtc).TotalMinutes);
             return minutes;
         });

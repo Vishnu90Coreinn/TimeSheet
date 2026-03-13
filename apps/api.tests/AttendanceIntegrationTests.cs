@@ -32,6 +32,47 @@ public class AttendanceIntegrationTests : IClassFixture<CustomWebApplicationFact
         Assert.Equal(HttpStatusCode.Conflict, duplicate.StatusCode);
     }
 
+
+    [Fact]
+    public async Task CheckIn_ReclassifiesPriorDayActiveSessionBeforeDuplicateGuard()
+    {
+        using var client = await CreateAuthedEmployeeClient("employee.att.stale");
+
+        var checkInAt = DateTime.UtcNow;
+        var priorDayCheckIn = checkInAt.AddDays(-1).AddHours(-2);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<TimeSheetDbContext>();
+            var user = await db.Users.SingleAsync(u => u.Username == "employee.att.stale");
+
+            db.WorkSessions.Add(new WorkSession
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                WorkDate = DateOnly.FromDateTime(priorDayCheckIn),
+                CheckInAtUtc = priorDayCheckIn,
+                Status = WorkSessionStatus.Active
+            });
+
+            await db.SaveChangesAsync();
+        }
+
+        var response = await client.PostAsJsonAsync("/api/v1/attendance/check-in", new CheckInRequest(checkInAt));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var verifyScope = _factory.Services.CreateScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<TimeSheetDbContext>();
+        var userId = await verifyDb.Users.Where(u => u.Username == "employee.att.stale").Select(u => u.Id).SingleAsync();
+        var staleSession = await verifyDb.WorkSessions.SingleAsync(s => s.UserId == userId && s.WorkDate == DateOnly.FromDateTime(priorDayCheckIn));
+        var newSession = await verifyDb.WorkSessions.SingleAsync(s => s.UserId == userId && s.WorkDate == DateOnly.FromDateTime(checkInAt));
+
+        Assert.Equal(WorkSessionStatus.MissingCheckout, staleSession.Status);
+        Assert.True(staleSession.HasAttendanceException);
+        Assert.Equal(WorkSessionStatus.Active, newSession.Status);
+    }
+
     [Fact]
     public async Task BreakSequence_ValidatesOverlapAndOrder()
     {

@@ -20,13 +20,15 @@ public class AttendanceController(TimeSheetDbContext dbContext, IAttendanceCalcu
         var userId = TryGetUserId();
         if (userId is null) return Unauthorized();
 
+        var checkInAtUtc = request.CheckInAtUtc ?? DateTime.UtcNow;
+        await FlagMissingCheckoutSessions(userId.Value, DateOnly.FromDateTime(checkInAtUtc));
+
         var activeExists = await dbContext.WorkSessions.AnyAsync(s => s.UserId == userId && s.Status == WorkSessionStatus.Active);
         if (activeExists)
         {
             return Conflict(new { message = "Cannot check in while an active session exists." });
         }
 
-        var checkInAtUtc = request.CheckInAtUtc ?? DateTime.UtcNow;
         var session = new WorkSession
         {
             Id = Guid.NewGuid(),

@@ -1,46 +1,62 @@
 # Project Tasks Verification & Integrity Report
 
 Date: 2026-03-13
+Branch assessed: `master` baseline (current repository state)
 Source task file: `PROJECT_TASKS.md`
 
 ## Verification scope
-- Verified all tasks currently marked as completed (`[x]`) in `PROJECT_TASKS.md`.
-- Performed checklist integrity validation (format, ID uniqueness, status markers).
-- Performed implementation integrity checks by running available local build commands.
+- Verified Sprint 0 and Sprint 1 task-bundle completion status from `PROJECT_TASKS.md`.
+- Performed checklist integrity validation (format, ID uniqueness, completion markers).
+- Performed merge-conflict residue scan across the repository.
+- Performed frontend integrity validation (build + unit tests).
+- Performed Sprint 0 artifact presence checks (API contract, ERD, wireframes).
 
-## Task checklist integrity
+## Checklist integrity results
 - Total task entries parsed: **148**
-- Completed entries parsed: **23**
+- Completed entries parsed: **35**
 - Duplicate task IDs: **0**
-- Invalid checkbox markers: **0**
 
-Result: ✅ The task list structure is internally consistent.
+Result: ✅ Task list structure is internally consistent.
 
-## Completed-task verification summary
+## Sprint bundle completion status
 
-### Verified as implemented (backend + tests)
-- `TSK-AUTH-001` to `TSK-AUTH-006`: Auth wiring, login, hashing, JWT, refresh flow, auth middleware.
-- `TSK-AUTH-010`: Integration tests for valid/invalid login and unauthorized protected route.
-- `TSK-RBAC-001` to `TSK-RBAC-003`: Role model + seeding, user-role mapping endpoints, role-based authorization attributes.
-- `TSK-USER-001` to `TSK-USER-003`, `TSK-USER-005`, `TSK-USER-006`: User/department/work policy schemas, user CRUD validations, manager assignment/reportees, inactive submit blocking, audit logging.
-- `TSK-PRJ-001`: Project schema exists.
-- `TSK-TASK-001`, `TSK-TASK-002`: TaskCategory schema and seeded default categories.
-- `TSK-ENG-001`: Multi-project solution structure exists (`apps/api`, `apps/web`, `apps/api.tests`, `TimeSheet.sln`).
+### Sprint 0 (Discovery & Design)
+Bundle requirements: `TSK-ENG-001`, `TSK-ENG-002`, `TSK-DB-001`, plus API contract, wireframes, ERD.
 
-### Implemented but with integrity risk
-- `TSK-AUTH-007` to `TSK-AUTH-009` and `TSK-USER-004` appear present in `apps/web/src/App.tsx` (login, protected/admin view patterns, logout/session handling, user admin UI state and data loading), **but frontend integrity is currently broken** due TypeScript syntax errors from duplicated blocks in that file.
+- `TSK-ENG-001`: ✅ marked complete
+- `TSK-ENG-002`: ✅ marked complete
+- `TSK-DB-001`: ✅ marked complete
+- `docs/API_CONTRACT.md`: ✅ present and non-empty
+- `docs/ERD.md`: ✅ present and non-empty
+- `docs/WIREFRAMES.md`: ✅ present and non-empty
 
-## Runtime/build integrity verification
-- `dotnet test TimeSheet.sln`: could not execute (`dotnet` not available in environment).
-- `npm --prefix apps/web install`: succeeded.
-- `npm --prefix apps/web run build`: failed with TypeScript parse/syntax errors in `apps/web/src/App.tsx`.
+Result: ✅ Sprint 0 completion markers and core artifacts are present.
+
+### Sprint 1 (Foundation)
+Bundle requirements: `TSK-AUTH-001..010`, `TSK-RBAC-001..005`, `TSK-USER-001..006`, `TSK-PRJ-001..006`, `TSK-TASK-001..005`.
+
+- Total Sprint 1 tasks expected: **32**
+- Sprint 1 tasks marked complete: **32**
+- Sprint 1 tasks not marked complete: **0**
+
+Result: ✅ All Sprint 1 bundle tasks are marked complete.
+
+## Merge conflict integrity checks
+- Conflict marker scan (`<<<<<<<`, `=======`, `>>>>>>>`): ✅ none found.
+- Frontend TypeScript integrity issue from duplicated declarations in `apps/web/src/App.tsx`: ✅ resolved.
+
+## Runtime/build integrity checks
+- `npm --prefix apps/web run build`: ✅ pass.
+- `npm --prefix apps/web test -- --run`: ✅ pass.
+- `dotnet` checks: ⚠️ not executable in this environment (`dotnet` SDK not installed).
 
 ## Final assessment
-- **Task-plan integrity**: ✅ valid formatting and IDs.
-- **Backend completion claims**: ✅ mostly consistent with current implementation.
-- **Frontend completion claims**: ⚠️ partially credible but not currently build-valid due to `App.tsx` integrity issues.
+- **Sprint 0 integrity**: ✅ complete by checklist + design artifact presence.
+- **Sprint 1 integrity**: ✅ all bundled tasks marked complete.
+- **Merge-conflict residue risk**: ✅ no conflict markers detected; frontend compile/test integrity restored.
+- **Backend runtime validation**: ⚠️ pending environment with .NET SDK.
 
-## Recommended next actions
-1. Repair duplicated/merged code blocks in `apps/web/src/App.tsx` and restore successful build.
-2. Re-run frontend build and tests, then re-validate frontend completed tasks.
-3. When .NET SDK is available, run `dotnet test TimeSheet.sln` to fully validate backend completion claims.
+## Recommended follow-up (once .NET SDK is available)
+1. Run `dotnet restore TimeSheet.sln`.
+2. Run `dotnet build TimeSheet.sln`.
+3. Run `dotnet test TimeSheet.sln`.

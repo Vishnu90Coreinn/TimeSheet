@@ -1,25 +1,8 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 type Session = { accessToken: string; refreshToken: string; username: string; role: string };
-type User = { id: string; username: string; email: string; role: string; isActive: boolean };
 type Project = { id: string; name: string; code: string; isActive: boolean; isArchived: boolean };
 type TaskCategory = { id: string; name: string; isActive: boolean };
-type Session = {
-  accessToken: string;
-  refreshToken: string;
-  username: string;
-  role: AppRole;
-};
-
-type CurrentUser = {
-  id: string;
-  username: string;
-  email: string;
-  employeeId: string;
-  role: string;
-  isActive: boolean;
-};
-
 type User = {
   id: string;
   username: string;
@@ -37,6 +20,21 @@ type User = {
 
 type View = "dashboard" | "projects" | "categories";
 
+type AppRole = "admin" | "manager" | "employee";
+
+type GuardView = View | "admin";
+
+export function hasViewAccess(role: string, view: GuardView): boolean {
+  if (view === "admin" || view === "projects" || view === "categories") {
+    return role === "admin";
+  }
+  return true;
+}
+
+export function canManageUsers(role: string): boolean {
+  return role === "admin";
+}
+
 const API_BASE = "http://localhost:5000/api/v1";
 
 export function App() {
@@ -51,13 +49,13 @@ export function App() {
   const [projectForm, setProjectForm] = useState({ name: "", code: "", isActive: true });
   const [categoryForm, setCategoryForm] = useState({ name: "", isActive: true });
 
-  const isAdmin = session?.role === "admin";
+  const isAdmin = canManageUsers(session?.role ?? "");
 
   useEffect(() => {
     const accessToken = localStorage.getItem("accessToken");
     const refreshToken = localStorage.getItem("refreshToken");
     const username = localStorage.getItem("username");
-    const role = localStorage.getItem("role") as AppRole | null;
+    const role = localStorage.getItem("role");
     if (accessToken && refreshToken && username && role) {
       setSession({ accessToken, refreshToken, username, role });
     }

@@ -8,7 +8,7 @@ body {
 }
 
 .container {
-  max-width: 480px;
+  max-width: 520px;
   margin: 48px auto;
   background: #fff;
   border-radius: 12px;
@@ -35,4 +35,8 @@ button {
   border-radius: 8px;
   padding: 10px 14px;
   cursor: pointer;
+}
+
+.error {
+  color: #b91c1c;
 }

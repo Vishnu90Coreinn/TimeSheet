@@ -112,6 +112,12 @@ public class TimesheetsController(TimeSheetDbContext dbContext, IAttendanceCalcu
             .Where(l => l.UserId == userId.Value && l.LeaveDate >= weekStart && l.LeaveDate <= weekEnd && l.Status == LeaveRequestStatus.Approved)
             .ToListAsync();
 
+        var holidayDates = await dbContext.Holidays
+            .AsNoTracking()
+            .Where(h => h.Date >= weekStart && h.Date <= weekEnd)
+            .Select(h => h.Date)
+            .ToListAsync();
+
         var policy = await dbContext.Users.AsNoTracking()
             .Where(u => u.Id == userId.Value)
             .Select(u => new { ExpectedMinutes = u.WorkPolicy != null ? u.WorkPolicy.DailyExpectedMinutes : 480, Policy = u.WorkPolicy })
@@ -132,7 +138,8 @@ public class TimesheetsController(TimeSheetDbContext dbContext, IAttendanceCalcu
                 : 0;
 
             var expectedMinutes = policy?.ExpectedMinutes ?? 480;
-            if (dayLeave is not null) expectedMinutes = dayLeave.IsHalfDay ? expectedMinutes / 2 : 0;
+            if (holidayDates.Contains(day)) expectedMinutes = 0;
+            else if (dayLeave is not null) expectedMinutes = dayLeave.IsHalfDay ? expectedMinutes / 2 : 0;
 
             var entered = timesheet?.Entries.Sum(e => e.Minutes) ?? 0;
             var hasMismatch = attendanceNet != entered;

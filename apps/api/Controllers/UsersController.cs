@@ -12,7 +12,7 @@ namespace TimeSheet.Api.Controllers;
 [ApiController]
 [Authorize(Roles = "admin")]
 [Route("api/v1/users")]
-public class UsersController(TimeSheetDbContext dbContext, IPasswordHasher passwordHasher) : ControllerBase
+public class UsersController(TimeSheetDbContext dbContext, IPasswordHasher passwordHasher, IAuditService auditService) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<IEnumerable<UserResponse>>> GetAll([FromQuery] string? q)
@@ -107,7 +107,7 @@ public class UsersController(TimeSheetDbContext dbContext, IPasswordHasher passw
         dbContext.Users.Add(user);
         dbContext.UserRoles.Add(new UserRole { UserId = user.Id, RoleId = role.Id });
 
-        await WriteAuditLogAsync("UserCreated", "User", user.Id.ToString(), $"Created user {user.Username}");
+        await auditService.WriteAsync("UserCreated", "User", user.Id.ToString(), $"Created user {user.Username}", User);
         await dbContext.SaveChangesAsync();
 
         return CreatedAtAction(nameof(GetById), new { id = user.Id },
@@ -155,7 +155,7 @@ public class UsersController(TimeSheetDbContext dbContext, IPasswordHasher passw
 
         SyncUserRole(user, role.Id);
 
-        await WriteAuditLogAsync("UserUpdated", "User", user.Id.ToString(), $"Updated user {user.Username}");
+        await auditService.WriteAsync("UserUpdated", "User", user.Id.ToString(), $"Updated user {user.Username}", User);
         await dbContext.SaveChangesAsync();
 
         return NoContent();
@@ -179,7 +179,7 @@ public class UsersController(TimeSheetDbContext dbContext, IPasswordHasher passw
 
         user.ManagerId = request.ManagerId;
 
-        await WriteAuditLogAsync("ManagerAssigned", "User", user.Id.ToString(), $"Assigned manager {manager.Username} to {user.Username}");
+        await auditService.WriteAsync("ManagerAssigned", "User", user.Id.ToString(), $"Assigned manager {manager.Username} to {user.Username}", User);
         await dbContext.SaveChangesAsync();
 
         return NoContent();
@@ -218,7 +218,7 @@ public class UsersController(TimeSheetDbContext dbContext, IPasswordHasher passw
         SyncUserRole(user, role.Id);
         user.Role = request.RoleName;
 
-        await WriteAuditLogAsync("RoleAssigned", "User", user.Id.ToString(), $"Assigned role {role.Name} to {user.Username}");
+        await auditService.WriteAsync("RoleAssigned", "User", user.Id.ToString(), $"Assigned role {role.Name} to {user.Username}", User);
         await dbContext.SaveChangesAsync();
 
         return NoContent();
@@ -232,22 +232,5 @@ public class UsersController(TimeSheetDbContext dbContext, IPasswordHasher passw
         var userRole = new UserRole { UserId = user.Id, RoleId = roleId };
         dbContext.UserRoles.Add(userRole);
         user.UserRoles.Add(userRole);
-    }
-
-    private async Task WriteAuditLogAsync(string action, string entityType, string entityId, string details)
-    {
-        var actorSub = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier || c.Type == System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
-        Guid? actorUserId = Guid.TryParse(actorSub, out var parsedId) ? parsedId : null;
-
-        await dbContext.AuditLogs.AddAsync(new AuditLog
-        {
-            Id = Guid.NewGuid(),
-            ActorUserId = actorUserId,
-            Action = action,
-            EntityType = entityType,
-            EntityId = entityId,
-            Details = details,
-            CreatedAtUtc = DateTime.UtcNow
-        });
     }
 }

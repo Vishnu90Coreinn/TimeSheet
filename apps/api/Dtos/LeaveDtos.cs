@@ -1,10 +1,17 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace TimeSheet.Api.Dtos;
 
 public record LeaveTypeResponse(Guid Id, string Name, bool IsActive);
-public record UpsertLeaveTypeRequest(string Name, bool IsActive);
+public record UpsertLeaveTypeRequest([Required][MaxLength(120)] string Name, bool IsActive);
 
-public record ApplyLeaveRequest(DateOnly LeaveDate, Guid LeaveTypeId, bool IsHalfDay, string? Comment);
-public record ReviewLeaveRequest(bool Approve, string? Comment);
+public record ApplyLeaveRequest(
+    DateOnly LeaveDate,
+    [Required] Guid LeaveTypeId,
+    bool IsHalfDay,
+    [MaxLength(1000)] string? Comment
+);
+public record ReviewLeaveRequest(bool Approve, [MaxLength(1000)] string? Comment);
 
 public record LeaveRequestResponse(
     Guid Id,

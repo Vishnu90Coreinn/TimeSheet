@@ -1,10 +1,12 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace TimeSheet.Api.Dtos;
 
 public record CheckInRequest(DateTime? CheckInAtUtc);
 public record CheckOutRequest(DateTime? CheckOutAtUtc);
 public record StartBreakRequest(DateTime? StartAtUtc);
 public record EndBreakRequest(DateTime? EndAtUtc);
-public record ManualBreakEditRequest(Guid BreakEntryId, DateTime StartAtUtc, DateTime EndAtUtc);
+public record ManualBreakEditRequest([Required] Guid BreakEntryId, DateTime StartAtUtc, DateTime EndAtUtc);
 public record AttendanceHistoryRequest(DateOnly? FromDate, DateOnly? ToDate);
 
 public record BreakEntryResponse(Guid Id, DateTime StartAtUtc, DateTime? EndAtUtc, int DurationMinutes, bool IsManualEdit, bool IsActive);

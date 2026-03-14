@@ -76,7 +76,6 @@ public static class DbInitializer
             });
         }
 
-
         if (!await db.LeaveTypes.AnyAsync())
         {
             db.LeaveTypes.AddRange(
@@ -89,9 +88,20 @@ public static class DbInitializer
         if (!await db.TaskCategories.AnyAsync())
         {
             db.TaskCategories.AddRange(
-                new TaskCategory { Id = Guid.NewGuid(), Name = "Development", IsActive = true },
-                new TaskCategory { Id = Guid.NewGuid(), Name = "Meetings", IsActive = true },
-                new TaskCategory { Id = Guid.NewGuid(), Name = "Support", IsActive = true }
+                new TaskCategory { Id = Guid.NewGuid(), Name = "Development", IsActive = true, IsBillable = true },
+                new TaskCategory { Id = Guid.NewGuid(), Name = "Meetings", IsActive = true, IsBillable = false },
+                new TaskCategory { Id = Guid.NewGuid(), Name = "Support", IsActive = true, IsBillable = true }
+            );
+        }
+
+        if (!await db.Holidays.AnyAsync())
+        {
+            db.Holidays.AddRange(
+                new Holiday { Id = Guid.NewGuid(), Name = "New Year's Day", Date = new DateOnly(2026, 1, 1), IsRecurring = true, CreatedAtUtc = DateTime.UtcNow },
+                new Holiday { Id = Guid.NewGuid(), Name = "Good Friday", Date = new DateOnly(2026, 4, 3), IsRecurring = false, CreatedAtUtc = DateTime.UtcNow },
+                new Holiday { Id = Guid.NewGuid(), Name = "Labour Day", Date = new DateOnly(2026, 5, 1), IsRecurring = true, CreatedAtUtc = DateTime.UtcNow },
+                new Holiday { Id = Guid.NewGuid(), Name = "Christmas Day", Date = new DateOnly(2026, 12, 25), IsRecurring = true, CreatedAtUtc = DateTime.UtcNow },
+                new Holiday { Id = Guid.NewGuid(), Name = "Boxing Day", Date = new DateOnly(2026, 12, 26), IsRecurring = true, CreatedAtUtc = DateTime.UtcNow }
             );
         }
 

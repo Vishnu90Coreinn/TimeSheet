@@ -12,7 +12,7 @@ namespace TimeSheet.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/v1/timesheets")]
-public class TimesheetsController(TimeSheetDbContext dbContext, IAttendanceCalculationService attendanceCalculationService) : ControllerBase
+public class TimesheetsController(TimeSheetDbContext dbContext, IAttendanceCalculationService attendanceCalculationService, IAuditService auditService) : ControllerBase
 {
     [HttpGet("entry-options")]
     public async Task<IActionResult> GetEntryOptions()
@@ -39,7 +39,7 @@ public class TimesheetsController(TimeSheetDbContext dbContext, IAttendanceCalcu
         var categories = await dbContext.TaskCategories.AsNoTracking()
             .Where(c => c.IsActive)
             .OrderBy(c => c.Name)
-            .Select(c => new TaskCategoryResponse(c.Id, c.Name, c.IsActive))
+            .Select(c => new TaskCategoryResponse(c.Id, c.Name, c.IsActive, c.IsBillable))
             .ToListAsync();
 
         return Ok(new { projects, taskCategories = categories });
@@ -87,27 +87,63 @@ public class TimesheetsController(TimeSheetDbContext dbContext, IAttendanceCalcu
     public async Task<IActionResult> GetWeek([FromQuery] DateOnly? anyDateInWeek = null)
     {
         var userId = GetUserId();
-        if (userId is null)
-        {
-            return Unauthorized();
-        }
+        if (userId is null) return Unauthorized();
 
         var anchor = anyDateInWeek ?? DateOnly.FromDateTime(DateTime.UtcNow);
         var weekStart = StartOfWeek(anchor);
         var weekEnd = weekStart.AddDays(6);
 
+        // Batch load all data for the week
+        var timesheets = await dbContext.Timesheets
+            .Include(t => t.Entries)
+            .ThenInclude(e => e.Project)
+            .Include(t => t.Entries)
+            .ThenInclude(e => e.TaskCategory)
+            .Where(t => t.UserId == userId.Value && t.WorkDate >= weekStart && t.WorkDate <= weekEnd)
+            .ToListAsync();
+
+        var sessions = await dbContext.WorkSessions
+            .Include(ws => ws.Breaks)
+            .Where(ws => ws.UserId == userId.Value && ws.WorkDate >= weekStart && ws.WorkDate <= weekEnd)
+            .ToListAsync();
+
+        var leaves = await dbContext.LeaveRequests
+            .AsNoTracking()
+            .Where(l => l.UserId == userId.Value && l.LeaveDate >= weekStart && l.LeaveDate <= weekEnd && l.Status == LeaveRequestStatus.Approved)
+            .ToListAsync();
+
+        var policy = await dbContext.Users.AsNoTracking()
+            .Where(u => u.Id == userId.Value)
+            .Select(u => new { ExpectedMinutes = u.WorkPolicy != null ? u.WorkPolicy.DailyExpectedMinutes : 480, Policy = u.WorkPolicy })
+            .SingleOrDefaultAsync();
+
+        var now = DateTime.UtcNow;
         var days = new List<TimesheetWeekDayResponse>();
+
         for (var i = 0; i < 7; i++)
         {
             var day = weekStart.AddDays(i);
-            var daySummary = await BuildDayResponse(userId.Value, day);
+            var timesheet = timesheets.SingleOrDefault(t => t.WorkDate == day);
+            var daySessions = sessions.Where(ws => ws.WorkDate == day).ToList();
+            var dayLeave = leaves.SingleOrDefault(l => l.LeaveDate == day);
+
+            var attendanceNet = daySessions.Count > 0
+                ? attendanceCalculationService.Calculate(daySessions, policy?.Policy, now).NetMinutes
+                : 0;
+
+            var expectedMinutes = policy?.ExpectedMinutes ?? 480;
+            if (dayLeave is not null) expectedMinutes = dayLeave.IsHalfDay ? expectedMinutes / 2 : 0;
+
+            var entered = timesheet?.Entries.Sum(e => e.Minutes) ?? 0;
+            var hasMismatch = attendanceNet != entered;
+
             days.Add(new TimesheetWeekDayResponse(
                 day,
-                daySummary.Status,
-                daySummary.EnteredMinutes,
-                daySummary.AttendanceNetMinutes,
-                daySummary.ExpectedMinutes,
-                daySummary.HasMismatch));
+                (timesheet?.Status ?? TimesheetStatus.Draft).ToString().ToLowerInvariant(),
+                entered,
+                attendanceNet,
+                expectedMinutes,
+                hasMismatch));
         }
 
         return Ok(new TimesheetWeekResponse(
@@ -195,6 +231,7 @@ public class TimesheetsController(TimeSheetDbContext dbContext, IAttendanceCalcu
             dbContext.TimesheetEntries.Add(entry);
         }
 
+        await auditService.WriteAsync(request.EntryId.HasValue ? "TimesheetEntryUpdated" : "TimesheetEntryCreated", "TimesheetEntry", entry.Id.ToString(), $"Entry for {request.WorkDate}", User);
         await dbContext.SaveChangesAsync();
         return Ok(await BuildDayResponse(userId.Value, request.WorkDate));
     }
@@ -229,6 +266,7 @@ public class TimesheetsController(TimeSheetDbContext dbContext, IAttendanceCalcu
         }
 
         dbContext.TimesheetEntries.Remove(entry);
+        await auditService.WriteAsync("TimesheetEntryDeleted", "TimesheetEntry", entryId.ToString(), $"Entry deleted for {entry.Timesheet.WorkDate}", User);
         await dbContext.SaveChangesAsync();
 
         return Ok(await BuildDayResponse(userId.Value, entry.Timesheet.WorkDate));
@@ -344,6 +382,7 @@ public class TimesheetsController(TimeSheetDbContext dbContext, IAttendanceCalcu
         timesheet.Status = TimesheetStatus.Submitted;
         timesheet.SubmittedAtUtc = DateTime.UtcNow;
 
+        await auditService.WriteAsync("TimesheetSubmitted", "Timesheet", timesheet.Id.ToString(), $"Submitted timesheet for {request.WorkDate}", User);
         await dbContext.SaveChangesAsync();
         return Ok(await BuildDayResponse(userId.Value, request.WorkDate));
     }

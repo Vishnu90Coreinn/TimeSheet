@@ -1,0 +1,12 @@
+export type Session = { userId: string; accessToken: string; refreshToken: string; username: string; role: string };
+export type Project = { id: string; name: string; code: string; isActive: boolean; isArchived: boolean };
+export type TaskCategory = { id: string; name: string; isActive: boolean; isBillable: boolean };
+export type LeaveType = { id: string; name: string; isActive: boolean };
+export type LeaveRequest = { id: string; userId: string; username: string; leaveDate: string; leaveTypeName: string; isHalfDay: boolean; status: string; comment: string | null; reviewerComment: string | null };
+export type ApprovalItem = { timesheetId: string; username: string; workDate: string; enteredMinutes: number; status: string; mismatchReason: string | null };
+export type ApprovalAction = { id: string; managerUsername: string; action: string; comment: string; actionedAtUtc: string };
+export type TimesheetDay = { timesheetId: string; workDate: string; status: string; attendanceNetMinutes: number; expectedMinutes: number; enteredMinutes: number; remainingMinutes: number; hasMismatch: boolean; entries: TimesheetEntry[] };
+export type TimesheetEntry = { id: string; projectId: string; taskCategoryId: string; projectName: string; taskCategoryName: string; minutes: number; notes: string | null };
+export type Notification = { id: string; title: string; message: string; type: string; isRead: boolean; createdAtUtc: string };
+export type View = "dashboard" | "reports" | "timesheets" | "leave" | "approvals" | "projects" | "categories";
+export type ReportKey = "attendance-summary" | "timesheet-summary" | "project-effort" | "leave-utilization";

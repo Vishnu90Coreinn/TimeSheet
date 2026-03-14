@@ -22,6 +22,8 @@ public class TimeSheetDbContext(DbContextOptions<TimeSheetDbContext> options) : 
     public DbSet<LeaveType> LeaveTypes => Set<LeaveType>();
     public DbSet<LeaveRequest> LeaveRequests => Set<LeaveRequest>();
     public DbSet<ApprovalAction> ApprovalActions => Set<ApprovalAction>();
+    public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<Holiday> Holidays => Set<Holiday>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -100,6 +102,8 @@ public class TimeSheetDbContext(DbContextOptions<TimeSheetDbContext> options) : 
             entity.ToTable("WorkSessions");
             entity.HasKey(x => x.Id);
             entity.HasIndex(x => new { x.UserId, x.WorkDate });
+            entity.HasIndex(x => x.UserId);
+            entity.HasIndex(x => x.Status);
             entity.HasOne(x => x.User)
                 .WithMany(u => u.WorkSessions)
                 .HasForeignKey(x => x.UserId)
@@ -122,6 +126,8 @@ public class TimeSheetDbContext(DbContextOptions<TimeSheetDbContext> options) : 
             entity.ToTable("Timesheets");
             entity.HasKey(x => x.Id);
             entity.HasIndex(x => new { x.UserId, x.WorkDate }).IsUnique();
+            entity.HasIndex(x => x.UserId);
+            entity.HasIndex(x => x.WorkDate);
             entity.Property(x => x.Status).HasConversion<int>();
             entity.Property(x => x.SubmissionNotes).HasMaxLength(2000);
             entity.Property(x => x.MismatchReason).HasMaxLength(1000);
@@ -143,6 +149,7 @@ public class TimeSheetDbContext(DbContextOptions<TimeSheetDbContext> options) : 
             entity.ToTable("TimesheetEntries");
             entity.HasKey(x => x.Id);
             entity.HasIndex(x => x.TimesheetId);
+            entity.HasIndex(x => x.ProjectId);
             entity.Property(x => x.Notes).HasMaxLength(1000);
 
             entity.HasOne(x => x.Timesheet)
@@ -175,6 +182,7 @@ public class TimeSheetDbContext(DbContextOptions<TimeSheetDbContext> options) : 
             entity.ToTable("LeaveRequests");
             entity.HasKey(x => x.Id);
             entity.HasIndex(x => new { x.UserId, x.LeaveDate }).IsUnique();
+            entity.HasIndex(x => x.UserId);
             entity.Property(x => x.Status).HasConversion<int>();
             entity.Property(x => x.Comment).HasMaxLength(1000);
             entity.Property(x => x.ReviewerComment).HasMaxLength(1000);
@@ -246,6 +254,26 @@ public class TimeSheetDbContext(DbContextOptions<TimeSheetDbContext> options) : 
             entity.HasKey(x => x.Id);
             entity.HasIndex(x => x.Name).IsUnique();
             entity.Property(x => x.Name).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.IsBillable).HasDefaultValue(false);
+        });
+
+        modelBuilder.Entity<Notification>(entity =>
+        {
+            entity.ToTable("Notifications");
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => new { x.UserId, x.IsRead });
+            entity.Property(x => x.Title).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Message).HasMaxLength(1000).IsRequired();
+            entity.Property(x => x.Type).HasConversion<int>();
+            entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Holiday>(entity =>
+        {
+            entity.ToTable("Holidays");
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => x.Date);
+            entity.Property(x => x.Name).HasMaxLength(200).IsRequired();
         });
     }
 }

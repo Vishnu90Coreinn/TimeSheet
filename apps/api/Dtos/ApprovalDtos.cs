@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace TimeSheet.Api.Dtos;
 
 public record TimesheetApprovalListItem(
@@ -11,7 +13,7 @@ public record TimesheetApprovalListItem(
     bool HasMismatch,
     string? MismatchReason);
 
-public record TimesheetDecisionRequest(string? Comment);
+public record TimesheetDecisionRequest([MaxLength(1000)] string? Comment);
 
 public record ApprovalActionResponse(
     Guid Id,

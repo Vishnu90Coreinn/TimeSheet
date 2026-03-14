@@ -1,14 +1,16 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace TimeSheet.Api.Dtos;
 
-public record SubmitTimesheetRequest(DateOnly WorkDate, string? Notes, string? MismatchReason);
+public record SubmitTimesheetRequest(DateOnly WorkDate, [MaxLength(2000)] string? Notes, [MaxLength(1000)] string? MismatchReason);
 
 public record UpsertTimesheetEntryRequest(
     DateOnly WorkDate,
     Guid? EntryId,
-    Guid ProjectId,
-    Guid TaskCategoryId,
-    int Minutes,
-    string? Notes);
+    [Required] Guid ProjectId,
+    [Required] Guid TaskCategoryId,
+    [Range(1, 1440)] int Minutes,
+    [MaxLength(1000)] string? Notes);
 
 public record TimesheetEntryResponse(
     Guid Id,

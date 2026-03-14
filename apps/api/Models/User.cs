@@ -23,6 +23,7 @@ public class User
     public ICollection<ProjectMember> ProjectMemberships { get; set; } = new List<ProjectMember>();
     public ICollection<WorkSession> WorkSessions { get; set; } = new List<WorkSession>();
     public ICollection<Timesheet> Timesheets { get; set; } = new List<Timesheet>();
+    public ICollection<LeaveRequest> LeaveRequests { get; set; } = new List<LeaveRequest>();
     public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 }

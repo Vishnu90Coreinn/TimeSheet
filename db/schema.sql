@@ -107,3 +107,35 @@ CREATE TABLE TimesheetEntries (
   Notes NVARCHAR(1000) NULL
 );
 CREATE INDEX IX_TimesheetEntries_TimesheetId ON TimesheetEntries(TimesheetId);
+
+CREATE TABLE LeaveTypes (
+  Id UNIQUEIDENTIFIER PRIMARY KEY,
+  Name NVARCHAR(120) NOT NULL UNIQUE,
+  IsActive BIT NOT NULL
+);
+
+CREATE TABLE LeaveRequests (
+  Id UNIQUEIDENTIFIER PRIMARY KEY,
+  UserId UNIQUEIDENTIFIER NOT NULL REFERENCES Users(Id),
+  LeaveTypeId UNIQUEIDENTIFIER NOT NULL REFERENCES LeaveTypes(Id),
+  LeaveDate DATE NOT NULL,
+  IsHalfDay BIT NOT NULL,
+  Status INT NOT NULL,
+  Comment NVARCHAR(1000) NULL,
+  ReviewedByUserId UNIQUEIDENTIFIER NULL REFERENCES Users(Id),
+  ReviewerComment NVARCHAR(1000) NULL,
+  CreatedAtUtc DATETIME2 NOT NULL,
+  ReviewedAtUtc DATETIME2 NULL,
+  CONSTRAINT UQ_LeaveRequests_UserDate UNIQUE (UserId, LeaveDate)
+);
+CREATE INDEX IX_LeaveRequests_StatusDate ON LeaveRequests(Status, LeaveDate);
+
+CREATE TABLE ApprovalActions (
+  Id UNIQUEIDENTIFIER PRIMARY KEY,
+  TimesheetId UNIQUEIDENTIFIER NOT NULL REFERENCES Timesheets(Id),
+  ManagerUserId UNIQUEIDENTIFIER NOT NULL REFERENCES Users(Id),
+  Action INT NOT NULL,
+  Comment NVARCHAR(1000) NOT NULL,
+  ActionedAtUtc DATETIME2 NOT NULL
+);
+CREATE INDEX IX_ApprovalActions_Timesheet_ActionedAt ON ApprovalActions(TimesheetId, ActionedAtUtc DESC);

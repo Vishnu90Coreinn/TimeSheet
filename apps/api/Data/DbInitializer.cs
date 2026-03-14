@@ -76,6 +76,16 @@ public static class DbInitializer
             });
         }
 
+
+        if (!await db.LeaveTypes.AnyAsync())
+        {
+            db.LeaveTypes.AddRange(
+                new LeaveType { Id = Guid.NewGuid(), Name = "Annual Leave", IsActive = true },
+                new LeaveType { Id = Guid.NewGuid(), Name = "Sick Leave", IsActive = true },
+                new LeaveType { Id = Guid.NewGuid(), Name = "Casual Leave", IsActive = true }
+            );
+        }
+
         if (!await db.TaskCategories.AnyAsync())
         {
             db.TaskCategories.AddRange(

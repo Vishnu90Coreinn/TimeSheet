@@ -75,6 +75,7 @@ public class TimesheetsController(TimeSheetDbContext dbContext, IAttendanceCalcu
         {
             dto.WorkDate,
             dto.AttendanceNetMinutes,
+            dto.ExpectedMinutes,
             dto.EnteredMinutes,
             dto.RemainingMinutes,
             dto.HasMismatch,
@@ -105,6 +106,7 @@ public class TimesheetsController(TimeSheetDbContext dbContext, IAttendanceCalcu
                 daySummary.Status,
                 daySummary.EnteredMinutes,
                 daySummary.AttendanceNetMinutes,
+                daySummary.ExpectedMinutes,
                 daySummary.HasMismatch));
         }
 
@@ -113,6 +115,7 @@ public class TimesheetsController(TimeSheetDbContext dbContext, IAttendanceCalcu
             weekEnd,
             days.Sum(d => d.EnteredMinutes),
             days.Sum(d => d.AttendanceNetMinutes),
+            days.Sum(d => d.ExpectedMinutes),
             days));
     }
 
@@ -404,6 +407,27 @@ public class TimesheetsController(TimeSheetDbContext dbContext, IAttendanceCalcu
         return attendanceCalculationService.Calculate(sessions, policy, DateTime.UtcNow).NetMinutes;
     }
 
+    private async Task<int> GetExpectedMinutes(Guid userId, DateOnly workDate)
+    {
+        var expected = await dbContext.Users
+            .AsNoTracking()
+            .Where(u => u.Id == userId)
+            .Select(u => u.WorkPolicy != null ? u.WorkPolicy.DailyExpectedMinutes : 480)
+            .SingleOrDefaultAsync();
+
+        var approvedLeave = await dbContext.LeaveRequests
+            .AsNoTracking()
+            .Where(x => x.UserId == userId && x.LeaveDate == workDate && x.Status == LeaveRequestStatus.Approved)
+            .SingleOrDefaultAsync();
+
+        if (approvedLeave is null)
+        {
+            return expected;
+        }
+
+        return approvedLeave.IsHalfDay ? expected / 2 : 0;
+    }
+
     private async Task<bool> CanWriteProject(Guid userId, Guid projectId)
     {
         var userRole = User.FindFirstValue(ClaimTypes.Role) ?? "employee";
@@ -449,8 +473,9 @@ public class TimesheetsController(TimeSheetDbContext dbContext, IAttendanceCalcu
             .SingleOrDefaultAsync(t => t.UserId == userId && t.WorkDate == workDate);
 
         var attendanceNet = await GetAttendanceNetMinutes(userId, workDate);
+        var expectedMinutes = await GetExpectedMinutes(userId, workDate);
         var entered = timesheet?.Entries.Sum(e => e.Minutes) ?? 0;
-        var remaining = Math.Max(0, attendanceNet - entered);
+        var remaining = Math.Max(0, expectedMinutes - entered);
         var hasMismatch = attendanceNet != entered;
 
         return new TimesheetDayResponse(
@@ -458,6 +483,7 @@ public class TimesheetsController(TimeSheetDbContext dbContext, IAttendanceCalcu
             workDate,
             (timesheet?.Status ?? TimesheetStatus.Draft).ToString().ToLowerInvariant(),
             attendanceNet,
+            expectedMinutes,
             entered,
             remaining,
             hasMismatch,

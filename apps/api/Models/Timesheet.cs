@@ -25,4 +25,5 @@ public class Timesheet
     public string? ManagerComment { get; set; }
 
     public ICollection<TimesheetEntry> Entries { get; set; } = new List<TimesheetEntry>();
+    public ICollection<ApprovalAction> ApprovalActions { get; set; } = new List<ApprovalAction>();
 }

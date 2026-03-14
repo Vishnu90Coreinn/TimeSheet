@@ -19,6 +19,9 @@ public class TimeSheetDbContext(DbContextOptions<TimeSheetDbContext> options) : 
     public DbSet<BreakEntry> BreakEntries => Set<BreakEntry>();
     public DbSet<Timesheet> Timesheets => Set<Timesheet>();
     public DbSet<TimesheetEntry> TimesheetEntries => Set<TimesheetEntry>();
+    public DbSet<LeaveType> LeaveTypes => Set<LeaveType>();
+    public DbSet<LeaveRequest> LeaveRequests => Set<LeaveRequest>();
+    public DbSet<ApprovalAction> ApprovalActions => Set<ApprovalAction>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -155,6 +158,58 @@ public class TimeSheetDbContext(DbContextOptions<TimeSheetDbContext> options) : 
             entity.HasOne(x => x.TaskCategory)
                 .WithMany()
                 .HasForeignKey(x => x.TaskCategoryId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+
+        modelBuilder.Entity<LeaveType>(entity =>
+        {
+            entity.ToTable("LeaveTypes");
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => x.Name).IsUnique();
+            entity.Property(x => x.Name).HasMaxLength(120).IsRequired();
+        });
+
+        modelBuilder.Entity<LeaveRequest>(entity =>
+        {
+            entity.ToTable("LeaveRequests");
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => new { x.UserId, x.LeaveDate }).IsUnique();
+            entity.Property(x => x.Status).HasConversion<int>();
+            entity.Property(x => x.Comment).HasMaxLength(1000);
+            entity.Property(x => x.ReviewerComment).HasMaxLength(1000);
+
+            entity.HasOne(x => x.User)
+                .WithMany(u => u.LeaveRequests)
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(x => x.LeaveType)
+                .WithMany()
+                .HasForeignKey(x => x.LeaveTypeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(x => x.ReviewedByUser)
+                .WithMany()
+                .HasForeignKey(x => x.ReviewedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ApprovalAction>(entity =>
+        {
+            entity.ToTable("ApprovalActions");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Action).HasConversion<int>();
+            entity.Property(x => x.Comment).HasMaxLength(1000).IsRequired();
+
+            entity.HasOne(x => x.Timesheet)
+                .WithMany(x => x.ApprovalActions)
+                .HasForeignKey(x => x.TimesheetId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(x => x.ManagerUser)
+                .WithMany()
+                .HasForeignKey(x => x.ManagerUserId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

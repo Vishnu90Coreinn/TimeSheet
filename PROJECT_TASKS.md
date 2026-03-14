@@ -45,30 +45,30 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 ## Epic E2 — Attendance and Break Tracking
 
 ### E2-F1 Work Sessions
-- [ ] **TSK-ATT-001** Create WorkSession schema and status enums.
-- [ ] **TSK-ATT-002** Implement check-in API with duplicate active session prevention.
-- [ ] **TSK-ATT-003** Implement check-out API with validation.
-- [ ] **TSK-ATT-004** Support multi-session day aggregation per policy.
-- [ ] **TSK-ATT-005** Implement attendance exception flagging for missing checkout.
-- [ ] **TSK-ATT-006** Build attendance widget/UI for daily status.
-- [ ] **TSK-ATT-007** Build attendance history view with date range filters.
-- [ ] **TSK-ATT-008** Add unit tests for check-in/out rules and exception cases.
+- [x] **TSK-ATT-001** Create WorkSession schema and status enums.
+- [x] **TSK-ATT-002** Implement check-in API with duplicate active session prevention.
+- [x] **TSK-ATT-003** Implement check-out API with validation.
+- [x] **TSK-ATT-004** Support multi-session day aggregation per policy.
+- [x] **TSK-ATT-005** Implement attendance exception flagging for missing checkout.
+- [x] **TSK-ATT-006** Build attendance widget/UI for daily status.
+- [x] **TSK-ATT-007** Build attendance history view with date range filters.
+- [x] **TSK-ATT-008** Add unit tests for check-in/out rules and exception cases.
 
 ### E2-F2 Break Management
-- [ ] **TSK-BRK-001** Create BreakEntry schema.
-- [ ] **TSK-BRK-002** Implement start break API (validate active session).
-- [ ] **TSK-BRK-003** Implement end break API (calculate duration, prevent overlap).
-- [ ] **TSK-BRK-004** Implement manual break edit API with policy restrictions.
-- [ ] **TSK-BRK-005** Add break summary endpoints for dashboards/reports.
-- [ ] **TSK-BRK-006** Add break controls in attendance UI.
-- [ ] **TSK-BRK-007** Add tests for overlap and sequence validation rules.
+- [x] **TSK-BRK-001** Create BreakEntry schema.
+- [x] **TSK-BRK-002** Implement start break API (validate active session).
+- [x] **TSK-BRK-003** Implement end break API (calculate duration, prevent overlap).
+- [x] **TSK-BRK-004** Implement manual break edit API with policy restrictions.
+- [x] **TSK-BRK-005** Add break summary endpoints for dashboards/reports.
+- [x] **TSK-BRK-006** Add break controls in attendance UI.
+- [x] **TSK-BRK-007** Add tests for overlap and sequence validation rules.
 
 ### E2-F3 Attendance Calculation Engine
-- [ ] **TSK-CALC-001** Implement gross/lunch/extra-break/net calculation service.
-- [ ] **TSK-CALC-002** Apply fixed lunch deduction (45 mins) via configurable policy.
-- [ ] **TSK-CALC-003** Handle low-gross-duration edge cases with configurable behavior.
-- [ ] **TSK-CALC-004** Expose attendance summary DTO for frontend/reports.
-- [ ] **TSK-CALC-005** Add deterministic tests for sample calculations (09:00–18:00, 09:00–21:00).
+- [x] **TSK-CALC-001** Implement gross/lunch/extra-break/net calculation service.
+- [x] **TSK-CALC-002** Apply fixed lunch deduction (45 mins) via configurable policy.
+- [x] **TSK-CALC-003** Handle low-gross-duration edge cases with configurable behavior.
+- [x] **TSK-CALC-004** Expose attendance summary DTO for frontend/reports.
+- [x] **TSK-CALC-005** Add deterministic tests for sample calculations (09:00–18:00, 09:00–21:00).
 
 ---
 

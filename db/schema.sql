@@ -54,3 +54,24 @@ CREATE TABLE TaskCategories (
   Name NVARCHAR(120) NOT NULL UNIQUE,
   IsActive BIT NOT NULL
 );
+
+CREATE TABLE WorkSessions (
+  Id UNIQUEIDENTIFIER PRIMARY KEY,
+  UserId UNIQUEIDENTIFIER NOT NULL REFERENCES Users(Id),
+  WorkDate DATE NOT NULL,
+  CheckInAtUtc DATETIME2 NOT NULL,
+  CheckOutAtUtc DATETIME2 NULL,
+  Status INT NOT NULL,
+  HasAttendanceException BIT NOT NULL
+);
+CREATE INDEX IX_WorkSessions_UserDate ON WorkSessions(UserId, WorkDate);
+
+CREATE TABLE BreakEntries (
+  Id UNIQUEIDENTIFIER PRIMARY KEY,
+  WorkSessionId UNIQUEIDENTIFIER NOT NULL REFERENCES WorkSessions(Id),
+  StartAtUtc DATETIME2 NOT NULL,
+  EndAtUtc DATETIME2 NULL,
+  DurationMinutes INT NOT NULL,
+  IsManualEdit BIT NOT NULL
+);
+CREATE INDEX IX_BreakEntries_WorkSessionId ON BreakEntries(WorkSessionId);

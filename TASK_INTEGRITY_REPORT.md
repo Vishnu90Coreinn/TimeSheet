@@ -1,62 +1,53 @@
-# Project Tasks Verification & Integrity Report
+# Project Tasks Verification & Regression Report
 
-Date: 2026-03-13
-Branch assessed: `work` (no local `master` branch exists in this repository clone)
+Date: 2026-03-14
+Branch assessed: `work`
 Source task file: `PROJECT_TASKS.md`
 
-## Verification scope
-- Verified Sprint 0 and Sprint 1 task-bundle completion status from `PROJECT_TASKS.md`.
-- Performed checklist integrity validation (format, ID uniqueness, completion markers).
-- Performed merge-conflict residue scan across the repository.
-- Performed frontend integrity validation (lint + unit tests + production build).
-- Performed Sprint 0 artifact presence checks (API contract, ERD, wireframes).
+## Review objective
+- Validate functional coverage against task completion markers in `PROJECT_TASKS.md`.
+- Confirm whether all *marked* tasks (`[x]`) are implemented in the current codebase.
+- Run available regression checks for backend and frontend.
 
-## Checklist integrity results
-- Total task entries parsed: **134**
-- Completed entries parsed: **35**
-- Duplicate task IDs: **0**
+## Checklist coverage summary
+A parser run against `PROJECT_TASKS.md` found:
+- Total tracked tasks: **148**
+- Tasks marked complete (`[x]`): **143**
+- Tasks not marked complete (`[ ]`): **5**
 
-Result: ✅ Task list structure is internally consistent.
+Unmarked (not claimed complete) tasks:
+- `TSK-ENG-003` — API versioning and standardized error response format
+- `TSK-ENG-004` — request validation framework
+- `TSK-ENG-005` — structured logging and correlation IDs
+- `TSK-DB-002` — seed data for roles/statuses/leave types/task categories
+- `TSK-DB-003` — report-oriented database indexing
 
-## Sprint bundle completion status
+## Functional implementation check (marked tasks)
+Findings from repository walkthrough:
+- Marked backend domains are present for auth, RBAC, attendance, breaks, timesheets, leave, approvals, dashboards, reports, and admin endpoints under `apps/api/Controllers` and related DTO/model/service layers.
+- Marked frontend application shell and workflow surfaces are present in `apps/web/src/App.tsx` with navigation, role views, attendance/timesheet/leave/report/dashboard sections.
+- Marked backend test coverage exists for authentication, access control, attendance calculations, leave approval flows, and integration scenarios in `apps/api.tests`.
 
-### Sprint 0 (Discovery & Design)
-Bundle requirements: `TSK-ENG-001`, `TSK-ENG-002`, `TSK-DB-001`, plus API contract, wireframes, ERD.
+Conclusion: **All currently marked (`[x]`) tasks have corresponding implementation artifacts in the repository.**
 
-- `TSK-ENG-001`: ✅ marked complete
-- `TSK-ENG-002`: ✅ marked complete
-- `TSK-DB-001`: ✅ marked complete
-- `docs/API_CONTRACT.md`: ✅ present and non-empty
-- `docs/ERD.md`: ✅ present and non-empty
-- `docs/WIREFRAMES.md`: ✅ present and non-empty
+## Regression execution results
+Commands run from repository root:
 
-Result: ✅ Sprint 0 completion markers and core artifacts are present.
-
-### Sprint 1 (Foundation)
-Bundle requirements: `TSK-AUTH-001..010`, `TSK-RBAC-001..005`, `TSK-USER-001..006`, `TSK-PRJ-001..006`, `TSK-TASK-001..005`.
-
-- Total Sprint 1 tasks expected: **32**
-- Sprint 1 tasks marked complete: **32**
-- Sprint 1 tasks not marked complete: **0**
-
-Result: ✅ All Sprint 1 bundle tasks are marked complete.
-
-## Merge conflict integrity checks
-- Conflict marker scan (`<<<<<<<`, `=======`, `>>>>>>>`): ✅ none found.
-
-## Runtime/build integrity checks
-- `npm run lint:web`: ✅ pass.
-- `npm run test:web -- --run`: ✅ pass.
-- `npm run build:web`: ✅ pass.
-- `dotnet --version`: ⚠️ not executable in this environment (`dotnet` SDK not installed).
+1. `npm install` — ✅ pass
+2. `npm run test:web -- --watch=false` — ✅ pass (`4` tests, `1` suite)
+3. `npm run build:web` — ✅ pass (production bundle generated)
+4. `dotnet test TimeSheet.sln` — ⚠️ blocked in environment (`dotnet` SDK not installed)
 
 ## Final assessment
-- **Sprint 0 integrity**: ✅ complete by checklist + design artifact presence.
-- **Sprint 1 integrity**: ✅ all bundled tasks marked complete.
-- **Merge-conflict residue risk**: ✅ no conflict markers detected.
-- **Backend runtime validation**: ⚠️ pending environment with .NET SDK.
+- Functional checklist consistency: ✅ complete for all tasks currently marked done.
+- Frontend regression checks: ✅ passing.
+- Backend regression checks: ⚠️ cannot execute in this environment until .NET SDK is available.
 
-## Recommended follow-up (once .NET SDK is available)
-1. Run `dotnet restore TimeSheet.sln`.
-2. Run `dotnet build TimeSheet.sln`.
-3. Run `dotnet test TimeSheet.sln`.
+## Required follow-up in a .NET-enabled environment
+Run these commands to complete backend regression validation:
+
+```bash
+dotnet restore TimeSheet.sln
+dotnet build TimeSheet.sln
+dotnet test TimeSheet.sln
+```

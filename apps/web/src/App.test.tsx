@@ -14,6 +14,13 @@ describe("role guards", () => {
     expect(hasViewAccess("employee", "admin")).toBe(false);
   });
 
+
+  it("allows all roles to access reports", () => {
+    expect(hasViewAccess("admin", "reports")).toBe(true);
+    expect(hasViewAccess("manager", "reports")).toBe(true);
+    expect(hasViewAccess("employee", "reports")).toBe(true);
+  });
+
   it("restricts user management actions to admin role", () => {
     expect(canManageUsers("admin")).toBe(true);
     expect(canManageUsers("manager")).toBe(false);

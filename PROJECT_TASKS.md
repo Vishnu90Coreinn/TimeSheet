@@ -151,42 +151,42 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 ## Epic E7 — Dashboards and Analytics
 
 ### E7-F1 Employee Dashboard
-- [ ] **TSK-DSH-EMP-001** Build today attendance summary card.
-- [ ] **TSK-DSH-EMP-002** Build timesheet status and pending actions card.
-- [ ] **TSK-DSH-EMP-003** Build weekly hours and break summary widgets.
-- [ ] **TSK-DSH-EMP-004** Build project-wise effort chart.
-- [ ] **TSK-DSH-EMP-005** Build monthly compliance trend visualization.
+- [x] **TSK-DSH-EMP-001** Build today attendance summary card.
+- [x] **TSK-DSH-EMP-002** Build timesheet status and pending actions card.
+- [x] **TSK-DSH-EMP-003** Build weekly hours and break summary widgets.
+- [x] **TSK-DSH-EMP-004** Build project-wise effort chart.
+- [x] **TSK-DSH-EMP-005** Build monthly compliance trend visualization.
 
 ### E7-F2 Manager Dashboard
-- [ ] **TSK-DSH-MGR-001** Build team present/on-leave/not-checked-in widgets.
-- [ ] **TSK-DSH-MGR-002** Build missing timesheets and pending approvals widgets.
-- [ ] **TSK-DSH-MGR-003** Build attendance vs timesheet mismatch view.
-- [ ] **TSK-DSH-MGR-004** Build team utilization summary.
-- [ ] **TSK-DSH-MGR-005** Build team project contribution summary.
+- [x] **TSK-DSH-MGR-001** Build team present/on-leave/not-checked-in widgets.
+- [x] **TSK-DSH-MGR-002** Build missing timesheets and pending approvals widgets.
+- [x] **TSK-DSH-MGR-003** Build attendance vs timesheet mismatch view.
+- [x] **TSK-DSH-MGR-004** Build team utilization summary.
+- [x] **TSK-DSH-MGR-005** Build team project contribution summary.
 
 ### E7-F3 Management Dashboard
-- [ ] **TSK-DSH-MGMT-001** Build org effort by department/project visualizations.
-- [ ] **TSK-DSH-MGMT-002** Build billable vs non-billable and consultant vs internal summaries.
-- [ ] **TSK-DSH-MGMT-003** Build underutilized/overloaded indicators.
-- [ ] **TSK-DSH-MGMT-004** Build compliance/missing timesheet/overtime trends.
+- [x] **TSK-DSH-MGMT-001** Build org effort by department/project visualizations.
+- [x] **TSK-DSH-MGMT-002** Build billable vs non-billable and consultant vs internal summaries.
+- [x] **TSK-DSH-MGMT-003** Build underutilized/overloaded indicators.
+- [x] **TSK-DSH-MGMT-004** Build compliance/missing timesheet/overtime trends.
 
 ---
 
 ## Epic E8 — Reports and Export
 
 ### E8-F1 Reports
-- [ ] **TSK-RPT-001** Implement attendance summary report endpoint.
-- [ ] **TSK-RPT-002** Implement timesheet summary report endpoint.
-- [ ] **TSK-RPT-003** Implement project effort report endpoint.
-- [ ] **TSK-RPT-004** Implement leave and utilization reports.
-- [ ] **TSK-RPT-005** Implement common report filter framework.
-- [ ] **TSK-RPT-006** Build reports UI (tabular, filterable, paginated).
+- [x] **TSK-RPT-001** Implement attendance summary report endpoint.
+- [x] **TSK-RPT-002** Implement timesheet summary report endpoint.
+- [x] **TSK-RPT-003** Implement project effort report endpoint.
+- [x] **TSK-RPT-004** Implement leave and utilization reports.
+- [x] **TSK-RPT-005** Implement common report filter framework.
+- [x] **TSK-RPT-006** Build reports UI (tabular, filterable, paginated).
 
 ### E8-F2 Export
-- [ ] **TSK-RPT-007** Implement CSV export service.
-- [ ] **TSK-RPT-008** Implement Excel export service.
-- [ ] **TSK-RPT-009** Implement selective PDF export for summary reports.
-- [ ] **TSK-RPT-010** Ensure exports respect filters and role-based scope.
+- [x] **TSK-RPT-007** Implement CSV export service.
+- [x] **TSK-RPT-008** Implement Excel export service.
+- [x] **TSK-RPT-009** Implement selective PDF export for summary reports.
+- [x] **TSK-RPT-010** Ensure exports respect filters and role-based scope.
 
 ---
 

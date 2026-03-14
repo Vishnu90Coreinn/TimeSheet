@@ -54,3 +54,22 @@ button {
 .success {
   color: #065f46;
 }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  border: 1px solid #dbe2ef;
+  padding: 6px;
+  text-align: left;
+}
+
+pre {
+  overflow: auto;
+  white-space: pre-wrap;
+  background: #f8fafc;
+  padding: 12px;
+}

@@ -139,10 +139,14 @@ Work the following items in order of priority. Update this file and push to mast
 
 | # | Item | Details |
 |---|------|---------|
-| 1 | **Holiday deduction in `GetWeek()`** | `TimesheetsController.GetWeek()` does NOT subtract holidays from `expectedMinutes`. Query `Holidays` for the week's date range and reduce expected minutes by `DailyExpectedMinutes` for any matching holiday date. |
-| 2 | **New integration tests** | `NotificationsIntegrationTests.cs`, `HolidaysIntegrationTests.cs`, `ReportsIntegrationTests.cs`, `DashboardIntegrationTests.cs` are not yet written. Existing 35 tests cover auth, timesheets, leave, approvals. |
-| 3 | **Frontend component tests** | Only `App.test.tsx` exists. Add Vitest component tests for `Login.tsx`, `Timesheets.tsx`, `Approvals.tsx` with `vi.mock('../api/client')`. |
+| 1 | ~~**Holiday deduction in `GetWeek()`**~~ | ✅ **DONE (2026-03-14)** — Branch `feature/holiday-hours-and-tests`. Sets `expectedMinutes=0` for holiday dates; holidays take precedence over leave. Also fixed `MarkAllReadAsync` to use load-and-update (InMemory compatible). PR: https://github.com/Vishnu90Coreinn/TimeSheet/pull/new/feature/holiday-hours-and-tests |
+| 2 | ~~**New integration tests**~~ | ✅ **DONE (2026-03-14)** — 17 new tests: Notifications (3), Holidays (5), Reports (5), Dashboard (4). **52/52 backend tests pass.** |
+| 3 | ~~**Frontend component tests**~~ | ✅ **DONE (2026-03-14)** — Branch `test/frontend-component-tests`. Login (4), Timesheets (3), Approvals (3). **17/17 frontend tests pass.** PR: https://github.com/Vishnu90Coreinn/TimeSheet/pull/new/test/frontend-component-tests |
 | 4 | **Manual smoke test** | Login → check-in → timesheet entry → submit → manager approve. Verify ProblemDetails on bad input, rate limit 429, notification on approval, holiday endpoint. |
+
+### Open PRs (merge into master)
+- `feature/holiday-hours-and-tests` → https://github.com/Vishnu90Coreinn/TimeSheet/pull/new/feature/holiday-hours-and-tests
+- `test/frontend-component-tests` → https://github.com/Vishnu90Coreinn/TimeSheet/pull/new/test/frontend-component-tests
 
 ---
 

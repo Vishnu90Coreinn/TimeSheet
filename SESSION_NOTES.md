@@ -17,7 +17,7 @@
 
 **Repository:** https://github.com/Vishnu90Coreinn/TimeSheet
 **Main branch:** `master`
-**Audit branch:** `codex/audit-fix-and-feature-completion` (pushed, PR not yet opened)
+**Audit branch:** `codex/audit-fix-and-feature-completion` (merged into master via PRs #32 and #33)
 
 ---
 
@@ -139,12 +139,89 @@ Work the following items in order of priority. Update this file and push to mast
 
 | # | Item | Details |
 |---|------|---------|
-| 1 | ~~**Holiday deduction in `GetWeek()`**~~ | ✅ **MERGED (2026-03-14)** — PR #32. `expectedMinutes=0` for holiday dates; `MarkAllReadAsync` InMemory fix. |
+| 1 | ~~**Holiday deduction in `GetWeek()`**~~ | ✅ **MERGED (2026-03-14)** — PR #32. |
 | 2 | ~~**New integration tests**~~ | ✅ **MERGED (2026-03-14)** — PR #32. 52/52 backend tests pass. |
 | 3 | ~~**Frontend component tests**~~ | ✅ **MERGED (2026-03-14)** — PR #33. 17/17 frontend tests pass. |
-| 4 | **Manual smoke test** | Login → check-in → timesheet entry → submit → manager approve. Verify ProblemDetails on bad input, rate limit 429, notification on approval, holiday endpoint. |
+| 4 | ~~**UX overhaul & design system**~~ | ✅ **DONE (session 2, 2026-03-14)** — commit `6da1a37`. |
 
-### ✅ All automated work complete. Only manual smoke test remains.
+---
+
+## Pending For Next Session
+
+### Priority 1 — Dashboard Redesign
+- `Dashboard.tsx` currently renders raw JSON in a `<pre>` tag (`JSON.stringify(data)`).
+- Needs proper stats cards using the design system.
+- **Employee dashboard** (`GET /dashboard/employee`): today's attendance status, current week hours logged, leave balance.
+- **Manager dashboard** (`GET /dashboard/manager`): team pending approvals count, team attendance summary.
+- **Admin dashboard** (`GET /dashboard/management`): total users, billable vs non-billable hours, pending approvals.
+- Use `.card` panels with stat numbers, `.badge-*` for status, `.table-base` for any lists.
+
+### Priority 2 — DB Table Verification (manual step)
+Run in SSMS against local SQL Server — confirm all tables exist:
+```sql
+SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE='BASE TABLE' ORDER BY TABLE_NAME;
+```
+Expected tables: AuditLogs, Holidays, LeaveRequests, Notifications, Projects, RefreshTokens, TaskCategories, TimesheetEntries, Timesheets, UserRoles, Users, WorkSessions, BreakEntries.
+
+### Priority 3 — Manual Smoke Test
+- Login → check-in → timesheet entry (hh:mm format, Task Type) → submit → manager approve flow.
+- Verify ProblemDetails returned on invalid input (`POST /auth/login` with empty body).
+- Verify holiday endpoint (`GET /api/v1/holidays?year=2026`).
+- Verify notification bell shows unread count after approval.
+
+### Priority 4 — Style Migration (optional/low)
+- `Timesheets.tsx` and `AttendanceWidget.tsx` use scoped `<style>` string literals that work correctly (CSS variables resolve from `design-system.css`), but could be extracted into `design-system.css` for maintainability.
+- Low priority — only worth doing if there are maintainability concerns.
+
+---
+
+## Session 2 — UX Overhaul & Design System (2026-03-14)
+
+### What Was Done
+
+#### Bug Fixes
+- **RefreshTokens table missing** — added `CREATE TABLE RefreshTokens` to `db/schema.sql`; provided SSMS `IF NOT EXISTS` script.
+- **AuditLogs table missing** — same fix; table found missing while monitoring API logs during manual testing.
+- **Login rate limit 429** — raised `PermitLimit` from 10 → 100 per 15 minutes in `apps/api/Program.cs`.
+- **Project dropdown empty for non-admin** — `TimesheetsController.GetEntryOptions()` and `CanWriteProject()` no longer filter by project membership; all active non-archived projects are now visible to all authenticated users.
+- **UTC datetime timezone bug** — API returns datetimes without `Z` suffix; browser parsed them as local time. Fixed with `parseUtc()` helper in `AttendanceWidget.tsx` that appends `Z` when missing.
+
+#### Task 3 — Timesheet Form Redesign
+- Multi-entry rows (`EntryRow[]` state) — add/remove rows dynamically.
+- `hh:mm` time format input with blur-validation via `parseHhMm()`.
+- Task Type dropdown: Development, Testing, Design, Meeting, Support, Other.
+- Running total bar with over-cap warning (compared against attendance minutes).
+- Files: `apps/web/src/components/Timesheets.tsx` (complete rewrite)
+
+#### Task 4 — AttendanceWidget
+- New component: `apps/web/src/components/AttendanceWidget.tsx`
+- Fetches `/attendance/summary/today` on mount; live elapsed timer via `setInterval`.
+- Check In → `POST /attendance/check-in`; Check Out → `POST /attendance/check-out`.
+- `onSummaryChange` callback prop for Timesheets cap integration.
+- Placed at top of Dashboard.
+
+#### Task 5 — Login Redesign
+- Complete rewrite: split-panel layout (42% blue left panel, 58% white form panel).
+- Fonts changed: DM Sans → Plus Jakarta Sans (display) + Inter (body) — updated `apps/web/index.html`.
+- Features: show/hide password toggle, remember-me checkbox, fade-in animation, shimmer on hover.
+- File: `apps/web/src/components/Login.tsx`
+
+#### Design System
+- **`apps/web/src/styles/design-system.css`** — 19 colour tokens, typography, spacing, shadows, full component class library.
+- **`apps/web/src/components/AppShell.tsx`** — sticky 60px nav + 240px role-grouped sidebar; replaces flat header in App.tsx.
+- Applied design system to all 11 pages: Approvals, Leave, Reports, Notifications, Projects, Categories, Users, Holidays, Dashboard, Login, Timesheets.
+- **`apps/web/src/styles.css`** — all hardcoded values replaced with CSS variables.
+- **`docs/DESIGN_SYSTEM.md`** + **`docs/DESIGN_SYSTEM_IMPLEMENTATION.md`** — reference docs.
+
+#### Test Fixes
+- Updated `Login.test.tsx`: new placeholder text (`"admin or admin@timesheet.local"`), button name `"Sign In"`, error shape uses `detail` field.
+- Updated `App.test.tsx`: `findByText` → `findAllByText` to handle multiple "TimeSheet" elements in login split-panel.
+- **All 17 frontend tests pass.**
+
+#### Commit
+- `6da1a37` on `master` — 25 files changed, 3,181 insertions, 551 deletions. Pushed to remote.
+
+---
 
 ---
 

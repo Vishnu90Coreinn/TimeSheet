@@ -26,7 +26,7 @@ public class DashboardController(TimeSheetDbContext dbContext) : ControllerBase
             .Select(x => new
             {
                 x.WorkDate,
-                CheckedIn = x.CheckInAtUtc,
+                CheckedIn = (DateTime?)x.CheckInAtUtc,
                 CheckedOut = x.CheckOutAtUtc,
                 BreakMinutes = x.Breaks.Sum(b => b.DurationMinutes),
                 AttendanceMinutes = (x.CheckOutAtUtc.HasValue ? (int)(x.CheckOutAtUtc.Value - x.CheckInAtUtc).TotalMinutes : 0) - x.Breaks.Sum(b => b.DurationMinutes)
@@ -65,7 +65,7 @@ public class DashboardController(TimeSheetDbContext dbContext) : ControllerBase
 
         return Ok(new EmployeeDashboardResponse(
             todaySession ?? new { WorkDate = today, CheckedIn = (DateTime?)null, CheckedOut = (DateTime?)null, BreakMinutes = 0, AttendanceMinutes = 0 },
-            todayTimesheet ?? new { Status = TimesheetStatus.Draft, MismatchReason = string.Empty, EnteredMinutes = 0, PendingActions = 1 },
+            todayTimesheet ?? new { Status = TimesheetStatus.Draft, MismatchReason = (string?)null, EnteredMinutes = 0, PendingActions = 1 },
             weeklyHours ?? new { Entered = 0, Breaks = 0 },
             projectEffort,
             monthlyComplianceTrend));
@@ -112,7 +112,7 @@ public class DashboardController(TimeSheetDbContext dbContext) : ControllerBase
             new { Present = present, OnLeave = onLeave, NotCheckedIn = notCheckedIn },
             new { Missing = missing, PendingApprovals = pendingApprovals },
             mismatches,
-            utilization ?? new { AvgMinutes = 0 },
+            utilization ?? new { AvgMinutes = 0d },
             contributions));
     }
 

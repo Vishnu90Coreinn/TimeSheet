@@ -111,30 +111,38 @@
 
 Work the following items in order of priority. Update this file and push to master after each session.
 
-### High Priority
+### Completed
 
 | # | Item | Details |
 |---|------|---------|
-| 1 | ~~**Open PR**~~ | ✅ **DONE (2026-03-14)** — PR created and merged into `master`. Branch `codex/audit-fix-and-feature-completion` is merged. |
+| 1 | ~~**Open PR**~~ | ✅ **DONE (2026-03-14)** — PR created and merged into `master`. |
 | 2 | ~~**SQL Server migration**~~ | ✅ **DONE (2026-03-14)** — Schema changes applied. |
-| 3 | ~~**Production secrets**~~ | **DEFERRED by choice** — JWT secret and DB connection string intentionally left in `appsettings.json` for now. Revisit before production deployment. |
+| 3 | ~~**Production secrets**~~ | **DEFERRED by choice** — JWT secret and DB connection string intentionally left in `appsettings.json`. Revisit before production deployment. |
+| 4 | ~~**Admin/Users UI**~~ | ✅ **DONE (2026-03-14)** — Full CRUD with search, dropdowns for dept/policy/manager. |
+| 5 | ~~**Admin/Holidays UI**~~ | ✅ **DONE (2026-03-14)** — Year filter, create/edit/delete. |
+| 6 | ~~**Notification bell**~~ | ✅ **DONE (2026-03-14)** — Bell in nav, 60s polling, unread badge, dismiss/mark-all. |
+| 7 | ~~**CORS error**~~ | ✅ **FIXED (2026-03-14)** — Vite proxy `/api → https://localhost:7012`, `VITE_API_BASE=/api/v1`. |
+| 8 | ~~**Admin/Projects CRUD**~~ | ✅ **DONE (2026-03-14)** — Upgraded from stub to full CRUD (create, edit, archive, delete). |
+| 9 | ~~**Admin/Categories CRUD**~~ | ✅ **DONE (2026-03-14)** — Upgraded from stub to full CRUD (create, edit billable flag, delete). |
+
+### Still To Do
 
 ### Medium Priority
 
 | # | Item | Details |
 |---|------|---------|
-| 4 | **Admin/Users UI component** | `apps/web/src/components/Admin/Users.tsx` was NOT created. Admin user management (create/edit/deactivate users) still lives inline — needs its own component following the same pattern as `Projects.tsx` and `Categories.tsx`. |
-| 5 | **Holiday calendar UI** | `HolidaysController` API exists and is tested, but no UI component was built for viewing or managing holidays. Add `apps/web/src/components/Admin/Holidays.tsx` and wire into `App.tsx` nav under Admin section. |
-| 6 | **Notification bell in nav** | `Notifications.tsx` component exists, but the nav bell icon with unread count badge and dropdown has NOT been wired into `App.tsx` nav bar. Add polling every 60 seconds and a badge showing unread count. |
+| 4 | ~~**Admin/Users UI component**~~ | ✅ **DONE (2026-03-14)** — `Admin/Users.tsx` built with search, create/edit form (role/dept/policy/manager dropdowns), activate/deactivate. |
+| 5 | ~~**Holiday calendar UI**~~ | ✅ **DONE (2026-03-14)** — `Admin/Holidays.tsx` built with year filter, create/edit/delete. Wired into `App.tsx` admin nav. |
+| 6 | ~~**Notification bell in nav**~~ | ✅ **DONE (prior session)** — `NotificationBell` component polls every 60s, shows unread badge, mark-read/mark-all-read dropdown. Already wired in `App.tsx` header. |
 
-### Low Priority
+### Remaining Tasks (in priority order)
 
 | # | Item | Details |
 |---|------|---------|
-| 7 | **Holiday integration into expected hours** | `HolidaysController` exists, but `TimesheetsController.GetDay()` / `GetWeek()` do NOT yet subtract approved holidays from expected work hours. Add a query for holidays on the requested date range and reduce `expectedMinutes` accordingly. |
-| 8 | **New integration tests** | `NotificationsIntegrationTests.cs`, `HolidaysIntegrationTests.cs`, `ReportsIntegrationTests.cs`, `DashboardIntegrationTests.cs` are not yet written. Existing 35 tests cover auth, timesheets, leave, approvals. |
-| 9 | **Frontend component tests** | Only `App.test.tsx` exists. Add Vitest component tests for `Login.tsx`, `Timesheets.tsx`, `Approvals.tsx` with `vi.mock('../api/client')`. |
-| 10 | **Manual smoke test** | Run full end-to-end flow: login → check-in → timesheet entry → submit → manager approve. Verify: ProblemDetails on bad input, rate limit 429 after 10 login attempts, notification sent on approval, holiday at `GET /api/v1/holidays?year=2026`. |
+| 1 | **Holiday deduction in `GetWeek()`** | `TimesheetsController.GetWeek()` does NOT subtract holidays from `expectedMinutes`. Query `Holidays` for the week's date range and reduce expected minutes by `DailyExpectedMinutes` for any matching holiday date. |
+| 2 | **New integration tests** | `NotificationsIntegrationTests.cs`, `HolidaysIntegrationTests.cs`, `ReportsIntegrationTests.cs`, `DashboardIntegrationTests.cs` are not yet written. Existing 35 tests cover auth, timesheets, leave, approvals. |
+| 3 | **Frontend component tests** | Only `App.test.tsx` exists. Add Vitest component tests for `Login.tsx`, `Timesheets.tsx`, `Approvals.tsx` with `vi.mock('../api/client')`. |
+| 4 | **Manual smoke test** | Login → check-in → timesheet entry → submit → manager approve. Verify ProblemDetails on bad input, rate limit 429, notification on approval, holiday endpoint. |
 
 ---
 

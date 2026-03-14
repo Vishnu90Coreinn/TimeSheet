@@ -193,46 +193,46 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 ## Epic E9 — Notifications and Reminders
 
 ### E9-F1 Notification Infrastructure
-- [ ] **TSK-NTF-001** Create Notification schema and delivery status tracking.
-- [ ] **TSK-NTF-002** Build notification generation service.
-- [ ] **TSK-NTF-003** Implement in-app notification API and UI panel.
+- [x] **TSK-NTF-001** Create Notification schema and delivery status tracking.
+- [x] **TSK-NTF-002** Build notification generation service.
+- [x] **TSK-NTF-003** Implement in-app notification API and UI panel.
 
 ### E9-F2 Scheduled Reminders
-- [ ] **TSK-NTF-004** Implement missing checkout reminder job.
-- [ ] **TSK-NTF-005** Implement missing timesheet reminder job.
-- [ ] **TSK-NTF-006** Implement pending approvals reminder job.
-- [ ] **TSK-NTF-007** Implement leave/timesheet status change notifications.
-- [ ] **TSK-NTF-008** Add configurable schedule and templates.
+- [x] **TSK-NTF-004** Implement missing checkout reminder job.
+- [x] **TSK-NTF-005** Implement missing timesheet reminder job.
+- [x] **TSK-NTF-006** Implement pending approvals reminder job.
+- [x] **TSK-NTF-007** Implement leave/timesheet status change notifications.
+- [x] **TSK-NTF-008** Add configurable schedule and templates.
 
 ---
 
 ## Epic E10 — Audit and Compliance
 
 ### E10-F1 Audit Trail
-- [ ] **TSK-AUD-001** Create AuditLog schema.
-- [ ] **TSK-AUD-002** Add audit hooks for timesheet CRUD.
-- [ ] **TSK-AUD-003** Add audit hooks for leave and approval actions.
-- [ ] **TSK-AUD-004** Add audit hooks for admin/policy changes.
-- [ ] **TSK-AUD-005** Build audit query APIs and admin audit UI.
+- [x] **TSK-AUD-001** Create AuditLog schema.
+- [x] **TSK-AUD-002** Add audit hooks for timesheet CRUD.
+- [x] **TSK-AUD-003** Add audit hooks for leave and approval actions.
+- [x] **TSK-AUD-004** Add audit hooks for admin/policy changes.
+- [x] **TSK-AUD-005** Build audit query APIs and admin audit UI.
 
 ### E10-F2 Compliance Views
-- [ ] **TSK-AUD-006** Build missing timesheet compliance report.
-- [ ] **TSK-AUD-007** Build late submission and approval SLA report.
-- [ ] **TSK-AUD-008** Build attendance exception report.
+- [x] **TSK-AUD-006** Build missing timesheet compliance report.
+- [x] **TSK-AUD-007** Build late submission and approval SLA report.
+- [x] **TSK-AUD-008** Build attendance exception report.
 
 ---
 
 ## Epic E11 — Admin Configuration and Master Data
 
 ### E11-F1 Policy Configuration
-- [ ] **TSK-ADM-001** Create WorkPolicy configuration entities.
-- [ ] **TSK-ADM-002** Build admin UI for lunch deduction/backdate/mismatch rules.
-- [ ] **TSK-ADM-003** Connect policy values to attendance/timesheet validators.
+- [x] **TSK-ADM-001** Create WorkPolicy configuration entities.
+- [x] **TSK-ADM-002** Build admin UI for lunch deduction/backdate/mismatch rules.
+- [x] **TSK-ADM-003** Connect policy values to attendance/timesheet validators.
 
 ### E11-F2 Holiday and Calendar
-- [ ] **TSK-ADM-004** Create Holiday schema and admin CRUD APIs.
-- [ ] **TSK-ADM-005** Build holiday calendar UI.
-- [ ] **TSK-ADM-006** Integrate holiday logic into expected-hours calculations.
+- [x] **TSK-ADM-004** Create Holiday schema and admin CRUD APIs.
+- [x] **TSK-ADM-005** Build holiday calendar UI.
+- [x] **TSK-ADM-006** Integrate holiday logic into expected-hours calculations.
 
 ---
 
@@ -251,17 +251,17 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 - [ ] **TSK-DB-003** Add database indexing for report-heavy queries.
 
 ### E12-F3 Testing
-- [ ] **TSK-QA-001** Add unit tests for attendance/timesheet/leave business logic.
-- [ ] **TSK-QA-002** Add API integration tests for critical flows.
-- [ ] **TSK-QA-003** Add frontend component tests for forms and status flows.
-- [ ] **TSK-QA-004** Add end-to-end smoke tests for key user journeys.
+- [x] **TSK-QA-001** Add unit tests for attendance/timesheet/leave business logic.
+- [x] **TSK-QA-002** Add API integration tests for critical flows.
+- [x] **TSK-QA-003** Add frontend component tests for forms and status flows.
+- [x] **TSK-QA-004** Add end-to-end smoke tests for key user journeys.
 
 ### E12-F4 Delivery and Operations
-- [ ] **TSK-OPS-001** Add environment-based config management.
-- [ ] **TSK-OPS-002** Add CI pipeline for build/test/lint.
-- [ ] **TSK-OPS-003** Add deployment scripts/templates for backend/frontend/db.
-- [ ] **TSK-OPS-004** Add health checks and readiness endpoints.
-- [ ] **TSK-OPS-005** Document runbooks and rollback basics.
+- [x] **TSK-OPS-001** Add environment-based config management.
+- [x] **TSK-OPS-002** Add CI pipeline for build/test/lint.
+- [x] **TSK-OPS-003** Add deployment scripts/templates for backend/frontend/db.
+- [x] **TSK-OPS-004** Add health checks and readiness endpoints.
+- [x] **TSK-OPS-005** Document runbooks and rollback basics.
 
 ---
 

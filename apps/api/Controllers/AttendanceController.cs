@@ -109,7 +109,7 @@ public class AttendanceController(TimeSheetDbContext dbContext, IAttendanceCalcu
             return BadRequest(new { message = "Break cannot start before check-in." });
         }
 
-        session.Breaks.Add(new BreakEntry
+        dbContext.BreakEntries.Add(new BreakEntry
         {
             Id = Guid.NewGuid(),
             WorkSessionId = session.Id,

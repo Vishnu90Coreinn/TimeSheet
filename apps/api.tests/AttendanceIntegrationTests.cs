@@ -78,14 +78,27 @@ public class AttendanceIntegrationTests : IClassFixture<CustomWebApplicationFact
     {
         using var client = await CreateAuthedEmployeeClient("employee.att.2");
 
-        await client.PostAsJsonAsync("/api/v1/attendance/check-in", new CheckInRequest(DateTime.UtcNow.AddHours(-4)));
-        var start = await client.PostAsJsonAsync("/api/v1/attendance/breaks/start", new StartBreakRequest(DateTime.UtcNow.AddHours(-2)));
-        var duplicateStart = await client.PostAsJsonAsync("/api/v1/attendance/breaks/start", new StartBreakRequest(DateTime.UtcNow.AddHours(-1)));
-        var end = await client.PostAsJsonAsync("/api/v1/attendance/breaks/end", new EndBreakRequest(DateTime.UtcNow.AddHours(-1).AddMinutes(30)));
+        var nowUtc = DateTime.UtcNow;
+        var checkInAtUtc = new DateTime(nowUtc.Year, nowUtc.Month, nowUtc.Day, 9, 0, 0, DateTimeKind.Utc);
+        if (checkInAtUtc >= nowUtc)
+        {
+            checkInAtUtc = checkInAtUtc.AddDays(-1);
+        }
 
-        Assert.Equal(HttpStatusCode.OK, start.StatusCode);
-        Assert.Equal(HttpStatusCode.Conflict, duplicateStart.StatusCode);
-        Assert.Equal(HttpStatusCode.OK, end.StatusCode);
+        var checkIn = await client.PostAsJsonAsync("/api/v1/attendance/check-in", new CheckInRequest(checkInAtUtc));
+        var start = await client.PostAsJsonAsync("/api/v1/attendance/breaks/start", new StartBreakRequest(checkInAtUtc.AddHours(2)));
+        var duplicateStart = await client.PostAsJsonAsync("/api/v1/attendance/breaks/start", new StartBreakRequest(checkInAtUtc.AddHours(3)));
+        var end = await client.PostAsJsonAsync("/api/v1/attendance/breaks/end", new EndBreakRequest(checkInAtUtc.AddHours(3).AddMinutes(30)));
+
+        var checkInBody = await checkIn.Content.ReadAsStringAsync();
+        var startBody = await start.Content.ReadAsStringAsync();
+        var duplicateStartBody = await duplicateStart.Content.ReadAsStringAsync();
+        var endBody = await end.Content.ReadAsStringAsync();
+
+        Assert.True(checkIn.StatusCode == HttpStatusCode.OK, $"Check-in failed: {(int)checkIn.StatusCode} {checkInBody}");
+        Assert.True(start.StatusCode == HttpStatusCode.OK, $"Start break failed: {(int)start.StatusCode} {startBody}");
+        Assert.True(duplicateStart.StatusCode == HttpStatusCode.Conflict, $"Duplicate start expected conflict: {(int)duplicateStart.StatusCode} {duplicateStartBody}");
+        Assert.True(end.StatusCode == HttpStatusCode.OK, $"End break failed: {(int)end.StatusCode} {endBody}");
     }
 
     private async Task<HttpClient> CreateAuthedEmployeeClient(string username)

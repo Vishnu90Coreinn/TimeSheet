@@ -50,8 +50,10 @@ public class NotificationService(TimeSheetDbContext dbContext) : INotificationSe
 
     public async Task MarkAllReadAsync(Guid userId)
     {
-        await dbContext.Notifications
+        var unread = await dbContext.Notifications
             .Where(n => n.UserId == userId && !n.IsRead)
-            .ExecuteUpdateAsync(s => s.SetProperty(n => n.IsRead, true));
+            .ToListAsync();
+        foreach (var n in unread) n.IsRead = true;
+        if (unread.Count > 0) await dbContext.SaveChangesAsync();
     }
 }

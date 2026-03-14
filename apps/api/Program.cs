@@ -76,7 +76,7 @@ try
     {
         options.AddFixedWindowLimiter("login", limiterOptions =>
         {
-            limiterOptions.PermitLimit = 10;
+            limiterOptions.PermitLimit = 100;
             limiterOptions.Window = TimeSpan.FromMinutes(15);
             limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
             limiterOptions.QueueLimit = 0;

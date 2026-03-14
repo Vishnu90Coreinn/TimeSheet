@@ -1,3 +1,7 @@
+/**
+ * Projects.tsx — Design system applied (Step 3).
+ * All business logic and API calls are unchanged.
+ */
 import { useEffect, useState } from "react";
 import { apiFetch } from "../../api/client";
 import type { Project } from "../../types";
@@ -19,12 +23,7 @@ export function Projects() {
   useEffect(() => { void load(); }, []);
 
   function openCreate() { setForm(BLANK); setError(""); setEditing("new"); }
-
-  function openEdit(p: Project) {
-    setForm({ name: p.name, code: p.code, isActive: p.isActive });
-    setError("");
-    setEditing(p);
-  }
+  function openEdit(p: Project) { setForm({ name: p.name, code: p.code, isActive: p.isActive }); setError(""); setEditing(p); }
 
   async function save() {
     setError("");
@@ -51,55 +50,72 @@ export function Projects() {
   const f = (k: keyof ProjectForm, v: string | boolean) => setForm((p) => ({ ...p, [k]: v }));
 
   return (
-    <section>
-      <h2>Project Admin</h2>
-      <div style={{ marginBottom: "12px" }}>
-        <button onClick={openCreate}>+ New Project</button>
-        <button onClick={() => void load()} style={{ marginLeft: "8px" }}>Refresh</button>
+    <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <h1 className="page-title" style={{ margin: 0 }}>Project Admin</h1>
+        <div className="flex gap-2">
+          <button className="btn-ghost" onClick={() => void load()}>Refresh</button>
+          <button className="btn-primary" onClick={openCreate}>+ New Project</button>
+        </div>
       </div>
 
+      {/* Edit / Create form */}
       {editing && (
-        <div style={{ border: "1px solid #ccc", padding: "16px", borderRadius: "4px", marginBottom: "16px" }}>
-          <h3>{editing === "new" ? "Create Project" : `Edit: ${(editing as Project).name}`}</h3>
-          {error && <p style={{ color: "red" }}>{error}</p>}
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxWidth: "340px" }}>
-            <label>Name<input value={form.name} onChange={(e) => f("name", e.target.value)} /></label>
-            <label>Code<input value={form.code} onChange={(e) => f("code", e.target.value.toUpperCase())} /></label>
-            <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <input type="checkbox" checked={form.isActive} onChange={(e) => f("isActive", e.target.checked)} /> Active
+        <div className="card">
+          <h2 className="section-title">{editing === "new" ? "Create Project" : `Edit: ${(editing as Project).name}`}</h2>
+          {error && <div className="alert alert-error" style={{ marginBottom: "var(--space-4)" }}>{error}</div>}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-4)", maxWidth: "480px" }}>
+            <div className="form-field">
+              <label className="form-label" htmlFor="p-name">Name <span className="required">*</span></label>
+              <input id="p-name" className="input-field" value={form.name} onChange={(e) => f("name", e.target.value)} maxLength={200} required />
+            </div>
+            <div className="form-field">
+              <label className="form-label" htmlFor="p-code">Code <span className="required">*</span></label>
+              <input id="p-code" className="input-field" value={form.code} onChange={(e) => f("code", e.target.value.toUpperCase())} maxLength={50} required />
+            </div>
+            <label style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", fontFamily: "var(--font-body)", fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>
+              <input type="checkbox" checked={form.isActive} onChange={(e) => f("isActive", e.target.checked)} style={{ accentColor: "var(--color-primary)" }} />
+              Active
             </label>
           </div>
-          <div style={{ marginTop: "12px", display: "flex", gap: "8px" }}>
-            <button onClick={() => void save()}>Save</button>
-            <button onClick={() => setEditing(null)}>Cancel</button>
+          <div className="flex gap-3 mt-4">
+            <button className="btn-primary" onClick={() => void save()}>Save</button>
+            <button className="btn-ghost" onClick={() => setEditing(null)}>Cancel</button>
           </div>
         </div>
       )}
 
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead>
-          <tr style={{ background: "#f5f5f5" }}>
-            {["Name", "Code", "Active", "Actions"].map((h) => (
-              <th key={h} style={{ padding: "8px", textAlign: "left", borderBottom: "1px solid #ddd" }}>{h}</th>
+      {/* Table */}
+      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+        <table className="table-base">
+          <thead>
+            <tr><th>Name</th><th>Code</th><th>Status</th><th>Actions</th></tr>
+          </thead>
+          <tbody>
+            {projects.map((p) => (
+              <tr key={p.id} style={{ opacity: p.isActive ? 1 : 0.5 }}>
+                <td style={{ fontWeight: "var(--font-medium)" }}>{p.name}</td>
+                <td><code style={{ fontFamily: "monospace", background: "var(--color-surface)", padding: "2px 6px", borderRadius: "var(--radius-sm)", fontSize: "var(--text-xs)" }}>{p.code}</code></td>
+                <td>
+                  {p.isArchived
+                    ? <span className="badge badge-neutral">archived</span>
+                    : p.isActive
+                      ? <span className="badge badge-success">active</span>
+                      : <span className="badge badge-warning">inactive</span>}
+                </td>
+                <td>
+                  <div className="flex gap-2">
+                    <button className="btn-ghost" style={{ fontSize: "var(--text-xs)" }} onClick={() => openEdit(p)}>Edit</button>
+                    {!p.isArchived && <button className="btn-ghost" style={{ fontSize: "var(--text-xs)" }} onClick={() => void archive(p.id)}>Archive</button>}
+                    <button className="btn-danger" onClick={() => void remove(p.id)}>Delete</button>
+                  </div>
+                </td>
+              </tr>
             ))}
-          </tr>
-        </thead>
-        <tbody>
-          {projects.map((p) => (
-            <tr key={p.id} style={{ opacity: p.isActive ? 1 : 0.5 }}>
-              <td style={{ padding: "6px 8px" }}>{p.name}</td>
-              <td style={{ padding: "6px 8px" }}><code>{p.code}</code></td>
-              <td style={{ padding: "6px 8px" }}>{p.isActive ? "Yes" : "No"}</td>
-              <td style={{ padding: "6px 8px", display: "flex", gap: "4px" }}>
-                <button onClick={() => openEdit(p)}>Edit</button>
-                {!p.isArchived && <button onClick={() => void archive(p.id)}>Archive</button>}
-                <button onClick={() => void remove(p.id)}>Delete</button>
-              </td>
-            </tr>
-          ))}
-          {projects.length === 0 && <tr><td colSpan={4} style={{ textAlign: "center", padding: "16px", color: "#888" }}>No projects</td></tr>}
-        </tbody>
-      </table>
+            {projects.length === 0 && <tr className="empty-row"><td colSpan={4}>No projects found.</td></tr>}
+          </tbody>
+        </table>
+      </div>
     </section>
   );
 }

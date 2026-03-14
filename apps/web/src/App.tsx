@@ -1,11 +1,16 @@
+/**
+ * App.tsx — Updated to use AppShell (design system Step 1c).
+ * All business logic (auth, routing, role guards) is unchanged.
+ * The old inline header/nav is replaced by AppShell.
+ */
 import { useMemo, useState } from "react";
+import { AppShell } from "./components/AppShell";
 import { Approvals } from "./components/Approvals";
 import { Categories } from "./components/Admin/Categories";
 import { Dashboard } from "./components/Dashboard";
 import { Holidays } from "./components/Admin/Holidays";
 import { Leave } from "./components/Leave";
 import { Login } from "./components/Login";
-import { NotificationBell } from "./components/Notifications";
 import { Projects } from "./components/Admin/Projects";
 import { Reports } from "./components/Reports";
 import { Timesheets } from "./components/Timesheets";
@@ -31,38 +36,37 @@ export function App() {
   const isManager = session?.role === "manager" || isAdmin;
 
   const nav = useMemo(
-    () => ["dashboard", "reports", "timesheets", "leave", ...(isManager ? ["approvals"] : []), ...(isAdmin ? ["projects", "categories", "users", "holidays"] : [])] as View[],
+    () => ["dashboard", "timesheets", "leave", "reports", ...(isManager ? ["approvals"] : []), ...(isAdmin ? ["projects", "categories", "users", "holidays"] : [])] as View[],
     [isAdmin, isManager]
   );
 
-  if (loading) return <main className="container"><p>Loading\u2026</p></main>;
+  if (loading) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
+        <p style={{ fontFamily: "var(--font-body)", color: "var(--color-text-muted)" }}>Loading…</p>
+      </div>
+    );
+  }
+
   if (!session) return <Login onLogin={login} />;
 
   return (
-    <main className="container">
-      <header>
-        <h1>Timesheet</h1>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <p style={{ margin: 0 }}>{session.username} ({session.role})</p>
-          <NotificationBell />
-        </div>
-        <div className="actions wrap">
-          {nav.map((item) => (
-            <button key={item} onClick={() => setView(item)}>{item}</button>
-          ))}
-          <button onClick={logout}>Logout</button>
-        </div>
-      </header>
-
-      {view === "dashboard" && <Dashboard role={session.role} />}
-      {view === "reports" && <Reports />}
+    <AppShell
+      session={session}
+      view={view}
+      nav={nav}
+      onNavigate={setView}
+      onLogout={logout}
+    >
+      {view === "dashboard"  && <Dashboard role={session.role} />}
+      {view === "reports"    && <Reports />}
       {view === "timesheets" && <Timesheets />}
-      {view === "leave" && <Leave isManager={isManager} isAdmin={isAdmin} />}
-      {view === "approvals" && isManager && <Approvals />}
-      {view === "projects" && isAdmin && <Projects />}
-      {view === "categories" && isAdmin && <Categories />}
-      {view === "users" && isAdmin && <Users />}
-      {view === "holidays" && isAdmin && <Holidays />}
-    </main>
+      {view === "leave"      && <Leave isManager={isManager} isAdmin={isAdmin} />}
+      {view === "approvals"  && isManager && <Approvals />}
+      {view === "projects"   && isAdmin   && <Projects />}
+      {view === "categories" && isAdmin   && <Categories />}
+      {view === "users"      && isAdmin   && <Users />}
+      {view === "holidays"   && isAdmin   && <Holidays />}
+    </AppShell>
   );
 }

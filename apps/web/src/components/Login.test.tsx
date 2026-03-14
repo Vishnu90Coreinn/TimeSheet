@@ -17,8 +17,8 @@ beforeEach(() => {
 describe("Login", () => {
   it("renders username and password inputs", () => {
     render(<Login onLogin={vi.fn()} />);
-    expect(screen.getByPlaceholderText(/username or email/i)).toBeTruthy();
-    expect(screen.getByPlaceholderText(/password/i)).toBeTruthy();
+    expect(screen.getByPlaceholderText(/admin or admin@timesheet/i)).toBeTruthy();
+    expect(screen.getByPlaceholderText(/••••/)).toBeTruthy();
   });
 
   it("calls fetch on submit", async () => {
@@ -29,9 +29,9 @@ describe("Login", () => {
 
     render(<Login onLogin={vi.fn()} />);
 
-    fireEvent.change(screen.getByPlaceholderText(/username or email/i), { target: { value: "user" } });
-    fireEvent.change(screen.getByPlaceholderText(/password/i), { target: { value: "password123" } });
-    fireEvent.submit(screen.getByRole("button", { name: /login/i }).closest("form")!);
+    fireEvent.change(screen.getByPlaceholderText(/admin or admin@timesheet/i), { target: { value: "user" } });
+    fireEvent.change(screen.getByPlaceholderText(/••••/), { target: { value: "password123" } });
+    fireEvent.submit(screen.getByRole("button", { name: /sign in/i }).closest("form")!);
 
     await waitFor(() => {
       expect(fetchSpy).toHaveBeenCalledWith(
@@ -44,17 +44,17 @@ describe("Login", () => {
   it("shows error on failed login", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: false,
-      json: () => Promise.resolve({ message: "Invalid" }),
+      json: () => Promise.resolve({ detail: "Invalid credentials" }),
     } as Response);
 
     render(<Login onLogin={vi.fn()} />);
 
-    fireEvent.change(screen.getByPlaceholderText(/username or email/i), { target: { value: "user" } });
-    fireEvent.change(screen.getByPlaceholderText(/password/i), { target: { value: "password123" } });
-    fireEvent.submit(screen.getByRole("button", { name: /login/i }).closest("form")!);
+    fireEvent.change(screen.getByPlaceholderText(/admin or admin@timesheet/i), { target: { value: "user" } });
+    fireEvent.change(screen.getByPlaceholderText(/••••/), { target: { value: "password123" } });
+    fireEvent.submit(screen.getByRole("button", { name: /sign in/i }).closest("form")!);
 
     await waitFor(() => {
-      expect(screen.getByText(/invalid username\/email or password/i)).toBeTruthy();
+      expect(screen.getByText(/invalid credentials/i)).toBeTruthy();
     });
   });
 
@@ -67,9 +67,9 @@ describe("Login", () => {
     const onLogin = vi.fn();
     render(<Login onLogin={onLogin} />);
 
-    fireEvent.change(screen.getByPlaceholderText(/username or email/i), { target: { value: "user" } });
-    fireEvent.change(screen.getByPlaceholderText(/password/i), { target: { value: "password123" } });
-    fireEvent.submit(screen.getByRole("button", { name: /login/i }).closest("form")!);
+    fireEvent.change(screen.getByPlaceholderText(/admin or admin@timesheet/i), { target: { value: "user" } });
+    fireEvent.change(screen.getByPlaceholderText(/••••/), { target: { value: "password123" } });
+    fireEvent.submit(screen.getByRole("button", { name: /sign in/i }).closest("form")!);
 
     await waitFor(() => {
       expect(onLogin).toHaveBeenCalledWith(

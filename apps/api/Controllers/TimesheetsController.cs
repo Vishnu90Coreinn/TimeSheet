@@ -23,15 +23,11 @@ public class TimesheetsController(TimeSheetDbContext dbContext, IAttendanceCalcu
             return Unauthorized();
         }
 
-        var userRole = User.FindFirstValue(ClaimTypes.Role) ?? "employee";
-        var projectsQuery = dbContext.Projects.AsNoTracking().Where(p => p.IsActive && !p.IsArchived);
-
-        if (!string.Equals(userRole, "admin", StringComparison.OrdinalIgnoreCase))
-        {
-            projectsQuery = projectsQuery.Where(p => p.Members.Any(m => m.UserId == userId));
-        }
-
-        var projects = await projectsQuery
+        // Task 1 fix: all authenticated users see all active projects in the dropdown.
+        // Membership-based filtering was removed — non-admin users were getting an empty
+        // project list when not yet added to any project as a member.
+        var projects = await dbContext.Projects.AsNoTracking()
+            .Where(p => p.IsActive && !p.IsArchived)
             .OrderBy(p => p.Name)
             .Select(p => new ProjectResponse(p.Id, p.Name, p.Code, p.IsActive, p.IsArchived))
             .ToListAsync();
@@ -476,15 +472,11 @@ public class TimesheetsController(TimeSheetDbContext dbContext, IAttendanceCalcu
 
     private async Task<bool> CanWriteProject(Guid userId, Guid projectId)
     {
-        var userRole = User.FindFirstValue(ClaimTypes.Role) ?? "employee";
-        var projects = dbContext.Projects.AsNoTracking().Where(p => p.Id == projectId && p.IsActive && !p.IsArchived);
-
-        if (!string.Equals(userRole, "admin", StringComparison.OrdinalIgnoreCase))
-        {
-            projects = projects.Where(p => p.Members.Any(m => m.UserId == userId));
-        }
-
-        return await projects.AnyAsync();
+        // Task 1 fix: all authenticated users may log time against any active project.
+        // Membership enforcement was removed to match the dropdown visibility change.
+        _ = userId; // kept in signature for potential future re-use
+        return await dbContext.Projects.AsNoTracking()
+            .AnyAsync(p => p.Id == projectId && p.IsActive && !p.IsArchived);
     }
 
     private async Task<IActionResult?> ValidateEditWindow(Guid userId, DateOnly workDate)

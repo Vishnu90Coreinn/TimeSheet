@@ -130,6 +130,17 @@ CREATE TABLE LeaveRequests (
 );
 CREATE INDEX IX_LeaveRequests_StatusDate ON LeaveRequests(Status, LeaveDate);
 
+CREATE TABLE RefreshTokens (
+  Id UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+  UserId UNIQUEIDENTIFIER NOT NULL REFERENCES Users(Id) ON DELETE CASCADE,
+  Token NVARCHAR(500) NOT NULL,
+  ExpiresAtUtc DATETIME2 NOT NULL,
+  IsRevoked BIT NOT NULL DEFAULT 0,
+  CreatedAtUtc DATETIME2 NOT NULL DEFAULT GETUTCDATE()
+);
+CREATE INDEX IX_RefreshTokens_UserId ON RefreshTokens(UserId);
+CREATE INDEX IX_RefreshTokens_Token ON RefreshTokens(Token);
+
 CREATE TABLE ApprovalActions (
   Id UNIQUEIDENTIFIER PRIMARY KEY,
   TimesheetId UNIQUEIDENTIFIER NOT NULL REFERENCES Timesheets(Id),
@@ -172,3 +183,17 @@ CREATE TABLE Holidays (
   CreatedAtUtc DATETIME2 NOT NULL
 );
 CREATE INDEX IX_Holidays_Date ON Holidays(Date);
+
+-- AuditLogs table
+CREATE TABLE AuditLogs (
+  Id UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+  ActorUserId UNIQUEIDENTIFIER NULL REFERENCES Users(Id) ON DELETE SET NULL,
+  Action NVARCHAR(120) NOT NULL,
+  EntityType NVARCHAR(120) NOT NULL,
+  EntityId NVARCHAR(80) NOT NULL,
+  Details NVARCHAR(2000) NULL,
+  CreatedAtUtc DATETIME2 NOT NULL DEFAULT GETUTCDATE()
+);
+CREATE INDEX IX_AuditLogs_ActorUserId ON AuditLogs(ActorUserId);
+CREATE INDEX IX_AuditLogs_EntityType_EntityId ON AuditLogs(EntityType, EntityId);
+CREATE INDEX IX_AuditLogs_CreatedAtUtc ON AuditLogs(CreatedAtUtc DESC);

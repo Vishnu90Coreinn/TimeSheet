@@ -52,7 +52,8 @@ describe("App", () => {
 
   it("renders login form when not authenticated", async () => {
     render(<App />);
-    // After loading completes, should show login
-    await screen.findByText(/Timesheet/i);
+    // After loading completes, should show login (multiple "TimeSheet" elements are expected)
+    const els = await screen.findAllByText(/Timesheet/i);
+    expect(els.length).toBeGreaterThan(0);
   });
 });

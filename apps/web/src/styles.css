@@ -1,75 +1,124 @@
-:root {
-  font-family: Inter, system-ui, sans-serif;
-}
+/*
+ * styles.css — Legacy overrides and AttendanceWidget styles.
+ * Design tokens come from design-system.css (imported first in main.tsx).
+ * Hardcoded colors/spacing replaced with CSS variables.
+ */
 
-body {
-  margin: 0;
-  background: #f4f7fb;
-}
-
+/* Legacy .container — kept for any pages not yet on AppShell */
 .container {
   max-width: 1100px;
   margin: 48px auto;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
-  padding: 24px;
+  background: var(--color-background);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-8);
 }
 
+/* Legacy .card override — design-system.css defines .card properly;
+   this only overrides the old flex+gap shorthand used in old components */
 .card {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-4);
 }
 
+/* Legacy input/select reset — design-system.css .input-field handles proper styling */
 input,
-select {
-  width: 100%;
-  padding: 8px;
-  margin-top: 4px;
+select,
+textarea {
+  font-family: var(--font-body);
 }
 
-button {
-  background: #1e40af;
-  color: #fff;
-  border: 0;
-  border-radius: 8px;
-  padding: 10px 14px;
-  cursor: pointer;
-}
-
+/* Legacy .actions row */
 .actions {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
 }
+.wrap { flex-wrap: wrap; }
 
-.wrap {
-  flex-wrap: wrap;
-}
+/* Legacy status colors */
+.error   { color: var(--color-error); }
+.success { color: var(--color-success); }
 
-.error {
-  color: #b91c1c;
-}
+/* Legacy table — design-system.css .table-base handles new tables */
+table { width: 100%; border-collapse: collapse; }
+th, td { border: 1px solid var(--color-border); padding: var(--space-2); text-align: left; }
 
-.success {
-  color: #065f46;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-th,
-td {
-  border: 1px solid #dbe2ef;
-  padding: 6px;
-  text-align: left;
-}
-
+/* pre / code blocks */
 pre {
   overflow: auto;
   white-space: pre-wrap;
-  background: #f8fafc;
-  padding: 12px;
+  background: var(--color-surface);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  font-size: var(--text-sm);
 }
+
+/* ── AttendanceWidget (Task 4) ─────────────────────────────── */
+.aw-card {
+  background: var(--color-background);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  box-shadow: var(--shadow-sm);
+}
+.aw-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.aw-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: var(--font-bold);
+  color: var(--color-text-primary);
+}
+.aw-status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+.aw-status-dot--in  { background: var(--color-success); box-shadow: 0 0 0 3px rgba(22,163,74,0.18); }
+.aw-status-dot--out { background: var(--color-text-muted); }
+.aw-date { font-size: var(--text-xs); color: var(--color-text-muted); font-weight: var(--font-medium); }
+.aw-timer-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; }
+.aw-check-time { font-size: var(--text-sm); color: var(--color-text-secondary); }
+.aw-elapsed { font-family: var(--font-display); font-size: 1.375rem; font-weight: var(--font-bold); color: var(--color-primary); letter-spacing: 0.04em; }
+.aw-net {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+.aw-net__label { font-size: var(--text-xs); color: var(--color-text-muted); font-weight: var(--font-semibold); text-transform: uppercase; letter-spacing: 0.05em; }
+.aw-net__value { font-size: var(--text-lg); font-weight: var(--font-bold); color: var(--color-primary); margin-left: auto; }
+.aw-actions { display: flex; gap: var(--space-3); }
+.aw-btn {
+  flex: 1;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  font-family: var(--font-display);
+  cursor: pointer;
+  transition: box-shadow var(--transition-fast), transform var(--transition-fast), opacity var(--transition-fast);
+  border: none;
+}
+.aw-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.aw-btn--in  { background: linear-gradient(135deg, #059669, #10B981); color: white; }
+.aw-btn--in:hover:not(:disabled)  { box-shadow: 0 4px 12px rgba(16,185,129,0.35); transform: translateY(-1px); }
+.aw-btn--out { background: linear-gradient(135deg, #DC2626, #EF4444); color: white; }
+.aw-btn--out:hover:not(:disabled) { box-shadow: 0 4px 12px rgba(239,68,68,0.35); transform: translateY(-1px); }
+.aw-error   { font-size: var(--text-xs); color: var(--color-error); margin: 0; }
+.aw-loading { font-size: var(--text-sm); color: var(--color-text-muted); margin: 0; }

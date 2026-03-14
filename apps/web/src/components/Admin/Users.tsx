@@ -1,3 +1,7 @@
+/**
+ * Users.tsx — Design system applied (Step 3).
+ * All business logic and API calls are unchanged.
+ */
 import { useEffect, useState } from "react";
 import { apiFetch } from "../../api/client";
 import type { Department, User, WorkPolicy } from "../../types";
@@ -6,7 +10,6 @@ type UserForm = {
   username: string; email: string; employeeId: string; password: string;
   role: string; isActive: boolean; departmentId: string; workPolicyId: string; managerId: string;
 };
-
 const BLANK: UserForm = { username: "", email: "", employeeId: "", password: "", role: "employee", isActive: true, departmentId: "", workPolicyId: "", managerId: "" };
 
 export function Users() {
@@ -29,16 +32,10 @@ export function Users() {
     apiFetch("/masters/work-policies").then(async (r) => { if (r.ok) setPolicies(await r.json()); });
   }, []);
 
-  function openCreate() {
-    setForm(BLANK);
-    setError("");
-    setEditing("new");
-  }
-
+  function openCreate() { setForm(BLANK); setError(""); setEditing("new"); }
   function openEdit(u: User) {
     setForm({ username: u.username, email: u.email, employeeId: u.employeeId, password: "", role: u.role, isActive: u.isActive, departmentId: u.departmentId ?? "", workPolicyId: u.workPolicyId ?? "", managerId: u.managerId ?? "" });
-    setError("");
-    setEditing(u);
+    setError(""); setEditing(u);
   }
 
   async function save() {
@@ -64,86 +61,122 @@ export function Users() {
   const f = (k: keyof UserForm, v: string | boolean) => setForm((p) => ({ ...p, [k]: v }));
 
   return (
-    <section>
-      <h2>User Management</h2>
-      <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
-        <input placeholder="Search username / email / ID…" value={search} onChange={(e) => setSearch(e.target.value)} style={{ flex: 1 }} />
-        <button onClick={() => void load(search)}>Search</button>
-        <button onClick={openCreate}>+ New User</button>
+    <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <h1 className="page-title" style={{ margin: 0 }}>User Management</h1>
+        <button className="btn-primary" onClick={openCreate}>+ New User</button>
       </div>
 
+      {/* Search bar */}
+      <div className="card-flat" style={{ display: "flex", gap: "var(--space-3)" }}>
+        <input
+          className="input-field"
+          placeholder="Search by username, email or employee ID…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && void load(search)}
+          style={{ flex: 1 }}
+        />
+        <button className="btn-secondary" onClick={() => void load(search)}>Search</button>
+      </div>
+
+      {/* Edit / Create form */}
       {editing && (
-        <div style={{ border: "1px solid #ccc", padding: "16px", borderRadius: "4px", marginBottom: "16px" }}>
-          <h3>{editing === "new" ? "Create User" : `Edit: ${(editing as User).username}`}</h3>
-          {error && <p style={{ color: "red" }}>{error}</p>}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-            <label>Username<input value={form.username} onChange={(e) => f("username", e.target.value)} /></label>
-            <label>Email<input type="email" value={form.email} onChange={(e) => f("email", e.target.value)} /></label>
-            <label>Employee ID<input value={form.employeeId} onChange={(e) => f("employeeId", e.target.value)} /></label>
-            {editing === "new" && <label>Password<input type="password" value={form.password} onChange={(e) => f("password", e.target.value)} /></label>}
-            <label>Role
-              <select value={form.role} onChange={(e) => f("role", e.target.value)}>
+        <div className="card">
+          <h2 className="section-title">{editing === "new" ? "Create User" : `Edit: ${(editing as User).username}`}</h2>
+          {error && <div className="alert alert-error" style={{ marginBottom: "var(--space-4)" }}>{error}</div>}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-4)" }}>
+            <div className="form-field">
+              <label className="form-label" htmlFor="u-username">Username <span className="required">*</span></label>
+              <input id="u-username" className="input-field" value={form.username} onChange={(e) => f("username", e.target.value)} />
+            </div>
+            <div className="form-field">
+              <label className="form-label" htmlFor="u-email">Email <span className="required">*</span></label>
+              <input id="u-email" type="email" className="input-field" value={form.email} onChange={(e) => f("email", e.target.value)} />
+            </div>
+            <div className="form-field">
+              <label className="form-label" htmlFor="u-empid">Employee ID <span className="required">*</span></label>
+              <input id="u-empid" className="input-field" value={form.employeeId} onChange={(e) => f("employeeId", e.target.value)} />
+            </div>
+            {editing === "new" && (
+              <div className="form-field">
+                <label className="form-label" htmlFor="u-pwd">Password <span className="required">*</span></label>
+                <input id="u-pwd" type="password" className="input-field" value={form.password} onChange={(e) => f("password", e.target.value)} />
+              </div>
+            )}
+            <div className="form-field">
+              <label className="form-label" htmlFor="u-role">Role</label>
+              <select id="u-role" className="input-field" value={form.role} onChange={(e) => f("role", e.target.value)}>
                 <option value="employee">Employee</option>
                 <option value="manager">Manager</option>
                 <option value="admin">Admin</option>
               </select>
-            </label>
-            <label>Department
-              <select value={form.departmentId} onChange={(e) => f("departmentId", e.target.value)}>
+            </div>
+            <div className="form-field">
+              <label className="form-label" htmlFor="u-dept">Department</label>
+              <select id="u-dept" className="input-field" value={form.departmentId} onChange={(e) => f("departmentId", e.target.value)}>
                 <option value="">— none —</option>
                 {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
               </select>
-            </label>
-            <label>Work Policy
-              <select value={form.workPolicyId} onChange={(e) => f("workPolicyId", e.target.value)}>
+            </div>
+            <div className="form-field">
+              <label className="form-label" htmlFor="u-policy">Work Policy</label>
+              <select id="u-policy" className="input-field" value={form.workPolicyId} onChange={(e) => f("workPolicyId", e.target.value)}>
                 <option value="">— none —</option>
                 {policies.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
-            </label>
-            <label>Manager
-              <select value={form.managerId} onChange={(e) => f("managerId", e.target.value)}>
+            </div>
+            <div className="form-field">
+              <label className="form-label" htmlFor="u-mgr">Manager</label>
+              <select id="u-mgr" className="input-field" value={form.managerId} onChange={(e) => f("managerId", e.target.value)}>
                 <option value="">— none —</option>
                 {users.filter((u) => editing === "new" || (editing as User).id !== u.id).map((u) => <option key={u.id} value={u.id}>{u.username}</option>)}
               </select>
-            </label>
-            <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <input type="checkbox" checked={form.isActive} onChange={(e) => f("isActive", e.target.checked)} /> Active
+            </div>
+            <label style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", fontFamily: "var(--font-body)", fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", alignSelf: "end", paddingBottom: "10px" }}>
+              <input type="checkbox" checked={form.isActive} onChange={(e) => f("isActive", e.target.checked)} style={{ accentColor: "var(--color-primary)" }} />
+              Active
             </label>
           </div>
-          <div style={{ marginTop: "12px", display: "flex", gap: "8px" }}>
-            <button onClick={() => void save()}>Save</button>
-            <button onClick={() => setEditing(null)}>Cancel</button>
+          <div className="flex gap-3 mt-6">
+            <button className="btn-primary" onClick={() => void save()}>Save</button>
+            <button className="btn-ghost" onClick={() => setEditing(null)}>Cancel</button>
           </div>
         </div>
       )}
 
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead>
-          <tr style={{ background: "#f5f5f5" }}>
-            {["Username", "Email", "Employee ID", "Role", "Department", "Manager", "Active", "Actions"].map((h) => (
-              <th key={h} style={{ padding: "8px", textAlign: "left", borderBottom: "1px solid #ddd" }}>{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((u) => (
-            <tr key={u.id} style={{ opacity: u.isActive ? 1 : 0.5 }}>
-              <td style={{ padding: "6px 8px" }}>{u.username}</td>
-              <td style={{ padding: "6px 8px" }}>{u.email}</td>
-              <td style={{ padding: "6px 8px" }}>{u.employeeId}</td>
-              <td style={{ padding: "6px 8px" }}>{u.role}</td>
-              <td style={{ padding: "6px 8px" }}>{u.departmentName ?? "—"}</td>
-              <td style={{ padding: "6px 8px" }}>{u.managerUsername ?? "—"}</td>
-              <td style={{ padding: "6px 8px" }}>{u.isActive ? "Yes" : "No"}</td>
-              <td style={{ padding: "6px 8px", display: "flex", gap: "4px" }}>
-                <button onClick={() => openEdit(u)}>Edit</button>
-                <button onClick={() => void toggleActive(u)}>{u.isActive ? "Deactivate" : "Activate"}</button>
-              </td>
-            </tr>
-          ))}
-          {users.length === 0 && <tr><td colSpan={8} style={{ textAlign: "center", padding: "16px", color: "#888" }}>No users found</td></tr>}
-        </tbody>
-      </table>
+      {/* Table */}
+      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+        <div style={{ overflowX: "auto" }}>
+          <table className="table-base">
+            <thead>
+              <tr><th>Username</th><th>Email</th><th>Employee ID</th><th>Role</th><th>Department</th><th>Manager</th><th>Status</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+              {users.map((u) => (
+                <tr key={u.id} style={{ opacity: u.isActive ? 1 : 0.55 }}>
+                  <td style={{ fontWeight: "var(--font-medium)" }}>{u.username}</td>
+                  <td style={{ color: "var(--color-text-secondary)" }}>{u.email}</td>
+                  <td><code style={{ fontFamily: "monospace", fontSize: "var(--text-xs)", background: "var(--color-surface)", padding: "2px 5px", borderRadius: "var(--radius-sm)" }}>{u.employeeId}</code></td>
+                  <td><span className={`badge ${u.role === "admin" ? "badge-error" : u.role === "manager" ? "badge-warning" : "badge-blue"}`}>{u.role}</span></td>
+                  <td style={{ color: "var(--color-text-secondary)" }}>{u.departmentName ?? "—"}</td>
+                  <td style={{ color: "var(--color-text-secondary)" }}>{u.managerUsername ?? "—"}</td>
+                  <td>{u.isActive ? <span className="badge badge-success">Active</span> : <span className="badge badge-neutral">Inactive</span>}</td>
+                  <td>
+                    <div className="flex gap-2">
+                      <button className="btn-ghost" style={{ fontSize: "var(--text-xs)" }} onClick={() => openEdit(u)}>Edit</button>
+                      <button className="btn-secondary" style={{ fontSize: "var(--text-xs)", padding: "var(--space-1) var(--space-3)" }} onClick={() => void toggleActive(u)}>
+                        {u.isActive ? "Deactivate" : "Activate"}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {users.length === 0 && <tr className="empty-row"><td colSpan={8}>No users found.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </section>
   );
 }

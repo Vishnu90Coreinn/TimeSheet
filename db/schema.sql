@@ -139,3 +139,36 @@ CREATE TABLE ApprovalActions (
   ActionedAtUtc DATETIME2 NOT NULL
 );
 CREATE INDEX IX_ApprovalActions_Timesheet_ActionedAt ON ApprovalActions(TimesheetId, ActionedAtUtc DESC);
+
+-- New indexes for report-heavy queries
+CREATE INDEX IX_Timesheets_UserId ON Timesheets(UserId);
+CREATE INDEX IX_Timesheets_WorkDate ON Timesheets(WorkDate);
+CREATE INDEX IX_TimesheetEntries_ProjectId ON TimesheetEntries(ProjectId);
+CREATE INDEX IX_WorkSessions_UserId ON WorkSessions(UserId);
+CREATE INDEX IX_WorkSessions_Status ON WorkSessions(Status);
+CREATE INDEX IX_LeaveRequests_UserId ON LeaveRequests(UserId);
+
+-- IsBillable column for TaskCategories
+ALTER TABLE TaskCategories ADD IsBillable BIT NOT NULL DEFAULT 0;
+
+-- Notifications table
+CREATE TABLE Notifications (
+  Id UNIQUEIDENTIFIER PRIMARY KEY,
+  UserId UNIQUEIDENTIFIER NOT NULL REFERENCES Users(Id) ON DELETE CASCADE,
+  Title NVARCHAR(200) NOT NULL,
+  Message NVARCHAR(1000) NOT NULL,
+  IsRead BIT NOT NULL DEFAULT 0,
+  Type INT NOT NULL,
+  CreatedAtUtc DATETIME2 NOT NULL
+);
+CREATE INDEX IX_Notifications_UserId_IsRead ON Notifications(UserId, IsRead);
+
+-- Holidays table
+CREATE TABLE Holidays (
+  Id UNIQUEIDENTIFIER PRIMARY KEY,
+  Name NVARCHAR(200) NOT NULL,
+  Date DATE NOT NULL,
+  IsRecurring BIT NOT NULL DEFAULT 0,
+  CreatedAtUtc DATETIME2 NOT NULL
+);
+CREATE INDEX IX_Holidays_Date ON Holidays(Date);

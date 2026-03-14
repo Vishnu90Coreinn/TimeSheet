@@ -5,13 +5,14 @@ using Microsoft.EntityFrameworkCore;
 using TimeSheet.Api.Data;
 using TimeSheet.Api.Dtos;
 using TimeSheet.Api.Models;
+using TimeSheet.Api.Services;
 
 namespace TimeSheet.Api.Controllers;
 
 [ApiController]
 [Authorize(Roles = "manager,admin")]
 [Route("api/v1/approvals")]
-public class ApprovalsController(TimeSheetDbContext dbContext) : ControllerBase
+public class ApprovalsController(TimeSheetDbContext dbContext, IAuditService auditService, INotificationService notificationService) : ControllerBase
 {
     [HttpGet("pending-timesheets")]
     public async Task<IActionResult> GetPendingTimesheets()
@@ -168,7 +169,12 @@ public class ApprovalsController(TimeSheetDbContext dbContext) : ControllerBase
             ActionedAtUtc = DateTime.UtcNow
         });
 
+        await auditService.WriteAsync($"Timesheet{actionType}", "Timesheet", timesheetId.ToString(), $"Manager {managerId} set status to {nextStatus}", User);
         await dbContext.SaveChangesAsync();
+
+        await notificationService.CreateAsync(timesheet.UserId, "Timesheet Status Updated",
+            $"Your timesheet for {timesheet.WorkDate:yyyy-MM-dd} has been {actionType.ToString().ToLower()}.", NotificationType.StatusChange);
+
         return Ok(new { message = "Action completed." });
     }
 

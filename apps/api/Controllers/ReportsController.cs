@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using TimeSheet.Api.Data;
 using TimeSheet.Api.Dtos;
 using TimeSheet.Api.Models;
+using TimeSheet.Api.Services;
 
 namespace TimeSheet.Api.Controllers;
 
@@ -28,6 +29,9 @@ public class ReportsController(TimeSheetDbContext dbContext) : ControllerBase
         if (scope.ToDate is { } toDate) query = query.Where(x => x.WorkDate <= toDate);
 
         var total = await query.CountAsync();
+        // Note: The SQL projection below uses an inline formula for attendance minutes.
+        // Full lunch deduction (per WorkPolicy) requires loading sessions into memory via
+        // AttendanceCalculationService. This is a known limitation of the SQL projection approach.
         var rows = await query
             .OrderByDescending(x => x.WorkDate)
             .Skip((scope.Page - 1) * scope.PageSize)
@@ -110,17 +114,32 @@ public class ReportsController(TimeSheetDbContext dbContext) : ControllerBase
 
         var fromDate = scope.FromDate ?? DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-30));
         var toDate = scope.ToDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        var pagedUsers = users.Skip((scope.Page - 1) * scope.PageSize).Take(scope.PageSize).ToList();
+        var pagedUserIds = pagedUsers.Select(u => u.Id).ToList();
 
-        var rows = new List<LeaveUtilizationReportRow>();
-        foreach (var user in users.Skip((scope.Page - 1) * scope.PageSize).Take(scope.PageSize))
+        // Batch: leave counts grouped by user
+        var leaveCounts = await dbContext.LeaveRequests
+            .Where(x => pagedUserIds.Contains(x.UserId) && x.Status == LeaveRequestStatus.Approved && x.LeaveDate >= fromDate && x.LeaveDate <= toDate)
+            .GroupBy(x => new { x.UserId, x.IsHalfDay })
+            .Select(g => new { g.Key.UserId, g.Key.IsHalfDay, Count = g.Count() })
+            .ToListAsync();
+
+        // Batch: timesheet minutes grouped by user
+        var timesheetMinutes = await dbContext.Timesheets
+            .Where(x => pagedUserIds.Contains(x.UserId) && x.WorkDate >= fromDate && x.WorkDate <= toDate)
+            .GroupBy(x => x.UserId)
+            .Select(g => new { UserId = g.Key, Minutes = g.Sum(t => t.Entries.Sum(e => e.Minutes)) })
+            .ToListAsync();
+
+        var potentialMinutes = Math.Max(1, ((toDate.DayNumber - fromDate.DayNumber) + 1) * 8 * 60);
+
+        var rows = pagedUsers.Select(user =>
         {
-            var leaveDays = await dbContext.LeaveRequests.CountAsync(x => x.UserId == user.Id && x.Status == LeaveRequestStatus.Approved && x.LeaveDate >= fromDate && x.LeaveDate <= toDate && !x.IsHalfDay);
-            var halfDays = await dbContext.LeaveRequests.CountAsync(x => x.UserId == user.Id && x.Status == LeaveRequestStatus.Approved && x.LeaveDate >= fromDate && x.LeaveDate <= toDate && x.IsHalfDay);
-            var timesheetMinutes = await dbContext.Timesheets.Where(x => x.UserId == user.Id && x.WorkDate >= fromDate && x.WorkDate <= toDate).SumAsync(x => x.Entries.Sum(e => e.Minutes));
-
-            var potentialMinutes = Math.Max(1, ((toDate.DayNumber - fromDate.DayNumber) + 1) * 8 * 60);
-            rows.Add(new LeaveUtilizationReportRow(user.Id, user.Username, leaveDays, halfDays, timesheetMinutes, Math.Round(timesheetMinutes * 100m / potentialMinutes, 2)));
-        }
+            var fullDays = leaveCounts.FirstOrDefault(l => l.UserId == user.Id && !l.IsHalfDay)?.Count ?? 0;
+            var halfDays = leaveCounts.FirstOrDefault(l => l.UserId == user.Id && l.IsHalfDay)?.Count ?? 0;
+            var minutes = timesheetMinutes.FirstOrDefault(t => t.UserId == user.Id)?.Minutes ?? 0;
+            return new LeaveUtilizationReportRow(user.Id, user.Username, fullDays, halfDays, minutes, Math.Round(minutes * 100m / potentialMinutes, 2));
+        }).ToList();
 
         return Ok(new PagedReportResponse<LeaveUtilizationReportRow>(scope.Page, scope.PageSize, users.Count, rows));
     }

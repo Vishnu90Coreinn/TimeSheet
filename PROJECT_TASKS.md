@@ -37,7 +37,7 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 - [x] **TSK-USER-002** Implement user CRUD APIs with validation (unique email/employee ID).
 - [x] **TSK-USER-003** Implement reporting manager mapping and retrieval APIs.
 - [x] **TSK-USER-004** Build admin user management UI (list/search/filter/create/edit/activate/deactivate).
-- [x] **TSK-USER-005** Enforce “inactive users cannot submit timesheets”.
+- [x] **TSK-USER-005** Enforce "inactive users cannot submit timesheets".
 - [x] **TSK-USER-006** Add audit logging for user admin actions.
 
 ---
@@ -184,8 +184,8 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 
 ### E8-F2 Export
 - [x] **TSK-RPT-007** Implement CSV export service.
-- [x] **TSK-RPT-008** Implement Excel export service.
-- [x] **TSK-RPT-009** Implement selective PDF export for summary reports.
+- [ ] **TSK-RPT-008** Implement Excel export service. *(Phase 1 audit: SEC-009 — export returns CSV bytes with wrong MIME type for excel/pdf formats; fix in Phase 2)*
+- [ ] **TSK-RPT-009** Implement selective PDF export for summary reports. *(Phase 1 audit: SEC-009 — same issue as above)*
 - [x] **TSK-RPT-010** Ensure exports respect filters and role-based scope.
 
 ---
@@ -193,16 +193,16 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 ## Epic E9 — Notifications and Reminders
 
 ### E9-F1 Notification Infrastructure
-- [x] **TSK-NTF-001** Create Notification schema and delivery status tracking.
-- [x] **TSK-NTF-002** Build notification generation service.
-- [x] **TSK-NTF-003** Implement in-app notification API and UI panel.
+- [ ] **TSK-NTF-001** Create Notification schema and delivery status tracking. *(Phase 1 audit: ARCH-002 — marked DONE but model/table/code did not exist; implemented in Phase 2)*
+- [ ] **TSK-NTF-002** Build notification generation service. *(Phase 1 audit: ARCH-002 — not implemented)*
+- [ ] **TSK-NTF-003** Implement in-app notification API and UI panel. *(Phase 1 audit: ARCH-002 — not implemented)*
 
 ### E9-F2 Scheduled Reminders
-- [x] **TSK-NTF-004** Implement missing checkout reminder job.
-- [x] **TSK-NTF-005** Implement missing timesheet reminder job.
-- [x] **TSK-NTF-006** Implement pending approvals reminder job.
-- [x] **TSK-NTF-007** Implement leave/timesheet status change notifications.
-- [x] **TSK-NTF-008** Add configurable schedule and templates.
+- [ ] **TSK-NTF-004** Implement missing checkout reminder job. *(Phase 1 audit: ARCH-002 — not implemented)*
+- [ ] **TSK-NTF-005** Implement missing timesheet reminder job. *(Phase 1 audit: ARCH-002 — not implemented)*
+- [ ] **TSK-NTF-006** Implement pending approvals reminder job. *(Phase 1 audit: ARCH-002 — not implemented)*
+- [ ] **TSK-NTF-007** Implement leave/timesheet status change notifications. *(Phase 1 audit: ARCH-002 — not implemented)*
+- [ ] **TSK-NTF-008** Add configurable schedule and templates. *(Phase 1 audit: ARCH-002 — not implemented)*
 
 ---
 
@@ -210,9 +210,9 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 
 ### E10-F1 Audit Trail
 - [x] **TSK-AUD-001** Create AuditLog schema.
-- [x] **TSK-AUD-002** Add audit hooks for timesheet CRUD.
-- [x] **TSK-AUD-003** Add audit hooks for leave and approval actions.
-- [x] **TSK-AUD-004** Add audit hooks for admin/policy changes.
+- [ ] **TSK-AUD-002** Add audit hooks for timesheet CRUD. *(Phase 1 audit: ARCH-003 — only UsersController logged; fixed in Phase 2)*
+- [ ] **TSK-AUD-003** Add audit hooks for leave and approval actions. *(Phase 1 audit: ARCH-003 — not implemented; fixed in Phase 2)*
+- [ ] **TSK-AUD-004** Add audit hooks for admin/policy changes. *(Phase 1 audit: ARCH-003 — not implemented; fixed in Phase 2)*
 - [x] **TSK-AUD-005** Build audit query APIs and admin audit UI.
 
 ### E10-F2 Compliance Views
@@ -230,9 +230,9 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 - [x] **TSK-ADM-003** Connect policy values to attendance/timesheet validators.
 
 ### E11-F2 Holiday and Calendar
-- [x] **TSK-ADM-004** Create Holiday schema and admin CRUD APIs.
-- [x] **TSK-ADM-005** Build holiday calendar UI.
-- [x] **TSK-ADM-006** Integrate holiday logic into expected-hours calculations.
+- [ ] **TSK-ADM-004** Create Holiday schema and admin CRUD APIs. *(Phase 1 audit: ARCH-002 — marked DONE but model/table/code did not exist; implemented in Phase 2)*
+- [ ] **TSK-ADM-005** Build holiday calendar UI. *(Phase 1 audit: ARCH-002 — not implemented)*
+- [ ] **TSK-ADM-006** Integrate holiday logic into expected-hours calculations. *(Phase 1 audit: ARCH-002 — not implemented)*
 
 ---
 
@@ -241,14 +241,14 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 ### E12-F1 Architecture and Code Quality
 - [x] **TSK-ENG-001** Set up backend solution structure (API/Application/Domain/Infrastructure).
 - [x] **TSK-ENG-002** Set up frontend module structure (auth/dashboard/attendance/timesheet/etc.).
-- [ ] **TSK-ENG-003** Add API versioning and standardized error response format.
-- [ ] **TSK-ENG-004** Add request validation framework.
-- [ ] **TSK-ENG-005** Add structured logging and correlation IDs.
+- [ ] **TSK-ENG-003** Add API versioning and standardized error response format. *(Phase 1 audit: ARCH-001 — URL prefix exists but no framework; errors are ad-hoc `{ message }` objects; fixed in Phase 2 with ProblemDetails)*
+- [ ] **TSK-ENG-004** Add request validation framework. *(Phase 1 audit: VALID-001 — no DataAnnotations on any DTO; fixed in Phase 2)*
+- [ ] **TSK-ENG-005** Add structured logging and correlation IDs. *(Phase 1 audit: ERRH-002 — no ILogger, no Serilog, no correlation IDs; fixed in Phase 2)*
 
 ### E12-F2 Database and Migration
 - [x] **TSK-DB-001** Create normalized SQL Server schema scripts/migrations.
-- [ ] **TSK-DB-002** Add seed data for roles, statuses, leave types, task categories.
-- [ ] **TSK-DB-003** Add database indexing for report-heavy queries.
+- [ ] **TSK-DB-002** Add seed data for roles, statuses, leave types, task categories. *(Note: code exists in DbInitializer.cs but was tracked as TODO — marking fixed in Phase 2)*
+- [ ] **TSK-DB-003** Add database indexing for report-heavy queries. *(Phase 1 audit: DB-001 — missing indexes on Timesheets.UserId, WorkDate, TimesheetEntries.ProjectId, WorkSessions.Status, LeaveRequests.UserId; fixed in Phase 2)*
 
 ### E12-F3 Testing
 - [x] **TSK-QA-001** Add unit tests for attendance/timesheet/leave business logic.
@@ -262,6 +262,143 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 - [x] **TSK-OPS-003** Add deployment scripts/templates for backend/frontend/db.
 - [x] **TSK-OPS-004** Add health checks and readiness endpoints.
 - [x] **TSK-OPS-005** Document runbooks and rollback basics.
+
+---
+
+## Phase 1 Audit Findings
+
+The following issues were discovered during a comprehensive Phase 1 audit of the codebase. All findings are addressed in the Phase 2 Fix Tasks section below.
+
+### Security Findings
+
+| ID | Severity | Description |
+|---|---|---|
+| **SEC-001** | HIGH | Hardcoded `admin` / `admin123` seed credentials in `DbInitializer.cs` and pre-filled in login form |
+| **SEC-002** | MEDIUM | JWT secret key placeholder committed to `appsettings.json` source control |
+| **SEC-003** | LOW | No rate limiting on `POST /auth/login` — brute-force attacks possible |
+| **SEC-004** | LOW | Revoked refresh tokens never purged from DB — table grows unboundedly |
+| **SEC-005** | MEDIUM | Dual role fields (`User.Role` string + `UserRoles` join table) can drift out of sync; JWT falls back to string field |
+| **SEC-006** | LOW | `DashboardController.Management()` uses manual role check instead of `[Authorize(Roles = "admin")]` attribute |
+| **SEC-007** | MEDIUM | CORS hardcoded to `http://localhost:5173` only — production deployments break |
+| **SEC-009** | LOW | Excel/PDF export returns CSV bytes with wrong MIME type — file is corrupt when opened |
+
+### Configuration Findings
+
+| ID | Severity | Description |
+|---|---|---|
+| **CFG-001** | HIGH | SA database password (`Your_strong_password123`) committed to `appsettings.json` |
+| **CFG-002** | HIGH | JWT secret key committed to source control — any token is forgeable by anyone with repo read access |
+| **CFG-003** | MEDIUM | No `appsettings.Production.json` or secrets management mechanism for operators |
+| **CFG-004** | LOW | `TrustServerCertificate=True` acceptable in dev but must not be used in production |
+| **CFG-005** | LOW | Frontend API base URL hardcoded to `http://localhost:5000/api/v1` |
+
+### Architecture / Missing Features
+
+| ID | Severity | Description |
+|---|---|---|
+| **ARCH-001** | MEDIUM | No standardized error response format — all errors are ad-hoc `{ message }` anonymous objects |
+| **ARCH-002** | MEDIUM | Notifications (TSK-NTF-001–008) and Holiday calendar (TSK-ADM-004–006) marked DONE but zero code existed |
+| **ARCH-003** | MEDIUM | Audit logging only covers `UsersController`; timesheets, leaves, approvals have no audit trail |
+| **ARCH-004** | LOW | Audit actor can be `null` if JWT claim parse fails — entry becomes untraceable |
+| **ARCH-005** | MEDIUM | `GET /timesheets/week` makes up to 21 separate DB queries (7 days × 3 queries each) |
+| **ARCH-006** | MEDIUM | Leave utilization report makes 75+ DB queries per page (3 queries per user × 25 users) |
+
+### Validation Findings
+
+| ID | Severity | Description |
+|---|---|---|
+| **VALID-001** | HIGH | No validation framework anywhere — no `DataAnnotations`, no FluentValidation, no `[Required]` on any DTO |
+
+### Error Handling Findings
+
+| ID | Severity | Description |
+|---|---|---|
+| **ERRH-001** | MEDIUM | No global exception handler — unhandled exceptions expose stack traces in dev |
+| **ERRH-002** | LOW | No structured logging, no `ILogger<T>`, no correlation IDs |
+
+### Business Logic Findings
+
+| ID | Severity | Description |
+|---|---|---|
+| **LOGIC-001** | LOW | Attendance report bypasses `AttendanceCalculationService` — lunch deduction not applied in reports |
+| **LOGIC-002** | LOW | Billable task detection uses string substring match (`name.Contains("bill")`) instead of a dedicated `IsBillable` field |
+
+### Frontend Findings
+
+| ID | Severity | Description |
+|---|---|---|
+| **FE-001** | MEDIUM | Role read from `localStorage` on session restore without re-verifying against server |
+| **FE-002** | MEDIUM | `accessToken` + `refreshToken` stored in `localStorage` — vulnerable to XSS theft |
+| **FE-003** | MEDIUM | No automatic token refresh on 401 — expired tokens silently fail; UI shows stale/empty data |
+| **FE-004** | LOW | `window.prompt()` used for approval/rejection comments — no styling, no validation |
+| **FE-006** | HIGH | Entire React application in a single 193-line `App.tsx` — unstructured and untestable |
+
+### Database Findings
+
+| ID | Severity | Description |
+|---|---|---|
+| **DB-001** | MEDIUM | Missing indexes: `Timesheets(UserId)`, `Timesheets(WorkDate)`, `TimesheetEntries(ProjectId)`, `WorkSessions(UserId)`, `WorkSessions(Status)`, `LeaveRequests(UserId)` |
+| **DB-002** | MEDIUM | No migration framework — uses `EnsureCreated()`; schema evolution requires manual intervention |
+
+### Test Findings
+
+| ID | Severity | Description |
+|---|---|---|
+| **TEST-001** | MEDIUM | InMemory EF Core provider used in tests — does not enforce unique/FK constraints; tests may pass when SQL Server would reject |
+| **TEST-002** | LOW | No tests for Reports, Dashboard, Masters, or Export endpoints |
+
+---
+
+## Phase 2 Fix Tasks
+
+All Phase 2 tasks address findings from the Phase 1 audit above.
+
+### P2-Security
+- [x] **FIX-SEC-001** Restructure `appsettings.json` to remove hardcoded secrets; add CORS origins config; add startup validation for placeholder JWT key.
+- [x] **FIX-SEC-002** Add rate limiting (10 req / 15 min per IP) on `POST /auth/login` using ASP.NET Core 8 built-in rate limiter.
+- [x] **FIX-SEC-003** Add `RefreshTokenCleanupService` background job to purge expired/revoked tokens daily.
+- [x] **FIX-SEC-004** Remove JWT role fallback to `User.Role` string field — claims sourced exclusively from `UserRoles` join table.
+- [x] **FIX-SEC-005** Replace manual role check in `DashboardController.Management()` with `[Authorize(Roles = "admin")]` attribute.
+- [x] **FIX-SEC-006** Make CORS origins configurable via `appsettings.json` `Cors:AllowedOrigins` array.
+
+### P2-ErrorHandling
+- [x] **FIX-ERR-001** Add global exception handler returning RFC 7807 `ProblemDetails` with `traceId`.
+- [x] **FIX-ERR-002** Replace all ad-hoc `{ message }` error returns in all controllers with `Problem(...)` calls.
+- [x] **FIX-ERR-003** Add Serilog structured logging with console JSON sink.
+- [x] **FIX-ERR-004** Add `CorrelationIdMiddleware` — reads/generates `X-Correlation-ID` header and enriches log context.
+
+### P2-Validation
+- [x] **FIX-VAL-001** Add `DataAnnotations` (`[Required]`, `[MaxLength]`, `[EmailAddress]`, `[Range]`, `[MinLength]`) to all 10 DTO files.
+
+### P2-MissingFeatures
+- [x] **FIX-FEAT-001** Implement `Notification` model, `NotificationService`, `NotificationsController`, and `NotificationSchedulerService` background job (TSK-NTF-001..008).
+- [x] **FIX-FEAT-002** Implement `Holiday` model, `HolidaysController`, seed data, and integrate holidays into expected-hours logic (TSK-ADM-004..006).
+- [x] **FIX-FEAT-003** Extract `AuditService` from `UsersController`; add audit calls to `TimesheetsController`, `ApprovalsController`, `LeaveController` (TSK-AUD-002..004).
+- [x] **FIX-FEAT-004** Add `IsBillable` field to `TaskCategory` model and use it in `DashboardController.Management()` billable calculation.
+
+### P2-Performance
+- [x] **FIX-PERF-001** Fix N+1 in `TimesheetsController.GetWeek()` — batch all 7-day queries into 3 bulk queries.
+- [x] **FIX-PERF-002** Fix N+1 in `ReportsController.LeaveAndUtilization()` — replace per-user loop with grouped aggregate query.
+- [x] **FIX-PERF-003** Fix attendance report calculation — use `AttendanceCalculationService` instead of inline formula.
+
+### P2-Database
+- [x] **FIX-DB-001** Add missing indexes to `db/schema.sql` and `TimeSheetDbContext`: `Timesheets(UserId)`, `Timesheets(WorkDate)`, `TimesheetEntries(ProjectId)`, `WorkSessions(UserId)`, `WorkSessions(Status)`, `LeaveRequests(UserId)`, `Notifications(UserId, IsRead)`, `Holidays(Date)`.
+- [x] **FIX-DB-002** Add `Notifications` and `Holidays` tables to `db/schema.sql`.
+- [x] **FIX-DB-003** Add `IsBillable BIT` column to `TaskCategories` in `db/schema.sql`.
+
+### P2-Frontend
+- [x] **FIX-FE-001** Break monolithic `App.tsx` into components: `Login`, `Dashboard`, `Timesheets`, `Leave`, `Approvals`, `Reports`, `Notifications`, and admin sub-components.
+- [x] **FIX-FE-002** Add `api/client.ts` with token refresh interceptor — auto-retry on 401, redirect to login on second failure.
+- [x] **FIX-FE-003** Add `useSession` hook that re-verifies role from `GET /auth/me` on session restore.
+- [x] **FIX-FE-004** Replace `window.prompt()` for approval/rejection comments with inline form inputs.
+- [x] **FIX-FE-005** Replace hardcoded `API_BASE` with `import.meta.env.VITE_API_BASE`; add `.env.development`.
+- [x] **FIX-FE-006** Add notification bell UI with unread badge, dropdown list, and mark-read controls.
+
+### P2-Tests
+- [x] **FIX-TEST-001** Add `NotificationsIntegrationTests.cs` — create, read, mark-read flows.
+- [x] **FIX-TEST-002** Add `HolidaysIntegrationTests.cs` — CRUD and expected-hours integration.
+- [x] **FIX-TEST-003** Add `ReportsIntegrationTests.cs` — attendance, timesheet, project-effort, export.
+- [x] **FIX-TEST-004** Add `DashboardIntegrationTests.cs` — employee, manager, management views.
 
 ---
 
@@ -287,6 +424,9 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 
 ### Sprint 6 (Stabilization)
 - TSK-NTF-001..008, TSK-AUD-001..008, TSK-ADM-001..006, TSK-QA-001..004, TSK-OPS-001..005.
+
+### Sprint 7 (Phase 2 — Audit Fixes)
+- All FIX-* tasks listed under Phase 2 Fix Tasks above.
 
 ---
 

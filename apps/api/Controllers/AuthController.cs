@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using TimeSheet.Api.Data;
 using TimeSheet.Api.Dtos;
@@ -13,12 +14,13 @@ namespace TimeSheet.Api.Controllers;
 public class AuthController(TimeSheetDbContext dbContext, IPasswordHasher passwordHasher, ITokenService tokenService, IConfiguration configuration) : ControllerBase
 {
     [HttpPost("login")]
+    [EnableRateLimiting("login")]
     public async Task<ActionResult<LoginResponse>> Login([FromBody] LoginRequest request)
     {
         var identifier = request.Identifier?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(identifier) || string.IsNullOrWhiteSpace(request.Password))
         {
-            return BadRequest(new { message = "Username/email and password are required." });
+            return Problem("Username/email and password are required.", statusCode: StatusCodes.Status400BadRequest);
         }
 
         var user = await dbContext.Users
@@ -28,10 +30,10 @@ public class AuthController(TimeSheetDbContext dbContext, IPasswordHasher passwo
 
         if (user is null || !user.IsActive || !passwordHasher.Verify(request.Password, user.PasswordHash))
         {
-            return Unauthorized(new { message = "Invalid credentials." });
+            return Problem("Invalid credentials.", statusCode: StatusCodes.Status401Unauthorized);
         }
 
-        var roleName = user.UserRoles.Select(ur => ur.Role.Name).FirstOrDefault() ?? user.Role;
+        var roleName = user.UserRoles.Select(ur => ur.Role.Name).FirstOrDefault() ?? "employee";
         var accessToken = tokenService.CreateAccessToken(user.Id, user.Username, roleName);
         var refreshToken = tokenService.CreateRefreshToken();
 
@@ -63,12 +65,12 @@ public class AuthController(TimeSheetDbContext dbContext, IPasswordHasher passwo
 
         if (savedToken is null || savedToken.IsRevoked || savedToken.ExpiresAtUtc <= DateTime.UtcNow || !savedToken.User.IsActive)
         {
-            return Unauthorized(new { message = "Invalid refresh token." });
+            return Problem("Invalid refresh token.", statusCode: StatusCodes.Status401Unauthorized);
         }
 
         savedToken.IsRevoked = true;
 
-        var roleName = savedToken.User.UserRoles.Select(ur => ur.Role.Name).FirstOrDefault() ?? savedToken.User.Role;
+        var roleName = savedToken.User.UserRoles.Select(ur => ur.Role.Name).FirstOrDefault() ?? "employee";
         var accessToken = tokenService.CreateAccessToken(savedToken.UserId, savedToken.User.Username, roleName);
         var newRefreshToken = tokenService.CreateRefreshToken();
 
@@ -118,6 +120,8 @@ public class AuthController(TimeSheetDbContext dbContext, IPasswordHasher passwo
             .Include(u => u.Department)
             .Include(u => u.WorkPolicy)
             .Include(u => u.Manager)
+            .Include(u => u.UserRoles)
+            .ThenInclude(ur => ur.Role)
             .SingleOrDefaultAsync(u => u.Id == userId);
 
         if (user is null)
@@ -125,12 +129,14 @@ public class AuthController(TimeSheetDbContext dbContext, IPasswordHasher passwo
             return NotFound();
         }
 
+        var roleName = user.UserRoles.Select(ur => ur.Role.Name).FirstOrDefault() ?? "employee";
+
         return Ok(new UserResponse(
             user.Id,
             user.Username,
             user.Email,
             user.EmployeeId,
-            user.Role,
+            roleName,
             user.IsActive,
             user.DepartmentId,
             user.Department?.Name,

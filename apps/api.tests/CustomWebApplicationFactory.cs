@@ -16,7 +16,19 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
         builder.UseEnvironment("Development");
         builder.ConfigureServices(services =>
         {
+            // Remove DbContextOptions singleton
             services.RemoveAll<DbContextOptions<TimeSheetDbContext>>();
+
+            // Remove IDbContextOptionsConfiguration<TimeSheetDbContext> — these carry the SQL Server
+            // provider registration added by AddDbContext in Program.cs (EF Core 9 dual-provider check)
+            var efConfigDescriptors = services
+                .Where(d =>
+                    d.ServiceType.IsGenericType &&
+                    d.ServiceType.Name.StartsWith("IDbContextOptionsConfiguration") &&
+                    d.ServiceType.GenericTypeArguments.Length == 1 &&
+                    d.ServiceType.GenericTypeArguments[0] == typeof(TimeSheetDbContext))
+                .ToList();
+            foreach (var d in efConfigDescriptors) services.Remove(d);
 
             services.AddDbContext<TimeSheetDbContext>(options =>
                 options.UseInMemoryDatabase(_databaseName));

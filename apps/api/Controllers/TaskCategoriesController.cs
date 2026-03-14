@@ -18,7 +18,7 @@ public class TaskCategoriesController(TimeSheetDbContext dbContext) : Controller
         var categories = await dbContext.TaskCategories.AsNoTracking()
             .Where(c => c.IsActive)
             .OrderBy(c => c.Name)
-            .Select(c => new TaskCategoryResponse(c.Id, c.Name, c.IsActive))
+            .Select(c => new TaskCategoryResponse(c.Id, c.Name, c.IsActive, c.IsBillable))
             .ToListAsync();
 
         return Ok(categories);
@@ -30,7 +30,7 @@ public class TaskCategoriesController(TimeSheetDbContext dbContext) : Controller
     {
         var categories = await dbContext.TaskCategories.AsNoTracking()
             .OrderBy(c => c.Name)
-            .Select(c => new TaskCategoryResponse(c.Id, c.Name, c.IsActive))
+            .Select(c => new TaskCategoryResponse(c.Id, c.Name, c.IsActive, c.IsBillable))
             .ToListAsync();
 
         return Ok(categories);
@@ -49,13 +49,14 @@ public class TaskCategoriesController(TimeSheetDbContext dbContext) : Controller
         {
             Id = Guid.NewGuid(),
             Name = request.Name.Trim(),
-            IsActive = request.IsActive
+            IsActive = request.IsActive,
+            IsBillable = request.IsBillable
         };
 
         dbContext.TaskCategories.Add(category);
         await dbContext.SaveChangesAsync();
 
-        return Ok(new TaskCategoryResponse(category.Id, category.Name, category.IsActive));
+        return Ok(new TaskCategoryResponse(category.Id, category.Name, category.IsActive, category.IsBillable));
     }
 
     [Authorize(Roles = "admin")]
@@ -76,6 +77,7 @@ public class TaskCategoriesController(TimeSheetDbContext dbContext) : Controller
 
         category.Name = request.Name.Trim();
         category.IsActive = request.IsActive;
+        category.IsBillable = request.IsBillable;
         await dbContext.SaveChangesAsync();
         return NoContent();
     }

@@ -1,11 +1,13 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace TimeSheet.Api.Dtos;
 
 public record UpsertUserRequest(
-    string Username,
-    string Email,
-    string EmployeeId,
-    string Password,
-    string Role,
+    [Required][MaxLength(100)] string Username,
+    [Required][EmailAddress][MaxLength(200)] string Email,
+    [Required][MaxLength(50)] string EmployeeId,
+    [Required][MinLength(8)] string Password,
+    [Required] string Role,
     bool IsActive,
     Guid? DepartmentId,
     Guid? WorkPolicyId,
@@ -13,10 +15,10 @@ public record UpsertUserRequest(
 );
 
 public record UpdateUserRequest(
-    string Username,
-    string Email,
-    string EmployeeId,
-    string Role,
+    [Required][MaxLength(100)] string Username,
+    [Required][EmailAddress][MaxLength(200)] string Email,
+    [Required][MaxLength(50)] string EmployeeId,
+    [Required] string Role,
     bool IsActive,
     Guid? DepartmentId,
     Guid? WorkPolicyId,
@@ -39,7 +41,7 @@ public record UserResponse(
 );
 
 public record SetManagerRequest(Guid ManagerId);
-public record AssignRoleRequest(string RoleName);
+public record AssignRoleRequest([Required] string RoleName);
 
 public record RoleResponse(Guid Id, string Name);
 

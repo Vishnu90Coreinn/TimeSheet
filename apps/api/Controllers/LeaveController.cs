@@ -5,13 +5,14 @@ using Microsoft.EntityFrameworkCore;
 using TimeSheet.Api.Data;
 using TimeSheet.Api.Dtos;
 using TimeSheet.Api.Models;
+using TimeSheet.Api.Services;
 
 namespace TimeSheet.Api.Controllers;
 
 [ApiController]
 [Authorize]
 [Route("api/v1/leave")]
-public class LeaveController(TimeSheetDbContext dbContext) : ControllerBase
+public class LeaveController(TimeSheetDbContext dbContext, IAuditService auditService, INotificationService notificationService) : ControllerBase
 {
     [HttpGet("types")]
     public async Task<IActionResult> GetLeaveTypes()
@@ -91,6 +92,9 @@ public class LeaveController(TimeSheetDbContext dbContext) : ControllerBase
         };
 
         dbContext.LeaveRequests.Add(leave);
+        await dbContext.SaveChangesAsync();
+
+        await auditService.WriteAsync("LeaveApplied", "LeaveRequest", leave.Id.ToString(), $"User applied leave for {leave.LeaveDate}", User);
         await dbContext.SaveChangesAsync();
 
         return Ok(await MapLeaveResponse(leave.Id));
@@ -210,6 +214,11 @@ public class LeaveController(TimeSheetDbContext dbContext) : ControllerBase
         leave.ReviewerComment = request.Comment?.Trim();
         leave.ReviewedAtUtc = DateTime.UtcNow;
 
+        await dbContext.SaveChangesAsync();
+
+        await auditService.WriteAsync(request.Approve ? "LeaveApproved" : "LeaveRejected", "LeaveRequest", leave.Id.ToString(), $"Manager reviewed leave for {leave.LeaveDate}", User);
+        await notificationService.CreateAsync(leave.UserId, "Leave Request Updated",
+            $"Your leave request for {leave.LeaveDate:yyyy-MM-dd} has been {(request.Approve ? "approved" : "rejected")}.", NotificationType.StatusChange);
         await dbContext.SaveChangesAsync();
 
         return Ok(await MapLeaveResponse(leave.Id));

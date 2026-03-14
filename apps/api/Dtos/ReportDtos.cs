@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace TimeSheet.Api.Dtos;
 
 public record ReportFilterRequest(
@@ -6,8 +8,8 @@ public record ReportFilterRequest(
     Guid? UserId,
     Guid? DepartmentId,
     Guid? ProjectId,
-    int Page = 1,
-    int PageSize = 25);
+    [Range(1, 200)] int Page = 1,
+    [Range(1, 200)] int PageSize = 25);
 
 public record PagedReportResponse<T>(
     int Page,

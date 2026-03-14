@@ -117,11 +117,9 @@ public class DashboardController(TimeSheetDbContext dbContext) : ControllerBase
     }
 
     [HttpGet("management")]
+    [Authorize(Roles = "admin")]
     public async Task<IActionResult> Management()
     {
-        var role = User.FindFirstValue(ClaimTypes.Role) ?? "employee";
-        if (!string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase)) return Forbid();
-
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var fromDate = today.AddDays(-30);
 
@@ -137,8 +135,8 @@ public class DashboardController(TimeSheetDbContext dbContext) : ControllerBase
             .ToListAsync();
         var effortByProject = effortByProjectRows.Select(x => (object)x).ToList();
 
-        var billable = await dbContext.TaskCategories.Where(c => c.Name.Contains("bill", StringComparison.OrdinalIgnoreCase)).Select(c => c.Id).ToListAsync();
-        var billableMinutes = await dbContext.TimesheetEntries.Where(x => billable.Contains(x.TaskCategoryId) && x.Timesheet.WorkDate >= fromDate).SumAsync(x => x.Minutes);
+        var billableCategoryIds = await dbContext.TaskCategories.Where(c => c.IsBillable).Select(c => c.Id).ToListAsync();
+        var billableMinutes = await dbContext.TimesheetEntries.Where(x => billableCategoryIds.Contains(x.TaskCategoryId) && x.Timesheet.WorkDate >= fromDate).SumAsync(x => x.Minutes);
         var totalMinutes = await dbContext.TimesheetEntries.Where(x => x.Timesheet.WorkDate >= fromDate).SumAsync(x => x.Minutes);
 
         var consultantVsInternal = new

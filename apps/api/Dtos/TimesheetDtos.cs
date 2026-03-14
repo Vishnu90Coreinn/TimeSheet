@@ -24,14 +24,15 @@ public record TimesheetDayResponse(
     DateOnly WorkDate,
     string Status,
     int AttendanceNetMinutes,
+    int ExpectedMinutes,
     int EnteredMinutes,
     int RemainingMinutes,
     bool HasMismatch,
     string? MismatchReason,
     IReadOnlyList<TimesheetEntryResponse> Entries);
 
-public record TimesheetWeekDayResponse(DateOnly WorkDate, string Status, int EnteredMinutes, int AttendanceNetMinutes, bool HasMismatch);
+public record TimesheetWeekDayResponse(DateOnly WorkDate, string Status, int EnteredMinutes, int AttendanceNetMinutes, int ExpectedMinutes, bool HasMismatch);
 
-public record TimesheetWeekResponse(DateOnly WeekStartDate, DateOnly WeekEndDate, int WeekEnteredMinutes, int WeekAttendanceNetMinutes, IReadOnlyList<TimesheetWeekDayResponse> Days);
+public record TimesheetWeekResponse(DateOnly WeekStartDate, DateOnly WeekEndDate, int WeekEnteredMinutes, int WeekAttendanceNetMinutes, int WeekExpectedMinutes, IReadOnlyList<TimesheetWeekDayResponse> Days);
 
 public record CopyTimesheetRequest(DateOnly SourceDate, DateOnly TargetDate);

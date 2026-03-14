@@ -121,30 +121,30 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 ## Epic E5 — Leave Management
 
 ### E5-F1 Leave Types and Requests
-- [ ] **TSK-LV-001** Create LeaveType and LeaveRequest schemas.
-- [ ] **TSK-LV-002** Implement leave type admin CRUD and seed data.
-- [ ] **TSK-LV-003** Implement apply leave API (full-day/half-day).
-- [ ] **TSK-LV-004** Prevent/flag overlapping leave requests.
-- [ ] **TSK-LV-005** Build leave apply/history UI.
+- [x] **TSK-LV-001** Create LeaveType and LeaveRequest schemas.
+- [x] **TSK-LV-002** Implement leave type admin CRUD and seed data.
+- [x] **TSK-LV-003** Implement apply leave API (full-day/half-day).
+- [x] **TSK-LV-004** Prevent/flag overlapping leave requests.
+- [x] **TSK-LV-005** Build leave apply/history UI.
 
 ### E5-F2 Leave Approval and Work Expectation
-- [ ] **TSK-LV-006** Implement manager leave approval/rejection API with comments.
-- [ ] **TSK-LV-007** Reflect approved leave in expected-hours logic.
-- [ ] **TSK-LV-008** Build manager leave approval list UI.
-- [ ] **TSK-LV-009** Add tests for full-day and half-day expectation adjustment.
+- [x] **TSK-LV-006** Implement manager leave approval/rejection API with comments.
+- [x] **TSK-LV-007** Reflect approved leave in expected-hours logic.
+- [x] **TSK-LV-008** Build manager leave approval list UI.
+- [x] **TSK-LV-009** Add tests for full-day and half-day expectation adjustment.
 
 ---
 
 ## Epic E6 — Approval Workflow
 
 ### E6-F1 Timesheet Approval Actions
-- [ ] **TSK-APR-001** Create ApprovalAction schema for audit/history.
-- [ ] **TSK-APR-002** Build manager pending timesheet list endpoint.
-- [ ] **TSK-APR-003** Implement approve action API.
-- [ ] **TSK-APR-004** Implement reject/push-back APIs with mandatory comments.
-- [ ] **TSK-APR-005** Build manager approval UI with filters and summaries.
-- [ ] **TSK-APR-006** Build approval history component for employee/manager views.
-- [ ] **TSK-APR-007** Add transition and authorization tests.
+- [x] **TSK-APR-001** Create ApprovalAction schema for audit/history.
+- [x] **TSK-APR-002** Build manager pending timesheet list endpoint.
+- [x] **TSK-APR-003** Implement approve action API.
+- [x] **TSK-APR-004** Implement reject/push-back APIs with mandatory comments.
+- [x] **TSK-APR-005** Build manager approval UI with filters and summaries.
+- [x] **TSK-APR-006** Build approval history component for employee/manager views.
+- [x] **TSK-APR-007** Add transition and authorization tests.
 
 ---
 

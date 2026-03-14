@@ -60,7 +60,61 @@ public class TimesheetIntegrationTests : IClassFixture<CustomWebApplicationFacto
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
-    private async Task<(HttpClient Client, Guid ProjectId, Guid TaskCategoryId, DateOnly WorkDate)> CreateAuthedEmployeeClient(string username)
+    [Fact]
+    public async Task Entry_RejectsProject_WhenEmployeeIsNotMember()
+    {
+        var setup = await CreateAuthedEmployeeClient("employee.ts.unauthorized-project");
+        var client = setup.Client;
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<TimeSheetDbContext>();
+            db.Projects.Add(new Project
+            {
+                Id = setup.UnassignedProjectId,
+                Name = "Unassigned project",
+                Code = $"PRJ-{Guid.NewGuid():N}"[..10],
+                IsActive = true,
+                IsArchived = false
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var response = await client.PostAsJsonAsync("/api/v1/timesheets/entries", new UpsertTimesheetEntryRequest(
+            setup.WorkDate,
+            null,
+            setup.UnassignedProjectId,
+            setup.TaskCategoryId,
+            60,
+            "should fail"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Submit_DoesNotRequireMismatchReason_WhenLowGrossSkipsLunch()
+    {
+        var setup = await CreateAuthedEmployeeClient("employee.ts.lowgross");
+        var client = setup.Client;
+
+        await client.PostAsJsonAsync("/api/v1/attendance/check-in", new CheckInRequest(DateTime.UtcNow.AddHours(-2)));
+        await client.PostAsJsonAsync("/api/v1/attendance/check-out", new CheckOutRequest(DateTime.UtcNow));
+
+        var entryResponse = await client.PostAsJsonAsync("/api/v1/timesheets/entries", new UpsertTimesheetEntryRequest(
+            setup.WorkDate,
+            null,
+            setup.ProjectId,
+            setup.TaskCategoryId,
+            120,
+            "Low gross day"));
+
+        Assert.Equal(HttpStatusCode.OK, entryResponse.StatusCode);
+
+        var submit = await client.PostAsJsonAsync("/api/v1/timesheets/submit", new SubmitTimesheetRequest(setup.WorkDate, "notes", null));
+        Assert.Equal(HttpStatusCode.OK, submit.StatusCode);
+    }
+
+    private async Task<(HttpClient Client, Guid ProjectId, Guid UnassignedProjectId, Guid TaskCategoryId, DateOnly WorkDate)> CreateAuthedEmployeeClient(string username)
     {
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<TimeSheetDbContext>();
@@ -104,6 +158,6 @@ public class TimesheetIntegrationTests : IClassFixture<CustomWebApplicationFacto
 
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", payload!.AccessToken);
 
-        return (client, project.Id, category.Id, DateOnly.FromDateTime(DateTime.UtcNow));
+        return (client, project.Id, Guid.NewGuid(), category.Id, DateOnly.FromDateTime(DateTime.UtcNow));
     }
 }

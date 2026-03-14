@@ -5,13 +5,14 @@ using Microsoft.EntityFrameworkCore;
 using TimeSheet.Api.Data;
 using TimeSheet.Api.Dtos;
 using TimeSheet.Api.Models;
+using TimeSheet.Api.Services;
 
 namespace TimeSheet.Api.Controllers;
 
 [ApiController]
 [Authorize]
 [Route("api/v1/timesheets")]
-public class TimesheetsController(TimeSheetDbContext dbContext) : ControllerBase
+public class TimesheetsController(TimeSheetDbContext dbContext, IAttendanceCalculationService attendanceCalculationService) : ControllerBase
 {
     [HttpGet("entry-options")]
     public async Task<IActionResult> GetEntryOptions()
@@ -135,10 +136,10 @@ public class TimesheetsController(TimeSheetDbContext dbContext) : ControllerBase
             return BadRequest(new { message = "Minutes must be between 1 and 1440." });
         }
 
-        var hasProject = await dbContext.Projects.AnyAsync(p => p.Id == request.ProjectId && p.IsActive && !p.IsArchived);
-        if (!hasProject)
+        var canWriteProject = await CanWriteProject(userId.Value, request.ProjectId);
+        if (!canWriteProject)
         {
-            return BadRequest(new { message = "Only active projects can be used in timesheets." });
+            return BadRequest(new { message = "Only active projects assigned to you can be used in timesheets." });
         }
 
         var hasCategory = await dbContext.TaskCategories.AnyAsync(c => c.Id == request.TaskCategoryId && c.IsActive);
@@ -394,25 +395,26 @@ public class TimesheetsController(TimeSheetDbContext dbContext) : ControllerBase
             return 0;
         }
 
-        var gross = sessions
-            .Where(s => s.CheckOutAtUtc.HasValue)
-            .Sum(s => Math.Max(0, (int)Math.Round((s.CheckOutAtUtc!.Value - s.CheckInAtUtc).TotalMinutes)));
-
-        var breaks = sessions
-            .SelectMany(s => s.Breaks)
-            .Sum(b => b.DurationMinutes > 0
-                ? b.DurationMinutes
-                : b.EndAtUtc.HasValue
-                    ? Math.Max(0, (int)Math.Round((b.EndAtUtc.Value - b.StartAtUtc).TotalMinutes))
-                    : 0);
-
-        var fixedLunch = await dbContext.Users
+        var policy = await dbContext.Users
             .AsNoTracking()
             .Where(u => u.Id == userId)
-            .Select(u => u.WorkPolicy != null ? u.WorkPolicy.FixedLunchDeductionMinutes : 45)
+            .Select(u => u.WorkPolicy)
             .SingleOrDefaultAsync();
 
-        return Math.Max(0, gross - breaks - fixedLunch);
+        return attendanceCalculationService.Calculate(sessions, policy, DateTime.UtcNow).NetMinutes;
+    }
+
+    private async Task<bool> CanWriteProject(Guid userId, Guid projectId)
+    {
+        var userRole = User.FindFirstValue(ClaimTypes.Role) ?? "employee";
+        var projects = dbContext.Projects.AsNoTracking().Where(p => p.Id == projectId && p.IsActive && !p.IsArchived);
+
+        if (!string.Equals(userRole, "admin", StringComparison.OrdinalIgnoreCase))
+        {
+            projects = projects.Where(p => p.Members.Any(m => m.UserId == userId));
+        }
+
+        return await projects.AnyAsync();
     }
 
     private async Task<IActionResult?> ValidateEditWindow(Guid userId, DateOnly workDate)

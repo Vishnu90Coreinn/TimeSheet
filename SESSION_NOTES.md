@@ -139,14 +139,12 @@ Work the following items in order of priority. Update this file and push to mast
 
 | # | Item | Details |
 |---|------|---------|
-| 1 | ~~**Holiday deduction in `GetWeek()`**~~ | ✅ **DONE (2026-03-14)** — Branch `feature/holiday-hours-and-tests`. Sets `expectedMinutes=0` for holiday dates; holidays take precedence over leave. Also fixed `MarkAllReadAsync` to use load-and-update (InMemory compatible). PR: https://github.com/Vishnu90Coreinn/TimeSheet/pull/new/feature/holiday-hours-and-tests |
-| 2 | ~~**New integration tests**~~ | ✅ **DONE (2026-03-14)** — 17 new tests: Notifications (3), Holidays (5), Reports (5), Dashboard (4). **52/52 backend tests pass.** |
-| 3 | ~~**Frontend component tests**~~ | ✅ **DONE (2026-03-14)** — Branch `test/frontend-component-tests`. Login (4), Timesheets (3), Approvals (3). **17/17 frontend tests pass.** PR: https://github.com/Vishnu90Coreinn/TimeSheet/pull/new/test/frontend-component-tests |
+| 1 | ~~**Holiday deduction in `GetWeek()`**~~ | ✅ **MERGED (2026-03-14)** — PR #32. `expectedMinutes=0` for holiday dates; `MarkAllReadAsync` InMemory fix. |
+| 2 | ~~**New integration tests**~~ | ✅ **MERGED (2026-03-14)** — PR #32. 52/52 backend tests pass. |
+| 3 | ~~**Frontend component tests**~~ | ✅ **MERGED (2026-03-14)** — PR #33. 17/17 frontend tests pass. |
 | 4 | **Manual smoke test** | Login → check-in → timesheet entry → submit → manager approve. Verify ProblemDetails on bad input, rate limit 429, notification on approval, holiday endpoint. |
 
-### Open PRs (merge into master)
-- `feature/holiday-hours-and-tests` → https://github.com/Vishnu90Coreinn/TimeSheet/pull/new/feature/holiday-hours-and-tests
-- `test/frontend-component-tests` → https://github.com/Vishnu90Coreinn/TimeSheet/pull/new/test/frontend-component-tests
+### ✅ All automated work complete. Only manual smoke test remains.
 
 ---
 

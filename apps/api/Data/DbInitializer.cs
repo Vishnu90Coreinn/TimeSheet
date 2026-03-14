@@ -42,6 +42,8 @@ public static class DbInitializer
                 LowGrossThresholdMinutes = 300,
                 SkipLunchDeductionForLowGross = true,
                 AllowManualBreakEdits = true,
+                TimesheetBackdateWindowDays = 7,
+                RequireMismatchReason = true,
                 IsActive = true
             });
         }

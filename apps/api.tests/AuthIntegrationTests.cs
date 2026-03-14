@@ -106,13 +106,13 @@ public class AuthIntegrationTests : IClassFixture<CustomWebApplicationFactory>
 
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", loginPayload!.AccessToken);
 
-        var submitResponse = await client.PostAsJsonAsync("/api/v1/timesheets/submit", new SubmitTimesheetRequest(DateOnly.FromDateTime(DateTime.UtcNow.Date), "Daily update"));
+        var submitResponse = await client.PostAsJsonAsync("/api/v1/timesheets/submit", new SubmitTimesheetRequest(DateOnly.FromDateTime(DateTime.UtcNow.Date), "Daily update", null));
 
         Assert.Equal(HttpStatusCode.Forbidden, submitResponse.StatusCode);
     }
 
     [Fact]
-    public async Task SubmitTimesheet_WhenUserIsActiveAndPersistenceNotImplemented_ReturnsNotImplemented()
+    public async Task SubmitTimesheet_WhenUserIsActive_ReturnsOk()
     {
         using var setupScope = _factory.Services.CreateScope();
         var db = setupScope.ServiceProvider.GetRequiredService<TimeSheetDbContext>();
@@ -144,8 +144,8 @@ public class AuthIntegrationTests : IClassFixture<CustomWebApplicationFactory>
 
         var submitResponse = await client.PostAsJsonAsync(
             "/api/v1/timesheets/submit",
-            new SubmitTimesheetRequest(DateOnly.FromDateTime(DateTime.UtcNow.Date), "Daily update"));
+            new SubmitTimesheetRequest(DateOnly.FromDateTime(DateTime.UtcNow.Date), "Daily update", null));
 
-        Assert.Equal(HttpStatusCode.NotImplemented, submitResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, submitResponse.StatusCode);
     }
 }

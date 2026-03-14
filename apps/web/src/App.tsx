@@ -42,9 +42,45 @@ type AttendanceDay = {
   hasAttendanceException: boolean;
 };
 
-type View = "dashboard" | "attendance" | "projects" | "categories";
+type TimesheetEntry = {
+  id: string;
+  projectId: string;
+  projectName: string;
+  taskCategoryId: string;
+  taskCategoryName: string;
+  minutes: number;
+  notes: string | null;
+};
 
-type AppRole = "admin" | "manager" | "employee";
+type TimesheetDay = {
+  timesheetId: string;
+  workDate: string;
+  status: string;
+  attendanceNetMinutes: number;
+  enteredMinutes: number;
+  remainingMinutes: number;
+  hasMismatch: boolean;
+  mismatchReason: string | null;
+  entries: TimesheetEntry[];
+};
+
+type TimesheetWeekDay = {
+  workDate: string;
+  status: string;
+  enteredMinutes: number;
+  attendanceNetMinutes: number;
+  hasMismatch: boolean;
+};
+
+type TimesheetWeek = {
+  weekStartDate: string;
+  weekEndDate: string;
+  weekEnteredMinutes: number;
+  weekAttendanceNetMinutes: number;
+  days: TimesheetWeekDay[];
+};
+
+type View = "dashboard" | "attendance" | "timesheets" | "projects" | "categories";
 
 type GuardView = View | "admin";
 
@@ -70,11 +106,20 @@ export function App() {
   const [me, setMe] = useState<User | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [categories, setCategories] = useState<TaskCategory[]>([]);
+  const [timesheetProjects, setTimesheetProjects] = useState<Project[]>([]);
+  const [timesheetCategories, setTimesheetCategories] = useState<TaskCategory[]>([]);
   const [projectForm, setProjectForm] = useState({ name: "", code: "", isActive: true });
   const [categoryForm, setCategoryForm] = useState({ name: "", isActive: true });
   const [attendance, setAttendance] = useState<AttendanceSummary | null>(null);
   const [attendanceHistory, setAttendanceHistory] = useState<AttendanceDay[]>([]);
   const [historyRange, setHistoryRange] = useState({ fromDate: "", toDate: "" });
+  const [timesheetDate, setTimesheetDate] = useState(new Date().toISOString().slice(0, 10));
+  const [timesheetDay, setTimesheetDay] = useState<TimesheetDay | null>(null);
+  const [timesheetWeek, setTimesheetWeek] = useState<TimesheetWeek | null>(null);
+  const [timesheetError, setTimesheetError] = useState("");
+  const [entryForm, setEntryForm] = useState({ entryId: "", projectId: "", taskCategoryId: "", minutes: 60, notes: "" });
+  const [submitNotes, setSubmitNotes] = useState("");
+  const [mismatchReason, setMismatchReason] = useState("");
 
   const isAdmin = canManageUsers(session?.role ?? "");
 
@@ -89,20 +134,20 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (!session) {
-      return;
-    }
+    if (!session) return;
     void loadMe();
     void loadTimesheetOptions();
     void loadAttendance();
     void loadAttendanceHistory();
+    void loadTimesheetDay(timesheetDate);
+    void loadTimesheetWeek(timesheetDate);
     if (isAdmin) {
       void loadProjectAdmin();
       void loadCategoryAdmin();
     }
   }, [session, isAdmin]);
 
-  const nav = useMemo(() => ["dashboard", "attendance", ...(isAdmin ? ["projects", "categories"] : [])] as View[], [isAdmin]);
+  const nav = useMemo(() => ["dashboard", "attendance", "timesheets", ...(isAdmin ? ["projects", "categories"] : [])] as View[], [isAdmin]);
 
   async function onLogin(e: FormEvent) {
     e.preventDefault();
@@ -117,12 +162,7 @@ export function App() {
       return;
     }
     const data = await response.json();
-    const nextSession = {
-      accessToken: data.accessToken,
-      refreshToken: data.refreshToken,
-      username: data.username,
-      role: data.role
-    };
+    const nextSession = { accessToken: data.accessToken, refreshToken: data.refreshToken, username: data.username, role: data.role };
     persistSession(nextSession);
     setSession(nextSession);
   }
@@ -135,224 +175,129 @@ export function App() {
   }
 
   async function authed(path: string, init?: RequestInit) {
-    const response = await fetch(`${API_BASE}${path}`, {
+    return fetch(`${API_BASE}${path}`, {
       ...init,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session?.accessToken}`,
-        ...(init?.headers ?? {})
-      }
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.accessToken}`, ...(init?.headers ?? {}) }
     });
-    return response;
   }
 
-  async function loadMe() {
-    const response = await authed("/auth/me");
-    if (response.ok) {
-      setMe(await response.json());
-    }
-  }
+  async function loadMe() { const r = await authed("/auth/me"); if (r.ok) setMe(await r.json()); }
 
   async function loadTimesheetOptions() {
-    await authed("/timesheets/entry-options");
-  }
-
-  async function loadProjectAdmin() {
-    const response = await authed("/projects");
-    if (response.ok) {
-      setProjects(await response.json());
+    const r = await authed("/timesheets/entry-options");
+    if (r.ok) {
+      const payload = await r.json();
+      setTimesheetProjects(payload.projects ?? []);
+      setTimesheetCategories(payload.taskCategories ?? []);
+      if (!entryForm.projectId && payload.projects?.[0]?.id) {
+        setEntryForm((p) => ({ ...p, projectId: payload.projects[0].id }));
+      }
+      if (!entryForm.taskCategoryId && payload.taskCategories?.[0]?.id) {
+        setEntryForm((p) => ({ ...p, taskCategoryId: payload.taskCategories[0].id }));
+      }
     }
   }
 
-  async function loadAttendance() {
-    const response = await authed("/attendance/summary/today");
-    if (response.ok) {
-      setAttendance(await response.json());
+  async function loadTimesheetDay(date: string) {
+    const r = await authed(`/timesheets/day?workDate=${date}`);
+    if (r.ok) {
+      setTimesheetError("");
+      setTimesheetDay(await r.json());
     }
   }
 
-  async function loadAttendanceHistory() {
-    const qs = new URLSearchParams();
-    if (historyRange.fromDate) qs.set("fromDate", historyRange.fromDate);
-    if (historyRange.toDate) qs.set("toDate", historyRange.toDate);
-    const response = await authed(`/attendance/history${qs.size > 0 ? `?${qs}` : ""}`);
-    if (response.ok) {
-      setAttendanceHistory(await response.json());
-    }
+  async function loadTimesheetWeek(date: string) {
+    const r = await authed(`/timesheets/week?anyDateInWeek=${date}`);
+    if (r.ok) setTimesheetWeek(await r.json());
   }
 
-  async function attendanceAction(path: string, body: object = {}) {
-    const response = await authed(path, { method: "POST", body: JSON.stringify(body) });
-    if (response.ok) {
-      setAttendance(await response.json());
-      await loadAttendanceHistory();
-    }
-  }
-
-  async function loadCategoryAdmin() {
-    const response = await authed("/task-categories/admin");
-    if (response.ok) {
-      setCategories(await response.json());
-    }
-  }
-
-  async function createProject(e: FormEvent) {
+  async function saveEntry(e: FormEvent) {
     e.preventDefault();
-    const response = await authed("/projects", { method: "POST", body: JSON.stringify(projectForm) });
-    if (response.ok) {
-      setProjectForm({ name: "", code: "", isActive: true });
-      await loadProjectAdmin();
-    }
-  }
-
-  async function archiveProject(id: string) {
-    const response = await authed(`/projects/${id}/archive`, { method: "POST" });
-    if (response.ok) {
-      await loadProjectAdmin();
-    }
-  }
-
-  async function createCategory(e: FormEvent) {
-    e.preventDefault();
-    const response = await authed("/task-categories", { method: "POST", body: JSON.stringify(categoryForm) });
-    if (response.ok) {
-      setCategoryForm({ name: "", isActive: true });
-      await loadCategoryAdmin();
-    }
-  }
-
-  async function toggleCategory(category: TaskCategory) {
-    const response = await authed(`/task-categories/${category.id}`, {
-      method: "PUT",
-      body: JSON.stringify({ name: category.name, isActive: !category.isActive })
+    const r = await authed("/timesheets/entries", {
+      method: "POST",
+      body: JSON.stringify({ workDate: timesheetDate, entryId: entryForm.entryId || null, projectId: entryForm.projectId, taskCategoryId: entryForm.taskCategoryId, minutes: Number(entryForm.minutes), notes: entryForm.notes || null })
     });
-    if (response.ok) {
-      await loadCategoryAdmin();
+    if (!r.ok) {
+      const payload = await r.json();
+      setTimesheetError(payload.message ?? "Unable to save timesheet entry.");
+      return;
+    }
+    setEntryForm((p) => ({ ...p, entryId: "", notes: "", minutes: 60 }));
+    setTimesheetDay(await r.json());
+    await loadTimesheetWeek(timesheetDate);
+  }
+
+  async function deleteEntry(entryId: string) {
+    const r = await authed(`/timesheets/entries/${entryId}`, { method: "DELETE" });
+    if (r.ok) {
+      setTimesheetDay(await r.json());
+      await loadTimesheetWeek(timesheetDate);
     }
   }
 
-  async function logout() {
-    localStorage.clear();
-    setSession(null);
-    setMe(null);
+  async function submitTimesheet() {
+    const r = await authed("/timesheets/submit", {
+      method: "POST",
+      body: JSON.stringify({ workDate: timesheetDate, notes: submitNotes || null, mismatchReason: mismatchReason || null })
+    });
+    if (!r.ok) {
+      const payload = await r.json();
+      setTimesheetError(payload.message ?? "Submit failed.");
+      return;
+    }
+    setTimesheetError("");
+    setTimesheetDay(await r.json());
+    await loadTimesheetWeek(timesheetDate);
   }
 
-  if (!session) {
-    return (
-      <main className="container">
-        <h1>TimeSheet Login</h1>
-        <form className="card" onSubmit={onLogin}>
-          <label>
-            Username or email
-            <input value={identifier} onChange={(e) => setIdentifier(e.target.value)} />
-          </label>
-          <label>
-            Password
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-          </label>
-          <button type="submit">Sign in</button>
-          {error && <p className="error">{error}</p>}
-        </form>
-      </main>
-    );
+  async function copyPreviousDay() {
+    const target = new Date(timesheetDate);
+    const source = new Date(timesheetDate);
+    source.setDate(source.getDate() - 1);
+    const r = await authed("/timesheets/copy", {
+      method: "POST",
+      body: JSON.stringify({ sourceDate: source.toISOString().slice(0, 10), targetDate: target.toISOString().slice(0, 10) })
+    });
+    if (r.ok) {
+      setTimesheetDay(await r.json());
+      await loadTimesheetWeek(timesheetDate);
+    }
   }
+
+  async function loadProjectAdmin() { const r = await authed("/projects"); if (r.ok) setProjects(await r.json()); }
+  async function loadAttendance() { const r = await authed("/attendance/summary/today"); if (r.ok) setAttendance(await r.json()); }
+  async function loadAttendanceHistory() {
+    const qs = new URLSearchParams(); if (historyRange.fromDate) qs.set("fromDate", historyRange.fromDate); if (historyRange.toDate) qs.set("toDate", historyRange.toDate);
+    const r = await authed(`/attendance/history${qs.size > 0 ? `?${qs}` : ""}`); if (r.ok) setAttendanceHistory(await r.json());
+  }
+  async function attendanceAction(path: string, body: object = {}) { const r = await authed(path, { method: "POST", body: JSON.stringify(body) }); if (r.ok) { setAttendance(await r.json()); await loadAttendanceHistory(); } }
+  async function loadCategoryAdmin() { const r = await authed("/task-categories/admin"); if (r.ok) setCategories(await r.json()); }
+  async function createProject(e: FormEvent) { e.preventDefault(); const r = await authed("/projects", { method: "POST", body: JSON.stringify(projectForm) }); if (r.ok) { setProjectForm({ name: "", code: "", isActive: true }); await loadProjectAdmin(); } }
+  async function archiveProject(id: string) { const r = await authed(`/projects/${id}/archive`, { method: "POST" }); if (r.ok) await loadProjectAdmin(); }
+  async function createCategory(e: FormEvent) { e.preventDefault(); const r = await authed("/task-categories", { method: "POST", body: JSON.stringify(categoryForm) }); if (r.ok) { setCategoryForm({ name: "", isActive: true }); await loadCategoryAdmin(); } }
+  async function toggleCategory(category: TaskCategory) { const r = await authed(`/task-categories/${category.id}`, { method: "PUT", body: JSON.stringify({ name: category.name, isActive: !category.isActive }) }); if (r.ok) await loadCategoryAdmin(); }
+  async function logout() { localStorage.clear(); setSession(null); setMe(null); }
+
+  if (!session) return <main className="container"><h1>TimeSheet Login</h1><form className="card" onSubmit={onLogin}><label>Username or email<input value={identifier} onChange={(e) => setIdentifier(e.target.value)} /></label><label>Password<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} /></label><button type="submit">Sign in</button>{error && <p className="error">{error}</p>}</form></main>;
 
   return (
     <main className="container">
-      <div className="actions wrap">
-        {nav.map((v) => (
-          <button key={v} onClick={() => setView(v)}>
-            {v}
-          </button>
-        ))}
-        <button onClick={() => void logout()}>Logout</button>
-      </div>
+      <div className="actions wrap">{nav.map((v) => <button key={v} onClick={() => setView(v)}>{v}</button>)}<button onClick={() => void logout()}>Logout</button></div>
 
-      {view === "dashboard" && (
-        <section>
-          <h2>Dashboard</h2>
-          <p>Welcome {me?.username ?? session.username}</p>
-          <p>Role: {session.role}</p>
-          {!isAdmin && <p>Role-based guard active: admin modules are hidden.</p>}
-        </section>
-      )}
+      {view === "dashboard" && <section><h2>Dashboard</h2><p>Welcome {me?.username ?? session.username}</p><p>Role: {session.role}</p>{!isAdmin && <p>Role-based guard active: admin modules are hidden.</p>}</section>}
 
-      {view === "attendance" && (
-        <section>
-          <h2>Attendance</h2>
-          <div className="card">
-            <p>Status: {attendance?.status ?? "not-started"}</p>
-            <p>
-              Gross/Break/Lunch/Net: {attendance?.grossMinutes ?? 0} / {attendance?.breakMinutes ?? 0} / {attendance?.fixedLunchMinutes ?? 0} / {attendance?.netMinutes ?? 0} mins
-            </p>
-            {attendance?.hasAttendanceException && <p className="error">Attendance exception detected (missing check-out).</p>}
-            <div className="actions wrap">
-              <button onClick={() => void attendanceAction("/attendance/check-in")}>Check In</button>
-              <button onClick={() => void attendanceAction("/attendance/check-out")}>Check Out</button>
-              <button onClick={() => void attendanceAction("/attendance/breaks/start")}>Start Break</button>
-              <button onClick={() => void attendanceAction("/attendance/breaks/end")}>End Break</button>
-            </div>
-          </div>
+      {view === "attendance" && <section><h2>Attendance</h2><div className="card"><p>Status: {attendance?.status ?? "not-started"}</p><p>Gross/Break/Lunch/Net: {attendance?.grossMinutes ?? 0} / {attendance?.breakMinutes ?? 0} / {attendance?.fixedLunchMinutes ?? 0} / {attendance?.netMinutes ?? 0} mins</p>{attendance?.hasAttendanceException && <p className="error">Attendance exception detected (missing check-out).</p>}<div className="actions wrap"><button onClick={() => void attendanceAction("/attendance/check-in")}>Check In</button><button onClick={() => void attendanceAction("/attendance/check-out")}>Check Out</button><button onClick={() => void attendanceAction("/attendance/breaks/start")}>Start Break</button><button onClick={() => void attendanceAction("/attendance/breaks/end")}>End Break</button></div></div><h3>Attendance History</h3><form className="actions wrap" onSubmit={(e) => { e.preventDefault(); void loadAttendanceHistory(); }}><input type="date" value={historyRange.fromDate} onChange={(e) => setHistoryRange((p) => ({ ...p, fromDate: e.target.value }))} /><input type="date" value={historyRange.toDate} onChange={(e) => setHistoryRange((p) => ({ ...p, toDate: e.target.value }))} /><button type="submit">Apply</button></form><ul>{attendanceHistory.map((day) => <li key={day.workDate}>{day.workDate}: sessions {day.sessionCount}, gross {day.grossMinutes}m, breaks {day.breakMinutes}m, net {day.netMinutes}m{day.hasAttendanceException ? " (exception)" : ""}</li>)}</ul></section>}
 
-          <h3>Attendance History</h3>
-          <form
-            className="actions wrap"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void loadAttendanceHistory();
-            }}
-          >
-            <input type="date" value={historyRange.fromDate} onChange={(e) => setHistoryRange((p) => ({ ...p, fromDate: e.target.value }))} />
-            <input type="date" value={historyRange.toDate} onChange={(e) => setHistoryRange((p) => ({ ...p, toDate: e.target.value }))} />
-            <button type="submit">Apply</button>
-          </form>
-          <ul>
-            {attendanceHistory.map((day) => (
-              <li key={day.workDate}>
-                {day.workDate}: sessions {day.sessionCount}, gross {day.grossMinutes}m, breaks {day.breakMinutes}m, net {day.netMinutes}m
-                {day.hasAttendanceException ? " (exception)" : ""}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      {view === "timesheets" && <section><h2>Timesheets</h2><div className="card"><div className="actions wrap"><label>Work Date <input type="date" value={timesheetDate} onChange={(e) => { setTimesheetDate(e.target.value); void loadTimesheetDay(e.target.value); void loadTimesheetWeek(e.target.value); }} /></label><button onClick={() => void copyPreviousDay()}>Copy Previous Day</button></div><p>Status: {timesheetDay?.status ?? "draft"}</p><p>Attendance vs Entered vs Remaining: {timesheetDay?.attendanceNetMinutes ?? 0} / {timesheetDay?.enteredMinutes ?? 0} / {timesheetDay?.remainingMinutes ?? 0} mins</p>{timesheetDay?.hasMismatch && <p className="error">Mismatch detected: attendance and entered totals differ.</p>}{timesheetError && <p className="error">{timesheetError}</p>}</div>
+        <h3>Day Entries</h3>
+        <form className="card" onSubmit={saveEntry}><div className="actions wrap"><select value={entryForm.projectId} onChange={(e) => setEntryForm((p) => ({ ...p, projectId: e.target.value }))}>{timesheetProjects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select><select value={entryForm.taskCategoryId} onChange={(e) => setEntryForm((p) => ({ ...p, taskCategoryId: e.target.value }))}>{timesheetCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select><input type="number" min={1} max={1440} value={entryForm.minutes} onChange={(e) => setEntryForm((p) => ({ ...p, minutes: Number(e.target.value) }))} /><input placeholder="Notes" value={entryForm.notes} onChange={(e) => setEntryForm((p) => ({ ...p, notes: e.target.value }))} /><button type="submit">{entryForm.entryId ? "Update" : "Add"} Entry</button></div></form>
+        <ul>{timesheetDay?.entries.map((entry) => <li key={entry.id}>{entry.projectName} / {entry.taskCategoryName}: {entry.minutes} mins {entry.notes ? `- ${entry.notes}` : ""}<button onClick={() => setEntryForm({ entryId: entry.id, projectId: entry.projectId, taskCategoryId: entry.taskCategoryId, minutes: entry.minutes, notes: entry.notes ?? "" })}>Edit</button><button onClick={() => void deleteEntry(entry.id)}>Delete</button></li>)}</ul>
+        <div className="card"><h3>Submit Day</h3><textarea placeholder="Submission notes" value={submitNotes} onChange={(e) => setSubmitNotes(e.target.value)} /><textarea placeholder="Mismatch reason (required when totals differ)" value={mismatchReason} onChange={(e) => setMismatchReason(e.target.value)} /><button onClick={() => void submitTimesheet()}>Submit Timesheet</button></div>
+        <div className="card"><h3>Weekly Summary ({timesheetWeek?.weekStartDate} to {timesheetWeek?.weekEndDate})</h3><p>Total Entered / Attendance: {timesheetWeek?.weekEnteredMinutes ?? 0} / {timesheetWeek?.weekAttendanceNetMinutes ?? 0} mins</p><ul>{timesheetWeek?.days.map((day) => <li key={day.workDate}>{day.workDate}: {day.status}, entered {day.enteredMinutes}m vs attendance {day.attendanceNetMinutes}m{day.hasMismatch ? " (mismatch)" : ""}</li>)}</ul></div>
+      </section>}
 
-      {view === "projects" && isAdmin && (
-        <section>
-          <h2>Project Admin</h2>
-          <form className="actions" onSubmit={createProject}>
-            <input placeholder="Name" value={projectForm.name} onChange={(e) => setProjectForm((p) => ({ ...p, name: e.target.value }))} />
-            <input placeholder="Code" value={projectForm.code} onChange={(e) => setProjectForm((p) => ({ ...p, code: e.target.value }))} />
-            <button type="submit">Create</button>
-          </form>
-          <ul>
-            {projects.map((project) => (
-              <li key={project.id}>
-                {project.name} ({project.code}) - {project.isArchived ? "archived" : project.isActive ? "active" : "inactive"}
-                {!project.isArchived && <button onClick={() => void archiveProject(project.id)}>Archive</button>}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {view === "categories" && isAdmin && (
-        <section>
-          <h2>Task Category Admin</h2>
-          <form className="actions" onSubmit={createCategory}>
-            <input placeholder="Name" value={categoryForm.name} onChange={(e) => setCategoryForm((p) => ({ ...p, name: e.target.value }))} />
-            <button type="submit">Create</button>
-          </form>
-          <ul>
-            {categories.map((category) => (
-              <li key={category.id}>
-                {category.name} ({category.isActive ? "active" : "inactive"})
-                <button onClick={() => void toggleCategory(category)}>Toggle status</button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      {view === "projects" && isAdmin && <section><h2>Project Admin</h2><form className="actions" onSubmit={createProject}><input placeholder="Name" value={projectForm.name} onChange={(e) => setProjectForm((p) => ({ ...p, name: e.target.value }))} /><input placeholder="Code" value={projectForm.code} onChange={(e) => setProjectForm((p) => ({ ...p, code: e.target.value }))} /><button type="submit">Create</button></form><ul>{projects.map((project) => <li key={project.id}>{project.name} ({project.code}) - {project.isArchived ? "archived" : project.isActive ? "active" : "inactive"}{!project.isArchived && <button onClick={() => void archiveProject(project.id)}>Archive</button>}</li>)}</ul></section>}
+      {view === "categories" && isAdmin && <section><h2>Task Category Admin</h2><form className="actions" onSubmit={createCategory}><input placeholder="Name" value={categoryForm.name} onChange={(e) => setCategoryForm((p) => ({ ...p, name: e.target.value }))} /><button type="submit">Create</button></form><ul>{categories.map((category) => <li key={category.id}>{category.name} ({category.isActive ? "active" : "inactive"})<button onClick={() => void toggleCategory(category)}>Toggle status</button></li>)}</ul></section>}
     </main>
   );
 }

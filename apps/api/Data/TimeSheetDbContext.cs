@@ -17,6 +17,8 @@ public class TimeSheetDbContext(DbContextOptions<TimeSheetDbContext> options) : 
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<WorkSession> WorkSessions => Set<WorkSession>();
     public DbSet<BreakEntry> BreakEntries => Set<BreakEntry>();
+    public DbSet<Timesheet> Timesheets => Set<Timesheet>();
+    public DbSet<TimesheetEntry> TimesheetEntries => Set<TimesheetEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -110,6 +112,50 @@ public class TimeSheetDbContext(DbContextOptions<TimeSheetDbContext> options) : 
                 .WithMany(ws => ws.Breaks)
                 .HasForeignKey(x => x.WorkSessionId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Timesheet>(entity =>
+        {
+            entity.ToTable("Timesheets");
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => new { x.UserId, x.WorkDate }).IsUnique();
+            entity.Property(x => x.Status).HasConversion<int>();
+            entity.Property(x => x.SubmissionNotes).HasMaxLength(2000);
+            entity.Property(x => x.MismatchReason).HasMaxLength(1000);
+            entity.Property(x => x.ManagerComment).HasMaxLength(1000);
+
+            entity.HasOne(x => x.User)
+                .WithMany(x => x.Timesheets)
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(x => x.ApprovedByUser)
+                .WithMany()
+                .HasForeignKey(x => x.ApprovedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<TimesheetEntry>(entity =>
+        {
+            entity.ToTable("TimesheetEntries");
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => x.TimesheetId);
+            entity.Property(x => x.Notes).HasMaxLength(1000);
+
+            entity.HasOne(x => x.Timesheet)
+                .WithMany(x => x.Entries)
+                .HasForeignKey(x => x.TimesheetId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(x => x.Project)
+                .WithMany()
+                .HasForeignKey(x => x.ProjectId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(x => x.TaskCategory)
+                .WithMany()
+                .HasForeignKey(x => x.TaskCategoryId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<AuditLog>(entity =>

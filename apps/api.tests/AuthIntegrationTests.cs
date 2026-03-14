@@ -112,7 +112,7 @@ public class AuthIntegrationTests : IClassFixture<CustomWebApplicationFactory>
     }
 
     [Fact]
-    public async Task SubmitTimesheet_WhenUserIsActiveAndPersistenceNotImplemented_ReturnsNotImplemented()
+    public async Task SubmitTimesheet_WhenUserIsActive_ReturnsOk()
     {
         using var setupScope = _factory.Services.CreateScope();
         var db = setupScope.ServiceProvider.GetRequiredService<TimeSheetDbContext>();
@@ -146,6 +146,6 @@ public class AuthIntegrationTests : IClassFixture<CustomWebApplicationFactory>
             "/api/v1/timesheets/submit",
             new SubmitTimesheetRequest(DateOnly.FromDateTime(DateTime.UtcNow.Date), "Daily update", null));
 
-        Assert.Equal(HttpStatusCode.NotImplemented, submitResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, submitResponse.StatusCode);
     }
 }

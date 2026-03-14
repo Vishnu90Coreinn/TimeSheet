@@ -10,8 +10,9 @@ type ApprovalAction = { id: string; managerUsername: string; action: string; com
 type TimesheetDay = { timesheetId: string; workDate: string; status: string; attendanceNetMinutes: number; expectedMinutes: number; enteredMinutes: number; remainingMinutes: number; hasMismatch: boolean; entries: { id: string; projectId: string; taskCategoryId: string; projectName: string; taskCategoryName: string; minutes: number; notes: string | null }[] };
 type User = { id: string; username: string; role: string };
 
-type View = "dashboard" | "timesheets" | "leave" | "approvals" | "projects" | "categories";
+type View = "dashboard" | "reports" | "timesheets" | "leave" | "approvals" | "projects" | "categories";
 
+type ReportKey = "attendance-summary" | "timesheet-summary" | "project-effort" | "leave-utilization";
 
 export function hasViewAccess(role: string, view: View | "admin"): boolean {
   if (view === "admin" || view === "projects" || view === "categories") return role === "admin";
@@ -32,6 +33,10 @@ export function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [me, setMe] = useState<User | null>(null);
   const [view, setView] = useState<View>("dashboard");
+
+  const [dashboardData, setDashboardData] = useState<Record<string, unknown> | null>(null);
+  const [reportKey, setReportKey] = useState<ReportKey>("attendance-summary");
+  const [reportRows, setReportRows] = useState<Record<string, unknown>[]>([]);
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [categories, setCategories] = useState<TaskCategory[]>([]);
@@ -56,7 +61,7 @@ export function App() {
   const isManager = session?.role === "manager" || isAdmin;
 
   const nav = useMemo(
-    () => ["dashboard", "timesheets", "leave", ...(isManager ? ["approvals"] : []), ...(isAdmin ? ["projects", "categories"] : [])] as View[],
+    () => ["dashboard", "reports", "timesheets", "leave", ...(isManager ? ["approvals"] : []), ...(isAdmin ? ["projects", "categories"] : [])] as View[],
     [isAdmin, isManager]
   );
 
@@ -75,6 +80,8 @@ export function App() {
     void loadTimesheetDay(timesheetDate);
     void loadLeaveTypes();
     void loadMyLeaves();
+    void loadDashboard();
+    void loadReport(reportKey);
     if (isManager) {
       void loadPendingLeaves();
       void loadPendingApprovals();
@@ -101,6 +108,31 @@ export function App() {
   }
 
   async function loadMe() { const r = await authed("/users/me"); if (r.ok) setMe(await r.json()); }
+  async function loadDashboard() {
+    const path = isAdmin ? "/dashboard/management" : isManager ? "/dashboard/manager" : "/dashboard/employee";
+    const r = await authed(path);
+    if (r.ok) setDashboardData(await r.json());
+  }
+
+  async function loadReport(nextKey: ReportKey) {
+    const r = await authed(`/reports/${nextKey}`);
+    if (!r.ok) return;
+    const d = await r.json();
+    setReportRows(d.items ?? []);
+  }
+
+  async function exportReport(format: "csv" | "excel" | "pdf") {
+    const r = await authed(`/reports/${reportKey}/export?format=${format}`);
+    if (!r.ok) return;
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${reportKey}.${format === "excel" ? "xlsx" : format}`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function loadTimesheetOptions() {
     const r = await authed("/timesheets/entry-options");
     if (!r.ok) return;
@@ -110,53 +142,22 @@ export function App() {
     if (d.taskCategories.length > 0) setEntryForm((p) => ({ ...p, taskCategoryId: p.taskCategoryId || d.taskCategories[0].id }));
   }
   async function loadTimesheetDay(date: string) { const r = await authed(`/timesheets/day?workDate=${date}`); if (r.ok) setTimesheetDay(await r.json()); }
-
-  async function saveEntry(e: FormEvent) {
-    e.preventDefault();
-    const r = await authed("/timesheets/entries", { method: "POST", body: JSON.stringify({ workDate: timesheetDate, entryId: null, projectId: entryForm.projectId, taskCategoryId: entryForm.taskCategoryId, minutes: entryForm.minutes, notes: entryForm.notes }) });
-    if (r.ok) setTimesheetDay(await r.json());
-  }
-
-  async function submitTimesheet() {
-    const r = await authed("/timesheets/submit", { method: "POST", body: JSON.stringify({ workDate: timesheetDate, notes: submitNotes, mismatchReason }) });
-    if (r.ok) setTimesheetDay(await r.json());
-  }
+  async function saveEntry(e: FormEvent) { e.preventDefault(); const r = await authed("/timesheets/entries", { method: "POST", body: JSON.stringify({ workDate: timesheetDate, entryId: null, projectId: entryForm.projectId, taskCategoryId: entryForm.taskCategoryId, minutes: entryForm.minutes, notes: entryForm.notes }) }); if (r.ok) setTimesheetDay(await r.json()); }
+  async function submitTimesheet() { const r = await authed("/timesheets/submit", { method: "POST", body: JSON.stringify({ workDate: timesheetDate, notes: submitNotes, mismatchReason }) }); if (r.ok) setTimesheetDay(await r.json()); }
 
   async function loadLeaveTypes() { const r = await authed("/leave/types"); if (r.ok) { const d = await r.json(); setLeaveTypes(d); if (d.length > 0) setLeaveForm((p) => ({ ...p, leaveTypeId: p.leaveTypeId || d[0].id })); } }
   async function loadMyLeaves() { const r = await authed("/leave/requests/my"); if (r.ok) setMyLeaves(await r.json()); }
   async function loadPendingLeaves() { const r = await authed("/leave/requests/pending"); if (r.ok) setPendingLeaves(await r.json()); }
-
-  async function applyLeave(e: FormEvent) {
-    e.preventDefault();
-    const r = await authed("/leave/requests", { method: "POST", body: JSON.stringify(leaveForm) });
-    if (r.ok) { await loadMyLeaves(); if (isManager) await loadPendingLeaves(); }
-  }
-
-  async function reviewLeave(id: string, approve: boolean) {
-    const comment = !approve ? prompt("Rejection comment") ?? "" : "";
-    const r = await authed(`/leave/requests/${id}/review`, { method: "POST", body: JSON.stringify({ approve, comment }) });
-    if (r.ok) await loadPendingLeaves();
-  }
-
-  async function createLeaveType(e: FormEvent) {
-    e.preventDefault();
-    const r = await authed("/leave/types", { method: "POST", body: JSON.stringify(leaveTypeForm) });
-    if (r.ok) { setLeaveTypeForm({ name: "", isActive: true }); await loadLeaveTypes(); }
-  }
+  async function applyLeave(e: FormEvent) { e.preventDefault(); const r = await authed("/leave/requests", { method: "POST", body: JSON.stringify(leaveForm) }); if (r.ok) { await loadMyLeaves(); if (isManager) await loadPendingLeaves(); } }
+  async function reviewLeave(id: string, approve: boolean) { const comment = !approve ? prompt("Rejection comment") ?? "" : ""; const r = await authed(`/leave/requests/${id}/review`, { method: "POST", body: JSON.stringify({ approve, comment }) }); if (r.ok) await loadPendingLeaves(); }
+  async function createLeaveType(e: FormEvent) { e.preventDefault(); const r = await authed("/leave/types", { method: "POST", body: JSON.stringify(leaveTypeForm) }); if (r.ok) { setLeaveTypeForm({ name: "", isActive: true }); await loadLeaveTypes(); } }
 
   async function loadPendingApprovals() { const r = await authed("/approvals/pending-timesheets"); if (r.ok) setPendingApprovals(await r.json()); }
   async function loadApprovalHistory(timesheetId: string) { const r = await authed(`/approvals/history/${timesheetId}`); if (r.ok) setApprovalHistory(await r.json()); }
-
-  async function takeApprovalAction(timesheetId: string, action: "approve" | "reject" | "push-back") {
-    const needsComment = action !== "approve";
-    const comment = needsComment ? prompt("Comment") ?? "" : "";
-    const r = await authed(`/approvals/timesheets/${timesheetId}/${action}`, { method: "POST", body: JSON.stringify({ comment }) });
-    if (r.ok) { await loadPendingApprovals(); await loadApprovalHistory(timesheetId); }
-  }
+  async function takeApprovalAction(timesheetId: string, action: "approve" | "reject" | "push-back") { const needsComment = action !== "approve"; const comment = needsComment ? prompt("Comment") ?? "" : ""; const r = await authed(`/approvals/timesheets/${timesheetId}/${action}`, { method: "POST", body: JSON.stringify({ comment }) }); if (r.ok) { await loadPendingApprovals(); await loadApprovalHistory(timesheetId); } }
 
   async function loadProjectAdmin() { const r = await authed("/projects"); if (r.ok) setProjects(await r.json()); }
   async function loadCategoryAdmin() { const r = await authed("/task-categories"); if (r.ok) setCategories(await r.json()); }
-
   function logout() { localStorage.clear(); setSession(null); setMe(null); }
 
   if (!session) return <main className="container"><h1>Timesheet</h1><form className="card" onSubmit={onLogin}><input value={identifier} onChange={(e) => setIdentifier(e.target.value)} /><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} /><button type="submit">Login</button>{error && <p className="error">{error}</p>}</form></main>;
@@ -164,7 +165,9 @@ export function App() {
   return <main className="container">
     <header><h1>Timesheet</h1><p>{session.username} ({session.role})</p><div className="actions wrap">{nav.map((item) => <button key={item} onClick={() => setView(item)}>{item}</button>)}<button onClick={logout}>Logout</button></div></header>
 
-    {view === "dashboard" && <section><h2>Dashboard</h2><p>Welcome {me?.username ?? session.username}</p></section>}
+    {view === "dashboard" && <section><h2>Dashboard</h2><p>Welcome {me?.username ?? session.username}</p><pre className="card">{JSON.stringify(dashboardData, null, 2)}</pre></section>}
+
+    {view === "reports" && <section><h2>Reports</h2><div className="actions wrap"><select value={reportKey} onChange={(e) => { const key = e.target.value as ReportKey; setReportKey(key); void loadReport(key); }}><option value="attendance-summary">Attendance Summary</option><option value="timesheet-summary">Timesheet Summary</option><option value="project-effort">Project Effort</option><option value="leave-utilization">Leave & Utilization</option></select><button onClick={() => void exportReport("csv")}>Export CSV</button><button onClick={() => void exportReport("excel")}>Export Excel</button><button onClick={() => void exportReport("pdf")}>Export PDF</button></div><div className="card"><table><thead><tr>{Object.keys(reportRows[0] ?? {}).map((k) => <th key={k}>{k}</th>)}</tr></thead><tbody>{reportRows.map((row, index) => <tr key={index}>{Object.entries(row).map(([k, v]) => <td key={k}>{String(v)}</td>)}</tr>)}</tbody></table></div></section>}
 
     {view === "timesheets" && <section><h2>Timesheets</h2><div className="card"><label>Work Date <input type="date" value={timesheetDate} onChange={(e) => { setTimesheetDate(e.target.value); void loadTimesheetDay(e.target.value); }} /></label><p>Status: {timesheetDay?.status}</p><p>Attendance/Expected/Entered/Remaining: {timesheetDay?.attendanceNetMinutes ?? 0}/{timesheetDay?.expectedMinutes ?? 0}/{timesheetDay?.enteredMinutes ?? 0}/{timesheetDay?.remainingMinutes ?? 0}</p></div>
       <form className="card" onSubmit={saveEntry}><div className="actions wrap"><select value={entryForm.projectId} onChange={(e) => setEntryForm((p) => ({ ...p, projectId: e.target.value }))}>{timesheetProjects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select><select value={entryForm.taskCategoryId} onChange={(e) => setEntryForm((p) => ({ ...p, taskCategoryId: e.target.value }))}>{timesheetCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select><input type="number" min={1} max={1440} value={entryForm.minutes} onChange={(e) => setEntryForm((p) => ({ ...p, minutes: Number(e.target.value) }))} /><input placeholder="Notes" value={entryForm.notes} onChange={(e) => setEntryForm((p) => ({ ...p, notes: e.target.value }))} /><button type="submit">Add Entry</button></div></form>

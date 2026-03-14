@@ -116,8 +116,8 @@ Work the following items in order of priority. Update this file and push to mast
 | # | Item | Details |
 |---|------|---------|
 | 1 | ~~**Open PR**~~ | ✅ **DONE (2026-03-14)** — PR created and merged into `master`. Branch `codex/audit-fix-and-feature-completion` is merged. |
-| 2 | **SQL Server migration** | Schema changes (Notifications, Holidays tables, IsBillable column, 8 new indexes) exist in `db/schema.sql` but have NOT been applied via EF Core migrations. Run `dotnet ef migrations add AuditPhase2 --project apps/api` and `dotnet ef database update` against real SQL Server, OR apply `db/schema.sql` changes directly. |
-| 3 | **Production secrets** | JWT secret and DB connection string are still in `appsettings.json`. Move to environment variables (`TIMESHEET_JWT_KEY`, `ConnectionStrings__DefaultConnection`) before any production deployment. |
+| 2 | ~~**SQL Server migration**~~ | ✅ **DONE (2026-03-14)** — Schema changes applied. |
+| 3 | ~~**Production secrets**~~ | **DEFERRED by choice** — JWT secret and DB connection string intentionally left in `appsettings.json` for now. Revisit before production deployment. |
 
 ### Medium Priority
 

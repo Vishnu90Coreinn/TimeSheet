@@ -37,4 +37,10 @@
 
 ## Timesheets
 - `GET /api/v1/timesheets/entry-options`
+- `GET /api/v1/timesheets/day?workDate=yyyy-MM-dd`
+- `GET /api/v1/timesheets/daily-totals?workDate=yyyy-MM-dd`
+- `GET /api/v1/timesheets/week?anyDateInWeek=yyyy-MM-dd`
+- `POST /api/v1/timesheets/entries`
+- `DELETE /api/v1/timesheets/entries/{entryId}`
+- `POST /api/v1/timesheets/copy`
 - `POST /api/v1/timesheets/submit`

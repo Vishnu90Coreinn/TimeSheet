@@ -94,27 +94,27 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 ## Epic E4 — Timesheet Management
 
 ### E4-F1 Daily Entry
-- [ ] **TSK-TS-001** Create Timesheet and TimesheetEntry schemas.
-- [ ] **TSK-TS-002** Implement create/update/delete draft entry APIs.
-- [ ] **TSK-TS-003** Implement daily totals calculation endpoint.
-- [ ] **TSK-TS-004** Implement no-future-date validation.
-- [ ] **TSK-TS-005** Implement backdated edit window based on policy.
-- [ ] **TSK-TS-006** Build daily timesheet UI with add/edit/delete rows.
-- [ ] **TSK-TS-007** Display attendance summary and entered vs remaining minutes.
+- [x] **TSK-TS-001** Create Timesheet and TimesheetEntry schemas.
+- [x] **TSK-TS-002** Implement create/update/delete draft entry APIs.
+- [x] **TSK-TS-003** Implement daily totals calculation endpoint.
+- [x] **TSK-TS-004** Implement no-future-date validation.
+- [x] **TSK-TS-005** Implement backdated edit window based on policy.
+- [x] **TSK-TS-006** Build daily timesheet UI with add/edit/delete rows.
+- [x] **TSK-TS-007** Display attendance summary and entered vs remaining minutes.
 
 ### E4-F2 Weekly View
-- [ ] **TSK-TS-008** Implement weekly aggregation API.
-- [ ] **TSK-TS-009** Build weekly grid UI with status per day.
-- [ ] **TSK-TS-010** Add week navigation within allowed limits.
-- [ ] **TSK-TS-011** Add optional copy previous day/week helper.
+- [x] **TSK-TS-008** Implement weekly aggregation API.
+- [x] **TSK-TS-009** Build weekly grid UI with status per day.
+- [x] **TSK-TS-010** Add week navigation within allowed limits.
+- [x] **TSK-TS-011** Add optional copy previous day/week helper.
 
 ### E4-F3 Validation and Submission
-- [ ] **TSK-TS-012** Implement attendance vs timesheet mismatch comparison service.
-- [ ] **TSK-TS-013** Implement mismatch reason requirement when policy enabled.
-- [ ] **TSK-TS-014** Implement draft → submitted transition API.
-- [ ] **TSK-TS-015** Lock submitted records unless rejected/pushed back/unlocked.
-- [ ] **TSK-TS-016** Implement resubmission flow and status transitions.
-- [ ] **TSK-TS-017** Add validation and workflow tests for statuses.
+- [x] **TSK-TS-012** Implement attendance vs timesheet mismatch comparison service.
+- [x] **TSK-TS-013** Implement mismatch reason requirement when policy enabled.
+- [x] **TSK-TS-014** Implement draft → submitted transition API.
+- [x] **TSK-TS-015** Lock submitted records unless rejected/pushed back/unlocked.
+- [x] **TSK-TS-016** Implement resubmission flow and status transitions.
+- [x] **TSK-TS-017** Add validation and workflow tests for statuses.
 
 ---
 

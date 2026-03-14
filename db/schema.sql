@@ -13,6 +13,12 @@ CREATE TABLE WorkPolicies (
   Id UNIQUEIDENTIFIER PRIMARY KEY,
   Name NVARCHAR(120) NOT NULL UNIQUE,
   DailyExpectedMinutes INT NOT NULL,
+  FixedLunchDeductionMinutes INT NOT NULL DEFAULT 45,
+  LowGrossThresholdMinutes INT NOT NULL DEFAULT 300,
+  SkipLunchDeductionForLowGross BIT NOT NULL DEFAULT 1,
+  AllowManualBreakEdits BIT NOT NULL DEFAULT 0,
+  TimesheetBackdateWindowDays INT NOT NULL DEFAULT 7,
+  RequireMismatchReason BIT NOT NULL DEFAULT 1,
   IsActive BIT NOT NULL
 );
 
@@ -75,3 +81,29 @@ CREATE TABLE BreakEntries (
   IsManualEdit BIT NOT NULL
 );
 CREATE INDEX IX_BreakEntries_WorkSessionId ON BreakEntries(WorkSessionId);
+
+
+CREATE TABLE Timesheets (
+  Id UNIQUEIDENTIFIER PRIMARY KEY,
+  UserId UNIQUEIDENTIFIER NOT NULL REFERENCES Users(Id),
+  WorkDate DATE NOT NULL,
+  Status INT NOT NULL,
+  SubmissionNotes NVARCHAR(2000) NULL,
+  MismatchReason NVARCHAR(1000) NULL,
+  ApprovedByUserId UNIQUEIDENTIFIER NULL REFERENCES Users(Id),
+  SubmittedAtUtc DATETIME2 NULL,
+  ApprovedAtUtc DATETIME2 NULL,
+  RejectedAtUtc DATETIME2 NULL,
+  ManagerComment NVARCHAR(1000) NULL,
+  CONSTRAINT UQ_Timesheets_UserDate UNIQUE (UserId, WorkDate)
+);
+
+CREATE TABLE TimesheetEntries (
+  Id UNIQUEIDENTIFIER PRIMARY KEY,
+  TimesheetId UNIQUEIDENTIFIER NOT NULL REFERENCES Timesheets(Id),
+  ProjectId UNIQUEIDENTIFIER NOT NULL REFERENCES Projects(Id),
+  TaskCategoryId UNIQUEIDENTIFIER NOT NULL REFERENCES TaskCategories(Id),
+  Minutes INT NOT NULL,
+  Notes NVARCHAR(1000) NULL
+);
+CREATE INDEX IX_TimesheetEntries_TimesheetId ON TimesheetEntries(TimesheetId);

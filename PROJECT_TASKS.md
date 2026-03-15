@@ -123,15 +123,26 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 ### E5-F1 Leave Types and Requests
 - [x] **TSK-LV-001** Create LeaveType and LeaveRequest schemas.
 - [x] **TSK-LV-002** Implement leave type admin CRUD and seed data.
-- [x] **TSK-LV-003** Implement apply leave API (full-day/half-day).
+- [x] **TSK-LV-003** Implement apply leave API (full-day/half-day). *(Updated in session 7: frontend now sends `fromDate`/`toDate` range — backend must be updated to accept range and expand into per-day records)*
 - [x] **TSK-LV-004** Prevent/flag overlapping leave requests.
-- [x] **TSK-LV-005** Build leave apply/history UI.
+- [x] **TSK-LV-005** Build leave apply/history UI. *(Redesigned in session 7 — see TSK-LV-015)*
 
 ### E5-F2 Leave Approval and Work Expectation
 - [x] **TSK-LV-006** Implement manager leave approval/rejection API with comments.
 - [x] **TSK-LV-007** Reflect approved leave in expected-hours logic.
 - [x] **TSK-LV-008** Build manager leave approval list UI.
 - [x] **TSK-LV-009** Add tests for full-day and half-day expectation adjustment.
+
+### E5-F3 Leave Policy and Balance *(added session 7)*
+- [ ] **TSK-LV-010** Create `LeavePolicy` + `LeavePolicyAllocation` schemas; admin CRUD APIs (`GET/POST/PUT/DELETE /leave/policies`).
+- [ ] **TSK-LV-011** Implement leave balance tracking: `GET /leave/balance/my`, `GET /leave/balance/{userId}`, `PUT /leave/balance/{userId}/{leaveTypeId}` (manual override).
+- [ ] **TSK-LV-012** Extend `POST /leave/requests` to accept `fromDate`/`toDate` date range; expand to per-day records server-side.
+- [ ] **TSK-LV-013** Implement `GET /leave/calendar?year=&month=` — return pending/approved leave dates for calendar widget.
+- [ ] **TSK-LV-014** Implement `GET /leave/team-on-leave` — return team members currently on leave or upcoming.
+- [ ] **TSK-LV-015** Implement `GET /leave/requests/my/grouped` — return history as date-range records (not per-day rows).
+- [x] **TSK-LV-016** Build Leave Policy admin UI (`Admin/LeavePolicies.tsx`) — list/create/edit policies with per-type day allocations. *(DONE session 7)*
+- [x] **TSK-LV-017** Extend Users create/edit form to assign a Leave Policy (`leavePolicyId`). *(DONE session 7)*
+- [x] **TSK-LV-018** Build Leave page PulseHQ v3.0 redesign — balance cards, date-range form, grouped history table, mini calendar sidebar, Team on Leave panel. *(DONE session 7 — graceful fallback for unimplemented APIs)*
 
 ---
 
@@ -142,9 +153,13 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 - [x] **TSK-APR-002** Build manager pending timesheet list endpoint.
 - [x] **TSK-APR-003** Implement approve action API.
 - [x] **TSK-APR-004** Implement reject/push-back APIs with mandatory comments.
-- [x] **TSK-APR-005** Build manager approval UI with filters and summaries.
+- [x] **TSK-APR-005** Build manager approval UI with filters and summaries. *(Redesigned in session 7 — see TSK-APR-008)*
 - [x] **TSK-APR-006** Build approval history component for employee/manager views.
 - [x] **TSK-APR-007** Add transition and authorization tests.
+
+### E6-F2 Approvals UI Enhancement *(added session 7)*
+- [x] **TSK-APR-008** Redesign Approvals page to PulseHQ v3.0 — KPI stat cards, tab filter (All/Timesheets/Leave), unified approval cards with colored left borders, inline reject form. *(DONE session 7)*
+- [ ] **TSK-APR-009** Implement `GET /approvals/stats` — return `approvedThisMonth`, `rejectedThisMonth`, `avgResponseHours` for KPI cards. *(Frontend ready, backend pending)*
 
 ---
 
@@ -389,10 +404,19 @@ All Phase 2 tasks address findings from the Phase 1 audit above.
 ### P2-Frontend
 - [x] **FIX-FE-001** Break monolithic `App.tsx` into components: `Login`, `Dashboard`, `Timesheets`, `Leave`, `Approvals`, `Reports`, `Notifications`, and admin sub-components.
 - [x] **FIX-FE-002** Add `api/client.ts` with token refresh interceptor — auto-retry on 401, redirect to login on second failure.
-- [x] **FIX-FE-003** Add `useSession` hook that re-verifies role from `GET /auth/me` on session restore.
+- [x] **FIX-FE-003** Add `useSession` hook — trusts localStorage directly (no `/auth/me` round-trip on refresh; tokens validated naturally by API calls).
 - [x] **FIX-FE-004** Replace `window.prompt()` for approval/rejection comments with inline form inputs.
 - [x] **FIX-FE-005** Replace hardcoded `API_BASE` with `import.meta.env.VITE_API_BASE`; add `.env.development`.
 - [x] **FIX-FE-006** Add notification bell UI with unread badge, dropdown list, and mark-read controls.
+
+### P3-UI Redesign *(session 6–7, 2026-03-16)*
+- [x] **FIX-FE-007** Install React Router v7; add URL-based navigation (`BrowserRouter`, `Routes`, `Route`); fix page-refresh redirect-to-login bug. *(session 6)*
+- [x] **FIX-FE-008** Redesign Timesheets page to PulseHQ v3.0 — two-column layout, week strip calendar, entry cards with colored left borders, dashed entry form, sidebar timer/summary/by-project. Start/end times stored as `[HH:MM-HH:MM]` prefix in notes field. *(session 6, branch: master)*
+- [x] **FIX-FE-009** Add `btn-outline-success` and `btn-outline-reject` button variants to design-system.css; apply to Approvals and Leave approve/reject actions. *(session 7)*
+- [x] **FIX-FE-010** Redesign Approvals page to PulseHQ v3.0 — KPI stat cards, tab filter, unified timesheet+leave card list, bulk approve. *(session 7, branch: master)*
+- [x] **FIX-FE-011** Redesign Leave page to PulseHQ v3.0 — balance cards, date-range form, grouped history table, mini calendar sidebar, Team on Leave panel, admin Create Leave Type, manager pending approvals. *(session 7, branch: feature/leave-policy-redesign)*
+- [x] **FIX-FE-012** Create `Admin/LeavePolicies.tsx` — list/create/edit leave policies with per-type day allocations; routed at `/leave-policies` (admin only). *(session 7, branch: feature/leave-policy-redesign)*
+- [x] **FIX-FE-013** Update `Admin/Users.tsx` to support leave policy assignment — dropdown + table column. *(session 7, branch: feature/leave-policy-redesign)*
 
 ### P2-Tests
 - [x] **FIX-TEST-001** Add `NotificationsIntegrationTests.cs` — create, read, mark-read flows.
@@ -427,6 +451,18 @@ All Phase 2 tasks address findings from the Phase 1 audit above.
 
 ### Sprint 7 (Phase 2 — Audit Fixes)
 - All FIX-* tasks listed under Phase 2 Fix Tasks above.
+
+### Sprint 8 (UI Redesign — Sessions 6–7)
+- FIX-FE-007..013 — React Router, Timesheets v3, Approvals v3, Leave v3, LeavePolicies admin.
+
+### Sprint 9 (Leave Policy — Backend, pending)
+- TSK-LV-010 — LeavePolicy + LeavePolicyAllocation schema and admin CRUD APIs.
+- TSK-LV-011 — Leave balance tracking APIs (my balance, user balance, manual override).
+- TSK-LV-012 — Extend `POST /leave/requests` for `fromDate`/`toDate` range.
+- TSK-LV-013 — `GET /leave/calendar` API for calendar dots.
+- TSK-LV-014 — `GET /leave/team-on-leave` API.
+- TSK-LV-015 — `GET /leave/requests/my/grouped` for grouped history.
+- TSK-APR-009 — `GET /approvals/stats` for KPI cards.
 
 ---
 

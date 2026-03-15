@@ -184,9 +184,8 @@ Commit `db9345d`. Complete visual overhaul from "Chrono editorial" to "Pulse Saa
 - **AttendanceWidget** — light card (white bg, indigo net strip, green/red buttons)
 - **All missing CSS classes added** — nav-item, org-switcher, sidebar-header, dashboard-grid, bar-chart, activity-list, donut-*, kpi-list, av, mb-5
 
-### Priority 1 — UI/UX Fixes (next session)
-- Client will test in browser and list issues/changes needed.
-- Next session: apply all feedback from manual testing, then commit.
+### ~~Priority 1 — UI/UX Fixes~~ ✅ DONE (session 7, 2026-03-16)
+- See Session 7 below for all redesigns completed.
 
 ### Priority 2 — DB Table Verification (manual step)
 Run in SSMS against local SQL Server — confirm all tables exist:
@@ -292,23 +291,26 @@ apps/api/
 └── appsettings.json               — UPDATED: Cors:AllowedOrigins section
 
 apps/web/src/
-├── api/client.ts                  — NEW: fetch wrapper + refresh interceptor
-├── hooks/useSession.ts            — NEW: session restore + server role verify
-├── types.ts                       — NEW: shared TypeScript types
+├── api/client.ts                  — fetch wrapper + refresh interceptor
+├── hooks/useSession.ts            — session restore from localStorage (no /auth/me round-trip)
+├── types.ts                       — shared TypeScript types (incl. Leave Policy + Balance types)
+├── styles/
+│   └── design-system.css         — UPDATED (session 7): btn-outline-success, btn-outline-reject
 ├── components/
-│   ├── Login.tsx                  — NEW
-│   ├── Dashboard.tsx              — NEW
-│   ├── Timesheets.tsx             — NEW
-│   ├── Leave.tsx                  — NEW (inline comment form)
-│   ├── Approvals.tsx              — NEW (inline comment form)
-│   ├── Reports.tsx                — NEW
-│   ├── Notifications.tsx          — NEW (component only, NOT wired to nav bell yet)
+│   ├── Login.tsx
+│   ├── Dashboard.tsx
+│   ├── Timesheets.tsx             — REWRITTEN (session 6): PulseHQ v3.0, week strip, entry cards
+│   ├── Leave.tsx                  — REWRITTEN (session 7): PulseHQ v3.0, balance cards, calendar sidebar
+│   ├── Approvals.tsx              — REWRITTEN (session 7): PulseHQ v3.0, KPI cards, tab filter
+│   ├── Reports.tsx
+│   ├── Notifications.tsx
 │   └── Admin/
-│       ├── Projects.tsx           — NEW
-│       └── Categories.tsx         — NEW
-│       (Users.tsx MISSING — not yet created)
-│       (Holidays.tsx MISSING — not yet created)
-└── App.tsx                        — UPDATED: routing shell ~60 lines
+│       ├── Projects.tsx
+│       ├── Categories.tsx
+│       ├── Users.tsx              — UPDATED (session 7): Leave Policy dropdown + table column
+│       ├── Holidays.tsx
+│       └── LeavePolicies.tsx      — NEW (session 7): create/edit leave policies with allocations
+└── App.tsx                        — UPDATED (session 6/7): React Router v7, /leave-policies route
 
 apps/api.tests/
 ├── CustomWebApplicationFactory.cs — FIXED: EF Core 9 dual-provider conflict
@@ -317,6 +319,109 @@ apps/api.tests/
 db/schema.sql                      — UPDATED: new tables, indexes, IsBillable column
 PROJECT_TASKS.md                   — UPDATED: audit findings + Phase 2 task list
 ```
+
+---
+
+---
+
+## Session 7 — Approvals, Timesheets & Leave Redesign + Leave Policy Feature (2026-03-16)
+
+### What Was Done
+
+#### Timesheets Page — PulseHQ v3.0 (branch: master, commit: `9116a0c`)
+- Full rewrite of `Timesheets.tsx` to match PulseHQ reference screenshot.
+- Two-column layout: `ts3-main` (flex: 1) + `ts3-sidebar` (280px sticky).
+- **Week strip**: 7-day grid cards with hours logged, colored progress bars, click to navigate days.
+- **Entry cards**: 3px colored left border by project index (`BORDER_COLORS`), time range parsed from `[HH:MM-HH:MM]` prefix in `notes` field.
+- **Entry form**: dashed `#a5b4fc` border, light indigo bg, project/category/duration + start/end time rows.
+- **Sidebar**: Active Timer (inline attendance check-in/out, live HH:MM:SS clock), Week Summary (from `GET /timesheets/week`), Today By Project.
+- Start/end times stored as `[HH:MM-HH:MM]` prefix in existing `notes` field — **no backend schema change needed**.
+- `Timesheets.test.tsx` updated to match new UI text. All 17 tests pass.
+
+#### Approvals Page — PulseHQ v3.0 (branch: master, commit: `b56077a`)
+- Full rewrite of `Approvals.tsx` replacing table layout with card-based layout.
+- **KPI stats row**: 4 cards — Pending (derived from data), Approved this month, Rejected this month, Avg response time (last 3 show `—` until `GET /approvals/stats` backend endpoint is built).
+- **Tab filter**: All / Timesheets / Leave — filters the unified card list.
+- **Approval cards**: colored left border (indigo for timesheets, amber for leave), avatar with colored initials, inline reject form expanding below card.
+- **Unified list**: fetches both `GET /approvals/pending-timesheets` and `GET /leave/requests/pending` and renders in one list.
+- Added `btn-outline-success` and `btn-outline-reject` to `design-system.css` — consistent outlined approve/reject buttons used in both Approvals and Leave pages.
+- `Approvals.test.tsx` updated. All 17 tests pass.
+
+#### Leave Page — PulseHQ v3.0 (branch: feature/leave-policy-redesign, commit: `bfb8b71`)
+- Full rewrite of `Leave.tsx` to two-column layout.
+- **Balance cards**: fetches `GET /leave/balance/my`; one card per leave type with remaining/total days and colored progress bar. Gracefully shows nothing on API failure.
+- **Apply form**: date-range (From/To date), Duration dropdown (Full day/Half day), Reason textarea. Submits with `{ leaveTypeId, fromDate, toDate, isHalfDay, comment }` — **new API shape required on backend**.
+- **Leave History**: fetches `GET /leave/requests/my/grouped`; falls back to `GET /leave/requests/my` per-day records if endpoint not yet implemented. Year filter (2023–2028). Columns: TYPE · DATES · DAYS · APPLIED ON · APPROVED BY · STATUS.
+- **Sidebar — Mini Calendar**: interactive month calendar with prev/next navigation. Fetches `GET /leave/calendar?year=Y&month=M` for pending/approved leave dots. Graceful fallback.
+- **Sidebar — Team on Leave**: fetches `GET /leave/team-on-leave`; shows avatar, name, date range, status pill. Hidden if API fails.
+- Manager and Admin sections preserved at bottom of main column.
+- `Leave.test.tsx` written with 27 tests.
+
+#### Admin/LeavePolicies.tsx — New Page (branch: feature/leave-policy-redesign, commit: `bfb8b71`)
+- New admin page at `/leave-policies` (admin-only, wired into AppShell nav).
+- Lists all leave policies from `GET /leave/policies`.
+- Create/Edit form: policy name + active checkbox + allocations table (one row per active leave type, days-per-year number input).
+- Policies table: NAME · ALLOCATIONS SUMMARY · STATUS · Edit/Delete actions.
+- Wired into `App.tsx` routes and `AppShell.tsx` nav under `"leave-policies"` view key.
+
+#### Admin/Users.tsx — Leave Policy Assignment (branch: feature/leave-policy-redesign, commit: `bfb8b71`)
+- Added `leavePolicies` state fetched from `GET /leave/policies`.
+- Added `leavePolicyId` to `UserForm` type, `BLANK`, `openEdit`, and save body.
+- Added Leave Policy `<select>` field in create/edit form (after Work Policy).
+- Added Leave Policy column to users table.
+
+#### Types & Routing
+- `types.ts`: Added `LeaveBalance`, `LeavePolicyAlloc`, `LeavePolicy`, `LeaveRequestGroup`, `TeamLeaveEntry`.
+- `User` type extended with `leavePolicyId: string | null` and `leavePolicyName: string | null`.
+- `View` union extended with `"leave-policies"`.
+- `App.tsx`: Added `/leave-policies` route (admin-only) and nav entry.
+- `AppShell.tsx`: Added `"leave-policies": "Leave Policies"` to `VIEW_LABELS` and nav icon.
+
+### Build & Tests
+- `npm run build` — ✅ passes, zero TypeScript errors, 329 KB JS bundle.
+- `npm run test` — ✅ 44/44 tests pass across 5 test files.
+
+### Branches & PRs
+- **master**: Timesheets v3, Approvals v3 commits (`9116a0c`, `b56077a`)
+- **feature/leave-policy-redesign**: Leave v3 + LeavePolicies + Users update (`bfb8b71`) — PR raised at https://github.com/Vishnu90Coreinn/TimeSheet/pull/new/feature/leave-policy-redesign
+
+---
+
+## Pending For Next Session
+
+### Priority 1 — Merge feature/leave-policy-redesign PR
+- Review and merge the open PR for Leave v3 + Leave Policy frontend.
+
+### Priority 2 — Backend: Leave Policy APIs (Sprint 9)
+The following backend endpoints need to be implemented for the Leave page to be fully functional:
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /leave/policies` | List leave policies |
+| `POST /leave/policies` | Create policy with allocations |
+| `PUT /leave/policies/{id}` | Update policy |
+| `DELETE /leave/policies/{id}` | Delete policy |
+| `GET /leave/balance/my` | Employee leave balance per type |
+| `GET /leave/balance/{userId}` | Admin: specific user balance |
+| `PUT /leave/balance/{userId}/{leaveTypeId}` | Admin: manual override |
+| `GET /leave/requests/my/grouped` | Grouped date-range leave history |
+| `GET /leave/calendar?year=&month=` | Leave calendar markers |
+| `GET /leave/team-on-leave` | Team members on leave |
+| `POST /leave/requests` *(modified)* | Accept `fromDate`/`toDate` instead of `leaveDate` |
+| `POST/PUT /users` *(modified)* | Accept `leavePolicyId` |
+| `GET /approvals/stats` | KPI: approved/rejected this month, avg response time |
+
+### Priority 3 — Manual Smoke Test (still pending)
+- Login → check-in → timesheet entry → submit → manager approve flow.
+- Verify ProblemDetails returned on invalid input.
+- Verify holiday endpoint (`GET /api/v1/holidays?year=2026`).
+- Verify notification bell shows unread count after approval.
+
+### Priority 4 — DB Schema Updates
+Run in SSMS after Sprint 9 backend is built:
+- Add `LeavePolicy` and `LeavePolicyAllocation` tables.
+- Add `LeaveBalance` table (or computed from requests).
+- Add `LeavePolicyId` FK column to `Users` table.
 
 ---
 

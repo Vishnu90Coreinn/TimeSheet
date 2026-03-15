@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { apiFetch, setOnSessionExpired, setTokens } from "../api/client";
+import { setOnSessionExpired, setTokens } from "../api/client";
+import { apiFetch } from "../api/client";
 import type { Session } from "../types";
 
 export function useSession() {
@@ -31,40 +32,9 @@ export function useSession() {
 
     if (accessToken && refreshToken && username && role) {
       setTokens(accessToken, refreshToken);
-      // Restore session immediately so the page doesn't flash to login
       setSession({ userId, accessToken, refreshToken, username, role });
-      setLoading(false);
-
-      // Verify with server in background to pick up role/username changes
-      apiFetch("/auth/me").then(async (r) => {
-        if (r.ok) {
-          const me = await r.json();
-          // Re-read tokens from localStorage in case apiFetch refreshed them
-          const currentAccess = localStorage.getItem("accessToken") ?? accessToken;
-          const currentRefresh = localStorage.getItem("refreshToken") ?? refreshToken;
-          const verifiedSession: Session = {
-            userId: me.id ?? userId,
-            accessToken: currentAccess,
-            refreshToken: currentRefresh,
-            username: me.username ?? username,
-            role: me.role ?? role,
-          };
-          localStorage.setItem("role", verifiedSession.role);
-          localStorage.setItem("username", verifiedSession.username);
-          setSession(verifiedSession);
-        } else if (r.status === 401) {
-          // Explicit auth failure (access token invalid and refresh also failed)
-          localStorage.clear();
-          setTokens("", "");
-          setSession(null);
-        }
-        // Any other error (5xx, 404, network) — keep the restored session
-      }).catch(() => {
-        // Network error — keep the restored session
-      });
-    } else {
-      setLoading(false);
     }
+    setLoading(false);
   }, []);
 
   const login = useCallback((s: Session) => {

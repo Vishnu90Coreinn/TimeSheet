@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { App, canManageUsers, hasViewAccess } from "./App";
 
 // Mock the API client so no real fetches happen in tests
@@ -44,15 +45,12 @@ describe("canManageUsers", () => {
 
 describe("App", () => {
   it("renders loading state", () => {
-    // localStorage is empty -> useSession shows loading briefly then shows login
-    render(<App />);
-    // App renders without crashing
+    render(<MemoryRouter><App /></MemoryRouter>);
     expect(document.body).toBeTruthy();
   });
 
   it("renders login form when not authenticated", async () => {
-    render(<App />);
-    // After loading completes, should show login (multiple "TimeSheet" elements are expected)
+    render(<MemoryRouter><App /></MemoryRouter>);
     const els = await screen.findAllByText(/Timesheet/i);
     expect(els.length).toBeGreaterThan(0);
   });

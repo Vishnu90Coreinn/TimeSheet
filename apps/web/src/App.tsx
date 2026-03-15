@@ -1,9 +1,5 @@
-/**
- * App.tsx — Updated to use AppShell (design system Step 1c).
- * All business logic (auth, routing, role guards) is unchanged.
- * The old inline header/nav is replaced by AppShell.
- */
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
+import { Navigate, Route, Routes, useNavigate, useLocation } from "react-router-dom";
 import { AppShell } from "./components/AppShell";
 import { Approvals } from "./components/Approvals";
 import { Categories } from "./components/Admin/Categories";
@@ -28,17 +24,36 @@ export function canManageUsers(role: string): boolean {
   return role === "admin";
 }
 
-export function App() {
-  const { session, loading, login, logout } = useSession();
-  const [view, setView] = useState<View>("dashboard");
+const VIEW_PATHS: Record<View, string> = {
+  dashboard:  "/dashboard",
+  timesheets: "/timesheets",
+  leave:      "/leave",
+  reports:    "/reports",
+  approvals:  "/approvals",
+  projects:   "/projects",
+  categories: "/categories",
+  users:      "/users",
+  holidays:   "/holidays",
+};
 
-  const isAdmin = session?.role === "admin";
+const PATH_VIEWS: Record<string, View> = Object.fromEntries(
+  Object.entries(VIEW_PATHS).map(([v, p]) => [p, v as View])
+);
+
+function AppRoutes() {
+  const { session, loading, login, logout } = useSession();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const isAdmin   = session?.role === "admin";
   const isManager = session?.role === "manager" || isAdmin;
 
   const nav = useMemo(
     () => ["dashboard", "timesheets", "leave", "reports", ...(isManager ? ["approvals"] : []), ...(isAdmin ? ["projects", "categories", "users", "holidays"] : [])] as View[],
     [isAdmin, isManager]
   );
+
+  const currentView: View = PATH_VIEWS[location.pathname] ?? "dashboard";
 
   if (loading) {
     return (
@@ -48,25 +63,36 @@ export function App() {
     );
   }
 
-  if (!session) return <Login onLogin={login} />;
+  if (!session) {
+    return <Login onLogin={(s) => { login(s); navigate(location.pathname === "/login" ? "/dashboard" : location.pathname); }} />;
+  }
 
   return (
     <AppShell
       session={session}
-      view={view}
+      view={currentView}
       nav={nav}
-      onNavigate={setView}
-      onLogout={logout}
+      onNavigate={(v) => navigate(VIEW_PATHS[v])}
+      onLogout={() => { logout(); navigate("/login"); }}
     >
-      {view === "dashboard"  && <Dashboard role={session.role} username={session.username} />}
-      {view === "reports"    && <Reports />}
-      {view === "timesheets" && <Timesheets />}
-      {view === "leave"      && <Leave isManager={isManager} isAdmin={isAdmin} />}
-      {view === "approvals"  && isManager && <Approvals />}
-      {view === "projects"   && isAdmin   && <Projects />}
-      {view === "categories" && isAdmin   && <Categories />}
-      {view === "users"      && isAdmin   && <Users />}
-      {view === "holidays"   && isAdmin   && <Holidays />}
+      <Routes>
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/login" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/dashboard"  element={<Dashboard role={session.role} username={session.username} />} />
+        <Route path="/timesheets" element={<Timesheets />} />
+        <Route path="/leave"      element={<Leave isManager={isManager} isAdmin={isAdmin} />} />
+        <Route path="/reports"    element={<Reports />} />
+        {isManager && <Route path="/approvals"  element={<Approvals />} />}
+        {isAdmin   && <Route path="/projects"   element={<Projects />} />}
+        {isAdmin   && <Route path="/categories" element={<Categories />} />}
+        {isAdmin   && <Route path="/users"      element={<Users />} />}
+        {isAdmin   && <Route path="/holidays"   element={<Holidays />} />}
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
     </AppShell>
   );
+}
+
+export function App() {
+  return <AppRoutes />;
 }

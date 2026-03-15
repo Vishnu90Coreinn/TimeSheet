@@ -110,6 +110,51 @@ public class ApprovalsController(TimeSheetDbContext dbContext, IAuditService aud
         return await Decide(timesheetId, ApprovalActionType.PushedBack, TimesheetStatus.Draft, request.Comment, true);
     }
 
+    [HttpGet("stats")]
+    public async Task<IActionResult> GetStats()
+    {
+        var managerId = GetUserId();
+        if (managerId is null)
+        {
+            return Unauthorized();
+        }
+
+        var now = DateTime.UtcNow;
+        var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var monthEnd = monthStart.AddMonths(1);
+
+        var monthActions = await dbContext.ApprovalActions
+            .Where(a => a.ManagerUserId == managerId.Value
+                        && a.ActionedAtUtc >= monthStart
+                        && a.ActionedAtUtc < monthEnd)
+            .ToListAsync();
+
+        var approvedThisMonth = monthActions.Count(a => a.Action == ApprovalActionType.Approved);
+        var rejectedThisMonth = monthActions.Count(a => a.Action == ApprovalActionType.Rejected);
+
+        // Avg response time (hours from submission to decision)
+        double? avgResponseHours = null;
+        var actionWithTs = await dbContext.ApprovalActions
+            .Where(a => a.ManagerUserId == managerId.Value
+                        && a.ActionedAtUtc >= monthStart
+                        && a.ActionedAtUtc < monthEnd)
+            .Join(dbContext.Timesheets, a => a.TimesheetId, t => t.Id,
+                  (a, t) => new { a.ActionedAtUtc, t.SubmittedAtUtc })
+            .Where(x => x.SubmittedAtUtc != null)
+            .ToListAsync();
+
+        if (actionWithTs.Count > 0)
+            avgResponseHours = Math.Round(
+                actionWithTs.Average(x => (x.ActionedAtUtc - x.SubmittedAtUtc!.Value).TotalHours), 1);
+
+        return Ok(new
+        {
+            approvedThisMonth,
+            rejectedThisMonth,
+            avgResponseHours
+        });
+    }
+
     private async Task<IActionResult> Decide(Guid timesheetId, ApprovalActionType actionType, TimesheetStatus nextStatus, string? comment, bool requireComment)
     {
         var managerId = GetUserId();

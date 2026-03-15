@@ -16,6 +16,9 @@ public class User
     public Guid? WorkPolicyId { get; set; }
     public WorkPolicy? WorkPolicy { get; set; }
 
+    public Guid? LeavePolicyId { get; set; }
+    public LeavePolicy? LeavePolicy { get; set; }
+
     public Guid? ManagerId { get; set; }
     public User? Manager { get; set; }
     public ICollection<User> DirectReports { get; set; } = new List<User>();

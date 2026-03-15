@@ -20,6 +20,7 @@ public class UsersController(TimeSheetDbContext dbContext, IPasswordHasher passw
         var query = dbContext.Users.AsNoTracking()
             .Include(u => u.Department)
             .Include(u => u.WorkPolicy)
+            .Include(u => u.LeavePolicy)
             .Include(u => u.Manager)
             .AsQueryable();
 
@@ -45,6 +46,8 @@ public class UsersController(TimeSheetDbContext dbContext, IPasswordHasher passw
                 u.Department != null ? u.Department.Name : null,
                 u.WorkPolicyId,
                 u.WorkPolicy != null ? u.WorkPolicy.Name : null,
+                u.LeavePolicyId,
+                u.LeavePolicy != null ? u.LeavePolicy.Name : null,
                 u.ManagerId,
                 u.Manager != null ? u.Manager.Username : null))
             .ToListAsync();
@@ -58,6 +61,7 @@ public class UsersController(TimeSheetDbContext dbContext, IPasswordHasher passw
         var user = await dbContext.Users.AsNoTracking()
             .Include(u => u.Department)
             .Include(u => u.WorkPolicy)
+            .Include(u => u.LeavePolicy)
             .Include(u => u.Manager)
             .SingleOrDefaultAsync(u => u.Id == id);
 
@@ -68,7 +72,8 @@ public class UsersController(TimeSheetDbContext dbContext, IPasswordHasher passw
 
         return Ok(new UserResponse(
             user.Id, user.Username, user.Email, user.EmployeeId, user.Role, user.IsActive,
-            user.DepartmentId, user.Department?.Name, user.WorkPolicyId, user.WorkPolicy?.Name, user.ManagerId, user.Manager?.Username));
+            user.DepartmentId, user.Department?.Name, user.WorkPolicyId, user.WorkPolicy?.Name,
+            user.LeavePolicyId, user.LeavePolicy?.Name, user.ManagerId, user.Manager?.Username));
     }
 
     [HttpPost]
@@ -101,6 +106,7 @@ public class UsersController(TimeSheetDbContext dbContext, IPasswordHasher passw
             IsActive = request.IsActive,
             DepartmentId = request.DepartmentId,
             WorkPolicyId = request.WorkPolicyId,
+            LeavePolicyId = request.LeavePolicyId,
             ManagerId = request.ManagerId
         };
 
@@ -112,7 +118,7 @@ public class UsersController(TimeSheetDbContext dbContext, IPasswordHasher passw
 
         return CreatedAtAction(nameof(GetById), new { id = user.Id },
             new UserResponse(user.Id, user.Username, user.Email, user.EmployeeId, user.Role, user.IsActive,
-                user.DepartmentId, null, user.WorkPolicyId, null, user.ManagerId, null));
+                user.DepartmentId, null, user.WorkPolicyId, null, user.LeavePolicyId, null, user.ManagerId, null));
     }
 
     [HttpPut("{id:guid}")]
@@ -151,6 +157,7 @@ public class UsersController(TimeSheetDbContext dbContext, IPasswordHasher passw
         user.IsActive = request.IsActive;
         user.DepartmentId = request.DepartmentId;
         user.WorkPolicyId = request.WorkPolicyId;
+        user.LeavePolicyId = request.LeavePolicyId;
         user.ManagerId = request.ManagerId;
 
         SyncUserRole(user, role.Id);
@@ -193,7 +200,7 @@ public class UsersController(TimeSheetDbContext dbContext, IPasswordHasher passw
             .OrderBy(u => u.Username)
             .Select(u => new UserResponse(
                 u.Id, u.Username, u.Email, u.EmployeeId, u.Role, u.IsActive,
-                u.DepartmentId, null, u.WorkPolicyId, null, u.ManagerId, null))
+                u.DepartmentId, null, u.WorkPolicyId, null, u.LeavePolicyId, null, u.ManagerId, null))
             .ToListAsync();
 
         return Ok(reportees);

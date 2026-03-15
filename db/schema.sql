@@ -130,6 +130,41 @@ CREATE TABLE LeaveRequests (
 );
 CREATE INDEX IX_LeaveRequests_StatusDate ON LeaveRequests(Status, LeaveDate);
 
+-- LeaveGroupId column on LeaveRequests (if using ALTER)
+ALTER TABLE LeaveRequests ADD LeaveGroupId UNIQUEIDENTIFIER NULL;
+CREATE INDEX IX_LeaveRequests_LeaveGroupId ON LeaveRequests(LeaveGroupId) WHERE LeaveGroupId IS NOT NULL;
+
+CREATE TABLE LeavePolicies (
+    Id              UNIQUEIDENTIFIER NOT NULL PRIMARY KEY DEFAULT NEWID(),
+    Name            NVARCHAR(120)    NOT NULL,
+    IsActive        BIT              NOT NULL DEFAULT 1,
+    CreatedAtUtc    DATETIME2        NOT NULL DEFAULT SYSUTCDATETIME()
+);
+
+CREATE TABLE LeavePolicyAllocations (
+    Id              UNIQUEIDENTIFIER NOT NULL PRIMARY KEY DEFAULT NEWID(),
+    LeavePolicyId   UNIQUEIDENTIFIER NOT NULL REFERENCES LeavePolicies(Id) ON DELETE CASCADE,
+    LeaveTypeId     UNIQUEIDENTIFIER NOT NULL REFERENCES LeaveTypes(Id) ON DELETE NO ACTION,
+    DaysPerYear     INT              NOT NULL DEFAULT 0,
+    CONSTRAINT UQ_LeavePolicyAllocation UNIQUE (LeavePolicyId, LeaveTypeId)
+);
+
+CREATE TABLE LeaveBalances (
+    Id                    UNIQUEIDENTIFIER NOT NULL PRIMARY KEY DEFAULT NEWID(),
+    UserId                UNIQUEIDENTIFIER NOT NULL REFERENCES Users(Id) ON DELETE CASCADE,
+    LeaveTypeId           UNIQUEIDENTIFIER NOT NULL REFERENCES LeaveTypes(Id) ON DELETE NO ACTION,
+    Year                  INT              NOT NULL,
+    AllocatedDays         INT              NOT NULL DEFAULT 0,
+    ManualAdjustmentDays  INT              NOT NULL DEFAULT 0,
+    Note                  NVARCHAR(500)    NULL,
+    UpdatedAtUtc          DATETIME2        NOT NULL DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT UQ_LeaveBalance UNIQUE (UserId, LeaveTypeId, Year)
+);
+
+-- Add LeavePolicyId to Users
+ALTER TABLE Users ADD LeavePolicyId UNIQUEIDENTIFIER NULL REFERENCES LeavePolicies(Id) ON DELETE SET NULL;
+CREATE INDEX IX_Users_LeavePolicyId ON Users(LeavePolicyId) WHERE LeavePolicyId IS NOT NULL;
+
 CREATE TABLE RefreshTokens (
   Id UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
   UserId UNIQUEIDENTIFIER NOT NULL REFERENCES Users(Id) ON DELETE CASCADE,

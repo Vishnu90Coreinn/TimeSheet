@@ -23,4 +23,5 @@ public class LeaveRequest
     public string? ReviewerComment { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     public DateTime? ReviewedAtUtc { get; set; }
+    public Guid? LeaveGroupId { get; set; }  // groups multi-day requests from one submission
 }

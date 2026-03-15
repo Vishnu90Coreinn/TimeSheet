@@ -11,6 +11,7 @@ public record UpsertUserRequest(
     bool IsActive,
     Guid? DepartmentId,
     Guid? WorkPolicyId,
+    Guid? LeavePolicyId,
     Guid? ManagerId
 );
 
@@ -22,6 +23,7 @@ public record UpdateUserRequest(
     bool IsActive,
     Guid? DepartmentId,
     Guid? WorkPolicyId,
+    Guid? LeavePolicyId,
     Guid? ManagerId
 );
 
@@ -36,6 +38,8 @@ public record UserResponse(
     string? DepartmentName,
     Guid? WorkPolicyId,
     string? WorkPolicyName,
+    Guid? LeavePolicyId,
+    string? LeavePolicyName,
     Guid? ManagerId,
     string? ManagerUsername
 );

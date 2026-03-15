@@ -21,6 +21,9 @@ public class TimeSheetDbContext(DbContextOptions<TimeSheetDbContext> options) : 
     public DbSet<TimesheetEntry> TimesheetEntries => Set<TimesheetEntry>();
     public DbSet<LeaveType> LeaveTypes => Set<LeaveType>();
     public DbSet<LeaveRequest> LeaveRequests => Set<LeaveRequest>();
+    public DbSet<LeavePolicy> LeavePolicies { get; set; }
+    public DbSet<LeavePolicyAllocation> LeavePolicyAllocations { get; set; }
+    public DbSet<LeaveBalance> LeaveBalances { get; set; }
     public DbSet<ApprovalAction> ApprovalActions => Set<ApprovalAction>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<Holiday> Holidays => Set<Holiday>();
@@ -48,6 +51,11 @@ public class TimeSheetDbContext(DbContextOptions<TimeSheetDbContext> options) : 
             entity.HasOne(x => x.WorkPolicy)
                 .WithMany()
                 .HasForeignKey(x => x.WorkPolicyId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(x => x.LeavePolicy)
+                .WithMany(lp => lp.Users)
+                .HasForeignKey(x => x.LeavePolicyId)
                 .OnDelete(DeleteBehavior.SetNull);
 
             entity.HasOne(x => x.Manager)
@@ -202,6 +210,40 @@ public class TimeSheetDbContext(DbContextOptions<TimeSheetDbContext> options) : 
                 .HasForeignKey(x => x.ReviewedByUserId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
+
+        // LeavePolicy
+        modelBuilder.Entity<LeavePolicy>()
+            .HasMany(lp => lp.Allocations)
+            .WithOne(a => a.LeavePolicy)
+            .HasForeignKey(a => a.LeavePolicyId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<LeavePolicyAllocation>()
+            .HasIndex(a => new { a.LeavePolicyId, a.LeaveTypeId })
+            .IsUnique();
+
+        modelBuilder.Entity<LeavePolicyAllocation>()
+            .HasOne(a => a.LeaveType)
+            .WithMany()
+            .HasForeignKey(a => a.LeaveTypeId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // LeaveBalance
+        modelBuilder.Entity<LeaveBalance>()
+            .HasIndex(lb => new { lb.UserId, lb.LeaveTypeId, lb.Year })
+            .IsUnique();
+
+        modelBuilder.Entity<LeaveBalance>()
+            .HasOne(lb => lb.User)
+            .WithMany()
+            .HasForeignKey(lb => lb.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<LeaveBalance>()
+            .HasOne(lb => lb.LeaveType)
+            .WithMany()
+            .HasForeignKey(lb => lb.LeaveTypeId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<ApprovalAction>(entity =>
         {

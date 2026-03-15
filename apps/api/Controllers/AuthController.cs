@@ -119,6 +119,7 @@ public class AuthController(TimeSheetDbContext dbContext, IPasswordHasher passwo
             .AsNoTracking()
             .Include(u => u.Department)
             .Include(u => u.WorkPolicy)
+            .Include(u => u.LeavePolicy)
             .Include(u => u.Manager)
             .Include(u => u.UserRoles)
             .ThenInclude(ur => ur.Role)
@@ -142,6 +143,8 @@ public class AuthController(TimeSheetDbContext dbContext, IPasswordHasher passwo
             user.Department?.Name,
             user.WorkPolicyId,
             user.WorkPolicy?.Name,
+            user.LeavePolicyId,
+            user.LeavePolicy?.Name,
             user.ManagerId,
             user.Manager?.Username));
     }

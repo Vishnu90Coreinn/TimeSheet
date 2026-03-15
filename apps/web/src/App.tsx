@@ -58,7 +58,7 @@ export function App() {
       onNavigate={setView}
       onLogout={logout}
     >
-      {view === "dashboard"  && <Dashboard role={session.role} />}
+      {view === "dashboard"  && <Dashboard role={session.role} username={session.username} />}
       {view === "reports"    && <Reports />}
       {view === "timesheets" && <Timesheets />}
       {view === "leave"      && <Leave isManager={isManager} isAdmin={isAdmin} />}

@@ -49,12 +49,7 @@ export function AppShell({ session, view, nav, onNavigate, onLogout, children }:
       {/* ── Top Navigation Bar ── */}
       <nav className="shell-topnav">
         <div className="shell-logo">
-          <div className="shell-logo__mark">
-            <svg width="18" height="18" viewBox="0 0 40 40" fill="none">
-              <path d="M20 6L34 13V27L20 34L6 27V13L20 6Z" stroke="white" strokeWidth="2.5" fill="none" />
-              <circle cx="20" cy="20" r="4" fill="white" />
-            </svg>
-          </div>
+          <div className="shell-logo__mark" />
           <span className="shell-logo__name">TimeSheet</span>
         </div>
 

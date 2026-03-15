@@ -55,17 +55,15 @@ pre {
   font-size: var(--text-sm);
 }
 
-/* ── AttendanceWidget (Task 4) — warm editorial card ──────── */
+/* ── AttendanceWidget — Chrono dark timer widget ──────────── */
 .aw-card {
-  background: var(--color-background);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--color-border);
-  padding: var(--space-6);
+  background: var(--color-ink);
+  border-radius: 16px;
+  padding: 28px 24px;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  box-shadow: var(--shadow-card);
-  color: var(--color-text-primary);
+  gap: 16px;
+  color: var(--color-surface);
 }
 .aw-header {
   display: flex;
@@ -79,7 +77,7 @@ pre {
   font-family: var(--font-display);
   font-size: var(--text-base);
   font-weight: var(--font-semibold);
-  color: var(--color-text-primary);
+  color: var(--color-surface);
 }
 .aw-status-dot {
   width: 9px;
@@ -88,29 +86,29 @@ pre {
   flex-shrink: 0;
 }
 /* pulse animation defined in design-system.css */
-.aw-status-dot--out { background: var(--color-border); }
-.aw-date { font-size: var(--text-xs); color: var(--color-text-muted); font-weight: var(--font-medium); }
+.aw-status-dot--out { background: rgba(245,243,239,0.25); }
+.aw-date { font-size: var(--text-xs); color: rgba(245,243,239,0.45); font-weight: var(--font-medium); }
 .aw-timer-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; }
-.aw-check-time { font-size: var(--text-sm); color: var(--color-text-secondary); }
+.aw-check-time { font-size: var(--text-sm); color: rgba(245,243,239,0.55); }
 .aw-elapsed {
   font-family: var(--font-serif);
-  font-size: 1.6rem;
+  font-size: 2.4rem;
   font-weight: var(--font-normal);
-  color: var(--color-primary);
-  letter-spacing: 0.01em;
+  color: var(--color-surface);
+  letter-spacing: -0.02em;
 }
 .aw-net {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  background: var(--color-primary-subtle);
-  border-radius: var(--radius-sm);
-  border-left: 3px solid var(--color-primary);
+  padding: 12px 16px;
+  background: rgba(201,168,76,0.15);
+  border: 1px solid rgba(201,168,76,0.25);
+  border-radius: 8px;
 }
 .aw-net__label {
   font-size: var(--text-xs);
-  color: var(--color-text-muted);
+  color: rgba(245,243,239,0.5);
   font-weight: var(--font-semibold);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -119,7 +117,7 @@ pre {
   font-family: var(--font-serif);
   font-size: var(--text-lg);
   font-weight: var(--font-normal);
-  color: var(--color-text-primary);
+  color: var(--color-surface);
   margin-left: auto;
 }
 .aw-actions { display: flex; gap: var(--space-3); }
@@ -135,9 +133,9 @@ pre {
   border: none;
 }
 .aw-btn:disabled { opacity: 0.35; cursor: not-allowed; }
-.aw-btn--in  { background: var(--color-success); color: #ffffff; }
-.aw-btn--in:hover:not(:disabled)  { opacity: 0.88; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(90,122,94,0.30); }
-.aw-btn--out { background: var(--color-error); color: #ffffff; }
-.aw-btn--out:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(192,82,43,0.30); }
+.aw-btn--in  { background: var(--color-primary); color: #ffffff; }
+.aw-btn--in:hover:not(:disabled)  { opacity: 0.88; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(201,168,76,0.35); }
+.aw-btn--out { background: rgba(192,82,43,0.2); color: var(--color-error); }
+.aw-btn--out:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
 .aw-error   { font-size: var(--text-xs); color: var(--color-error); margin: 0; }
-.aw-loading { font-size: var(--text-sm); color: var(--color-text-muted); margin: 0; }
+.aw-loading { font-size: var(--text-sm); color: rgba(245,243,239,0.45); margin: 0; }

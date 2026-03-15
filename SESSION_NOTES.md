@@ -174,8 +174,18 @@ Client rejected round 1 ("only color change, not a redesign"). Reference: `C:/Us
 
 **Status: Awaiting manual testing feedback from client (session 5 end).**
 
+### ~~Priority 1 — Pulse SaaS Redesign~~ ✅ DONE (session 6, 2026-03-16)
+
+Commit `db9345d`. Complete visual overhaul from "Chrono editorial" to "Pulse SaaS":
+- **design-system.css v2.0** — indigo brand palette (`--brand-*`), full neutral scale (`--n-0`..`--n-900`), Bricolage Grotesque display + Plus Jakarta Sans body. All new stat-card, badge, tab, shell-layout classes.
+- **AppShell v3** — breadcrumb topbar; sidebar with brand header + org-switcher, user section, grouped nav (`nav-item`/`nav-section`)
+- **Dashboard** — stat cards, bar charts, donut charts, activity feeds, compliance calendars for all 3 roles
+- **Login v3** — gradient left panel with features + testimonial, clean right form
+- **AttendanceWidget** — light card (white bg, indigo net strip, green/red buttons)
+- **All missing CSS classes added** — nav-item, org-switcher, sidebar-header, dashboard-grid, bar-chart, activity-list, donut-*, kpi-list, av, mb-5
+
 ### Priority 1 — UI/UX Fixes (next session)
-- **Awaiting manual test results from client.** Client will test in browser and list issues/changes needed.
+- Client will test in browser and list issues/changes needed.
 - Next session: apply all feedback from manual testing, then commit.
 
 ### Priority 2 — DB Table Verification (manual step)

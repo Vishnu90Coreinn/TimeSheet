@@ -1,14 +1,11 @@
 /**
- * AppShell.tsx — Design system Step 1c.
- * Provides the sticky top nav + sidebar layout that wraps all authenticated pages.
- * Business logic (routing, auth) stays in App.tsx — this is purely presentational.
+ * AppShell.tsx — v3.0 exact Pulse reference layout
  */
 import type { ReactNode } from "react";
 import { NotificationBell } from "./Notifications";
 import type { Session } from "../types";
 import type { View } from "../types";
 
-/* ─── Nav item config ─────────────────────────────────────── */
 interface NavItem {
   view: View;
   label: string;
@@ -18,14 +15,14 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { view: "dashboard",  label: "Dashboard",  icon: <DashboardIcon />, group: "main" },
-  { view: "timesheets", label: "Timesheets", icon: <ClockIcon />,     group: "main" },
-  { view: "leave",      label: "Leave",      icon: <CalendarIcon />,  group: "main" },
-  { view: "reports",    label: "Reports",    icon: <ChartIcon />,     group: "main" },
-  { view: "approvals",  label: "Approvals",  icon: <CheckIcon />,     group: "manager" },
-  { view: "projects",   label: "Projects",   icon: <FolderIcon />,    group: "admin" },
-  { view: "categories", label: "Categories", icon: <TagIcon />,       group: "admin" },
-  { view: "users",      label: "Users",      icon: <UsersIcon />,     group: "admin" },
-  { view: "holidays",   label: "Holidays",   icon: <StarIcon />,      group: "admin" },
+  { view: "timesheets", label: "Timesheets",  icon: <ClockIcon />,     group: "main" },
+  { view: "leave",      label: "Leave",       icon: <CalendarIcon />,  group: "main" },
+  { view: "reports",    label: "Reports",     icon: <ChartIcon />,     group: "main" },
+  { view: "approvals",  label: "Approvals",   icon: <CheckIcon />,     group: "manager" },
+  { view: "projects",   label: "Projects",    icon: <FolderIcon />,    group: "admin" },
+  { view: "categories", label: "Categories",  icon: <TagIcon />,       group: "admin" },
+  { view: "users",      label: "Users",       icon: <UsersIcon />,     group: "admin" },
+  { view: "holidays",   label: "Holidays",    icon: <StarIcon />,      group: "admin" },
 ];
 
 interface AppShellProps {
@@ -37,95 +34,144 @@ interface AppShellProps {
   children: ReactNode;
 }
 
+const VIEW_LABELS: Record<View, string> = {
+  dashboard: "Dashboard", timesheets: "Timesheets", leave: "Leave",
+  reports: "Reports", approvals: "Approvals", projects: "Projects",
+  categories: "Categories", users: "Users", holidays: "Holidays",
+};
+
 export function AppShell({ session, view, nav, onNavigate, onLogout, children }: AppShellProps) {
   const initials = session.username.slice(0, 2).toUpperCase();
-
   const mainItems    = NAV_ITEMS.filter((i) => i.group === "main"    && nav.includes(i.view));
   const managerItems = NAV_ITEMS.filter((i) => i.group === "manager" && nav.includes(i.view));
   const adminItems   = NAV_ITEMS.filter((i) => i.group === "admin"   && nav.includes(i.view));
 
   return (
     <>
-      {/* ── Top Navigation Bar ── */}
-      <nav className="shell-topnav">
-        <div className="shell-logo">
-          <div className="shell-logo__mark" />
-          <span className="shell-logo__name">TimeSheet</span>
+      {/* ── Topbar ── */}
+      <header className="shell-topnav">
+        <div className="shell-topnav__left">
+          <nav className="breadcrumb">
+            <span>TimeSheet</span>
+            <span className="breadcrumb-sep">/</span>
+            <span className="breadcrumb-current">{VIEW_LABELS[view] ?? view}</span>
+          </nav>
         </div>
-
-        <div className="shell-topnav__spacer" />
-
         <div className="shell-topnav__right">
           <NotificationBell />
-          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
-            <div className="shell-avatar">{initials}</div>
+          <div className="topbar-divider" />
+          <div className="topbar-user">
+            <div style={{
+              width: 28, height: 28, borderRadius: "var(--r-md)",
+              background: "linear-gradient(135deg, var(--brand-500), var(--brand-700))",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: "0.65rem", fontWeight: 700, color: "#fff", flexShrink: 0,
+            }}>{initials}</div>
             <div>
-              <div className="shell-user-name">{session.username}</div>
-              <div className="shell-user-role">{session.role}</div>
+              <div style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.2 }}>{session.username}</div>
+              <div style={{ fontSize: "0.68rem", color: "var(--text-tertiary)", textTransform: "capitalize" }}>{session.role}</div>
             </div>
           </div>
-          <button className="btn-ghost" onClick={onLogout} title="Sign out">
-            <LogoutIcon />
-            Logout
-          </button>
         </div>
-      </nav>
+      </header>
 
-      {/* ── Body: Sidebar + Content ── */}
+      {/* ── Shell body ── */}
       <div className="shell-layout">
+        {/* Sidebar */}
         <aside className="shell-sidebar">
-          {/* Main nav */}
-          <div className="shell-nav-group">
-            {mainItems.map((item) => (
-              <button
-                key={item.view}
-                className={`shell-nav-item${view === item.view ? " active" : ""}`}
-                onClick={() => onNavigate(item.view)}
-              >
-                {item.icon}
-                {item.label}
-              </button>
-            ))}
+          {/* Sidebar header: brand + org switcher */}
+          <div className="sidebar-header">
+            <div className="sidebar-brand">
+              <div className="sidebar-brand-icon">T</div>
+              <span className="sidebar-brand-name">TimeSheet</span>
+            </div>
+            <div className="org-switcher">
+              <div className="org-logo">{initials[0]}</div>
+              <span className="org-name">{session.username}</span>
+              <span className="org-chevron">⌄</span>
+            </div>
           </div>
 
-          {/* Manager nav */}
-          {managerItems.length > 0 && (
-            <div className="shell-nav-group">
-              <div className="shell-nav-group-label">Management</div>
-              {managerItems.map((item) => (
-                <button
-                  key={item.view}
-                  className={`shell-nav-item${view === item.view ? " active" : ""}`}
-                  onClick={() => onNavigate(item.view)}
-                >
-                  {item.icon}
-                  {item.label}
-                </button>
-              ))}
+          {/* User */}
+          <div className="sidebar-user-section">
+            <div className="sidebar-user-row">
+              <div className="sidebar-user-avatar" style={{ position: "relative" }}>
+                {initials}
+                <span className="sidebar-user-online" />
+              </div>
+              <div className="sidebar-user-info">
+                <div className="sidebar-user-name">{session.username}</div>
+                <div className="sidebar-user-role" style={{ textTransform: "capitalize" }}>{session.role}</div>
+              </div>
             </div>
-          )}
+          </div>
 
-          {/* Admin nav */}
-          {adminItems.length > 0 && (
-            <div className="shell-nav-group">
-              <div className="shell-nav-group-label">Admin</div>
-              {adminItems.map((item) => (
+          {/* Nav */}
+          <div className="sidebar-nav-area">
+            <div className="nav-section">
+              {mainItems.map((item) => (
                 <button
                   key={item.view}
-                  className={`shell-nav-item${view === item.view ? " active" : ""}`}
+                  className={`nav-item${view === item.view ? " active" : ""}`}
                   onClick={() => onNavigate(item.view)}
                 >
                   {item.icon}
-                  {item.label}
+                  <span style={{ flex: 1 }}>{item.label}</span>
                 </button>
               ))}
             </div>
-          )}
+
+            {managerItems.length > 0 && (
+              <div className="nav-section">
+                <span className="nav-section-label">Management</span>
+                {managerItems.map((item) => (
+                  <button
+                    key={item.view}
+                    className={`nav-item${view === item.view ? " active" : ""}`}
+                    onClick={() => onNavigate(item.view)}
+                  >
+                    {item.icon}
+                    <span style={{ flex: 1 }}>{item.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {adminItems.length > 0 && (
+              <div className="nav-section">
+                <span className="nav-section-label">Admin</span>
+                {adminItems.map((item) => (
+                  <button
+                    key={item.view}
+                    className={`nav-item${view === item.view ? " active" : ""}`}
+                    onClick={() => onNavigate(item.view)}
+                  >
+                    {item.icon}
+                    <span style={{ flex: 1 }}>{item.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Footer — logout */}
+          <div className="sidebar-footer">
+            <button
+              className="nav-item"
+              onClick={onLogout}
+              style={{ color: "var(--danger)", width: "100%" }}
+            >
+              <LogoutIcon />
+              <span>Sign Out</span>
+            </button>
+          </div>
         </aside>
 
-        {/* Page content area */}
+        {/* Content */}
         <main className="shell-content page-enter">
-          {children}
+          <div className="page-content">
+            {children}
+          </div>
         </main>
       </div>
     </>

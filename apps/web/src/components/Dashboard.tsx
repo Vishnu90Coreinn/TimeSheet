@@ -2,235 +2,137 @@ import { useEffect, useState } from "react";
 import { apiFetch } from "../api/client";
 import { AttendanceWidget } from "./AttendanceWidget";
 
-interface DashboardProps {
-  role: string;
-  username: string;
-}
+interface DashboardProps { role: string; username: string; }
 
-// ── Employee ──────────────────────────────────────────────────────────────────
+// ── Interfaces ────────────────────────────────────────────────────────────────
+interface EmployeeSession { workDate: string; checkedIn: string | null; checkedOut: string | null; breakMinutes: number; attendanceMinutes: number; }
+interface EmployeeTimesheet { status: string; mismatchReason: string | null; enteredMinutes: number; pendingActions: number; }
+interface EmployeeWeekly { entered: number; breaks: number; }
+interface ProjectEffortRow { project: string; minutes: number; }
+interface ComplianceRow { workDate: string; isCompliant: boolean; }
+interface EmployeeData { todaySession: EmployeeSession; todayTimesheet: EmployeeTimesheet; weeklyHours: EmployeeWeekly; projectEffort: ProjectEffortRow[]; monthlyComplianceTrend: ComplianceRow[]; }
 
-interface EmployeeSession {
-  workDate: string;
-  checkedIn: string | null;
-  checkedOut: string | null;
-  breakMinutes: number;
-  attendanceMinutes: number;
-}
-interface EmployeeTimesheet {
-  status: string;
-  mismatchReason: string | null;
-  enteredMinutes: number;
-  pendingActions: number;
-}
-interface EmployeeWeekly {
-  entered: number;
-  breaks: number;
-}
-interface ProjectEffortRow {
-  project: string;
-  minutes: number;
-}
-interface ComplianceRow {
-  workDate: string;
-  isCompliant: boolean;
-}
-interface EmployeeData {
-  todaySession: EmployeeSession;
-  todayTimesheet: EmployeeTimesheet;
-  weeklyHours: EmployeeWeekly;
-  projectEffort: ProjectEffortRow[];
-  monthlyComplianceTrend: ComplianceRow[];
-}
+interface TeamAttendance { present: number; onLeave: number; notCheckedIn: number; }
+interface TimesheetHealth { missing: number; pendingApprovals: number; }
+interface MismatchRow { username: string; workDate: string; mismatchReason: string; }
+interface Utilization { avgMinutes: number; }
+interface ContributionRow { project: string; minutes: number; }
+interface ManagerData { teamAttendance: TeamAttendance; timesheetHealth: TimesheetHealth; mismatches: MismatchRow[]; utilization: Utilization; contributions: ContributionRow[]; }
 
-// ── Manager ───────────────────────────────────────────────────────────────────
-
-interface TeamAttendance {
-  present: number;
-  onLeave: number;
-  notCheckedIn: number;
-}
-interface TimesheetHealth {
-  missing: number;
-  pendingApprovals: number;
-}
-interface MismatchRow {
-  username: string;
-  workDate: string;
-  mismatchReason: string;
-}
-interface Utilization {
-  avgMinutes: number;
-}
-interface ContributionRow {
-  project: string;
-  minutes: number;
-}
-interface ManagerData {
-  teamAttendance: TeamAttendance;
-  timesheetHealth: TimesheetHealth;
-  mismatches: MismatchRow[];
-  utilization: Utilization;
-  contributions: ContributionRow[];
-}
-
-// ── Admin ─────────────────────────────────────────────────────────────────────
-
-interface DeptRow {
-  department: string;
-  minutes: number;
-}
-interface ProjectRow {
-  project: string;
-  minutes: number;
-}
-interface Billable {
-  billableMinutes: number;
-  nonBillableMinutes: number;
-}
-interface ConsultantInternal {
-  consultant: number;
-  internal: number;
-}
-interface UserLoad {
-  username: string;
-  status: "underutilized" | "balanced" | "overloaded";
-  minutes: number;
-}
-interface AdminData {
-  effortByDepartment: DeptRow[];
-  effortByProject: ProjectRow[];
-  billable: Billable;
-  consultantVsInternal: ConsultantInternal;
-  underOver: UserLoad[];
-  compliance: unknown[];
-}
+interface DeptRow { department: string; minutes: number; }
+interface ProjectRow { project: string; minutes: number; }
+interface Billable { billableMinutes: number; nonBillableMinutes: number; }
+interface ConsultantInternal { consultant: number; internal: number; }
+interface UserLoad { username: string; status: "underutilized" | "balanced" | "overloaded"; minutes: number; }
+interface AdminData { effortByDepartment: DeptRow[]; effortByProject: ProjectRow[]; billable: Billable; consultantVsInternal: ConsultantInternal; underOver: UserLoad[]; compliance: unknown[]; }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
 function fmtMinutes(m: number): string {
-  const h = Math.floor(m / 60);
-  const min = m % 60;
+  const h = Math.floor(m / 60), min = m % 60;
   if (h === 0) return `${min}m`;
   return min === 0 ? `${h}h` : `${h}h ${min}m`;
 }
-
 function fmtTime(iso: string | null): string {
   if (!iso) return "—";
   const d = new Date(iso.endsWith("Z") || iso.includes("+") ? iso : iso + "Z");
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
-
-function getGreeting(): string {
+function greeting(name: string): string {
   const h = new Date().getHours();
-  if (h < 12) return "morning";
-  if (h < 17) return "afternoon";
-  return "evening";
+  return `${h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening"}, ${name} 👋`;
+}
+function todayStr(): string {
+  return new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric", year: "numeric" });
+}
+function statusBadge(s: string) {
+  const m: Record<string,string> = { draft:"badge badge-warning", submitted:"badge badge-info", approved:"badge badge-success", rejected:"badge badge-error" };
+  return <span className={m[s?.toLowerCase()] ?? "badge badge-neutral"}>{s}</span>;
+}
+function loadBadge(s: string) {
+  const m: Record<string,string> = { underutilized:"badge badge-warning", balanced:"badge badge-success", overloaded:"badge badge-error" };
+  return <span className={m[s] ?? "badge badge-neutral"}>{s}</span>;
 }
 
-function statusBadge(status: string) {
-  const map: Record<string, string> = {
-    draft: "badge badge-warning",
-    submitted: "badge badge-info",
-    approved: "badge badge-success",
-    rejected: "badge badge-error",
-  };
-  return <span className={map[status.toLowerCase()] ?? "badge badge-neutral"}>{status}</span>;
-}
-
-function loadBadge(status: string) {
-  const map: Record<string, string> = {
-    underutilized: "badge badge-warning",
-    balanced: "badge badge-success",
-    overloaded: "badge badge-error",
-  };
-  return <span className={map[status] ?? "badge badge-neutral"}>{status}</span>;
-}
-
-// ── Shared layout pieces ───────────────────────────────────────────────────────
-
-function Eyebrow({ label }: { label: string }) {
+// Donut chart helper — circumference of r=40 circle ≈ 251.2
+const CIRC = 251.2;
+function DonutChart({ segments }: { segments: { pct: number; color: string }[] }) {
+  let offset = 0;
+  const arcs = segments.map((s) => {
+    const len = (s.pct / 100) * CIRC;
+    const arc = { ...s, len, offset };
+    offset += len;
+    return arc;
+  });
+  const total = segments.reduce((a, s) => a + s.pct, 0);
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, fontSize: 11, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#c9a84c" }}>
-      <span style={{ display: "block", width: 24, height: 1, background: "#c9a84c" }} />
-      {label}
-    </div>
-  );
-}
-
-function SectionHeader({ label }: { label: string }) {
-  return (
-    <div style={{ marginBottom: 20, display: "flex", alignItems: "center", gap: 8 }}>
-      <span style={{ display: "block", width: 20, height: 1, background: "#c9a84c" }} />
-      <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "#c9a84c" }}>{label}</span>
-    </div>
-  );
-}
-
-interface ActivityRowData {
-  name: string;
-  sub: string;
-  status: string;
-  value: string;
-}
-
-function ActivityList({ rows }: { rows: ActivityRowData[] }) {
-  if (rows.length === 0) {
-    return (
-      <div style={{ padding: "32px 0", color: "var(--color-text-muted)", fontSize: "0.875rem", textAlign: "center" }}>
-        No data available
+    <div className="donut-container">
+      <svg className="donut-svg" viewBox="0 0 100 100">
+        <circle className="donut-track" cx="50" cy="50" r="40" />
+        {arcs.map((a, i) => (
+          <circle key={i} className="donut-arc" cx="50" cy="50" r="40"
+            stroke={a.color}
+            strokeDasharray={`${a.len} ${CIRC - a.len}`}
+            strokeDashoffset={-a.offset}
+          />
+        ))}
+      </svg>
+      <div className="donut-label">
+        <div className="donut-val">{Math.round(total)}%</div>
+        <div className="donut-sub">used</div>
       </div>
-    );
-  }
-  const badgeMap: Record<string, string> = {
-    draft: "warning", submitted: "info", approved: "success", rejected: "error",
-    underutilized: "warning", balanced: "success", overloaded: "error",
-  };
-  return (
-    <div style={{ borderTop: "1px solid rgba(14,14,15,0.1)" }}>
-      {rows.map((row, i) => (
-        <div key={i} style={{ display: "grid", gridTemplateColumns: "40px 1fr auto auto", alignItems: "center", gap: 16, padding: "18px 0", borderBottom: "1px solid rgba(14,14,15,0.1)" }}>
-          <div style={{ fontFamily: "var(--font-serif)", fontSize: "0.9rem", color: "var(--color-text-muted)" }}>
-            {String(i + 1).padStart(2, "0")}
-          </div>
-          <div>
-            <div style={{ fontSize: "0.9rem", fontWeight: 500, color: "var(--color-ink)" }}>{row.name}</div>
-            <div style={{ fontSize: "0.78rem", color: "var(--color-text-muted)", marginTop: 2 }}>{row.sub}</div>
-          </div>
-          <span className={`badge badge-${badgeMap[row.status.toLowerCase()] ?? "neutral"}`}>{row.status}</span>
-          <div style={{ fontFamily: "var(--font-serif)", fontSize: "1.1rem", color: "var(--color-ink)", textAlign: "right", minWidth: 52 }}>{row.value}</div>
-        </div>
-      ))}
     </div>
   );
 }
 
-// ── Dashboard skeleton ─────────────────────────────────────────────────────────
+// KPI list item
+function KpiItem({ name, color, value, max }: { name: string; color: string; value: number; max: number }) {
+  const pct = max > 0 ? Math.round((value / max) * 100) : 0;
+  return (
+    <div className="kpi-item">
+      <div className="kpi-header">
+        <div className="kpi-name">
+          <div className="kpi-dot" style={{ background: color }} />
+          {name}
+        </div>
+        <div className="kpi-val">{fmtMinutes(value)}</div>
+      </div>
+      <div className="progress-track">
+        <div className="progress-fill" style={{ width: `${pct}%`, background: color }} />
+      </div>
+    </div>
+  );
+}
 
+// Palette for projects
+const PALETTE = ["var(--brand-500)", "var(--info)", "var(--warning)", "var(--success)", "var(--n-300)"];
+
+// ── Skeleton ──────────────────────────────────────────────────────────────────
 function DashboardSkeleton() {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <div className="skeleton skeleton-text" style={{ width: 120, height: 11 }} />
-        <div className="skeleton skeleton-title" style={{ width: 280, height: 40 }} />
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
+      <div className="page-header">
+        <div>
+          <div className="skeleton skeleton-title" style={{ width: 260, height: 24, marginBottom: 8 }} />
+          <div className="skeleton skeleton-text" style={{ width: 200 }} />
+        </div>
       </div>
-      <div style={{ display: "flex", gap: 48, paddingBottom: 28, borderBottom: "1px solid rgba(14,14,15,0.1)" }}>
-        {[80, 100, 90].map((w, i) => (
-          <div key={i} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <div className="skeleton skeleton-title" style={{ width: w, height: 32 }} />
-            <div className="skeleton skeleton-text" style={{ width: 70, height: 11 }} />
+      <div className="stat-grid-4 mb-5">
+        {[1,2,3,4].map(i => (
+          <div key={i} className="stat-card">
+            <div className="stat-card-top">
+              <div className="skeleton" style={{ width: 36, height: 36, borderRadius: "var(--r-md)" }} />
+              <div className="skeleton skeleton-text" style={{ width: 56 }} />
+            </div>
+            <div className="skeleton skeleton-title" style={{ width: 80, height: 28, margin: "16px 0 6px" }} />
+            <div className="skeleton skeleton-text" style={{ width: 110 }} />
           </div>
         ))}
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} style={{ display: "grid", gridTemplateColumns: "40px 1fr auto auto", gap: 16, padding: "18px 0", borderBottom: "1px solid rgba(14,14,15,0.1)" }}>
-            <div className="skeleton skeleton-text" style={{ width: 24, height: 14 }} />
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <div className="skeleton skeleton-text" style={{ width: "60%", height: 14 }} />
-              <div className="skeleton skeleton-text" style={{ width: "40%", height: 11 }} />
-            </div>
-            <div className="skeleton skeleton-text" style={{ width: 60, height: 20, borderRadius: 999 }} />
-            <div className="skeleton skeleton-text" style={{ width: 48, height: 14 }} />
+      <div className="dashboard-grid-2">
+        {[1,2].map(i => (
+          <div key={i} className="card" style={{ padding: "var(--space-5)", minHeight: 200 }}>
+            <div className="skeleton skeleton-title" style={{ width: 140, height: 16, marginBottom: 20 }} />
+            <div className="skeleton" style={{ width: "100%", height: 120, borderRadius: "var(--r-md)" }} />
           </div>
         ))}
       </div>
@@ -239,99 +141,230 @@ function DashboardSkeleton() {
 }
 
 // ── Employee View ─────────────────────────────────────────────────────────────
-
 function EmployeeDashboard({ data, username }: { data: EmployeeData; username: string }) {
   const { todaySession, todayTimesheet, weeklyHours, projectEffort, monthlyComplianceTrend } = data;
-  const compliantDays = monthlyComplianceTrend.filter((r) => r.isCompliant).length;
+  const compliantDays = monthlyComplianceTrend.filter(r => r.isCompliant).length;
   const compliancePct = monthlyComplianceTrend.length > 0 ? Math.round((compliantDays / monthlyComplianceTrend.length) * 100) : 0;
+  const maxEffort = Math.max(...projectEffort.map(r => r.minutes), 1);
 
-  const projectRows: ActivityRowData[] = projectEffort.map((r) => ({
-    name: r.project,
-    sub: "this week",
-    status: "submitted",
-    value: fmtMinutes(r.minutes),
+  // Donut segments for project split
+  const totalEffort = projectEffort.reduce((a, r) => a + r.minutes, 0);
+  const donutSegs = projectEffort.slice(0, 4).map((r, i) => ({
+    pct: totalEffort > 0 ? (r.minutes / totalEffort) * 100 : 0,
+    color: PALETTE[i] ?? "var(--n-300)",
   }));
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 48 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
       {/* Page header */}
-      <div style={{ borderBottom: "1px solid rgba(14,14,15,0.1)", paddingBottom: 32 }}>
-        <Eyebrow label="DASHBOARD" />
-        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
-          <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "clamp(1.8rem, 3vw, 2.4rem)", fontWeight: 400, color: "var(--color-ink)", letterSpacing: "-0.03em", lineHeight: 1.1, margin: 0 }}>
-            Good {getGreeting()},<br /><em style={{ fontStyle: "italic", color: "var(--color-primary)" }}>{username}</em>
-          </h1>
-          <div style={{ display: "flex", gap: 36, paddingLeft: 16, borderLeft: "1px solid rgba(14,14,15,0.1)" }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <div style={{ fontFamily: "var(--font-serif)", fontSize: "1.8rem", fontWeight: 400, color: "var(--color-ink)", letterSpacing: "-0.02em", lineHeight: 1 }}>{fmtTime(todaySession.checkedIn)}</div>
-              <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Check-in</div>
+      <div className="page-header">
+        <div>
+          <div className="page-title">{greeting(username)}</div>
+          <div className="page-subtitle">Here's what's happening with your work today — {todayStr()}</div>
+        </div>
+        <div className="page-actions">
+          <button className="btn btn-outline btn-sm">📥 Export</button>
+        </div>
+      </div>
+
+      {/* Stat grid */}
+      <div className="stat-grid-4 mb-5">
+        <div className="stat-card">
+          <div className="stat-card-top">
+            <div className="stat-icon" style={{ background: "var(--brand-50)" }}>⏱</div>
+            <span className={`stat-trend ${todaySession.checkedIn ? "trend-up" : "trend-flat"}`}>
+              {todaySession.checkedIn ? "● Checked in" : "○ Not started"}
+            </span>
+          </div>
+          <div className="stat-value">{fmtMinutes(todaySession.attendanceMinutes)}<span style={{ fontSize: "1rem", color: "var(--text-tertiary)" }}></span></div>
+          <div className="stat-label">Attendance today</div>
+          <div className="stat-footer">{todaySession.checkedIn ? `In at ${fmtTime(todaySession.checkedIn)}` : "Clock in to start tracking"}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-card-top">
+            <div className="stat-icon" style={{ background: "var(--success-light)" }}>✓</div>
+            <span className="stat-trend trend-flat">This week</span>
+          </div>
+          <div className="stat-value">{fmtMinutes(weeklyHours.entered)}</div>
+          <div className="stat-label">Hours logged</div>
+          <div className="stat-footer">{weeklyHours.breaks > 0 ? `${fmtMinutes(weeklyHours.breaks)} break time` : "No breaks recorded"}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-card-top">
+            <div className="stat-icon" style={{ background: todayTimesheet.pendingActions > 0 ? "var(--warning-light)" : "var(--info-light)" }}>◈</div>
+            {statusBadge(todayTimesheet.status)}
+          </div>
+          <div className="stat-value">{todayTimesheet.pendingActions}</div>
+          <div className="stat-label">Pending actions</div>
+          <div className="stat-footer">Today's timesheet: {todayTimesheet.status}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-card-top">
+            <div className="stat-icon" style={{ background: "var(--warning-light)" }}>🛡</div>
+            <span className={`stat-trend ${compliancePct >= 80 ? "trend-up" : "trend-down"}`}>
+              {compliantDays}/{monthlyComplianceTrend.length} days
+            </span>
+          </div>
+          <div className="stat-value">{compliancePct}<span style={{ fontSize: "1rem", color: "var(--text-tertiary)" }}>%</span></div>
+          <div className="stat-label">Monthly compliance</div>
+          <div className="stat-footer">Last {monthlyComplianceTrend.length} working days</div>
+        </div>
+      </div>
+
+      {/* Row 2: Project hours bar chart + Project split donut */}
+      <div className="dashboard-grid-2">
+        {/* Bar chart — project effort */}
+        <div className="card">
+          <div className="card-header">
+            <div>
+              <div className="card-title">Project Hours This Week</div>
+              <div className="card-subtitle">Hours logged per project vs. others</div>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <div style={{ fontFamily: "var(--font-serif)", fontSize: "1.8rem", fontWeight: 400, color: "var(--color-ink)", letterSpacing: "-0.02em", lineHeight: 1 }}>{fmtMinutes(weeklyHours.entered)}</div>
-              <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Weekly hours</div>
+          </div>
+          <div className="card-body">
+            {projectEffort.length === 0 ? (
+              <div className="empty-state" style={{ padding: "var(--space-8) 0" }}>
+                <p className="empty-state__title">No entries yet</p>
+                <p className="empty-state__sub">Log time on the Timesheets page to see effort here.</p>
+              </div>
+            ) : (
+              <>
+                <div className="bar-chart">
+                  {projectEffort.slice(0, 7).map((r, i) => {
+                    const pct = Math.round((r.minutes / maxEffort) * 100);
+                    return (
+                      <div key={r.project} className="bar-col">
+                        <div className="bar-tracks">
+                          <div className="bar-seg" style={{ height: "100%", background: "var(--n-100)" }} title="Max" />
+                          <div className="bar-seg" style={{ height: `${pct}%`, background: PALETTE[i % PALETTE.length] }} title={`${r.project}: ${fmtMinutes(r.minutes)}`} />
+                        </div>
+                        <div className="bar-day">{r.project.slice(0, 4)}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="chart-legend">
+                  {projectEffort.slice(0, 4).map((r, i) => (
+                    <div key={r.project} className="chart-legend-item">
+                      <div className="chart-legend-dot" style={{ background: PALETTE[i % PALETTE.length] }} />
+                      {r.project.length > 12 ? r.project.slice(0, 12) + "…" : r.project}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Project split donut */}
+        <div className="card">
+          <div className="card-header">
+            <div>
+              <div className="card-title">Project Split</div>
+              <div className="card-subtitle">This week</div>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <div style={{ fontFamily: "var(--font-serif)", fontSize: "1.8rem", fontWeight: 400, color: todayTimesheet.pendingActions > 0 ? "var(--color-error)" : "var(--color-ink)", letterSpacing: "-0.02em", lineHeight: 1 }}>{todayTimesheet.pendingActions}</div>
-              <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Pending</div>
-            </div>
+          </div>
+          <div className="card-body">
+            {projectEffort.length === 0 ? (
+              <div className="empty-state" style={{ padding: "var(--space-8) 0" }}>
+                <p className="empty-state__title">No data</p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: "var(--space-5)" }}>
+                <DonutChart segments={donutSegs} />
+                <div className="kpi-list" style={{ flex: 1 }}>
+                  {projectEffort.slice(0, 4).map((r, i) => (
+                    <KpiItem key={r.project} name={r.project} color={PALETTE[i % PALETTE.length]} value={r.minutes} max={maxEffort} />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Stats row */}
-      <div style={{ display: "flex", gap: 48, paddingBottom: 28, borderBottom: "1px solid rgba(14,14,15,0.1)", flexWrap: "wrap" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <div style={{ fontFamily: "var(--font-serif)", fontSize: "2rem", fontWeight: 400, color: "var(--color-ink)", letterSpacing: "-0.02em", lineHeight: 1 }}>{fmtMinutes(todaySession.attendanceMinutes)}</div>
-          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Attendance today</div>
-        </div>
-        <div style={{ width: 1, background: "rgba(14,14,15,0.1)", alignSelf: "stretch" }} />
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <div style={{ fontFamily: "var(--font-serif)", fontSize: "2rem", fontWeight: 400, color: "var(--color-ink)", letterSpacing: "-0.02em", lineHeight: 1 }}>{statusBadge(todayTimesheet.status)}</div>
-          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Timesheet today</div>
-        </div>
-        <div style={{ width: 1, background: "rgba(14,14,15,0.1)", alignSelf: "stretch" }} />
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <div style={{ fontFamily: "var(--font-serif)", fontSize: "2rem", fontWeight: 400, color: compliancePct === 100 ? "var(--color-success)" : compliancePct >= 80 ? "var(--color-primary)" : "var(--color-error)", letterSpacing: "-0.02em", lineHeight: 1 }}>{compliancePct}%</div>
-          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Monthly compliance</div>
-        </div>
-      </div>
-
-      {/* Two-column */}
-      <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 48 }}>
-        <div>
-          <SectionHeader label="PROJECT EFFORT THIS WEEK" />
-          <ActivityList rows={projectRows} />
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
-          <AttendanceWidget />
-          {monthlyComplianceTrend.length > 0 && (
+      {/* Row 3: Activity + Attendance Widget + Compliance */}
+      <div className="dashboard-grid">
+        {/* Activity feed */}
+        <div className="card">
+          <div className="card-header">
             <div>
-              <SectionHeader label="MONTHLY COMPLIANCE" />
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {monthlyComplianceTrend.map((r) => (
-                  <div
-                    key={r.workDate}
-                    title={r.workDate}
-                    style={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: 6,
-                      background: r.isCompliant ? "var(--color-success-light)" : "var(--color-error-light)",
-                      border: `1px solid ${r.isCompliant ? "rgba(90,122,94,0.25)" : "rgba(192,82,43,0.25)"}`,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: 10,
-                      color: r.isCompliant ? "var(--color-success)" : "var(--color-error)",
-                      fontWeight: 600,
-                    }}
-                  >
+              <div className="card-title">Today's Status</div>
+              <div className="card-subtitle">Your timesheet activity</div>
+            </div>
+          </div>
+          <div className="card-body">
+            <div className="activity-list">
+              <div className="activity-item">
+                <div className="activity-icon-wrap" style={{ background: todaySession.checkedIn ? "var(--success-light)" : "var(--n-100)" }}>
+                  {todaySession.checkedIn ? "✓" : "○"}
+                </div>
+                <div className="activity-body">
+                  <div className="activity-text">
+                    {todaySession.checkedIn ? <><strong>Checked in</strong> successfully</> : "Not checked in yet"}
+                  </div>
+                  <div className="activity-meta">{todaySession.checkedIn ? `At ${fmtTime(todaySession.checkedIn)}` : "Use the widget to check in"}</div>
+                </div>
+                <div className="activity-ts">Today</div>
+              </div>
+              <div className="activity-item">
+                <div className="activity-icon-wrap" style={{ background: "var(--brand-50)" }}>◈</div>
+                <div className="activity-body">
+                  <div className="activity-text">Timesheet status: <strong>{todayTimesheet.status}</strong></div>
+                  <div className="activity-meta">{todayTimesheet.enteredMinutes > 0 ? `${fmtMinutes(todayTimesheet.enteredMinutes)} entered` : "No entries yet"}</div>
+                </div>
+                <div className="activity-ts">Today</div>
+              </div>
+              {projectEffort.slice(0, 2).map((r) => (
+                <div key={r.project} className="activity-item">
+                  <div className="activity-icon-wrap" style={{ background: "var(--info-light)" }}>⏱</div>
+                  <div className="activity-body">
+                    <div className="activity-text">Time logged on <strong>{r.project}</strong></div>
+                    <div className="activity-meta">{fmtMinutes(r.minutes)} this week</div>
+                  </div>
+                  <div className="activity-ts">This week</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Attendance Widget */}
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <AttendanceWidget />
+        </div>
+
+        {/* Monthly compliance calendar */}
+        <div className="card">
+          <div className="card-header">
+            <div>
+              <div className="card-title">Compliance Calendar</div>
+              <div className="card-subtitle">{compliantDays}/{monthlyComplianceTrend.length} days compliant</div>
+            </div>
+            <span className={`badge ${compliancePct >= 80 ? "badge-success" : "badge-error"}`}>{compliancePct}%</span>
+          </div>
+          <div className="card-body">
+            {monthlyComplianceTrend.length === 0 ? (
+              <div className="empty-state" style={{ padding: "var(--space-6) 0" }}>
+                <p className="empty-state__title">No data</p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                {monthlyComplianceTrend.map(r => (
+                  <div key={r.workDate} title={r.workDate} style={{
+                    width: 26, height: 26, borderRadius: 6,
+                    background: r.isCompliant ? "var(--success-light)" : "var(--danger-light)",
+                    border: `1px solid ${r.isCompliant ? "rgba(16,185,129,0.2)" : "rgba(239,68,68,0.2)"}`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 11, fontWeight: 700,
+                    color: r.isCompliant ? "var(--success-dark)" : "var(--danger-dark)",
+                  }}>
                     {r.isCompliant ? "✓" : "✗"}
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -339,87 +372,215 @@ function EmployeeDashboard({ data, username }: { data: EmployeeData; username: s
 }
 
 // ── Manager View ──────────────────────────────────────────────────────────────
-
 function ManagerDashboard({ data, username }: { data: ManagerData; username: string }) {
   const { teamAttendance, timesheetHealth, mismatches, utilization, contributions } = data;
-  const maxContribMinutes = Math.max(...contributions.map((r) => r.minutes), 1);
-
-  const mismatchRows: ActivityRowData[] = mismatches.map((r) => ({
-    name: r.username,
-    sub: r.workDate,
-    status: "rejected",
-    value: r.mismatchReason.slice(0, 12),
+  const maxContrib = Math.max(...contributions.map(r => r.minutes), 1);
+  const totalContrib = contributions.reduce((a, r) => a + r.minutes, 0);
+  const donutSegs = contributions.slice(0, 4).map((r, i) => ({
+    pct: totalContrib > 0 ? (r.minutes / totalContrib) * 100 : 0,
+    color: PALETTE[i] ?? "var(--n-300)",
   }));
+  const totalTeam = teamAttendance.present + teamAttendance.onLeave + teamAttendance.notCheckedIn;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 48 }}>
-      {/* Page header */}
-      <div style={{ borderBottom: "1px solid rgba(14,14,15,0.1)", paddingBottom: 32 }}>
-        <Eyebrow label="TEAM OVERVIEW" />
-        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
-          <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "clamp(1.8rem, 3vw, 2.4rem)", fontWeight: 400, color: "var(--color-ink)", letterSpacing: "-0.03em", lineHeight: 1.1, margin: 0 }}>
-            Good {getGreeting()},<br /><em style={{ fontStyle: "italic", color: "var(--color-primary)" }}>{username}</em>
-          </h1>
-          <div style={{ display: "flex", gap: 36, paddingLeft: 16, borderLeft: "1px solid rgba(14,14,15,0.1)" }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <div style={{ fontFamily: "var(--font-serif)", fontSize: "1.8rem", fontWeight: 400, color: "var(--color-ink)", letterSpacing: "-0.02em", lineHeight: 1 }}>{teamAttendance.present}</div>
-              <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Present</div>
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+      <div className="page-header">
+        <div>
+          <div className="page-title">{greeting(username)}</div>
+          <div className="page-subtitle">Here's what's happening with your team today — {todayStr()}</div>
+        </div>
+        <div className="page-actions">
+          <button className="btn btn-outline btn-sm">📥 Export</button>
+        </div>
+      </div>
+
+      <div className="stat-grid-4 mb-5">
+        <div className="stat-card">
+          <div className="stat-card-top">
+            <div className="stat-icon" style={{ background: "var(--success-light)" }}>👥</div>
+            <span className="stat-trend trend-up">Today</span>
+          </div>
+          <div className="stat-value">{teamAttendance.present}</div>
+          <div className="stat-label">Present today</div>
+          <div className="stat-footer">Of {totalTeam} total team</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-card-top">
+            <div className="stat-icon" style={{ background: "var(--info-light)" }}>🌿</div>
+            <span className="stat-trend trend-flat">On leave</span>
+          </div>
+          <div className="stat-value">{teamAttendance.onLeave}</div>
+          <div className="stat-label">On leave today</div>
+          <div className="stat-footer">Approved absences</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-card-top">
+            <div className="stat-icon" style={{ background: teamAttendance.notCheckedIn > 0 ? "var(--warning-light)" : "var(--success-light)" }}>⏱</div>
+            <span className={`stat-trend ${teamAttendance.notCheckedIn > 0 ? "trend-down" : "trend-up"}`}>
+              {teamAttendance.notCheckedIn > 0 ? "Attention" : "All in"}
+            </span>
+          </div>
+          <div className="stat-value">{teamAttendance.notCheckedIn}</div>
+          <div className="stat-label">Not checked in</div>
+          <div className="stat-footer">Expected but missing</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-card-top">
+            <div className="stat-icon" style={{ background: timesheetHealth.pendingApprovals > 0 ? "var(--brand-50)" : "var(--success-light)" }}>✦</div>
+            <span className={`stat-trend ${timesheetHealth.pendingApprovals > 0 ? "trend-down" : "trend-up"}`}>
+              {timesheetHealth.missing > 0 ? `${timesheetHealth.missing} missing` : "No missing"}
+            </span>
+          </div>
+          <div className="stat-value">{timesheetHealth.pendingApprovals}</div>
+          <div className="stat-label">Pending approvals</div>
+          <div className="stat-footer">Avg {fmtMinutes(Math.round(utilization.avgMinutes))} / person</div>
+        </div>
+      </div>
+
+      {/* Row 2: Mismatches bar + contributions donut */}
+      <div className="dashboard-grid-2">
+        <div className="card">
+          <div className="card-header">
+            <div>
+              <div className="card-title">Team Attendance</div>
+              <div className="card-subtitle">Today's status breakdown</div>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <div style={{ fontFamily: "var(--font-serif)", fontSize: "1.8rem", fontWeight: 400, color: timesheetHealth.missing > 0 ? "var(--color-error)" : "var(--color-ink)", letterSpacing: "-0.02em", lineHeight: 1 }}>{timesheetHealth.missing}</div>
-              <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Missing</div>
+          </div>
+          <div className="card-body">
+            <div className="bar-chart" style={{ height: 80 }}>
+              {[
+                { label: "Present", value: teamAttendance.present, color: "var(--success)" },
+                { label: "Leave", value: teamAttendance.onLeave, color: "var(--info)" },
+                { label: "Absent", value: teamAttendance.notCheckedIn, color: "var(--warning)" },
+              ].map((b) => {
+                const pct = totalTeam > 0 ? Math.round((b.value / totalTeam) * 100) : 0;
+                return (
+                  <div key={b.label} className="bar-col">
+                    <div className="bar-tracks" style={{ height: 60 }}>
+                      <div className="bar-seg" style={{ height: "100%", background: "var(--n-100)" }} />
+                      <div className="bar-seg" style={{ height: `${pct}%`, background: b.color }} title={`${b.label}: ${b.value}`} />
+                    </div>
+                    <div className="bar-day">{b.label}</div>
+                  </div>
+                );
+              })}
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <div style={{ fontFamily: "var(--font-serif)", fontSize: "1.8rem", fontWeight: 400, color: "var(--color-ink)", letterSpacing: "-0.02em", lineHeight: 1 }}>{fmtMinutes(Math.round(utilization.avgMinutes))}</div>
-              <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Avg hours</div>
+            <div className="chart-legend" style={{ marginTop: "var(--space-3)" }}>
+              <div className="chart-legend-item"><div className="chart-legend-dot" style={{ background: "var(--success)" }} />Present ({teamAttendance.present})</div>
+              <div className="chart-legend-item"><div className="chart-legend-dot" style={{ background: "var(--info)" }} />On Leave ({teamAttendance.onLeave})</div>
+              <div className="chart-legend-item"><div className="chart-legend-dot" style={{ background: "var(--warning)" }} />Absent ({teamAttendance.notCheckedIn})</div>
             </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-header">
+            <div>
+              <div className="card-title">Project Contributions</div>
+              <div className="card-subtitle">This week</div>
+            </div>
+          </div>
+          <div className="card-body">
+            {contributions.length === 0 ? (
+              <div className="empty-state" style={{ padding: "var(--space-6) 0" }}><p className="empty-state__title">No data</p></div>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: "var(--space-5)" }}>
+                <DonutChart segments={donutSegs} />
+                <div className="kpi-list" style={{ flex: 1 }}>
+                  {contributions.slice(0, 4).map((r, i) => (
+                    <KpiItem key={r.project} name={r.project} color={PALETTE[i % PALETTE.length]} value={r.minutes} max={maxContrib} />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Stats row */}
-      <div style={{ display: "flex", gap: 48, paddingBottom: 28, borderBottom: "1px solid rgba(14,14,15,0.1)", flexWrap: "wrap" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <div style={{ fontFamily: "var(--font-serif)", fontSize: "2rem", fontWeight: 400, color: "var(--color-success)", letterSpacing: "-0.02em", lineHeight: 1 }}>{teamAttendance.present}</div>
-          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Present today</div>
+      {/* Row 3: Mismatches activity + quick-approvals style + KPI */}
+      <div className="dashboard-grid">
+        <div className="card">
+          <div className="card-header">
+            <div><div className="card-title">Recent Mismatches</div><div className="card-subtitle">Attendance vs. timesheet discrepancies</div></div>
+            {mismatches.length > 0 && <span className="badge badge-error">{mismatches.length}</span>}
+          </div>
+          <div className="card-body">
+            {mismatches.length === 0 ? (
+              <div className="empty-state" style={{ padding: "var(--space-8) 0" }}>
+                <p className="empty-state__title">No mismatches</p>
+                <p className="empty-state__sub">All timesheets match attendance records.</p>
+              </div>
+            ) : (
+              <div className="activity-list">
+                {mismatches.slice(0, 5).map((r, i) => (
+                  <div key={i} className="activity-item">
+                    <div className="activity-icon-wrap" style={{ background: "var(--danger-light)" }}>!</div>
+                    <div className="activity-body">
+                      <div className="activity-text"><strong>{r.username}</strong> — mismatch</div>
+                      <div className="activity-meta">{r.mismatchReason}</div>
+                    </div>
+                    <div className="activity-ts">{r.workDate}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-        <div style={{ width: 1, background: "rgba(14,14,15,0.1)", alignSelf: "stretch" }} />
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <div style={{ fontFamily: "var(--font-serif)", fontSize: "2rem", fontWeight: 400, color: teamAttendance.notCheckedIn > 0 ? "var(--color-error)" : "var(--color-ink)", letterSpacing: "-0.02em", lineHeight: 1 }}>{teamAttendance.notCheckedIn}</div>
-          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Not checked in</div>
-        </div>
-        <div style={{ width: 1, background: "rgba(14,14,15,0.1)", alignSelf: "stretch" }} />
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <div style={{ fontFamily: "var(--font-serif)", fontSize: "2rem", fontWeight: 400, color: timesheetHealth.pendingApprovals > 0 ? "var(--color-primary)" : "var(--color-ink)", letterSpacing: "-0.02em", lineHeight: 1 }}>{timesheetHealth.pendingApprovals}</div>
-          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Pending approvals</div>
-        </div>
-      </div>
 
-      {/* Two-column */}
-      <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 48 }}>
-        <div>
-          <SectionHeader label="THIS WEEK'S MISMATCHES" />
-          <ActivityList rows={mismatchRows} />
-        </div>
-        <div>
-          <SectionHeader label="PROJECT CONTRIBUTIONS" />
-          {contributions.length === 0 ? (
-            <div style={{ padding: "32px 0", color: "var(--color-text-muted)", fontSize: "0.875rem" }}>No data available</div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {contributions.map((r) => (
-                <div key={r.project}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                    <span style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--color-ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "70%" }}>{r.project}</span>
-                    <span style={{ fontFamily: "var(--font-serif)", fontSize: "0.875rem", color: "var(--color-text-muted)" }}>{fmtMinutes(r.minutes)}</span>
+        <div className="card">
+          <div className="card-header">
+            <div><div className="card-title">Pending Approvals</div><div className="card-subtitle">Requires your action</div></div>
+            {timesheetHealth.pendingApprovals > 0 && <span className="badge badge-danger">{timesheetHealth.pendingApprovals}</span>}
+          </div>
+          <div className="card-body">
+            {timesheetHealth.pendingApprovals === 0 ? (
+              <div className="empty-state" style={{ padding: "var(--space-8) 0" }}>
+                <p className="empty-state__title">All clear</p>
+                <p className="empty-state__sub">No approvals pending.</p>
+              </div>
+            ) : (
+              <div>
+                <div className="quick-approve-list">
+                  <div className="qa-item">
+                    <div className="av av-lg" style={{ background: "linear-gradient(135deg,var(--brand-400),var(--brand-700))", borderRadius: "var(--r-md)", marginLeft: 0 }}>T</div>
+                    <div className="qa-info">
+                      <div className="qa-name">Timesheets pending</div>
+                      <div className="qa-detail">{timesheetHealth.pendingApprovals} submissions · review required</div>
+                    </div>
                   </div>
-                  <div className="progress-bar" style={{ "--kpi-accent": "var(--color-primary)" } as React.CSSProperties}>
-                    <div className="progress-bar__fill" style={{ width: `${Math.round((r.minutes / maxContribMinutes) * 100)}%` }} />
-                  </div>
+                  {timesheetHealth.missing > 0 && (
+                    <div className="qa-item">
+                      <div className="av av-lg" style={{ background: "linear-gradient(135deg,#f59e0b,#d97706)", borderRadius: "var(--r-md)", marginLeft: 0 }}>!</div>
+                      <div className="qa-info">
+                        <div className="qa-name">Missing timesheets</div>
+                        <div className="qa-detail">{timesheetHealth.missing} employees have not submitted</div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
-          )}
+                <div style={{ marginTop: "var(--space-4)" }}>
+                  <button className="btn btn-outline w-full btn-sm">View all {timesheetHealth.pendingApprovals} pending →</button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-header">
+            <div><div className="card-title">Budget Health</div><div className="card-subtitle">Project utilisation this week</div></div>
+          </div>
+          <div className="card-body">
+            {contributions.length === 0 ? (
+              <div className="empty-state" style={{ padding: "var(--space-6) 0" }}><p className="empty-state__title">No data</p></div>
+            ) : (
+              <div className="kpi-list">
+                {contributions.slice(0, 5).map((r, i) => (
+                  <KpiItem key={r.project} name={r.project} color={PALETTE[i % PALETTE.length]} value={r.minutes} max={maxContrib} />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -427,160 +588,225 @@ function ManagerDashboard({ data, username }: { data: ManagerData; username: str
 }
 
 // ── Admin View ────────────────────────────────────────────────────────────────
-
 function AdminDashboard({ data, username }: { data: AdminData; username: string }) {
   const { effortByDepartment, effortByProject, billable, consultantVsInternal, underOver, compliance } = data;
   const totalBillable = billable.billableMinutes + billable.nonBillableMinutes;
   const billablePct = totalBillable > 0 ? Math.round((billable.billableMinutes / totalBillable) * 100) : 0;
-
-  const underOverRows: ActivityRowData[] = underOver.map((r) => ({
-    name: r.username,
-    sub: fmtMinutes(r.minutes),
-    status: r.status,
-    value: fmtMinutes(r.minutes),
-  }));
-
-  const deptRows: ActivityRowData[] = effortByDepartment.map((r) => ({
-    name: r.department,
-    sub: "last 30 days",
-    status: "submitted",
-    value: fmtMinutes(r.minutes),
-  }));
-
+  const maxDept = Math.max(...effortByDepartment.map(r => r.minutes), 1);
+  const maxProj = Math.max(...effortByProject.map(r => r.minutes), 1);
   const complianceList = compliance as Array<{ workDate?: string; date?: string; isCompliant?: boolean; compliant?: boolean }>;
+  const donutSegs = billable.billableMinutes > 0 || billable.nonBillableMinutes > 0 ? [
+    { pct: billablePct, color: "var(--success)" },
+    { pct: 100 - billablePct, color: "var(--n-200)" },
+  ] : [];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 48 }}>
-      {/* Page header */}
-      <div style={{ borderBottom: "1px solid rgba(14,14,15,0.1)", paddingBottom: 32 }}>
-        <Eyebrow label="MANAGEMENT VIEW" />
-        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
-          <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "clamp(1.8rem, 3vw, 2.4rem)", fontWeight: 400, color: "var(--color-ink)", letterSpacing: "-0.03em", lineHeight: 1.1, margin: 0 }}>
-            Good {getGreeting()},<br /><em style={{ fontStyle: "italic", color: "var(--color-primary)" }}>{username}</em>
-          </h1>
-          <div style={{ display: "flex", gap: 36, paddingLeft: 16, borderLeft: "1px solid rgba(14,14,15,0.1)" }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <div style={{ fontFamily: "var(--font-serif)", fontSize: "1.8rem", fontWeight: 400, color: "var(--color-ink)", letterSpacing: "-0.02em", lineHeight: 1 }}>{effortByDepartment.length}</div>
-              <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Departments</div>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <div style={{ fontFamily: "var(--font-serif)", fontSize: "1.8rem", fontWeight: 400, color: billablePct >= 70 ? "var(--color-success)" : billablePct >= 50 ? "var(--color-primary)" : "var(--color-error)", letterSpacing: "-0.02em", lineHeight: 1 }}>{billablePct}%</div>
-              <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Billable</div>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <div style={{ fontFamily: "var(--font-serif)", fontSize: "1.8rem", fontWeight: 400, color: "var(--color-ink)", letterSpacing: "-0.02em", lineHeight: 1 }}>{consultantVsInternal.internal + consultantVsInternal.consultant}</div>
-              <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Staff</div>
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+      <div className="page-header">
+        <div>
+          <div className="page-title">{greeting(username)}</div>
+          <div className="page-subtitle">Organisation overview — {todayStr()}</div>
+        </div>
+        <div className="page-actions">
+          <button className="btn btn-outline btn-sm">📥 Export</button>
+        </div>
+      </div>
+
+      <div className="stat-grid-4 mb-5">
+        <div className="stat-card">
+          <div className="stat-card-top">
+            <div className="stat-icon" style={{ background: "var(--brand-50)" }}>◈</div>
+            <span className="stat-trend trend-flat">Active</span>
+          </div>
+          <div className="stat-value">{effortByDepartment.length}</div>
+          <div className="stat-label">Departments</div>
+          <div className="stat-footer">With recorded effort</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-card-top">
+            <div className="stat-icon" style={{ background: billablePct >= 70 ? "var(--success-light)" : "var(--warning-light)" }}>📊</div>
+            <span className={`stat-trend ${billablePct >= 70 ? "trend-up" : "trend-down"}`}>{billablePct >= 70 ? "↑ On track" : "↓ Below target"}</span>
+          </div>
+          <div className="stat-value">{billablePct}<span style={{ fontSize: "1rem", color: "var(--text-tertiary)" }}>%</span></div>
+          <div className="stat-label">Billable ratio (30d)</div>
+          <div className="stat-footer">{fmtMinutes(billable.billableMinutes)} billable</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-card-top">
+            <div className="stat-icon" style={{ background: "var(--info-light)" }}>👥</div>
+            <span className="stat-trend trend-flat">Staff</span>
+          </div>
+          <div className="stat-value">{consultantVsInternal.internal + consultantVsInternal.consultant}</div>
+          <div className="stat-label">Total workforce</div>
+          <div className="stat-footer">{consultantVsInternal.internal} internal · {consultantVsInternal.consultant} consultants</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-card-top">
+            <div className="stat-icon" style={{ background: "var(--success-light)" }}>⏱</div>
+            <span className="stat-trend trend-flat">Non-billable</span>
+          </div>
+          <div className="stat-value">{fmtMinutes(billable.nonBillableMinutes)}</div>
+          <div className="stat-label">Non-billable (30d)</div>
+          <div className="stat-footer">{effortByProject.length} active projects</div>
+        </div>
+      </div>
+
+      {/* Row 2: Dept bar chart + billable donut */}
+      <div className="dashboard-grid-2">
+        <div className="card">
+          <div className="card-header">
+            <div><div className="card-title">Department Effort — Last 30 Days</div><div className="card-subtitle">Hours per department</div></div>
+          </div>
+          <div className="card-body">
+            {effortByDepartment.length === 0 ? (
+              <div className="empty-state" style={{ padding: "var(--space-8) 0" }}><p className="empty-state__title">No data</p></div>
+            ) : (
+              <>
+                <div className="bar-chart">
+                  {effortByDepartment.slice(0, 7).map((r, i) => {
+                    const pct = Math.round((r.minutes / maxDept) * 100);
+                    return (
+                      <div key={r.department} className="bar-col">
+                        <div className="bar-tracks">
+                          <div className="bar-seg" style={{ height: "100%", background: "var(--n-100)" }} />
+                          <div className="bar-seg" style={{ height: `${pct}%`, background: PALETTE[i % PALETTE.length] }} title={`${r.department}: ${fmtMinutes(r.minutes)}`} />
+                        </div>
+                        <div className="bar-day">{r.department.slice(0, 4)}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="chart-legend">
+                  {effortByDepartment.slice(0, 4).map((r, i) => (
+                    <div key={r.department} className="chart-legend-item">
+                      <div className="chart-legend-dot" style={{ background: PALETTE[i % PALETTE.length] }} />
+                      {r.department.length > 12 ? r.department.slice(0, 12) + "…" : r.department}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-header">
+            <div><div className="card-title">Billable vs Non-Billable</div><div className="card-subtitle">Last 30 days</div></div>
+          </div>
+          <div className="card-body">
+            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-5)" }}>
+              {donutSegs.length > 0 && <DonutChart segments={donutSegs} />}
+              <div className="kpi-list" style={{ flex: 1 }}>
+                <KpiItem name="Billable" color="var(--success)" value={billable.billableMinutes} max={totalBillable} />
+                <KpiItem name="Non-Billable" color="var(--n-300)" value={billable.nonBillableMinutes} max={totalBillable} />
+                <KpiItem name="Internal Staff" color="var(--brand-500)" value={consultantVsInternal.internal} max={consultantVsInternal.internal + consultantVsInternal.consultant} />
+                <KpiItem name="Consultants" color="var(--info)" value={consultantVsInternal.consultant} max={consultantVsInternal.internal + consultantVsInternal.consultant} />
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Stats row */}
-      <div style={{ display: "flex", gap: 48, paddingBottom: 28, borderBottom: "1px solid rgba(14,14,15,0.1)", flexWrap: "wrap" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <div style={{ fontFamily: "var(--font-serif)", fontSize: "2rem", fontWeight: 400, color: "var(--color-success)", letterSpacing: "-0.02em", lineHeight: 1 }}>{fmtMinutes(billable.billableMinutes)}</div>
-          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Billable (30d)</div>
-        </div>
-        <div style={{ width: 1, background: "rgba(14,14,15,0.1)", alignSelf: "stretch" }} />
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <div style={{ fontFamily: "var(--font-serif)", fontSize: "2rem", fontWeight: 400, color: "var(--color-ink)", letterSpacing: "-0.02em", lineHeight: 1 }}>{fmtMinutes(billable.nonBillableMinutes)}</div>
-          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Non-billable (30d)</div>
-        </div>
-        <div style={{ width: 1, background: "rgba(14,14,15,0.1)", alignSelf: "stretch" }} />
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <div style={{ fontFamily: "var(--font-serif)", fontSize: "2rem", fontWeight: 400, color: "var(--color-ink)", letterSpacing: "-0.02em", lineHeight: 1 }}>{consultantVsInternal.internal}</div>
-          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Internal staff</div>
-        </div>
-        <div style={{ width: 1, background: "rgba(14,14,15,0.1)", alignSelf: "stretch" }} />
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <div style={{ fontFamily: "var(--font-serif)", fontSize: "2rem", fontWeight: 400, color: "var(--color-ink)", letterSpacing: "-0.02em", lineHeight: 1 }}>{consultantVsInternal.consultant}</div>
-          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Consultants</div>
-        </div>
-      </div>
-
-      {/* Department effort — full width */}
-      {effortByDepartment.length > 0 && (
-        <div>
-          <SectionHeader label="DEPARTMENT EFFORT (30D)" />
-          <ActivityList rows={deptRows} />
-        </div>
-      )}
-
-      {/* Two-column: under/over + compliance */}
-      <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 48 }}>
-        <div>
-          <SectionHeader label="UNDER / OVER UTILIZED" />
-          <ActivityList rows={underOverRows} />
-        </div>
-        <div>
-          <SectionHeader label="COMPLIANCE TREND" />
-          {complianceList.length === 0 ? (
-            <div style={{ padding: "32px 0", color: "var(--color-text-muted)", fontSize: "0.875rem" }}>No data available</div>
-          ) : (
-            <div style={{ borderTop: "1px solid rgba(14,14,15,0.1)" }}>
-              {complianceList.slice(0, 10).map((r, i) => {
-                const date = r.workDate ?? r.date ?? String(i);
-                const ok = r.isCompliant ?? r.compliant ?? false;
-                return (
-                  <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0", borderBottom: "1px solid rgba(14,14,15,0.1)" }}>
-                    <span style={{ fontSize: "0.875rem", color: "var(--color-text-secondary)" }}>{date}</span>
-                    <span style={{ fontSize: "1rem", color: ok ? "var(--color-success)" : "var(--color-error)" }}>{ok ? "✓" : "✗"}</span>
+      {/* Row 3: Under/over + Compliance + Project KPI */}
+      <div className="dashboard-grid">
+        <div className="card">
+          <div className="card-header">
+            <div><div className="card-title">Utilization</div><div className="card-subtitle">Under / over utilized staff</div></div>
+          </div>
+          <div className="card-body">
+            {underOver.length === 0 ? (
+              <div className="empty-state" style={{ padding: "var(--space-8) 0" }}><p className="empty-state__title">No data</p></div>
+            ) : (
+              <div className="activity-list">
+                {underOver.slice(0, 6).map((r) => (
+                  <div key={r.username} className="activity-item">
+                    <div className="activity-icon-wrap" style={{ background: r.status === "overloaded" ? "var(--danger-light)" : r.status === "balanced" ? "var(--success-light)" : "var(--warning-light)" }}>
+                      {r.status === "overloaded" ? "↑" : r.status === "balanced" ? "✓" : "↓"}
+                    </div>
+                    <div className="activity-body">
+                      <div className="activity-text"><strong>{r.username}</strong></div>
+                      <div className="activity-meta">{fmtMinutes(r.minutes)}</div>
+                    </div>
+                    <div className="activity-ts">{loadBadge(r.status)}</div>
                   </div>
-                );
-              })}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-header">
+            <div><div className="card-title">Compliance Trend</div><div className="card-subtitle">Recent records</div></div>
+          </div>
+          <div className="card-body">
+            {complianceList.length === 0 ? (
+              <div className="empty-state" style={{ padding: "var(--space-8) 0" }}><p className="empty-state__title">No data</p></div>
+            ) : (
+              <div className="activity-list">
+                {complianceList.slice(0, 6).map((r, i) => {
+                  const date = r.workDate ?? r.date ?? String(i);
+                  const ok = r.isCompliant ?? r.compliant ?? false;
+                  return (
+                    <div key={i} className="activity-item">
+                      <div className="activity-icon-wrap" style={{ background: ok ? "var(--success-light)" : "var(--danger-light)" }}>{ok ? "✓" : "✗"}</div>
+                      <div className="activity-body">
+                        <div className="activity-text"><strong>{date}</strong></div>
+                        <div className="activity-meta">{ok ? "Compliant" : "Non-compliant"}</div>
+                      </div>
+                      <span className={`badge ${ok ? "badge-success" : "badge-error"}`}>{ok ? "OK" : "Fail"}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-header">
+            <div><div className="card-title">Effort by Project</div><div className="card-subtitle">Last 30 days</div></div>
+          </div>
+          <div className="card-body">
+            {effortByProject.length === 0 ? (
+              <div className="empty-state" style={{ padding: "var(--space-6) 0" }}><p className="empty-state__title">No data</p></div>
+            ) : (
+              <div className="kpi-list">
+                {effortByProject.slice(0, 5).map((r, i) => (
+                  <KpiItem key={r.project} name={r.project} color={PALETTE[i % PALETTE.length]} value={r.minutes} max={maxProj} />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
-
-      {/* Project effort */}
-      {effortByProject.length > 0 && (
-        <div>
-          <SectionHeader label="EFFORT BY PROJECT (30D)" />
-          <ActivityList rows={effortByProject.map((r) => ({ name: r.project, sub: "last 30 days", status: "approved", value: fmtMinutes(r.minutes) }))} />
-        </div>
-      )}
     </div>
   );
 }
 
 // ── Root ──────────────────────────────────────────────────────────────────────
-
 export function Dashboard({ role, username }: DashboardProps) {
   const [data, setData] = useState<EmployeeData | ManagerData | AdminData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const path =
-      role === "admin" ? "/dashboard/management" :
-      role === "manager" ? "/dashboard/manager" :
-      "/dashboard/employee";
-
-    apiFetch(path).then(async (r) => {
-      if (r.ok) setData(await r.json());
-    }).finally(() => setLoading(false));
+    const path = role === "admin" ? "/dashboard/management" : role === "manager" ? "/dashboard/manager" : "/dashboard/employee";
+    apiFetch(path).then(async (r) => { if (r.ok) setData(await r.json()); }).finally(() => setLoading(false));
   }, [role]);
 
   return (
-    <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
+    <section>
       {loading && <DashboardSkeleton />}
-
       {!loading && !data && (
         <div className="empty-state">
-          <div className="empty-state__icon"><AlertSvg size={48} /></div>
+          <div className="empty-state__icon">⚠</div>
           <p className="empty-state__title">Failed to load dashboard</p>
           <p className="empty-state__sub">Could not fetch your data. Please refresh the page.</p>
         </div>
       )}
-
       {!loading && data && role === "employee" && <EmployeeDashboard data={data as EmployeeData} username={username} />}
-      {!loading && data && role === "manager" && <ManagerDashboard data={data as ManagerData} username={username} />}
-      {!loading && data && role === "admin" && <AdminDashboard data={data as AdminData} username={username} />}
+      {!loading && data && role === "manager"  && <ManagerDashboard  data={data as ManagerData}  username={username} />}
+      {!loading && data && role === "admin"    && <AdminDashboard    data={data as AdminData}    username={username} />}
     </section>
   );
-}
-
-// ── Inline SVG icons ───────────────────────────────────────────────────────────
-function AlertSvg({ size = 18 }: { size?: number }) {
-  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>;
 }

@@ -148,13 +148,11 @@ Work the following items in order of priority. Update this file and push to mast
 
 ## Pending For Next Session
 
-### Priority 1 — Dashboard Redesign
-- `Dashboard.tsx` currently renders raw JSON in a `<pre>` tag (`JSON.stringify(data)`).
-- Needs proper stats cards using the design system.
-- **Employee dashboard** (`GET /dashboard/employee`): today's attendance status, current week hours logged, leave balance.
-- **Manager dashboard** (`GET /dashboard/manager`): team pending approvals count, team attendance summary.
-- **Admin dashboard** (`GET /dashboard/management`): total users, billable vs non-billable hours, pending approvals.
-- Use `.card` panels with stat numbers, `.badge-*` for status, `.table-base` for any lists.
+### ~~Priority 1 — Dashboard Redesign~~ ✅ DONE (session 3, 2026-03-15)
+- Commit `c406d05`. Role-specific stat cards and tables for employee, manager, and admin.
+- Employee: check-in time, attendance, weekly hours, status badge, compliance ratio, project effort table.
+- Manager: team attendance, timesheet health, utilization, project contributions, mismatches.
+- Admin: billable %, dept/project effort, per-user utilization with status badges.
 
 ### Priority 2 — DB Table Verification (manual step)
 Run in SSMS against local SQL Server — confirm all tables exist:
@@ -169,9 +167,10 @@ Expected tables: AuditLogs, Holidays, LeaveRequests, Notifications, Projects, Re
 - Verify holiday endpoint (`GET /api/v1/holidays?year=2026`).
 - Verify notification bell shows unread count after approval.
 
-### Priority 4 — Style Migration (optional/low)
-- `Timesheets.tsx` and `AttendanceWidget.tsx` use scoped `<style>` string literals that work correctly (CSS variables resolve from `design-system.css`), but could be extracted into `design-system.css` for maintainability.
-- Low priority — only worth doing if there are maintainability concerns.
+### ~~Priority 4 — Style Migration~~ ✅ DONE (session 3, 2026-03-15)
+- Commit `ef31750`. Removed `<style>{timesheetStyles}</style>` from `Timesheets.tsx`.
+- All `ts-*` rules now live in `design-system.css` with CSS variable references.
+- `AttendanceWidget` `aw-*` styles were already in `styles.css` — no change needed.
 
 ---
 

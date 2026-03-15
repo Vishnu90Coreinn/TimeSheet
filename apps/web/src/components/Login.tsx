@@ -88,7 +88,7 @@ export function Login({ onLogin }: LoginProps) {
           <div className="login-card">
             {/* Mobile-only logo */}
             <div className="login-card__mobile-logo" aria-hidden="true">
-              <TimesheetIcon color="#1E40AF" size={32} />
+              <TimesheetIcon color="#6366F1" size={32} />
               <span>TimeSheet</span>
             </div>
 
@@ -190,7 +190,7 @@ export function Login({ onLogin }: LoginProps) {
 function TimesheetIcon({ color, size }: { color: string; size: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 40 40" fill="none">
-      <rect width="40" height="40" rx="10" fill={color === "white" ? "rgba(255,255,255,0.15)" : "#EFF6FF"} />
+      <rect width="40" height="40" rx="10" fill={color === "white" ? "rgba(255,255,255,0.15)" : "#EEF2FF"} />
       <path d="M20 8L32 14V26L20 32L8 26V14L20 8Z" stroke={color} strokeWidth="2" fill="none" />
       <circle cx="20" cy="20" r="4" fill={color} />
     </svg>
@@ -202,7 +202,7 @@ const loginStyles = `
   .login-root {
     display: flex;
     min-height: 100vh;
-    background: #EFF6FF;
+    background: #0F172A;
     font-family: 'Inter', system-ui, sans-serif;
   }
 
@@ -210,11 +210,22 @@ const loginStyles = `
   .login-panel {
     position: relative;
     flex: 0 0 42%;
-    background: linear-gradient(145deg, #1E40AF 0%, #1D4ED8 55%, #2563EB 100%);
+    background: linear-gradient(145deg, #312E81 0%, #4338CA 45%, #6366F1 100%);
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
+  }
+  /* Mesh grid overlay */
+  .login-panel::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
   }
   @media (max-width: 768px) { .login-panel { display: none; } }
 
@@ -239,17 +250,17 @@ const loginStyles = `
   }
   .login-panel__headline {
     font-family: var(--font-display), sans-serif;
-    font-size: 36px;
+    font-size: 38px;
     font-weight: 700;
-    line-height: 1.2;
+    line-height: 1.18;
     margin: 0 0 16px;
     color: white;
-    letter-spacing: -0.5px;
+    letter-spacing: -0.6px;
   }
   .login-panel__sub {
     font-size: 15px;
-    line-height: 1.6;
-    color: rgba(255,255,255,0.75);
+    line-height: 1.65;
+    color: rgba(255,255,255,0.65);
     margin: 0 0 48px;
     max-width: 280px;
   }
@@ -260,9 +271,9 @@ const loginStyles = `
   .login-panel__dots span {
     width: 8px; height: 8px;
     border-radius: 50%;
-    background: rgba(255,255,255,0.4);
+    background: rgba(255,255,255,0.3);
   }
-  .login-panel__dots span:first-child { background: white; }
+  .login-panel__dots span:first-child { background: white; width: 24px; border-radius: 4px; }
   .login-panel__bg-shape {
     position: absolute;
     inset: 0;
@@ -277,6 +288,7 @@ const loginStyles = `
     align-items: center;
     justify-content: center;
     padding: 24px;
+    background: #F8FAFC;
     animation: loginFadeIn 0.45s ease both;
   }
   @keyframes loginFadeIn {
@@ -290,7 +302,8 @@ const loginStyles = `
     background: white;
     border-radius: 16px;
     padding: 40px;
-    box-shadow: 0 4px 24px rgba(30,64,175,0.10), 0 1px 4px rgba(0,0,0,0.04);
+    box-shadow: 0 4px 32px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.04);
+    border: 1px solid rgba(226,232,240,0.8);
   }
 
   .login-card__mobile-logo {
@@ -301,7 +314,7 @@ const loginStyles = `
     font-family: var(--font-display), sans-serif;
     font-weight: 700;
     font-size: 18px;
-    color: #1E40AF;
+    color: #6366F1;
   }
   @media (max-width: 768px) { .login-card__mobile-logo { display: flex; } }
 
@@ -311,7 +324,7 @@ const loginStyles = `
     font-weight: 700;
     color: #0F172A;
     margin: 0 0 6px;
-    letter-spacing: -0.4px;
+    letter-spacing: -0.5px;
   }
   .login-card__subtitle {
     font-size: 14px;
@@ -338,7 +351,7 @@ const loginStyles = `
 
   .login-forgot {
     font-size: 12px;
-    color: #3B82F6;
+    color: #6366F1;
     background: none;
     border: none;
     padding: 0;
@@ -347,7 +360,7 @@ const loginStyles = `
     text-decoration: underline;
     text-underline-offset: 2px;
   }
-  .login-forgot:hover { color: #1D4ED8; }
+  .login-forgot:hover { color: #4F46E5; }
 
   .login-input-wrap { position: relative; }
   .login-input {
@@ -359,15 +372,15 @@ const loginStyles = `
     font-size: 14px;
     font-family: 'Inter', system-ui, sans-serif;
     color: #0F172A;
-    background: #FAFAFA;
+    background: #F8FAFC;
     outline: none;
     transition: border-color 0.18s, box-shadow 0.18s, background 0.18s;
     margin: 0;
   }
   .login-input:focus {
-    border-color: #3B82F6;
+    border-color: #6366F1;
     background: white;
-    box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.18);
   }
   .login-input--error { border-color: #EF4444 !important; }
   .login-input--password { padding-right: 44px; }
@@ -399,7 +412,7 @@ const loginStyles = `
   }
   .login-checkbox {
     width: 15px; height: 15px;
-    accent-color: #1E40AF;
+    accent-color: #6366F1;
     cursor: pointer;
     margin: 0;
   }
@@ -421,7 +434,7 @@ const loginStyles = `
   .login-btn {
     width: 100%;
     padding: 13px;
-    background: linear-gradient(135deg, #1E40AF 0%, #2563EB 100%);
+    background: linear-gradient(135deg, #4338CA 0%, #6366F1 60%, #818CF8 100%);
     color: white;
     border: none;
     border-radius: 10px;
@@ -440,7 +453,7 @@ const loginStyles = `
     min-height: 48px;
   }
   .login-btn:hover:not(:disabled) {
-    box-shadow: 0 4px 16px rgba(30,64,175,0.35);
+    box-shadow: 0 4px 20px rgba(99,102,241,0.45);
     transform: translateY(-1px);
   }
   .login-btn:active:not(:disabled) { transform: translateY(0); }

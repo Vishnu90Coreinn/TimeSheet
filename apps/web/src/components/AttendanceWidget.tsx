@@ -129,7 +129,7 @@ export function AttendanceWidget({ onSummaryChange }: AttendanceWidgetProps) {
       {error && <p className="aw-error">{error}</p>}
 
       {loading ? (
-        <p className="aw-loading">Loading…</p>
+        <div className="skeleton skeleton-text" style={{ width: "80px", height: "14px" }} />
       ) : (
         <div className="aw-actions">
           <button

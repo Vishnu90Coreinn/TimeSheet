@@ -129,7 +129,7 @@ export function AppShell({ session, view, nav, onNavigate, onLogout, children }:
         </aside>
 
         {/* Page content area */}
-        <main className="shell-content">
+        <main className="shell-content page-enter">
           {children}
         </main>
       </div>

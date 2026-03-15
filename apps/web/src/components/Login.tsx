@@ -1,7 +1,7 @@
 /**
  * Login.tsx — Task 5: Redesigned login page.
- * Palette: white + blue (#1E40AF, #3B82F6, #EFF6FF, #1D4ED8).
- * Fonts: Plus Jakarta Sans (headings) + Inter (body) — loaded via index.html.
+ * Palette: warm editorial — paper #f5f3ef, gold #c9a84c, ink #0e0e0f, cream #ede9e0.
+ * Fonts: DM Serif Display (headings) + DM Sans (body).
  * Layout: split-panel on desktop, single-card on mobile.
  * Auth flow is unchanged — calls /auth/login and fires onLogin callback.
  */
@@ -63,24 +63,22 @@ export function Login({ onLogin }: LoginProps) {
         <aside className="login-panel" aria-hidden="true">
           <div className="login-panel__inner">
             <div className="login-panel__logo">
-              <TimesheetIcon color="white" size={40} />
+              <span className="login-panel__mark">T</span>
               <span className="login-panel__app-name">TimeSheet</span>
             </div>
             <h2 className="login-panel__headline">
-              Track time.<br />Work smarter.
+              Every hour<br /><em>tells a story.</em>
             </h2>
             <p className="login-panel__sub">
               Unified timesheet and attendance management for modern teams.
             </p>
-            <div className="login-panel__dots">
-              <span /><span /><span />
-            </div>
+            <div className="login-panel__rule" />
+            <ul className="login-panel__features">
+              <li>Attendance check-in &amp; check-out</li>
+              <li>Timesheet entry &amp; approvals</li>
+              <li>Real-time team dashboards</li>
+            </ul>
           </div>
-          <svg className="login-panel__bg-shape" viewBox="0 0 400 400" fill="none">
-            <circle cx="340" cy="60" r="120" fill="white" fillOpacity="0.05" />
-            <circle cx="60" cy="340" r="160" fill="white" fillOpacity="0.05" />
-            <circle cx="340" cy="60" r="70" fill="white" fillOpacity="0.06" />
-          </svg>
         </aside>
 
         {/* Right form panel */}
@@ -88,8 +86,8 @@ export function Login({ onLogin }: LoginProps) {
           <div className="login-card">
             {/* Mobile-only logo */}
             <div className="login-card__mobile-logo" aria-hidden="true">
-              <TimesheetIcon color="#6366F1" size={32} />
-              <span>TimeSheet</span>
+              <span className="login-panel__mark" style={{ width: 28, height: 28, fontSize: 13 }}>T</span>
+              <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 18, color: "#0e0e0f" }}>TimeSheet</span>
             </div>
 
             <h1 className="login-card__title">Welcome back</h1>
@@ -187,98 +185,109 @@ export function Login({ onLogin }: LoginProps) {
   );
 }
 
-function TimesheetIcon({ color, size }: { color: string; size: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 40 40" fill="none">
-      <rect width="40" height="40" rx="10" fill={color === "white" ? "rgba(255,255,255,0.15)" : "#EEF2FF"} />
-      <path d="M20 8L32 14V26L20 32L8 26V14L20 8Z" stroke={color} strokeWidth="2" fill="none" />
-      <circle cx="20" cy="20" r="4" fill={color} />
-    </svg>
-  );
-}
+// TimesheetIcon removed — replaced with CSS text mark
 
-/* ─── Scoped styles (no global pollution) ─────────────────────────────────── */
+/* ─── Scoped styles — warm editorial palette ──────────────────────────────── */
 const loginStyles = `
   .login-root {
     display: flex;
     min-height: 100vh;
-    background: #0F172A;
-    font-family: 'Inter', system-ui, sans-serif;
+    background: #f5f3ef;
+    font-family: 'DM Sans', system-ui, sans-serif;
   }
 
-  /* Left decorative panel */
+  /* Left decorative panel — warm cream */
   .login-panel {
-    position: relative;
-    flex: 0 0 42%;
-    background: linear-gradient(145deg, #312E81 0%, #4338CA 45%, #6366F1 100%);
+    flex: 0 0 44%;
+    background: #ede9e0;
+    border-right: 1px solid rgba(14,14,15,0.08);
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
   }
-  /* Mesh grid overlay */
-  .login-panel::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-image:
-      linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
-    background-size: 40px 40px;
-    pointer-events: none;
-  }
   @media (max-width: 768px) { .login-panel { display: none; } }
 
   .login-panel__inner {
-    position: relative;
-    z-index: 1;
-    padding: 48px;
-    color: white;
+    padding: 56px 48px;
+    max-width: 380px;
   }
   .login-panel__logo {
     display: flex;
     align-items: center;
     gap: 12px;
-    margin-bottom: 56px;
+    margin-bottom: 64px;
+  }
+  .login-panel__mark {
+    width: 34px;
+    height: 34px;
+    background: #c9a84c;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: 16px;
+    color: #ffffff;
+    flex-shrink: 0;
   }
   .login-panel__app-name {
-    font-family: var(--font-display), sans-serif;
-    font-size: 22px;
-    font-weight: 700;
-    color: white;
-    letter-spacing: -0.3px;
+    font-family: 'DM Sans', system-ui, sans-serif;
+    font-size: 20px;
+    font-weight: 600;
+    color: #0e0e0f;
+    letter-spacing: -0.2px;
   }
   .login-panel__headline {
-    font-family: var(--font-display), sans-serif;
-    font-size: 38px;
-    font-weight: 700;
-    line-height: 1.18;
-    margin: 0 0 16px;
-    color: white;
-    letter-spacing: -0.6px;
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: 40px;
+    font-weight: 400;
+    font-style: normal;
+    line-height: 1.15;
+    margin: 0 0 20px;
+    color: #0e0e0f;
+    letter-spacing: -0.5px;
+  }
+  .login-panel__headline em {
+    font-style: italic;
+    color: #c9a84c;
   }
   .login-panel__sub {
     font-size: 15px;
     line-height: 1.65;
-    color: rgba(255,255,255,0.65);
-    margin: 0 0 48px;
-    max-width: 280px;
+    color: #3a3a3c;
+    margin: 0 0 40px;
   }
-  .login-panel__dots {
+  .login-panel__rule {
+    width: 40px;
+    height: 2px;
+    background: #c9a84c;
+    margin-bottom: 24px;
+    border-radius: 1px;
+  }
+  .login-panel__features {
+    list-style: none;
+    margin: 0;
+    padding: 0;
     display: flex;
-    gap: 8px;
+    flex-direction: column;
+    gap: 12px;
   }
-  .login-panel__dots span {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.3);
+  .login-panel__features li {
+    font-size: 14px;
+    color: #3a3a3c;
+    padding-left: 20px;
+    position: relative;
   }
-  .login-panel__dots span:first-child { background: white; width: 24px; border-radius: 4px; }
-  .login-panel__bg-shape {
+  .login-panel__features li::before {
+    content: '';
     position: absolute;
-    inset: 0;
-    width: 100%; height: 100%;
-    pointer-events: none;
+    left: 0;
+    top: 7px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: 2px solid #c9a84c;
   }
 
   /* Right form panel */
@@ -288,22 +297,22 @@ const loginStyles = `
     align-items: center;
     justify-content: center;
     padding: 24px;
-    background: #F8FAFC;
-    animation: loginFadeIn 0.45s ease both;
+    background: #f5f3ef;
+    animation: loginFadeIn 0.4s ease both;
   }
   @keyframes loginFadeIn {
-    from { opacity: 0; transform: translateY(16px); }
+    from { opacity: 0; transform: translateY(14px); }
     to   { opacity: 1; transform: translateY(0); }
   }
 
   .login-card {
     width: 100%;
     max-width: 420px;
-    background: white;
-    border-radius: 16px;
-    padding: 40px;
-    box-shadow: 0 4px 32px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.04);
-    border: 1px solid rgba(226,232,240,0.8);
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 44px;
+    box-shadow: 0 1px 3px rgba(14,14,15,0.06), 0 4px 20px rgba(14,14,15,0.09);
+    border: 1px solid rgba(14,14,15,0.08);
   }
 
   .login-card__mobile-logo {
@@ -311,25 +320,22 @@ const loginStyles = `
     align-items: center;
     gap: 10px;
     margin-bottom: 28px;
-    font-family: var(--font-display), sans-serif;
-    font-weight: 700;
-    font-size: 18px;
-    color: #6366F1;
   }
   @media (max-width: 768px) { .login-card__mobile-logo { display: flex; } }
 
   .login-card__title {
-    font-family: var(--font-display), sans-serif;
-    font-size: 26px;
-    font-weight: 700;
-    color: #0F172A;
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: 28px;
+    font-weight: 400;
+    color: #0e0e0f;
     margin: 0 0 6px;
-    letter-spacing: -0.5px;
+    letter-spacing: -0.3px;
   }
   .login-card__subtitle {
     font-size: 14px;
-    color: #64748B;
+    color: #888888;
     margin: 0 0 32px;
+    font-family: 'DM Sans', system-ui, sans-serif;
   }
 
   /* Form */
@@ -337,9 +343,10 @@ const loginStyles = `
   .login-field { display: flex; flex-direction: column; gap: 6px; }
 
   .login-label {
+    font-family: 'DM Sans', system-ui, sans-serif;
     font-size: 13px;
-    font-weight: 600;
-    color: #374151;
+    font-weight: 500;
+    color: #3a3a3c;
     letter-spacing: 0.01em;
   }
   .login-label-row {
@@ -347,43 +354,43 @@ const loginStyles = `
     justify-content: space-between;
     align-items: center;
   }
-  .login-required { color: #EF4444; }
+  .login-required { color: #c0522b; }
 
   .login-forgot {
     font-size: 12px;
-    color: #6366F1;
+    color: #c9a84c;
     background: none;
     border: none;
     padding: 0;
     cursor: pointer;
-    font-family: inherit;
+    font-family: 'DM Sans', system-ui, sans-serif;
     text-decoration: underline;
     text-underline-offset: 2px;
   }
-  .login-forgot:hover { color: #4F46E5; }
+  .login-forgot:hover { color: #b8962e; }
 
   .login-input-wrap { position: relative; }
   .login-input {
     width: 100%;
     box-sizing: border-box;
     padding: 11px 14px;
-    border: 1.5px solid #E2E8F0;
-    border-radius: 8px;
+    border: 1.5px solid rgba(14,14,15,0.12);
+    border-radius: 6px;
     font-size: 14px;
-    font-family: 'Inter', system-ui, sans-serif;
-    color: #0F172A;
-    background: #F8FAFC;
+    font-family: 'DM Sans', system-ui, sans-serif;
+    color: #0e0e0f;
+    background: #ffffff;
     outline: none;
-    transition: border-color 0.18s, box-shadow 0.18s, background 0.18s;
+    transition: border-color 0.18s, box-shadow 0.18s;
     margin: 0;
   }
   .login-input:focus {
-    border-color: #6366F1;
-    background: white;
-    box-shadow: 0 0 0 3px rgba(99,102,241,0.18);
+    border-color: #c9a84c;
+    box-shadow: 0 0 0 3px rgba(201,168,76,0.18);
   }
-  .login-input--error { border-color: #EF4444 !important; }
+  .login-input--error { border-color: #c0522b !important; }
   .login-input--password { padding-right: 44px; }
+  .login-input::placeholder { color: #aaaaaa; }
 
   .login-eye {
     position: absolute;
@@ -393,11 +400,11 @@ const loginStyles = `
     border: none;
     padding: 0;
     cursor: pointer;
-    color: #94A3B8;
+    color: #aaaaaa;
     display: flex;
     align-items: center;
   }
-  .login-eye:hover { color: #475569; }
+  .login-eye:hover { color: #3a3a3c; }
 
   /* Remember me */
   .login-remember { margin-top: -4px; }
@@ -406,13 +413,14 @@ const loginStyles = `
     align-items: center;
     gap: 8px;
     font-size: 13px;
-    color: #4B5563;
+    color: #3a3a3c;
     cursor: pointer;
     user-select: none;
+    font-family: 'DM Sans', system-ui, sans-serif;
   }
   .login-checkbox {
     width: 15px; height: 15px;
-    accent-color: #6366F1;
+    accent-color: #c9a84c;
     cursor: pointer;
     margin: 0;
   }
@@ -423,29 +431,28 @@ const loginStyles = `
     align-items: center;
     gap: 8px;
     padding: 10px 14px;
-    background: #FEF2F2;
-    border: 1px solid #FECACA;
-    border-radius: 8px;
+    background: rgba(192,82,43,0.08);
+    border: 1px solid rgba(192,82,43,0.22);
+    border-radius: 6px;
     font-size: 13px;
-    color: #DC2626;
+    color: #c0522b;
+    font-family: 'DM Sans', system-ui, sans-serif;
   }
 
-  /* Submit button */
+  /* Submit button — gold CTA */
   .login-btn {
     width: 100%;
     padding: 13px;
-    background: linear-gradient(135deg, #4338CA 0%, #6366F1 60%, #818CF8 100%);
-    color: white;
+    background: #c9a84c;
+    color: #ffffff;
     border: none;
-    border-radius: 10px;
-    font-family: var(--font-display), sans-serif;
+    border-radius: 6px;
+    font-family: 'DM Sans', system-ui, sans-serif;
     font-size: 15px;
-    font-weight: 600;
+    font-weight: 500;
     cursor: pointer;
     letter-spacing: 0.01em;
-    position: relative;
-    overflow: hidden;
-    transition: box-shadow 0.2s, transform 0.15s;
+    transition: background 0.18s, box-shadow 0.18s, transform 0.15s;
     margin-top: 4px;
     display: flex;
     align-items: center;
@@ -453,25 +460,16 @@ const loginStyles = `
     min-height: 48px;
   }
   .login-btn:hover:not(:disabled) {
-    box-shadow: 0 4px 20px rgba(99,102,241,0.45);
+    background: #b8962e;
+    box-shadow: 0 4px 16px rgba(201,168,76,0.35);
     transform: translateY(-1px);
   }
   .login-btn:active:not(:disabled) { transform: translateY(0); }
-  .login-btn:disabled { opacity: 0.65; cursor: not-allowed; }
-  .login-btn::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.18) 50%, transparent 60%);
-    background-size: 200% 100%;
-    background-position: -100% 0;
-    transition: background-position 0.5s;
-  }
-  .login-btn:hover::after { background-position: 100% 0; }
+  .login-btn:disabled { opacity: 0.55; cursor: not-allowed; }
 
   .login-btn__spinner {
     width: 20px; height: 20px;
-    border: 2px solid rgba(255,255,255,0.35);
+    border: 2px solid rgba(255,255,255,0.4);
     border-top-color: white;
     border-radius: 50%;
     animation: loginSpin 0.7s linear infinite;

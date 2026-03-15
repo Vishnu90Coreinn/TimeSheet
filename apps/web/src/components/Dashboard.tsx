@@ -166,7 +166,7 @@ function StatCard({ label, value, sub, accent, accentColor, icon, trendDir }: St
           </div>
         )}
       </div>
-      <div style={{ fontSize: 28, fontWeight: 700, color: accent || accentColor ? color : "var(--color-text-primary)", lineHeight: 1.1, letterSpacing: "-0.02em" }}>{value}</div>
+      <div style={{ fontFamily: "var(--font-serif)", fontSize: 30, fontWeight: 400, color: accent || accentColor ? color : "var(--color-text-primary)", lineHeight: 1.1, letterSpacing: "-0.01em" }}>{value}</div>
       {sub && (
         <div style={{ marginTop: "var(--space-2)", display: "flex", alignItems: "center", gap: "var(--space-1)" }}>
           {trendDir === "up" && <span className="trend-up">▲ {sub}</span>}

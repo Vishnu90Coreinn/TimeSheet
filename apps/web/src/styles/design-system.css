@@ -249,6 +249,22 @@ a { text-decoration: none; color: inherit; }
 }
 .btn-subtle-success:hover { background: rgba(16,185,129,0.12); }
 
+/* Outlined green — approve actions (white bg, green border, green text) */
+.btn-outline-success {
+  background: var(--n-0); color: #059669;
+  border: 1px solid rgba(16,185,129,0.45);
+}
+.btn-outline-success:hover:not(:disabled) { background: #ecfdf5; border-color: #10b981; }
+.btn-outline-success:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Outlined reject — neutral until hover then danger tint */
+.btn-outline-reject {
+  background: var(--n-0); color: var(--text-secondary);
+  border: 1px solid var(--border-default);
+}
+.btn-outline-reject:hover:not(:disabled) { background: #fef2f2; color: #dc2626; border-color: rgba(239,68,68,0.4); }
+.btn-outline-reject:disabled { opacity: 0.5; cursor: not-allowed; }
+
 .btn-subtle-danger {
   background: var(--danger-light); color: var(--danger-dark);
   border: 1px solid rgba(239,68,68,0.2);

@@ -199,8 +199,8 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
                     <td>{l.isHalfDay ? "Half Day" : "Full Day"}</td>
                     <td>
                       <div className="flex gap-2">
-                        <button className="btn btn-subtle-success btn-sm" onClick={() => void reviewLeave(l.id, true)}>Approve</button>
-                        <button className="btn btn-outline btn-sm" onClick={() => setShowRejectForm(showRejectForm === l.id ? null : l.id)}>Reject</button>
+                        <button className="btn btn-outline-success btn-sm" onClick={() => void reviewLeave(l.id, true)}>✓ Approve</button>
+                        <button className="btn btn-outline-reject btn-sm" onClick={() => setShowRejectForm(showRejectForm === l.id ? null : l.id)}>✗ Reject</button>
                       </div>
                     </td>
                   </tr>

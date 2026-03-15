@@ -1,6 +1,5 @@
 /**
- * Leave.tsx — Design system applied (Step 3).
- * All business logic and API calls are unchanged.
+ * Leave.tsx — Pulse SaaS design v2.0
  */
 import { FormEvent, useEffect, useState } from "react";
 import { apiFetch } from "../api/client";
@@ -70,67 +69,90 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
 
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
-      <h1 className="page-title">Leave</h1>
+      {/* Page header */}
+      <div className="page-header">
+        <div>
+          <div className="page-title">Leave</div>
+          <div className="page-subtitle">Request time off and track your leave history</div>
+        </div>
+      </div>
 
       {/* Admin: create leave type */}
       {isAdmin && (
         <div className="card">
-          <h2 className="section-title">Create Leave Type</h2>
-          <form onSubmit={createLeaveType} style={{ display: "flex", gap: "var(--space-3)", alignItems: "flex-end", flexWrap: "wrap" }}>
-            <div className="form-field" style={{ flex: 1, minWidth: "200px" }}>
-              <label className="form-label" htmlFor="lt-name">Leave Type Name <span className="required">*</span></label>
-              <input
-                id="lt-name"
-                className="input-field"
-                placeholder="e.g. Maternity Leave"
-                value={leaveTypeForm.name}
-                onChange={(e) => setLeaveTypeForm((p) => ({ ...p, name: e.target.value }))}
-                required maxLength={120}
-              />
+          <div className="card-header">
+            <div>
+              <div className="card-title">Create Leave Type</div>
+              <div className="card-subtitle">Add a new leave category for the organisation</div>
             </div>
-            <label style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", fontFamily: "var(--font-body)", fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", paddingBottom: "2px" }}>
-              <input type="checkbox" checked={leaveTypeForm.isActive} onChange={(e) => setLeaveTypeForm((p) => ({ ...p, isActive: e.target.checked }))} style={{ accentColor: "var(--color-primary)" }} />
-              Active
-            </label>
-            <button type="submit" className="btn-primary">Save Leave Type</button>
-          </form>
+          </div>
+          <div className="card-body">
+            <form onSubmit={createLeaveType} style={{ display: "flex", gap: "var(--space-3)", alignItems: "flex-end", flexWrap: "wrap" }}>
+              <div className="form-field" style={{ flex: 1, minWidth: "200px" }}>
+                <label className="form-label" htmlFor="lt-name">Leave Type Name <span className="required">*</span></label>
+                <input
+                  id="lt-name"
+                  className="input-field"
+                  placeholder="e.g. Maternity Leave"
+                  value={leaveTypeForm.name}
+                  onChange={(e) => setLeaveTypeForm((p) => ({ ...p, name: e.target.value }))}
+                  required maxLength={120}
+                />
+              </div>
+              <label style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", fontSize: "0.825rem", color: "var(--text-secondary)", paddingBottom: "2px" }}>
+                <input type="checkbox" checked={leaveTypeForm.isActive} onChange={(e) => setLeaveTypeForm((p) => ({ ...p, isActive: e.target.checked }))} style={{ accentColor: "var(--brand-600)" }} />
+                Active
+              </label>
+              <button type="submit" className="btn btn-primary">Save Leave Type</button>
+            </form>
+          </div>
         </div>
       )}
 
       {/* Apply leave */}
       <div className="card">
-        <h2 className="section-title">Apply for Leave</h2>
-        <form onSubmit={applyLeave}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
-            <div className="form-field">
-              <label className="form-label" htmlFor="l-date">Leave Date <span className="required">*</span></label>
-              <input id="l-date" type="date" className="input-field" value={leaveForm.leaveDate} onChange={(e) => setLeaveForm((p) => ({ ...p, leaveDate: e.target.value }))} required />
-            </div>
-            <div className="form-field">
-              <label className="form-label" htmlFor="l-type">Leave Type <span className="required">*</span></label>
-              <select id="l-type" className="input-field" value={leaveForm.leaveTypeId} onChange={(e) => setLeaveForm((p) => ({ ...p, leaveTypeId: e.target.value }))}>
-                {leaveTypes.map((lt) => <option key={lt.id} value={lt.id}>{lt.name}</option>)}
-              </select>
-            </div>
-            <div className="form-field">
-              <label className="form-label" htmlFor="l-comment">Comment</label>
-              <input id="l-comment" className="input-field" placeholder="Optional" maxLength={1000} value={leaveForm.comment} onChange={(e) => setLeaveForm((p) => ({ ...p, comment: e.target.value }))} />
-            </div>
-            <div className="form-field" style={{ justifyContent: "flex-end" }}>
-              <label style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", fontFamily: "var(--font-body)", fontSize: "var(--text-sm)", color: "var(--color-text-secondary)", marginTop: "auto", paddingBottom: "10px" }}>
-                <input type="checkbox" checked={leaveForm.isHalfDay} onChange={(e) => setLeaveForm((p) => ({ ...p, isHalfDay: e.target.checked }))} style={{ accentColor: "var(--color-primary)" }} />
-                Half day
-              </label>
-            </div>
+        <div className="card-header">
+          <div>
+            <div className="card-title">Apply for Leave</div>
+            <div className="card-subtitle">Submit a new leave request</div>
           </div>
-          <button type="submit" className="btn-primary">Apply Leave</button>
-        </form>
+        </div>
+        <div className="card-body">
+          <form onSubmit={applyLeave}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-4)", marginBottom: "var(--space-5)" }}>
+              <div className="form-field">
+                <label className="form-label" htmlFor="l-date">Leave Date <span className="required">*</span></label>
+                <input id="l-date" type="date" className="input-field" value={leaveForm.leaveDate} onChange={(e) => setLeaveForm((p) => ({ ...p, leaveDate: e.target.value }))} required />
+              </div>
+              <div className="form-field">
+                <label className="form-label" htmlFor="l-type">Leave Type <span className="required">*</span></label>
+                <select id="l-type" className="input-field" value={leaveForm.leaveTypeId} onChange={(e) => setLeaveForm((p) => ({ ...p, leaveTypeId: e.target.value }))}>
+                  {leaveTypes.map((lt) => <option key={lt.id} value={lt.id}>{lt.name}</option>)}
+                </select>
+              </div>
+              <div className="form-field">
+                <label className="form-label" htmlFor="l-comment">Comment</label>
+                <input id="l-comment" className="input-field" placeholder="Optional" maxLength={1000} value={leaveForm.comment} onChange={(e) => setLeaveForm((p) => ({ ...p, comment: e.target.value }))} />
+              </div>
+              <div className="form-field" style={{ justifyContent: "flex-end" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", fontSize: "0.825rem", color: "var(--text-secondary)", marginTop: "auto", paddingBottom: "10px" }}>
+                  <input type="checkbox" checked={leaveForm.isHalfDay} onChange={(e) => setLeaveForm((p) => ({ ...p, isHalfDay: e.target.checked }))} style={{ accentColor: "var(--brand-600)" }} />
+                  Half day
+                </label>
+              </div>
+            </div>
+            <button type="submit" className="btn btn-primary">Apply Leave</button>
+          </form>
+        </div>
       </div>
 
       {/* My leave history */}
-      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-        <div style={{ padding: "var(--space-6) var(--space-6) 0" }}>
-          <h2 className="section-title">My Leave History</h2>
+      <div className="card" style={{ overflow: "hidden" }}>
+        <div className="card-header">
+          <div>
+            <div className="card-title">My Leave History</div>
+            <div className="card-subtitle">{myLeaves.length} records</div>
+          </div>
         </div>
         <table className="table-base">
           <thead>
@@ -152,9 +174,13 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
 
       {/* Manager: pending approvals */}
       {isManager && (
-        <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-          <div style={{ padding: "var(--space-6) var(--space-6) 0" }}>
-            <h2 className="section-title">Pending Leave Approvals</h2>
+        <div className="card" style={{ overflow: "hidden" }}>
+          <div className="card-header">
+            <div>
+              <div className="card-title">Pending Leave Approvals</div>
+              <div className="card-subtitle">Leave requests awaiting your decision</div>
+            </div>
+            {pendingLeaves.length > 0 && <span className="badge badge-warning">{pendingLeaves.length}</span>}
           </div>
           <table className="table-base">
             <thead>
@@ -164,21 +190,21 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
               {pendingLeaves.map((l) => (
                 <>
                   <tr key={l.id}>
-                    <td style={{ fontWeight: "var(--font-semibold)" }}>{l.username}</td>
+                    <td><strong>{l.username}</strong></td>
                     <td>{l.leaveDate}</td>
                     <td>{l.leaveTypeName}</td>
                     <td>{l.isHalfDay ? "Half Day" : "Full Day"}</td>
                     <td>
                       <div className="flex gap-2">
-                        <button className="btn-primary" style={{ padding: "var(--space-2) var(--space-3)", fontSize: "var(--text-xs)" }} onClick={() => void reviewLeave(l.id, true)}>Approve</button>
-                        <button className="btn-secondary" style={{ padding: "var(--space-2) var(--space-3)", fontSize: "var(--text-xs)" }} onClick={() => setShowRejectForm(showRejectForm === l.id ? null : l.id)}>Reject</button>
+                        <button className="btn btn-subtle-success btn-sm" onClick={() => void reviewLeave(l.id, true)}>Approve</button>
+                        <button className="btn btn-outline btn-sm" onClick={() => setShowRejectForm(showRejectForm === l.id ? null : l.id)}>Reject</button>
                       </div>
                     </td>
                   </tr>
                   {showRejectForm === l.id && (
                     <tr key={`${l.id}-rej`}>
-                      <td colSpan={5} style={{ background: "var(--color-surface-raised)", padding: "var(--space-4)" }}>
-                        <div className="flex gap-3 items-center">
+                      <td colSpan={5} style={{ background: "var(--n-50)", padding: "var(--space-4)" }}>
+                        <div className="flex gap-3 items-center flex-wrap">
                           <input
                             className="input-field"
                             style={{ maxWidth: "360px" }}
@@ -187,8 +213,8 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
                             onChange={(e) => setRejectComments((p) => ({ ...p, [l.id]: e.target.value }))}
                             required maxLength={1000}
                           />
-                          <button className="btn-danger" onClick={() => void reviewLeave(l.id, false)}>Confirm Reject</button>
-                          <button className="btn-ghost" onClick={() => setShowRejectForm(null)}>Cancel</button>
+                          <button className="btn btn-subtle-danger btn-sm" onClick={() => void reviewLeave(l.id, false)}>Confirm Reject</button>
+                          <button className="btn btn-ghost btn-sm" onClick={() => setShowRejectForm(null)}>Cancel</button>
                         </div>
                       </td>
                     </tr>

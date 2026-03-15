@@ -14,13 +14,7 @@
   padding: var(--space-8);
 }
 
-/* Legacy .card override — design-system.css defines .card properly;
-   this only overrides the old flex+gap shorthand used in old components */
-.card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
+/* .card styling now fully handled by design-system.css */
 
 /* Legacy input/select reset — design-system.css .input-field handles proper styling */
 input,

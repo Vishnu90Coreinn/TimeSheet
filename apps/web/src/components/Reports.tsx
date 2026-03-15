@@ -1,6 +1,5 @@
 /**
- * Reports.tsx — Design system applied (Step 3).
- * All business logic and API calls are unchanged.
+ * Reports.tsx — Pulse SaaS design v2.0
  */
 import { useEffect, useState } from "react";
 import { apiFetch } from "../api/client";
@@ -44,7 +43,18 @@ export function Reports() {
 
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
-      <h1 className="page-title">Reports</h1>
+      {/* Page header */}
+      <div className="page-header">
+        <div>
+          <div className="page-title">Reports</div>
+          <div className="page-subtitle">Generate and export workforce reports</div>
+        </div>
+        <div className="page-actions">
+          <button className="btn btn-outline btn-sm" onClick={() => void exportReport("csv")}>↓ CSV</button>
+          <button className="btn btn-outline btn-sm" onClick={() => void exportReport("excel")}>↓ Excel</button>
+          <button className="btn btn-outline btn-sm" onClick={() => void exportReport("pdf")}>↓ PDF</button>
+        </div>
+      </div>
 
       {/* Controls */}
       <div className="card-flat" style={{ display: "flex", alignItems: "flex-end", gap: "var(--space-4)", flexWrap: "wrap" }}>
@@ -59,19 +69,25 @@ export function Reports() {
             {REPORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </div>
-        <div className="flex gap-2">
-          <button className="btn-secondary" onClick={() => void exportReport("csv")}>Export CSV</button>
-          <button className="btn-secondary" onClick={() => void exportReport("excel")}>Export Excel</button>
-          <button className="btn-secondary" onClick={() => void exportReport("pdf")}>Export PDF</button>
-        </div>
       </div>
 
       {/* Table */}
-      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+      <div className="card" style={{ overflow: "hidden" }}>
+        <div className="card-header">
+          <div>
+            <div className="card-title">{REPORT_OPTIONS.find(o => o.value === reportKey)?.label}</div>
+            <div className="card-subtitle">{loading ? "Loading…" : `${reportRows.length} rows`}</div>
+          </div>
+        </div>
         {loading ? (
-          <p style={{ padding: "var(--space-8)", textAlign: "center", color: "var(--color-text-muted)", fontFamily: "var(--font-body)" }}>Loading report…</p>
+          <div className="card-body">
+            <div className="empty-state">
+              <div className="empty-state__icon">⏳</div>
+              <p className="empty-state__title">Loading report…</p>
+            </div>
+          </div>
         ) : (
-          <div style={{ overflowX: "auto" }}>
+          <div className="table-wrap">
             <table className="table-base">
               <thead>
                 <tr>{columns.map((k) => <th key={k}>{k}</th>)}</tr>

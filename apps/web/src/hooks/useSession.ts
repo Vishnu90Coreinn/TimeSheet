@@ -31,28 +31,37 @@ export function useSession() {
 
     if (accessToken && refreshToken && username && role) {
       setTokens(accessToken, refreshToken);
-      // Verify session against server
+      // Restore session immediately so the page doesn't flash to login
+      setSession({ userId, accessToken, refreshToken, username, role });
+      setLoading(false);
+
+      // Verify with server in background to pick up role/username changes
       apiFetch("/auth/me").then(async (r) => {
         if (r.ok) {
           const me = await r.json();
+          // Re-read tokens from localStorage in case apiFetch refreshed them
+          const currentAccess = localStorage.getItem("accessToken") ?? accessToken;
+          const currentRefresh = localStorage.getItem("refreshToken") ?? refreshToken;
           const verifiedSession: Session = {
             userId: me.id ?? userId,
-            accessToken,
-            refreshToken,
+            accessToken: currentAccess,
+            refreshToken: currentRefresh,
             username: me.username ?? username,
             role: me.role ?? role,
           };
-          // Update localStorage with server-verified role
           localStorage.setItem("role", verifiedSession.role);
           localStorage.setItem("username", verifiedSession.username);
           setSession(verifiedSession);
-        } else {
-          // Invalid session
+        } else if (r.status === 401) {
+          // Explicit auth failure (access token invalid and refresh also failed)
           localStorage.clear();
           setTokens("", "");
+          setSession(null);
         }
-        setLoading(false);
-      }).catch(() => setLoading(false));
+        // Any other error (5xx, 404, network) — keep the restored session
+      }).catch(() => {
+        // Network error — keep the restored session
+      });
     } else {
       setLoading(false);
     }

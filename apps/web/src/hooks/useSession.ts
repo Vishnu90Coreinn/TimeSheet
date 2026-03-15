@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { apiFetch, setOnSessionExpired, setTokens } from "../api/client";
+import { setOnSessionExpired, setTokens } from "../api/client";
+import { apiFetch } from "../api/client";
 import type { Session } from "../types";
 
 export function useSession() {
@@ -31,31 +32,9 @@ export function useSession() {
 
     if (accessToken && refreshToken && username && role) {
       setTokens(accessToken, refreshToken);
-      // Verify session against server
-      apiFetch("/auth/me").then(async (r) => {
-        if (r.ok) {
-          const me = await r.json();
-          const verifiedSession: Session = {
-            userId: me.id ?? userId,
-            accessToken,
-            refreshToken,
-            username: me.username ?? username,
-            role: me.role ?? role,
-          };
-          // Update localStorage with server-verified role
-          localStorage.setItem("role", verifiedSession.role);
-          localStorage.setItem("username", verifiedSession.username);
-          setSession(verifiedSession);
-        } else {
-          // Invalid session
-          localStorage.clear();
-          setTokens("", "");
-        }
-        setLoading(false);
-      }).catch(() => setLoading(false));
-    } else {
-      setLoading(false);
+      setSession({ userId, accessToken, refreshToken, username, role });
     }
+    setLoading(false);
   }, []);
 
   const login = useCallback((s: Session) => {

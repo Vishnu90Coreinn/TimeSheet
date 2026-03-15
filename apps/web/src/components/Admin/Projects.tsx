@@ -1,6 +1,5 @@
 /**
- * Projects.tsx — Design system applied (Step 3).
- * All business logic and API calls are unchanged.
+ * Projects.tsx — Pulse SaaS design v2.0
  */
 import { useEffect, useState } from "react";
 import { apiFetch } from "../../api/client";
@@ -51,42 +50,59 @@ export function Projects() {
 
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <h1 className="page-title" style={{ margin: 0 }}>Project Admin</h1>
-        <div className="flex gap-2">
-          <button className="btn-ghost" onClick={() => void load()}>Refresh</button>
-          <button className="btn-primary" onClick={openCreate}>+ New Project</button>
+      {/* Page header */}
+      <div className="page-header">
+        <div>
+          <div className="page-title">Project Admin</div>
+          <div className="page-subtitle">Manage projects available for timesheet entries</div>
+        </div>
+        <div className="page-actions">
+          <button className="btn btn-ghost" onClick={() => void load()}>Refresh</button>
+          <button className="btn btn-primary" onClick={openCreate}>+ New Project</button>
         </div>
       </div>
 
       {/* Edit / Create form */}
       {editing && (
         <div className="card">
-          <h2 className="section-title">{editing === "new" ? "Create Project" : `Edit: ${(editing as Project).name}`}</h2>
-          {error && <div className="alert alert-error" style={{ marginBottom: "var(--space-4)" }}>{error}</div>}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-4)", maxWidth: "480px" }}>
-            <div className="form-field">
-              <label className="form-label" htmlFor="p-name">Name <span className="required">*</span></label>
-              <input id="p-name" className="input-field" value={form.name} onChange={(e) => f("name", e.target.value)} maxLength={200} required />
+          <div className="card-header">
+            <div>
+              <div className="card-title">{editing === "new" ? "Create Project" : `Edit: ${(editing as Project).name}`}</div>
             </div>
-            <div className="form-field">
-              <label className="form-label" htmlFor="p-code">Code <span className="required">*</span></label>
-              <input id="p-code" className="input-field" value={form.code} onChange={(e) => f("code", e.target.value.toUpperCase())} maxLength={50} required />
-            </div>
-            <label style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", fontFamily: "var(--font-body)", fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>
-              <input type="checkbox" checked={form.isActive} onChange={(e) => f("isActive", e.target.checked)} style={{ accentColor: "var(--color-primary)" }} />
-              Active
-            </label>
           </div>
-          <div className="flex gap-3 mt-4">
-            <button className="btn-primary" onClick={() => void save()}>Save</button>
-            <button className="btn-ghost" onClick={() => setEditing(null)}>Cancel</button>
+          <div className="card-body">
+            {error && <div className="alert alert-error" style={{ marginBottom: "var(--space-4)" }}>{error}</div>}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-4)", maxWidth: "480px", marginBottom: "var(--space-4)" }}>
+              <div className="form-field">
+                <label className="form-label" htmlFor="p-name">Name <span className="required">*</span></label>
+                <input id="p-name" className="input-field" value={form.name} onChange={(e) => f("name", e.target.value)} maxLength={200} required />
+              </div>
+              <div className="form-field">
+                <label className="form-label" htmlFor="p-code">Code <span className="required">*</span></label>
+                <input id="p-code" className="input-field" value={form.code} onChange={(e) => f("code", e.target.value.toUpperCase())} maxLength={50} required />
+              </div>
+              <label style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", fontSize: "0.825rem", color: "var(--text-secondary)" }}>
+                <input type="checkbox" checked={form.isActive} onChange={(e) => f("isActive", e.target.checked)} style={{ accentColor: "var(--brand-600)" }} />
+                Active
+              </label>
+            </div>
+            <div className="flex gap-2">
+              <button className="btn btn-primary" onClick={() => void save()}>Save</button>
+              <button className="btn btn-ghost" onClick={() => setEditing(null)}>Cancel</button>
+            </div>
           </div>
         </div>
       )}
 
       {/* Table */}
-      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+      <div className="card" style={{ overflow: "hidden" }}>
+        <div className="card-header">
+          <div>
+            <div className="card-title">All Projects</div>
+            <div className="card-subtitle">{projects.length} projects</div>
+          </div>
+        </div>
+        <div className="table-wrap">
         <table className="table-base">
           <thead>
             <tr><th>Name</th><th>Code</th><th>Status</th><th>Actions</th></tr>
@@ -94,8 +110,8 @@ export function Projects() {
           <tbody>
             {projects.map((p) => (
               <tr key={p.id} style={{ opacity: p.isActive ? 1 : 0.5 }}>
-                <td style={{ fontWeight: "var(--font-medium)" }}>{p.name}</td>
-                <td><code style={{ fontFamily: "monospace", background: "var(--color-surface)", padding: "2px 6px", borderRadius: "var(--radius-sm)", fontSize: "var(--text-xs)" }}>{p.code}</code></td>
+                <td><strong>{p.name}</strong></td>
+                <td><code style={{ fontFamily: "monospace", background: "var(--n-100)", padding: "2px 6px", borderRadius: "var(--r-sm)", fontSize: "0.75rem" }}>{p.code}</code></td>
                 <td>
                   {p.isArchived
                     ? <span className="badge badge-neutral">archived</span>
@@ -105,9 +121,9 @@ export function Projects() {
                 </td>
                 <td>
                   <div className="flex gap-2">
-                    <button className="btn-ghost" style={{ fontSize: "var(--text-xs)" }} onClick={() => openEdit(p)}>Edit</button>
-                    {!p.isArchived && <button className="btn-ghost" style={{ fontSize: "var(--text-xs)" }} onClick={() => void archive(p.id)}>Archive</button>}
-                    <button className="btn-danger" onClick={() => void remove(p.id)}>Delete</button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => openEdit(p)}>Edit</button>
+                    {!p.isArchived && <button className="btn btn-ghost btn-sm" onClick={() => void archive(p.id)}>Archive</button>}
+                    <button className="btn btn-subtle-danger btn-sm" onClick={() => void remove(p.id)}>Delete</button>
                   </div>
                 </td>
               </tr>
@@ -115,6 +131,7 @@ export function Projects() {
             {projects.length === 0 && <tr className="empty-row"><td colSpan={4}>No projects found.</td></tr>}
           </tbody>
         </table>
+        </div>
       </div>
     </section>
   );

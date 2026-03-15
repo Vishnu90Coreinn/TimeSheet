@@ -1,9 +1,7 @@
 /**
- * Login.tsx — Task 5: Redesigned login page.
- * Palette: white + blue (#1E40AF, #3B82F6, #EFF6FF, #1D4ED8).
- * Fonts: Plus Jakarta Sans (headings) + Inter (body) — loaded via index.html.
- * Layout: split-panel on desktop, single-card on mobile.
- * Auth flow is unchanged — calls /auth/login and fires onLogin callback.
+ * Login.tsx — v3.0 exact Pulse reference layout
+ * Left: gradient brand panel with features + testimonial
+ * Right: clean sign-in form
  */
 import { FormEvent, useState } from "react";
 import { API_BASE } from "../api/client";
@@ -15,11 +13,10 @@ interface LoginProps {
 
 export function Login({ onLogin }: LoginProps) {
   const [identifier, setIdentifier] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  const [password, setPassword]     = useState("");
   const [rememberMe, setRememberMe] = useState(false);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [error, setError]           = useState("");
+  const [loading, setLoading]       = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -42,11 +39,11 @@ export function Login({ onLogin }: LoginProps) {
       }
       const data = await response.json();
       onLogin({
-        userId: data.userId ?? "",
-        accessToken: data.accessToken,
+        userId:       data.userId ?? "",
+        accessToken:  data.accessToken,
         refreshToken: data.refreshToken,
-        username: data.username,
-        role: data.role,
+        username:     data.username,
+        role:         data.role,
       });
     } catch {
       setError("Connection error. Please try again.");
@@ -57,412 +54,329 @@ export function Login({ onLogin }: LoginProps) {
 
   return (
     <>
-      <style>{loginStyles}</style>
-      <div className="login-root">
-        {/* Left decorative panel — hidden on mobile */}
-        <aside className="login-panel" aria-hidden="true">
-          <div className="login-panel__inner">
-            <div className="login-panel__logo">
-              <TimesheetIcon color="white" size={40} />
-              <span className="login-panel__app-name">TimeSheet</span>
-            </div>
-            <h2 className="login-panel__headline">
-              Track time.<br />Work smarter.
-            </h2>
-            <p className="login-panel__sub">
-              Unified timesheet and attendance management for modern teams.
-            </p>
-            <div className="login-panel__dots">
-              <span /><span /><span />
-            </div>
-          </div>
-          <svg className="login-panel__bg-shape" viewBox="0 0 400 400" fill="none">
-            <circle cx="340" cy="60" r="120" fill="white" fillOpacity="0.05" />
-            <circle cx="60" cy="340" r="160" fill="white" fillOpacity="0.05" />
-            <circle cx="340" cy="60" r="70" fill="white" fillOpacity="0.06" />
-          </svg>
-        </aside>
+      <style>{STYLES}</style>
 
-        {/* Right form panel */}
-        <main className="login-form-panel">
-          <div className="login-card">
-            {/* Mobile-only logo */}
-            <div className="login-card__mobile-logo" aria-hidden="true">
-              <TimesheetIcon color="#1E40AF" size={32} />
-              <span>TimeSheet</span>
-            </div>
+      {/* Background */}
+      <div className="lp-bg">
+        <div className="lp-pattern" />
+        <div className="lp-dots" />
 
-            <h1 className="login-card__title">Welcome back</h1>
-            <p className="login-card__subtitle">Sign in to your account to continue</p>
+        <div className="lp-wrapper">
+          <div className="lp-card">
 
-            <form onSubmit={handleSubmit} noValidate className="login-form">
-              {/* Identifier */}
-              <div className="login-field">
-                <label htmlFor="login-identifier" className="login-label">
-                  Username or Email <span className="login-required" aria-hidden="true">*</span>
-                </label>
-                <input
-                  id="login-identifier"
-                  type="text"
-                  className={`login-input${error ? " login-input--error" : ""}`}
-                  placeholder="admin or admin@timesheet.local"
-                  value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
-                  autoComplete="username"
-                  required
-                />
+            {/* ── Left panel ── */}
+            <div className="lp-left">
+              <div className="lp-left-pattern" />
+              <div className="lp-left-orb1" />
+              <div className="lp-left-orb2" />
+
+              {/* Brand */}
+              <div className="lp-brand">
+                <div className="lp-brand-icon">⏱</div>
+                <span className="lp-brand-name">TimeSheet</span>
               </div>
 
-              {/* Password */}
-              <div className="login-field">
-                <div className="login-label-row">
-                  <label htmlFor="login-password" className="login-label">
-                    Password <span className="login-required" aria-hidden="true">*</span>
+              {/* Headline */}
+              <div className="lp-headline">
+                <h1>Time tracking<br /><span>that actually</span><br />works.</h1>
+                <p>Precise timesheet management, smart approvals, and team visibility — built for modern enterprises.</p>
+                <div className="lp-features">
+                  <div className="lp-feature"><div className="lp-feat-icon">⚡</div>One-click time entry with AI-suggested tasks</div>
+                  <div className="lp-feature"><div className="lp-feat-icon">✓</div>Multi-level approval workflows</div>
+                  <div className="lp-feature"><div className="lp-feat-icon">📊</div>Real-time project budget tracking</div>
+                  <div className="lp-feature"><div className="lp-feat-icon">🔒</div>Enterprise SSO &amp; SAML 2.0 ready</div>
+                </div>
+              </div>
+
+              {/* Testimonial */}
+              <div className="lp-testimonial">
+                <div className="lp-quote">"TimeSheet cut our timesheet processing time by 70%. Our entire team loves it."</div>
+                <div className="lp-author">
+                  <div className="lp-author-av">TS</div>
+                  Team Lead — Enterprise Workforce Management
+                </div>
+              </div>
+            </div>
+
+            {/* ── Right panel ── */}
+            <div className="lp-right">
+              <div className="lp-right-header">
+                <h2>Welcome back</h2>
+                <p>Sign in to your organization's workspace</p>
+              </div>
+
+              <form onSubmit={handleSubmit} noValidate>
+                {/* Username */}
+                <div className="lp-field">
+                  <label className="lp-label" htmlFor="lp-user">Username or Email</label>
+                  <div className="lp-input-wrap">
+                    <div className="lp-input-icon">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    </div>
+                    <input
+                      id="lp-user"
+                      type="text"
+                      className={`lp-input${error ? " lp-input--err" : ""}`}
+                      placeholder="admin or admin@timesheet.local"
+                      value={identifier}
+                      onChange={(e) => setIdentifier(e.target.value)}
+                      autoComplete="username"
+                    />
+                  </div>
+                </div>
+
+                {/* Password */}
+                <div className="lp-field">
+                  <div className="lp-label-row">
+                    <label className="lp-label" htmlFor="lp-pass">Password</label>
+                    <button type="button" className="lp-forgot" onClick={() => setError("Contact your admin to reset password.")}>
+                      Forgot password?
+                    </button>
+                  </div>
+                  <div className="lp-input-wrap">
+                    <div className="lp-input-icon">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    </div>
+                    <input
+                      id="lp-pass"
+                      type="password"
+                      className={`lp-input${error ? " lp-input--err" : ""}`}
+                      placeholder="Enter your password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      autoComplete="current-password"
+                    />
+                  </div>
+                </div>
+
+                {/* Remember me */}
+                <div className="lp-row2">
+                  <label className="lp-checkbox-label">
+                    <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} style={{ accentColor: "var(--brand-500)", cursor: "pointer" }} />
+                    Keep me signed in
                   </label>
-                  <button
-                    type="button"
-                    className="login-forgot"
-                    onClick={() => setError("Password reset is not yet available. Contact your admin.")}
-                  >
-                    Forgot password?
-                  </button>
                 </div>
-                <div className="login-input-wrap">
-                  <input
-                    id="login-password"
-                    type={showPassword ? "text" : "password"}
-                    className={`login-input login-input--password${error ? " login-input--error" : ""}`}
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    autoComplete="current-password"
-                    minLength={6}
-                    required
-                  />
-                  <button
-                    type="button"
-                    className="login-eye"
-                    onClick={() => setShowPassword((v) => !v)}
-                    aria-label={showPassword ? "Hide password" : "Show password"}
-                  >
-                    {showPassword ? (
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                    ) : (
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                    )}
-                  </button>
-                </div>
+
+                {/* Error */}
+                {error && (
+                  <div className="lp-error" role="alert">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    {error}
+                  </div>
+                )}
+
+                {/* Submit */}
+                <button type="submit" className="lp-submit" disabled={loading}>
+                  {loading ? <span className="lp-spinner" /> : "Sign in to TimeSheet →"}
+                </button>
+              </form>
+
+              {/* Trust bar */}
+              <div className="lp-trust">
+                <div className="lp-trust-item"><span>🔒</span> SOC 2 Type II</div>
+                <div className="lp-trust-item"><span>✓</span> GDPR Compliant</div>
+                <div className="lp-trust-item"><span>🛡</span> 256-bit SSL</div>
               </div>
+            </div>
 
-              {/* Remember me */}
-              <div className="login-remember">
-                <label className="login-checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="login-checkbox"
-                  />
-                  Remember me for 30 days
-                </label>
-              </div>
-
-              {/* Error */}
-              {error && (
-                <div className="login-error" role="alert">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                  {error}
-                </div>
-              )}
-
-              {/* Submit */}
-              <button type="submit" className="login-btn" disabled={loading}>
-                {loading ? <span className="login-btn__spinner" /> : "Sign In"}
-              </button>
-            </form>
           </div>
-        </main>
+        </div>
       </div>
     </>
   );
 }
 
-function TimesheetIcon({ color, size }: { color: string; size: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 40 40" fill="none">
-      <rect width="40" height="40" rx="10" fill={color === "white" ? "rgba(255,255,255,0.15)" : "#EFF6FF"} />
-      <path d="M20 8L32 14V26L20 32L8 26V14L20 8Z" stroke={color} strokeWidth="2" fill="none" />
-      <circle cx="20" cy="20" r="4" fill={color} />
-    </svg>
-  );
-}
-
-/* ─── Scoped styles (no global pollution) ─────────────────────────────────── */
-const loginStyles = `
-  .login-root {
-    display: flex;
-    min-height: 100vh;
-    background: #EFF6FF;
-    font-family: 'Inter', system-ui, sans-serif;
+const STYLES = `
+  .lp-bg {
+    min-height: 100vh; background: var(--n-50);
+    display: flex; align-items: stretch;
+    position: relative; overflow: hidden;
   }
-
-  /* Left decorative panel */
-  .login-panel {
-    position: relative;
-    flex: 0 0 42%;
-    background: linear-gradient(145deg, #1E40AF 0%, #1D4ED8 55%, #2563EB 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  .lp-pattern {
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      radial-gradient(circle at 20% 20%, rgba(99,102,241,0.06) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(99,102,241,0.04) 0%, transparent 50%);
+  }
+  .lp-dots {
+    position: fixed; inset: 0; z-index: 0;
+    background-image: radial-gradient(circle, var(--n-200) 1px, transparent 1px);
+    background-size: 28px 28px; opacity: 0.7;
+    mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 0%, transparent 100%);
+  }
+  .lp-wrapper {
+    position: relative; z-index: 1;
+    display: flex; align-items: center; justify-content: center;
+    width: 100%; min-height: 100vh; padding: 24px;
+  }
+  .lp-card {
+    background: var(--n-0);
+    border: 1px solid var(--border-default);
+    border-radius: var(--r-2xl);
+    box-shadow: var(--shadow-xl);
+    width: 100%; max-width: 960px;
+    display: grid; grid-template-columns: 1fr 1fr;
     overflow: hidden;
+    animation: lpReveal 0.5s cubic-bezier(0.16,1,0.3,1);
   }
-  @media (max-width: 768px) { .login-panel { display: none; } }
+  @keyframes lpReveal {
+    from { opacity: 0; transform: translateY(16px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @media (max-width: 720px) { .lp-card { grid-template-columns: 1fr; } .lp-left { display: none; } }
 
-  .login-panel__inner {
-    position: relative;
-    z-index: 1;
-    padding: 48px;
-    color: white;
+  /* Left */
+  .lp-left {
+    background: linear-gradient(145deg, var(--brand-700) 0%, var(--brand-600) 40%, var(--brand-500) 100%);
+    padding: 48px 40px;
+    display: flex; flex-direction: column; justify-content: space-between;
+    position: relative; overflow: hidden;
   }
-  .login-panel__logo {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 56px;
+  .lp-left-pattern {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+    background-size: 32px 32px;
   }
-  .login-panel__app-name {
-    font-family: var(--font-display), sans-serif;
-    font-size: 22px;
-    font-weight: 700;
-    color: white;
-    letter-spacing: -0.3px;
+  .lp-left-orb1 {
+    position: absolute; top: -80px; right: -80px;
+    width: 300px; height: 300px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
   }
-  .login-panel__headline {
-    font-family: var(--font-display), sans-serif;
-    font-size: 36px;
-    font-weight: 700;
-    line-height: 1.2;
-    margin: 0 0 16px;
-    color: white;
-    letter-spacing: -0.5px;
+  .lp-left-orb2 {
+    position: absolute; bottom: -60px; left: -60px;
+    width: 250px; height: 250px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 70%);
   }
-  .login-panel__sub {
-    font-size: 15px;
-    line-height: 1.6;
-    color: rgba(255,255,255,0.75);
-    margin: 0 0 48px;
-    max-width: 280px;
+  .lp-brand {
+    position: relative; z-index: 1;
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 48px;
   }
-  .login-panel__dots {
-    display: flex;
-    gap: 8px;
+  .lp-brand-icon {
+    width: 36px; height: 36px;
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: var(--r-lg);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem;
   }
-  .login-panel__dots span {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.4);
+  .lp-brand-name {
+    font-family: var(--font-display);
+    font-size: 1.25rem; font-weight: 700;
+    color: #fff; letter-spacing: -0.02em;
   }
-  .login-panel__dots span:first-child { background: white; }
-  .login-panel__bg-shape {
-    position: absolute;
-    inset: 0;
-    width: 100%; height: 100%;
-    pointer-events: none;
+  .lp-headline {
+    position: relative; z-index: 1; flex: 1;
   }
-
-  /* Right form panel */
-  .login-form-panel {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-    animation: loginFadeIn 0.45s ease both;
+  .lp-headline h1 {
+    font-family: var(--font-display);
+    font-size: clamp(1.75rem, 2.5vw, 2.25rem); font-weight: 700;
+    color: #fff; line-height: 1.15; letter-spacing: -0.03em;
+    margin-bottom: 16px;
   }
-  @keyframes loginFadeIn {
-    from { opacity: 0; transform: translateY(16px); }
-    to   { opacity: 1; transform: translateY(0); }
+  .lp-headline h1 span { opacity: 0.65; }
+  .lp-headline p {
+    font-size: 0.875rem; color: rgba(255,255,255,0.65);
+    line-height: 1.6; max-width: 280px; margin-bottom: 32px;
   }
-
-  .login-card {
-    width: 100%;
-    max-width: 420px;
-    background: white;
-    border-radius: 16px;
-    padding: 40px;
-    box-shadow: 0 4px 24px rgba(30,64,175,0.10), 0 1px 4px rgba(0,0,0,0.04);
+  .lp-features { display: flex; flex-direction: column; gap: 12px; position: relative; z-index: 1; }
+  .lp-feature {
+    display: flex; align-items: center; gap: 12px;
+    font-size: 0.8rem; color: rgba(255,255,255,0.8);
   }
-
-  .login-card__mobile-logo {
-    display: none;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 28px;
-    font-family: var(--font-display), sans-serif;
-    font-weight: 700;
-    font-size: 18px;
-    color: #1E40AF;
+  .lp-feat-icon {
+    width: 26px; height: 26px;
+    background: rgba(255,255,255,0.12);
+    border-radius: var(--r-sm);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; flex-shrink: 0;
   }
-  @media (max-width: 768px) { .login-card__mobile-logo { display: flex; } }
-
-  .login-card__title {
-    font-family: var(--font-display), sans-serif;
-    font-size: 26px;
-    font-weight: 700;
-    color: #0F172A;
-    margin: 0 0 6px;
-    letter-spacing: -0.4px;
+  .lp-testimonial {
+    position: relative; z-index: 1; margin-top: 32px;
+    padding: 16px 20px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: var(--r-lg);
   }
-  .login-card__subtitle {
-    font-size: 14px;
-    color: #64748B;
-    margin: 0 0 32px;
+  .lp-quote { font-size: 0.82rem; color: rgba(255,255,255,0.8); line-height: 1.6; font-style: italic; margin-bottom: 12px; }
+  .lp-author { display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: rgba(255,255,255,0.55); }
+  .lp-author-av {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.65rem; font-weight: 700; color: #fff;
   }
 
-  /* Form */
-  .login-form { display: flex; flex-direction: column; gap: 20px; }
-  .login-field { display: flex; flex-direction: column; gap: 6px; }
-
-  .login-label {
-    font-size: 13px;
-    font-weight: 600;
-    color: #374151;
-    letter-spacing: 0.01em;
+  /* Right */
+  .lp-right { padding: 48px 40px; display: flex; flex-direction: column; justify-content: center; }
+  .lp-right-header { margin-bottom: 32px; }
+  .lp-right-header h2 {
+    font-family: var(--font-display);
+    font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em;
+    color: var(--text-primary); margin-bottom: 4px;
   }
-  .login-label-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  .login-required { color: #EF4444; }
+  .lp-right-header p { font-size: 0.875rem; color: var(--text-secondary); }
 
-  .login-forgot {
-    font-size: 12px;
-    color: #3B82F6;
-    background: none;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-    font-family: inherit;
-    text-decoration: underline;
-    text-underline-offset: 2px;
-  }
-  .login-forgot:hover { color: #1D4ED8; }
+  .lp-field { margin-bottom: 16px; }
+  .lp-label { display: block; font-size: 0.775rem; font-weight: 600; color: var(--text-primary); letter-spacing: 0.01em; margin-bottom: 8px; }
+  .lp-label-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .lp-forgot { font-size: 0.775rem; font-weight: 500; color: var(--brand-600); background: none; border: none; cursor: pointer; padding: 0; }
+  .lp-forgot:hover { text-decoration: underline; }
 
-  .login-input-wrap { position: relative; }
-  .login-input {
-    width: 100%;
+  .lp-input-wrap { position: relative; }
+  .lp-input-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-tertiary); display: flex; align-items: center; pointer-events: none; }
+  .lp-input {
+    width: 100%; height: 42px;
+    padding: 0 12px 0 36px;
+    background: var(--surface-sunken);
+    border: 1.5px solid var(--border-default);
+    border-radius: var(--r-md);
+    font-size: 0.875rem; font-family: var(--font-sans);
+    color: var(--text-primary); outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
     box-sizing: border-box;
-    padding: 11px 14px;
-    border: 1.5px solid #E2E8F0;
-    border-radius: 8px;
-    font-size: 14px;
-    font-family: 'Inter', system-ui, sans-serif;
-    color: #0F172A;
-    background: #FAFAFA;
-    outline: none;
-    transition: border-color 0.18s, box-shadow 0.18s, background 0.18s;
-    margin: 0;
   }
-  .login-input:focus {
-    border-color: #3B82F6;
-    background: white;
-    box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
-  }
-  .login-input--error { border-color: #EF4444 !important; }
-  .login-input--password { padding-right: 44px; }
+  .lp-input:hover { border-color: var(--border-strong); background: var(--n-0); }
+  .lp-input:focus { border-color: var(--brand-400); box-shadow: 0 0 0 3px rgba(99,102,241,0.12); background: var(--n-0); }
+  .lp-input::placeholder { color: var(--text-tertiary); }
+  .lp-input--err { border-color: var(--danger) !important; }
 
-  .login-eye {
-    position: absolute;
-    right: 12px; top: 50%;
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-    color: #94A3B8;
-    display: flex;
-    align-items: center;
-  }
-  .login-eye:hover { color: #475569; }
+  .lp-row2 { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .lp-checkbox-label { display: flex; align-items: center; gap: 8px; font-size: 0.825rem; color: var(--text-secondary); cursor: pointer; }
 
-  /* Remember me */
-  .login-remember { margin-top: -4px; }
-  .login-checkbox-label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13px;
-    color: #4B5563;
-    cursor: pointer;
-    user-select: none;
-  }
-  .login-checkbox {
-    width: 15px; height: 15px;
-    accent-color: #1E40AF;
-    cursor: pointer;
-    margin: 0;
+  .lp-error {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px; margin-bottom: 16px;
+    background: var(--danger-light); border: 1px solid rgba(239,68,68,0.2);
+    border-radius: var(--r-md); font-size: 0.825rem; color: var(--danger-dark);
   }
 
-  /* Error banner */
-  .login-error {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 14px;
-    background: #FEF2F2;
-    border: 1px solid #FECACA;
-    border-radius: 8px;
-    font-size: 13px;
-    color: #DC2626;
+  .lp-submit {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; height: 42px;
+    background: var(--brand-600); color: #fff;
+    border: none; border-radius: var(--r-md);
+    font-family: var(--font-sans); font-size: 0.875rem; font-weight: 600;
+    cursor: pointer; transition: all 0.15s; letter-spacing: 0.01em;
   }
+  .lp-submit:hover:not(:disabled) { background: var(--brand-700); box-shadow: var(--shadow-brand); transform: translateY(-1px); }
+  .lp-submit:active:not(:disabled) { transform: translateY(0); }
+  .lp-submit:disabled { opacity: 0.55; cursor: not-allowed; }
 
-  /* Submit button */
-  .login-btn {
-    width: 100%;
-    padding: 13px;
-    background: linear-gradient(135deg, #1E40AF 0%, #2563EB 100%);
-    color: white;
-    border: none;
-    border-radius: 10px;
-    font-family: var(--font-display), sans-serif;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    letter-spacing: 0.01em;
-    position: relative;
-    overflow: hidden;
-    transition: box-shadow 0.2s, transform 0.15s;
-    margin-top: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 48px;
-  }
-  .login-btn:hover:not(:disabled) {
-    box-shadow: 0 4px 16px rgba(30,64,175,0.35);
-    transform: translateY(-1px);
-  }
-  .login-btn:active:not(:disabled) { transform: translateY(0); }
-  .login-btn:disabled { opacity: 0.65; cursor: not-allowed; }
-  .login-btn::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.18) 50%, transparent 60%);
-    background-size: 200% 100%;
-    background-position: -100% 0;
-    transition: background-position 0.5s;
-  }
-  .login-btn:hover::after { background-position: 100% 0; }
-
-  .login-btn__spinner {
-    width: 20px; height: 20px;
+  .lp-spinner {
+    width: 18px; height: 18px;
     border: 2px solid rgba(255,255,255,0.35);
-    border-top-color: white;
-    border-radius: 50%;
-    animation: loginSpin 0.7s linear infinite;
-    display: inline-block;
+    border-top-color: #fff; border-radius: 50%;
+    animation: lpSpin 0.7s linear infinite; display: inline-block;
   }
-  @keyframes loginSpin { to { transform: rotate(360deg); } }
+  @keyframes lpSpin { to { transform: rotate(360deg); } }
+
+  .lp-trust {
+    display: flex; align-items: center; justify-content: center; gap: 16px;
+    margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border-subtle);
+  }
+  .lp-trust-item { display: flex; align-items: center; gap: 4px; font-size: 0.72rem; color: var(--text-tertiary); font-weight: 500; }
 `;

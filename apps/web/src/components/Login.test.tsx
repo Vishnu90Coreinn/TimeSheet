@@ -18,7 +18,7 @@ describe("Login", () => {
   it("renders username and password inputs", () => {
     render(<Login onLogin={vi.fn()} />);
     expect(screen.getByPlaceholderText(/admin or admin@timesheet/i)).toBeTruthy();
-    expect(screen.getByPlaceholderText(/••••/)).toBeTruthy();
+    expect(screen.getByPlaceholderText(/enter your password/i)).toBeTruthy();
   });
 
   it("calls fetch on submit", async () => {
@@ -30,7 +30,7 @@ describe("Login", () => {
     render(<Login onLogin={vi.fn()} />);
 
     fireEvent.change(screen.getByPlaceholderText(/admin or admin@timesheet/i), { target: { value: "user" } });
-    fireEvent.change(screen.getByPlaceholderText(/••••/), { target: { value: "password123" } });
+    fireEvent.change(screen.getByPlaceholderText(/enter your password/i), { target: { value: "password123" } });
     fireEvent.submit(screen.getByRole("button", { name: /sign in/i }).closest("form")!);
 
     await waitFor(() => {
@@ -50,7 +50,7 @@ describe("Login", () => {
     render(<Login onLogin={vi.fn()} />);
 
     fireEvent.change(screen.getByPlaceholderText(/admin or admin@timesheet/i), { target: { value: "user" } });
-    fireEvent.change(screen.getByPlaceholderText(/••••/), { target: { value: "password123" } });
+    fireEvent.change(screen.getByPlaceholderText(/enter your password/i), { target: { value: "password123" } });
     fireEvent.submit(screen.getByRole("button", { name: /sign in/i }).closest("form")!);
 
     await waitFor(() => {
@@ -68,7 +68,7 @@ describe("Login", () => {
     render(<Login onLogin={onLogin} />);
 
     fireEvent.change(screen.getByPlaceholderText(/admin or admin@timesheet/i), { target: { value: "user" } });
-    fireEvent.change(screen.getByPlaceholderText(/••••/), { target: { value: "password123" } });
+    fireEvent.change(screen.getByPlaceholderText(/enter your password/i), { target: { value: "password123" } });
     fireEvent.submit(screen.getByRole("button", { name: /sign in/i }).closest("form")!);
 
     await waitFor(() => {

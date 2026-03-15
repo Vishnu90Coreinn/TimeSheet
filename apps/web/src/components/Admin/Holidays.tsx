@@ -1,6 +1,5 @@
 /**
- * Holidays.tsx — Design system applied (Step 3).
- * All business logic and API calls are unchanged.
+ * Holidays.tsx — Pulse SaaS design v2.0
  */
 import { useEffect, useState } from "react";
 import { apiFetch } from "../../api/client";
@@ -46,10 +45,14 @@ export function Holidays() {
 
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "var(--space-3)" }}>
-        <h1 className="page-title" style={{ margin: 0 }}>Holiday Calendar</h1>
-        <div className="flex gap-2 items-center">
-          <div className="form-field" style={{ flexDirection: "row", alignItems: "center", gap: "var(--space-2)" }}>
+      {/* Page header */}
+      <div className="page-header">
+        <div>
+          <div className="page-title">Holiday Calendar</div>
+          <div className="page-subtitle">Manage public holidays and recurring observances</div>
+        </div>
+        <div className="page-actions">
+          <div className="form-field" style={{ flexDirection: "row", alignItems: "center", gap: "var(--space-2)", display: "flex" }}>
             <label className="form-label" htmlFor="hol-year" style={{ margin: 0, whiteSpace: "nowrap" }}>Year</label>
             <input
               id="hol-year"
@@ -61,37 +64,52 @@ export function Holidays() {
               style={{ width: "90px" }}
             />
           </div>
-          <button className="btn-ghost" onClick={() => void load(year)}>Refresh</button>
-          <button className="btn-primary" onClick={openCreate}>+ Add Holiday</button>
+          <button className="btn btn-ghost" onClick={() => void load(year)}>Refresh</button>
+          <button className="btn btn-primary" onClick={openCreate}>+ Add Holiday</button>
         </div>
       </div>
 
+      {/* Edit / Create form */}
       {editing && (
         <div className="card">
-          <h2 className="section-title">{editing === "new" ? "Add Holiday" : `Edit: ${(editing as Holiday).name}`}</h2>
-          {error && <div className="alert alert-error" style={{ marginBottom: "var(--space-4)" }}>{error}</div>}
-          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)", maxWidth: "360px" }}>
-            <div className="form-field">
-              <label className="form-label" htmlFor="hol-name">Name <span className="required">*</span></label>
-              <input id="hol-name" className="input-field" value={form.name} onChange={(e) => f("name", e.target.value)} maxLength={200} required />
+          <div className="card-header">
+            <div>
+              <div className="card-title">{editing === "new" ? "Add Holiday" : `Edit: ${(editing as Holiday).name}`}</div>
             </div>
-            <div className="form-field">
-              <label className="form-label" htmlFor="hol-date">Date <span className="required">*</span></label>
-              <input id="hol-date" type="date" className="input-field" value={form.date} onChange={(e) => f("date", e.target.value)} required />
-            </div>
-            <label style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", fontFamily: "var(--font-body)", fontSize: "var(--text-sm)", color: "var(--color-text-secondary)" }}>
-              <input type="checkbox" checked={form.isRecurring} onChange={(e) => f("isRecurring", e.target.checked)} style={{ accentColor: "var(--color-primary)" }} />
-              Recurring annually
-            </label>
           </div>
-          <div className="flex gap-3 mt-4">
-            <button className="btn-primary" onClick={() => void save()}>Save</button>
-            <button className="btn-ghost" onClick={() => setEditing(null)}>Cancel</button>
+          <div className="card-body">
+            {error && <div className="alert alert-error" style={{ marginBottom: "var(--space-4)" }}>{error}</div>}
+            <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)", maxWidth: "360px", marginBottom: "var(--space-4)" }}>
+              <div className="form-field">
+                <label className="form-label" htmlFor="hol-name">Name <span className="required">*</span></label>
+                <input id="hol-name" className="input-field" value={form.name} onChange={(e) => f("name", e.target.value)} maxLength={200} required />
+              </div>
+              <div className="form-field">
+                <label className="form-label" htmlFor="hol-date">Date <span className="required">*</span></label>
+                <input id="hol-date" type="date" className="input-field" value={form.date} onChange={(e) => f("date", e.target.value)} required />
+              </div>
+              <label style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", fontSize: "0.825rem", color: "var(--text-secondary)" }}>
+                <input type="checkbox" checked={form.isRecurring} onChange={(e) => f("isRecurring", e.target.checked)} style={{ accentColor: "var(--brand-600)" }} />
+                Recurring annually
+              </label>
+            </div>
+            <div className="flex gap-2">
+              <button className="btn btn-primary" onClick={() => void save()}>Save</button>
+              <button className="btn btn-ghost" onClick={() => setEditing(null)}>Cancel</button>
+            </div>
           </div>
         </div>
       )}
 
-      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+      {/* Table */}
+      <div className="card" style={{ overflow: "hidden" }}>
+        <div className="card-header">
+          <div>
+            <div className="card-title">Holidays — {year}</div>
+            <div className="card-subtitle">{holidays.length} holidays</div>
+          </div>
+        </div>
+        <div className="table-wrap">
         <table className="table-base">
           <thead>
             <tr><th>Name</th><th>Date</th><th>Recurring</th><th>Actions</th></tr>
@@ -99,13 +117,13 @@ export function Holidays() {
           <tbody>
             {holidays.map((h) => (
               <tr key={h.id}>
-                <td style={{ fontWeight: "var(--font-medium)" }}>{h.name}</td>
+                <td><strong>{h.name}</strong></td>
                 <td>{h.date}</td>
-                <td>{h.isRecurring ? <span className="badge badge-blue">Annual</span> : <span className="badge badge-neutral">One-time</span>}</td>
+                <td>{h.isRecurring ? <span className="badge badge-brand">Annual</span> : <span className="badge badge-neutral">One-time</span>}</td>
                 <td>
                   <div className="flex gap-2">
-                    <button className="btn-ghost" style={{ fontSize: "var(--text-xs)" }} onClick={() => openEdit(h)}>Edit</button>
-                    <button className="btn-danger" onClick={() => void remove(h.id)}>Delete</button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => openEdit(h)}>Edit</button>
+                    <button className="btn btn-subtle-danger btn-sm" onClick={() => void remove(h.id)}>Delete</button>
                   </div>
                 </td>
               </tr>
@@ -113,6 +131,7 @@ export function Holidays() {
             {holidays.length === 0 && <tr className="empty-row"><td colSpan={4}>No holidays for {year}.</td></tr>}
           </tbody>
         </table>
+        </div>
       </div>
     </section>
   );

@@ -14,13 +14,7 @@
   padding: var(--space-8);
 }
 
-/* Legacy .card override — design-system.css defines .card properly;
-   this only overrides the old flex+gap shorthand used in old components */
-.card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
+/* .card styling now fully handled by design-system.css */
 
 /* Legacy input/select reset — design-system.css .input-field handles proper styling */
 input,
@@ -55,70 +49,55 @@ pre {
   font-size: var(--text-sm);
 }
 
-/* ── AttendanceWidget (Task 4) ─────────────────────────────── */
+/* ── AttendanceWidget — compact light card ──────────────── */
 .aw-card {
-  background: var(--color-background);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--color-border);
-  padding: var(--space-6);
+  background: var(--n-0);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-xl);
+  padding: var(--space-5);
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  box-shadow: var(--shadow-sm);
+  gap: var(--space-4);
+  box-shadow: var(--shadow-xs);
 }
-.aw-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
+.aw-header { display: flex; align-items: center; justify-content: space-between; }
 .aw-title {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
+  display: flex; align-items: center; gap: var(--space-2);
   font-family: var(--font-display);
-  font-size: var(--text-base);
-  font-weight: var(--font-bold);
-  color: var(--color-text-primary);
+  font-size: 0.875rem; font-weight: 700;
+  color: var(--text-primary);
 }
-.aw-status-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: var(--radius-full);
-  flex-shrink: 0;
-}
-.aw-status-dot--in  { background: var(--color-success); box-shadow: 0 0 0 3px rgba(22,163,74,0.18); }
-.aw-status-dot--out { background: var(--color-text-muted); }
-.aw-date { font-size: var(--text-xs); color: var(--color-text-muted); font-weight: var(--font-medium); }
+.aw-status-dot { width: 8px; height: 8px; border-radius: var(--r-full); flex-shrink: 0; }
+.aw-status-dot--out { background: var(--n-200); }
+.aw-date { font-size: var(--text-xs); color: var(--text-tertiary); font-weight: 500; }
 .aw-timer-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; }
-.aw-check-time { font-size: var(--text-sm); color: var(--color-text-secondary); }
-.aw-elapsed { font-family: var(--font-display); font-size: 1.375rem; font-weight: var(--font-bold); color: var(--color-primary); letter-spacing: 0.04em; }
-.aw-net {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  background: var(--color-surface-raised);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-}
-.aw-net__label { font-size: var(--text-xs); color: var(--color-text-muted); font-weight: var(--font-semibold); text-transform: uppercase; letter-spacing: 0.05em; }
-.aw-net__value { font-size: var(--text-lg); font-weight: var(--font-bold); color: var(--color-primary); margin-left: auto; }
-.aw-actions { display: flex; gap: var(--space-3); }
-.aw-btn {
-  flex: 1;
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-md);
-  font-size: var(--text-sm);
-  font-weight: var(--font-semibold);
+.aw-check-time { font-size: 0.775rem; color: var(--text-tertiary); }
+.aw-elapsed {
   font-family: var(--font-display);
-  cursor: pointer;
-  transition: box-shadow var(--transition-fast), transform var(--transition-fast), opacity var(--transition-fast);
-  border: none;
+  font-size: 1.75rem; font-weight: 700;
+  color: var(--text-primary); letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.aw-net {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--brand-50);
+  border: 1px solid var(--brand-100);
+  border-radius: var(--r-md);
+}
+.aw-net__label { font-size: 0.72rem; color: var(--brand-700); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+.aw-net__value { font-family: var(--font-display); font-size: 1rem; font-weight: 700; color: var(--text-primary); margin-left: auto; letter-spacing: -0.02em; }
+.aw-actions { display: flex; gap: var(--space-2); }
+.aw-btn {
+  flex: 1; padding: var(--space-2) var(--space-3);
+  border-radius: var(--r-md); font-size: 0.8rem; font-weight: 600;
+  font-family: var(--font-sans); cursor: pointer;
+  transition: all 0.15s; border: none; height: 34px;
 }
 .aw-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.aw-btn--in  { background: linear-gradient(135deg, #059669, #10B981); color: white; }
-.aw-btn--in:hover:not(:disabled)  { box-shadow: 0 4px 12px rgba(16,185,129,0.35); transform: translateY(-1px); }
-.aw-btn--out { background: linear-gradient(135deg, #DC2626, #EF4444); color: white; }
-.aw-btn--out:hover:not(:disabled) { box-shadow: 0 4px 12px rgba(239,68,68,0.35); transform: translateY(-1px); }
-.aw-error   { font-size: var(--text-xs); color: var(--color-error); margin: 0; }
-.aw-loading { font-size: var(--text-sm); color: var(--color-text-muted); margin: 0; }
+.aw-btn--in  { background: var(--success); color: #fff; }
+.aw-btn--in:hover:not(:disabled)  { background: #0da271; box-shadow: 0 2px 8px rgba(16,185,129,0.3); }
+.aw-btn--out { background: var(--danger-light); color: var(--danger-dark); border: 1px solid rgba(239,68,68,0.2); }
+.aw-btn--out:hover:not(:disabled) { background: rgba(239,68,68,0.12); }
+.aw-error   { font-size: 0.72rem; color: var(--danger); margin: 0; }
+.aw-loading { font-size: 0.775rem; color: var(--text-tertiary); margin: 0; }

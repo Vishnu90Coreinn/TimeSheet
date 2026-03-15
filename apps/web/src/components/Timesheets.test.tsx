@@ -32,7 +32,7 @@ vi.mock("../api/client", () => ({
 describe("Timesheets", () => {
   it("renders Timesheets heading", () => {
     render(<Timesheets />);
-    expect(screen.getByText(/timesheets/i)).toBeTruthy();
+    expect(screen.getByText(/timesheet/i)).toBeTruthy();
   });
 
   it("fetches week data on mount", async () => {

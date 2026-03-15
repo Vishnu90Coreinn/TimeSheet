@@ -154,6 +154,40 @@ Work the following items in order of priority. Update this file and push to mast
 - Manager: team attendance, timesheet health, utilization, project contributions, mismatches.
 - Admin: billable %, dept/project effort, per-user utilization with status badges.
 
+### ~~Priority 1 — Professional UI/UX Redesign~~ ✅ DONE (sessions 4–5, 2026-03-15)
+
+#### Round 1 — Color palette (commit `7f80b61`)
+Warm editorial palette applied to tokens: gold `#c9a84c`, paper `#f5f3ef`, cream `#ede9e0`, ink `#0e0e0f`, rust `#c0522b`, sage `#5a7a5e`. Fonts: DM Serif Display + DM Sans.
+
+#### Round 2 — Structural redesign "Chrono" (commit `a8254c8`)
+Client rejected round 1 ("only color change, not a redesign"). Reference: `C:/Users/User/Downloads/timesheet-app_1.html`.
+- **AppShell nav** — frosted glass (`rgba(245,243,239,0.85)` + `backdrop-filter: blur(12px)`), serif wordmark, animated 10px pulsing gold dot logo
+- **Dashboard** — completely new layout structure for all 3 roles:
+  - Eyebrow label (gold line `—` + uppercase gold text) + DM Serif Display h1 with italic gold username
+  - Inline hero stats (serif number + uppercase muted label, no card boxes, separated by ink-line dividers)
+  - `ActivityList` component: numbered rows (`01`, `02`…) with serif index, name+sub, status badge, serif value — replaces all `<table>` usage
+  - Two-column layout: activity list left, chart/widget right
+  - Manager: progress-bar list for project contributions
+  - Admin: dept effort full-width + under/over + compliance trend side-by-side
+- **AttendanceWidget** — dark ink timer widget: serif 2.4rem elapsed time, gold-tinted net strip, gold check-in / rust check-out buttons
+- **Login** — cream left panel, serif italic headline, gold rule, bulleted feature list, gold CTA button
+
+**Status: Awaiting manual testing feedback from client (session 5 end).**
+
+### ~~Priority 1 — Pulse SaaS Redesign~~ ✅ DONE (session 6, 2026-03-16)
+
+Commit `db9345d`. Complete visual overhaul from "Chrono editorial" to "Pulse SaaS":
+- **design-system.css v2.0** — indigo brand palette (`--brand-*`), full neutral scale (`--n-0`..`--n-900`), Bricolage Grotesque display + Plus Jakarta Sans body. All new stat-card, badge, tab, shell-layout classes.
+- **AppShell v3** — breadcrumb topbar; sidebar with brand header + org-switcher, user section, grouped nav (`nav-item`/`nav-section`)
+- **Dashboard** — stat cards, bar charts, donut charts, activity feeds, compliance calendars for all 3 roles
+- **Login v3** — gradient left panel with features + testimonial, clean right form
+- **AttendanceWidget** — light card (white bg, indigo net strip, green/red buttons)
+- **All missing CSS classes added** — nav-item, org-switcher, sidebar-header, dashboard-grid, bar-chart, activity-list, donut-*, kpi-list, av, mb-5
+
+### Priority 1 — UI/UX Fixes (next session)
+- Client will test in browser and list issues/changes needed.
+- Next session: apply all feedback from manual testing, then commit.
+
 ### Priority 2 — DB Table Verification (manual step)
 Run in SSMS against local SQL Server — confirm all tables exist:
 ```sql

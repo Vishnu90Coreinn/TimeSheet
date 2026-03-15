@@ -50,23 +50,23 @@ public record LeaveUtilizationReportRow(
     decimal UtilizationPercent);
 
 public record EmployeeDashboardResponse(
-    object TodayAttendance,
-    object TimesheetStatus,
+    object TodaySession,
+    object TodayTimesheet,
     object WeeklyHours,
     IReadOnlyCollection<object> ProjectEffort,
     IReadOnlyCollection<object> MonthlyComplianceTrend);
 
 public record ManagerDashboardResponse(
-    object TeamPresence,
-    object MissingTimesheets,
-    IReadOnlyCollection<object> AttendanceTimesheetMismatch,
-    object TeamUtilization,
-    IReadOnlyCollection<object> TeamProjectContribution);
+    object TeamAttendance,
+    object TimesheetHealth,
+    IReadOnlyCollection<object> Mismatches,
+    object Utilization,
+    IReadOnlyCollection<object> Contributions);
 
 public record ManagementDashboardResponse(
     IReadOnlyCollection<object> EffortByDepartment,
     IReadOnlyCollection<object> EffortByProject,
-    object BillableVsNonBillable,
+    object Billable,
     object ConsultantVsInternal,
-    IReadOnlyCollection<object> UnderOverUtilized,
-    IReadOnlyCollection<object> ComplianceTrend);
+    IReadOnlyCollection<object> UnderOver,
+    IReadOnlyCollection<object> Compliance);

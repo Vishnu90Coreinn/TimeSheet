@@ -96,6 +96,7 @@ export function Categories() {
             <div className="card-subtitle">{categories.length} categories</div>
           </div>
         </div>
+        <div className="table-wrap">
         <table className="table-base">
           <thead>
             <tr><th>Name</th><th>Billable</th><th>Status</th><th>Actions</th></tr>
@@ -117,6 +118,7 @@ export function Categories() {
             {categories.length === 0 && <tr className="empty-row"><td colSpan={4}>No categories found.</td></tr>}
           </tbody>
         </table>
+        </div>
       </div>
     </section>
   );

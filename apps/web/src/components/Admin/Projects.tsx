@@ -102,6 +102,7 @@ export function Projects() {
             <div className="card-subtitle">{projects.length} projects</div>
           </div>
         </div>
+        <div className="table-wrap">
         <table className="table-base">
           <thead>
             <tr><th>Name</th><th>Code</th><th>Status</th><th>Actions</th></tr>
@@ -130,6 +131,7 @@ export function Projects() {
             {projects.length === 0 && <tr className="empty-row"><td colSpan={4}>No projects found.</td></tr>}
           </tbody>
         </table>
+        </div>
       </div>
     </section>
   );

@@ -154,6 +154,7 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
             <div className="card-subtitle">{myLeaves.length} records</div>
           </div>
         </div>
+        <div className="table-wrap">
         <table className="table-base">
           <thead>
             <tr><th>Date</th><th>Type</th><th>Duration</th><th>Status</th></tr>
@@ -170,6 +171,7 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
             {myLeaves.length === 0 && <tr className="empty-row"><td colSpan={4}>No leave requests yet.</td></tr>}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Manager: pending approvals */}
@@ -182,6 +184,7 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
             </div>
             {pendingLeaves.length > 0 && <span className="badge badge-warning">{pendingLeaves.length}</span>}
           </div>
+          <div className="table-wrap">
           <table className="table-base">
             <thead>
               <tr><th>Employee</th><th>Date</th><th>Type</th><th>Duration</th><th>Actions</th></tr>
@@ -224,6 +227,7 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
               {pendingLeaves.length === 0 && <tr className="empty-row"><td colSpan={5}>No pending leave requests.</td></tr>}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </section>

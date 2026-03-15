@@ -109,6 +109,7 @@ export function Holidays() {
             <div className="card-subtitle">{holidays.length} holidays</div>
           </div>
         </div>
+        <div className="table-wrap">
         <table className="table-base">
           <thead>
             <tr><th>Name</th><th>Date</th><th>Recurring</th><th>Actions</th></tr>
@@ -130,6 +131,7 @@ export function Holidays() {
             {holidays.length === 0 && <tr className="empty-row"><td colSpan={4}>No holidays for {year}.</td></tr>}
           </tbody>
         </table>
+        </div>
       </div>
     </section>
   );

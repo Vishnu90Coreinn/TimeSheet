@@ -388,8 +388,8 @@ a { text-decoration: none; color: inherit; }
 .table-base tbody tr:last-child td, .data-table tbody tr:last-child td { border-bottom: none; }
 .table-base tbody tr, .data-table tbody tr { transition: background 0.1s; }
 .table-base tbody tr:hover td, .data-table tbody tr:hover td { background: var(--n-25); }
-.data-table td strong { color: var(--text-primary); font-weight: 600; }
-.data-table td.td-muted { color: var(--text-tertiary); font-size: 0.8rem; }
+.data-table td strong, .table-base td strong { color: var(--text-primary); font-weight: 600; }
+.td-muted, .data-table td.td-muted { color: var(--text-tertiary); font-size: 0.8rem; }
 .table-wrap { overflow-x: auto; }
 .table-base tbody tr.row-status-success td:first-child { box-shadow: inset 3px 0 0 var(--success); }
 .table-base tbody tr.row-status-warning td:first-child { box-shadow: inset 3px 0 0 var(--warning); }

@@ -3,18 +3,19 @@
  */
 import { useEffect, useState } from "react";
 import { apiFetch } from "../../api/client";
-import type { Department, User, WorkPolicy } from "../../types";
+import type { Department, LeavePolicy, User, WorkPolicy } from "../../types";
 
 type UserForm = {
   username: string; email: string; employeeId: string; password: string;
-  role: string; isActive: boolean; departmentId: string; workPolicyId: string; managerId: string;
+  role: string; isActive: boolean; departmentId: string; workPolicyId: string; leavePolicyId: string; managerId: string;
 };
-const BLANK: UserForm = { username: "", email: "", employeeId: "", password: "", role: "employee", isActive: true, departmentId: "", workPolicyId: "", managerId: "" };
+const BLANK: UserForm = { username: "", email: "", employeeId: "", password: "", role: "employee", isActive: true, departmentId: "", workPolicyId: "", leavePolicyId: "", managerId: "" };
 
 export function Users() {
   const [users, setUsers] = useState<User[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [policies, setPolicies] = useState<WorkPolicy[]>([]);
+  const [leavePolicies, setLeavePolicies] = useState<LeavePolicy[]>([]);
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<User | "new" | null>(null);
   const [form, setForm] = useState<UserForm>(BLANK);
@@ -29,11 +30,12 @@ export function Users() {
     void load();
     apiFetch("/masters/departments").then(async (r) => { if (r.ok) setDepartments(await r.json()); });
     apiFetch("/masters/work-policies").then(async (r) => { if (r.ok) setPolicies(await r.json()); });
+    apiFetch("/leave/policies").then(async (r) => { if (r.ok) setLeavePolicies(await r.json()); });
   }, []);
 
   function openCreate() { setForm(BLANK); setError(""); setEditing("new"); }
   function openEdit(u: User) {
-    setForm({ username: u.username, email: u.email, employeeId: u.employeeId, password: "", role: u.role, isActive: u.isActive, departmentId: u.departmentId ?? "", workPolicyId: u.workPolicyId ?? "", managerId: u.managerId ?? "" });
+    setForm({ username: u.username, email: u.email, employeeId: u.employeeId, password: "", role: u.role, isActive: u.isActive, departmentId: u.departmentId ?? "", workPolicyId: u.workPolicyId ?? "", leavePolicyId: u.leavePolicyId ?? "", managerId: u.managerId ?? "" });
     setError(""); setEditing(u);
   }
 
@@ -41,7 +43,7 @@ export function Users() {
     setError("");
     const body = {
       username: form.username, email: form.email, employeeId: form.employeeId, role: form.role,
-      isActive: form.isActive, departmentId: form.departmentId || null, workPolicyId: form.workPolicyId || null, managerId: form.managerId || null,
+      isActive: form.isActive, departmentId: form.departmentId || null, workPolicyId: form.workPolicyId || null, leavePolicyId: form.leavePolicyId || null, managerId: form.managerId || null,
       ...(editing === "new" ? { password: form.password } : {}),
     };
     const r = editing === "new"
@@ -137,6 +139,13 @@ export function Users() {
                 </select>
               </div>
               <div className="form-field">
+                <label className="form-label" htmlFor="u-lpolicy">Leave Policy</label>
+                <select id="u-lpolicy" className="input-field" value={form.leavePolicyId} onChange={(e) => f("leavePolicyId", e.target.value)}>
+                  <option value="">— none —</option>
+                  {leavePolicies.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </div>
+              <div className="form-field">
                 <label className="form-label" htmlFor="u-mgr">Manager</label>
                 <select id="u-mgr" className="input-field" value={form.managerId} onChange={(e) => f("managerId", e.target.value)}>
                   <option value="">— none —</option>
@@ -167,7 +176,7 @@ export function Users() {
         <div className="table-wrap">
           <table className="table-base">
             <thead>
-              <tr><th>Username</th><th>Email</th><th>Employee ID</th><th>Role</th><th>Department</th><th>Manager</th><th>Status</th><th>Actions</th></tr>
+              <tr><th>Username</th><th>Email</th><th>Employee ID</th><th>Role</th><th>Department</th><th>Manager</th><th>Leave Policy</th><th>Status</th><th>Actions</th></tr>
             </thead>
             <tbody>
               {users.map((u) => (
@@ -178,6 +187,7 @@ export function Users() {
                   <td><span className={`badge ${u.role === "admin" ? "badge-error" : u.role === "manager" ? "badge-warning" : "badge-brand"}`}>{u.role}</span></td>
                   <td className="td-muted">{u.departmentName ?? "—"}</td>
                   <td className="td-muted">{u.managerUsername ?? "—"}</td>
+                  <td className="td-muted">{u.leavePolicyName ?? "—"}</td>
                   <td>{u.isActive ? <span className="badge badge-success">Active</span> : <span className="badge badge-neutral">Inactive</span>}</td>
                   <td>
                     <div className="flex gap-2">
@@ -189,7 +199,7 @@ export function Users() {
                   </td>
                 </tr>
               ))}
-              {users.length === 0 && <tr className="empty-row"><td colSpan={8}>No users found.</td></tr>}
+              {users.length === 0 && <tr className="empty-row"><td colSpan={9}>No users found.</td></tr>}
             </tbody>
           </table>
         </div>

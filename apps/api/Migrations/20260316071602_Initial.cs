@@ -57,20 +57,6 @@ namespace TimeSheet.Api.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "LeavePolicies",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    IsActive = table.Column<bool>(type: "bit", nullable: false),
-                    CreatedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_LeavePolicies", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "LeaveTypes",
                 columns: table => new
                 {
@@ -91,8 +77,7 @@ namespace TimeSheet.Api.Migrations
                     Name = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
                     Code = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     IsActive = table.Column<bool>(type: "bit", nullable: false),
-                    IsArchived = table.Column<bool>(type: "bit", nullable: false),
-                    BudgetedHours = table.Column<int>(type: "int", nullable: false)
+                    IsArchived = table.Column<bool>(type: "bit", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -146,32 +131,6 @@ namespace TimeSheet.Api.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "LeavePolicyAllocations",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    LeavePolicyId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    LeaveTypeId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    DaysPerYear = table.Column<int>(type: "int", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_LeavePolicyAllocations", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_LeavePolicyAllocations_LeavePolicies_LeavePolicyId",
-                        column: x => x.LeavePolicyId,
-                        principalTable: "LeavePolicies",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_LeavePolicyAllocations_LeaveTypes_LeaveTypeId",
-                        column: x => x.LeaveTypeId,
-                        principalTable: "LeaveTypes",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "Users",
                 columns: table => new
                 {
@@ -184,7 +143,6 @@ namespace TimeSheet.Api.Migrations
                     IsActive = table.Column<bool>(type: "bit", nullable: false),
                     DepartmentId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     WorkPolicyId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
-                    LeavePolicyId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     ManagerId = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
                 },
                 constraints: table =>
@@ -194,12 +152,6 @@ namespace TimeSheet.Api.Migrations
                         name: "FK_Users_Departments_DepartmentId",
                         column: x => x.DepartmentId,
                         principalTable: "Departments",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.SetNull);
-                    table.ForeignKey(
-                        name: "FK_Users_LeavePolicies_LeavePolicyId",
-                        column: x => x.LeavePolicyId,
-                        principalTable: "LeavePolicies",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
@@ -217,36 +169,6 @@ namespace TimeSheet.Api.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "LeaveBalances",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    LeaveTypeId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Year = table.Column<int>(type: "int", nullable: false),
-                    AllocatedDays = table.Column<int>(type: "int", nullable: false),
-                    ManualAdjustmentDays = table.Column<int>(type: "int", nullable: false),
-                    Note = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    UpdatedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_LeaveBalances", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_LeaveBalances_LeaveTypes_LeaveTypeId",
-                        column: x => x.LeaveTypeId,
-                        principalTable: "LeaveTypes",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_LeaveBalances_Users_UserId",
-                        column: x => x.UserId,
-                        principalTable: "Users",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "LeaveRequests",
                 columns: table => new
                 {
@@ -260,8 +182,7 @@ namespace TimeSheet.Api.Migrations
                     ReviewedByUserId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     ReviewerComment = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
                     CreatedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    ReviewedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    LeaveGroupId = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
+                    ReviewedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -546,28 +467,6 @@ namespace TimeSheet.Api.Migrations
                 column: "Date");
 
             migrationBuilder.CreateIndex(
-                name: "IX_LeaveBalances_LeaveTypeId",
-                table: "LeaveBalances",
-                column: "LeaveTypeId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_LeaveBalances_UserId_LeaveTypeId_Year",
-                table: "LeaveBalances",
-                columns: new[] { "UserId", "LeaveTypeId", "Year" },
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_LeavePolicyAllocations_LeavePolicyId_LeaveTypeId",
-                table: "LeavePolicyAllocations",
-                columns: new[] { "LeavePolicyId", "LeaveTypeId" },
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_LeavePolicyAllocations_LeaveTypeId",
-                table: "LeavePolicyAllocations",
-                column: "LeaveTypeId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_LeaveRequests_LeaveTypeId",
                 table: "LeaveRequests",
                 column: "LeaveTypeId");
@@ -692,11 +591,6 @@ namespace TimeSheet.Api.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_Users_LeavePolicyId",
-                table: "Users",
-                column: "LeavePolicyId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_Users_ManagerId",
                 table: "Users",
                 column: "ManagerId");
@@ -750,12 +644,6 @@ namespace TimeSheet.Api.Migrations
                 name: "Holidays");
 
             migrationBuilder.DropTable(
-                name: "LeaveBalances");
-
-            migrationBuilder.DropTable(
-                name: "LeavePolicyAllocations");
-
-            migrationBuilder.DropTable(
                 name: "LeaveRequests");
 
             migrationBuilder.DropTable(
@@ -796,9 +684,6 @@ namespace TimeSheet.Api.Migrations
 
             migrationBuilder.DropTable(
                 name: "Departments");
-
-            migrationBuilder.DropTable(
-                name: "LeavePolicies");
 
             migrationBuilder.DropTable(
                 name: "WorkPolicies");

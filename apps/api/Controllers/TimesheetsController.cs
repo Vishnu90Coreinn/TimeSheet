@@ -133,9 +133,13 @@ public class TimesheetsController(TimeSheetDbContext dbContext, IAttendanceCalcu
                 ? attendanceCalculationService.Calculate(daySessions, policy?.Policy, now).NetMinutes
                 : 0;
 
-            var expectedMinutes = policy?.ExpectedMinutes ?? 480;
-            if (holidayDates.Contains(day)) expectedMinutes = 0;
-            else if (dayLeave is not null) expectedMinutes = dayLeave.IsHalfDay ? expectedMinutes / 2 : 0;
+            // Sunday is a rest day — no expected hours
+            var expectedMinutes = day.DayOfWeek == DayOfWeek.Sunday ? 0 : (policy?.ExpectedMinutes ?? 480);
+            if (day.DayOfWeek != DayOfWeek.Sunday)
+            {
+                if (holidayDates.Contains(day)) expectedMinutes = 0;
+                else if (dayLeave is not null) expectedMinutes = dayLeave.IsHalfDay ? expectedMinutes / 2 : 0;
+            }
 
             var entered = timesheet?.Entries.Sum(e => e.Minutes) ?? 0;
             var hasMismatch = attendanceNet != entered;

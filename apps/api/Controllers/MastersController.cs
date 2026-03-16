@@ -70,4 +70,31 @@ public class MastersController(TimeSheetDbContext dbContext) : ControllerBase
 
         return Ok(new WorkPolicyResponse(policy.Id, policy.Name, policy.DailyExpectedMinutes, policy.IsActive));
     }
+
+    [HttpPut("work-policies/{id:guid}")]
+    public async Task<ActionResult<WorkPolicyResponse>> UpdateWorkPolicy(Guid id, [FromBody] WorkPolicyResponse request)
+    {
+        var policy = await dbContext.WorkPolicies.FindAsync(id);
+        if (policy is null) return NotFound();
+
+        if (await dbContext.WorkPolicies.AnyAsync(w => w.Name == request.Name && w.Id != id))
+            return Conflict(new { message = "A work policy with that name already exists." });
+
+        policy.Name = request.Name.Trim();
+        policy.DailyExpectedMinutes = request.DailyExpectedMinutes;
+        policy.IsActive = request.IsActive;
+
+        await dbContext.SaveChangesAsync();
+        return Ok(new WorkPolicyResponse(policy.Id, policy.Name, policy.DailyExpectedMinutes, policy.IsActive));
+    }
+
+    [HttpDelete("work-policies/{id:guid}")]
+    public async Task<IActionResult> DeleteWorkPolicy(Guid id)
+    {
+        var policy = await dbContext.WorkPolicies.FindAsync(id);
+        if (policy is null) return NotFound();
+        dbContext.WorkPolicies.Remove(policy);
+        await dbContext.SaveChangesAsync();
+        return NoContent();
+    }
 }

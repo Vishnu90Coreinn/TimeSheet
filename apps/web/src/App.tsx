@@ -8,6 +8,7 @@ import { Holidays } from "./components/Admin/Holidays";
 import { Leave } from "./components/Leave";
 import { Login } from "./components/Login";
 import { LeavePolicies } from "./components/Admin/LeavePolicies";
+import { WorkPolicies } from "./components/Admin/WorkPolicies";
 import { Projects } from "./components/Admin/Projects";
 import { Reports } from "./components/Reports";
 import { Timesheets } from "./components/Timesheets";
@@ -16,7 +17,7 @@ import { useSession } from "./hooks/useSession";
 import type { View } from "./types";
 
 export function hasViewAccess(role: string, view: View | "admin"): boolean {
-  if (view === "admin" || view === "projects" || view === "categories" || view === "users" || view === "holidays" || view === "leave-policies") return role === "admin";
+  if (view === "admin" || view === "projects" || view === "categories" || view === "users" || view === "holidays" || view === "leave-policies" || view === "work-policies") return role === "admin";
   if (view === "approvals") return role === "manager" || role === "admin";
   return true;
 }
@@ -36,6 +37,7 @@ const VIEW_PATHS: Record<View, string> = {
   users:            "/users",
   holidays:         "/holidays",
   "leave-policies": "/leave-policies",
+  "work-policies": "/work-policies",
 };
 
 const PATH_VIEWS: Record<string, View> = Object.fromEntries(
@@ -51,7 +53,7 @@ function AppRoutes() {
   const isManager = session?.role === "manager" || isAdmin;
 
   const nav = useMemo(
-    () => ["dashboard", "timesheets", "leave", "reports", ...(isManager ? ["approvals"] : []), ...(isAdmin ? ["projects", "categories", "users", "holidays", "leave-policies"] : [])] as View[],
+    () => ["dashboard", "timesheets", "leave", "reports", ...(isManager ? ["approvals"] : []), ...(isAdmin ? ["projects", "categories", "users", "holidays", "leave-policies", "work-policies"] : [])] as View[],
     [isAdmin, isManager]
   );
 
@@ -90,6 +92,7 @@ function AppRoutes() {
         {isAdmin   && <Route path="/users"      element={<Users />} />}
         {isAdmin   && <Route path="/holidays"        element={<Holidays />} />}
         {isAdmin   && <Route path="/leave-policies"  element={<LeavePolicies />} />}
+        {isAdmin   && <Route path="/work-policies"   element={<WorkPolicies />} />}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </AppShell>

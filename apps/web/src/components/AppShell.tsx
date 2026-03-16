@@ -24,6 +24,7 @@ const NAV_ITEMS: NavItem[] = [
   { view: "users",      label: "Users",       icon: <UsersIcon />,     group: "admin" },
   { view: "holidays",        label: "Holidays",        icon: <StarIcon />,      group: "admin" },
   { view: "leave-policies", label: "Leave Policies",  icon: <PolicyIcon />,    group: "admin" },
+  { view: "work-policies",  label: "Work Policies",   icon: <ClockIcon />,     group: "admin" },
 ];
 
 interface AppShellProps {
@@ -40,6 +41,7 @@ const VIEW_LABELS: Record<View, string> = {
   reports: "Reports", approvals: "Approvals", projects: "Projects",
   categories: "Categories", users: "Users", holidays: "Holidays",
   "leave-policies": "Leave Policies",
+  "work-policies": "Work Policies",
 };
 
 export function AppShell({ session, view, nav, onNavigate, onLogout, children }: AppShellProps) {

@@ -25,7 +25,8 @@ interface EntryForm {
 
 /* ─── Helpers ───────────────────────────────────────────────────────────────── */
 function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 /** Parse a UTC ISO string from the API (may lack trailing Z) as UTC. */
@@ -66,7 +67,7 @@ function getWeekDays(anyDate: string): string[] {
   return Array.from({ length: 7 }, (_, i) => {
     const day = new Date(mon);
     day.setDate(mon.getDate() + i);
-    return day.toISOString().slice(0, 10);
+    return `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
   });
 }
 
@@ -214,6 +215,14 @@ export function Timesheets() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /* ── Week navigation ─────────────────────────────────────────────────────── */
+  function shiftWeek(days: number) {
+    const d = new Date(selectedDate + "T00:00:00");
+    d.setDate(d.getDate() + days);
+    const newDate = d.toISOString().slice(0, 10);
+    selectDay(newDate);
+  }
+
   /* ── Day selection ────────────────────────────────────────────────────────── */
   function selectDay(date: string) {
     const oldWeekDays = getWeekDays(selectedDate);
@@ -342,6 +351,7 @@ export function Timesheets() {
   }
 
   async function deleteEntry(entryId: string) {
+    if (!confirm("Delete this time entry? This cannot be undone.")) return;
     const r = await apiFetch(`/timesheets/entries/${entryId}`, { method: "DELETE" });
     if (r.ok) {
       setDayData(await r.json() as TimesheetDay);
@@ -368,9 +378,15 @@ export function Timesheets() {
   }
 
   /* ── Derived values ───────────────────────────────────────────────────────── */
-  const isDraft = dayData?.status === "draft" || dayData === null;
+  const isDraft     = dayData?.status === "draft" || dayData === null;
+  const isApproved  = dayData?.status === "approved";
+  const isSubmitted = dayData?.status === "submitted";
+  const isRejected  = dayData?.status === "rejected";
+  const isLocked    = isApproved || isSubmitted; // entries frozen
   const isCheckedIn = Boolean(attendance?.activeSessionId);
-  const weekDays = getWeekDays(selectedDate);
+  const weekDays    = getWeekDays(selectedDate);
+  const todayWeekStart = getWeekDays(todayIso())[0];
+  const isCurrentWeek  = weekDays[0] === todayWeekStart;
   const weekRange = fmtWeekRange(weekDays);
   const weekTotalMins = weekData?.weekEnteredMinutes ?? 0;
   const weekExpectedMins = weekData?.weekExpectedMinutes ?? 0;
@@ -425,14 +441,29 @@ export function Timesheets() {
                   Send for Review
                 </button>
               )}
-              <button className="btn btn-primary" onClick={openNew}>
+              <button
+                className="btn btn-primary"
+                onClick={openNew}
+                disabled={isLocked}
+                title={isLocked ? `Entries cannot be added to a ${dayData?.status} timesheet` : undefined}
+                style={isLocked ? { opacity: 0.45, cursor: "not-allowed" } : undefined}
+              >
                 + Add Entry
               </button>
             </div>
           </div>
 
-          {/* Week strip */}
-          <div className="ts3-week-strip">
+          {/* Week strip with prev/next navigation */}
+          <div className="ts3-week-nav">
+            <button
+              className="ts3-week-nav-btn"
+              onClick={() => shiftWeek(-7)}
+              title="Previous week"
+              aria-label="Previous week"
+            >
+              &#8249;
+            </button>
+            <div className="ts3-week-strip">
             {weekDays.map((date, i) => {
               const meta = weekDayMap.get(date);
               const mins = meta?.enteredMinutes ?? 0;
@@ -440,14 +471,23 @@ export function Timesheets() {
               const pct = expected > 0 ? Math.min(100, Math.round((mins / expected) * 100)) : 0;
               const isSelected = date === selectedDate;
               const isToday = date === todayIso();
+              const dayApproved = meta?.status === "approved";
               return (
                 <button
                   key={date}
-                  className={`ts3-day-card${isSelected ? " ts3-day-card--selected" : ""}${isToday ? " ts3-day-card--today" : ""}`}
+                  className={`ts3-day-card${isSelected ? " ts3-day-card--selected" : ""}${isToday ? " ts3-day-card--today" : ""}${dayApproved ? " ts3-day-card--approved" : ""}`}
                   onClick={() => selectDay(date)}
                 >
                   <div className="ts3-day-label">{DAY_LABELS[i]}</div>
-                  <div className="ts3-day-num">{new Date(date + "T00:00:00").getDate()}</div>
+                  <div className="ts3-day-num">
+                    {new Date(date + "T00:00:00").getDate()}
+                    {dayApproved && (
+                      <svg className="ts3-day-approved-icon" width="8" height="8" viewBox="0 0 12 12" fill="none">
+                        <circle cx="6" cy="6" r="6" fill="#10b981"/>
+                        <path d="M3 6l2 2 4-4" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </div>
                   <div className={`ts3-day-hours${mins > 0 ? " ts3-day-hours--logged" : ""}`}>
                     {mins > 0 ? fmtHours(mins) : "—"}
                   </div>
@@ -462,7 +502,16 @@ export function Timesheets() {
                 </button>
               );
             })}
-          </div>
+            </div>{/* /ts3-week-strip */}
+            <button
+              className="ts3-week-nav-btn"
+              onClick={() => shiftWeek(7)}
+              title="Next week"
+              aria-label="Next week"
+            >
+              &#8250;
+            </button>
+          </div>{/* /ts3-week-nav */}
 
           {/* Entry form */}
           {showForm && (
@@ -474,8 +523,9 @@ export function Timesheets() {
               {/* Description */}
               <div className="ts3-field">
                 <label className="ts3-label">Task / Description</label>
-                <input
-                  className="ts3-input"
+                <textarea
+                  className="ts3-textarea"
+                  rows={2}
                   placeholder="What did you work on?"
                   value={form.description}
                   onChange={(e) => setFormField({ description: e.target.value })}
@@ -515,7 +565,9 @@ export function Timesheets() {
                     className="ts3-input"
                     placeholder="e.g. 1.5"
                     value={form.durationHours}
+                    disabled={!!(form.startTime && form.endTime)}
                     onChange={(e) => setFormField({ durationHours: e.target.value })}
+                    title={form.startTime && form.endTime ? "Auto-calculated from start/end times" : undefined}
                   />
                 </div>
               </div>
@@ -604,10 +656,41 @@ export function Timesheets() {
             <div className="ts3-success-banner">{submitSuccess}</div>
           )}
 
-          {/* Non-draft status banner */}
-          {dayData?.status && dayData.status !== "draft" && (
-            <div className="ts3-status-banner">
-              Timesheet status: <strong>{dayData.status}</strong>
+          {/* Semantic status banners */}
+          {isApproved && (
+            <div className="ts3-banner ts3-banner--approved">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" style={{ flexShrink: 0 }}>
+                <circle cx="10" cy="10" r="10" fill="#10b981"/>
+                <path d="M5.5 10l3 3 6-6" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <div>
+                <strong>Timesheet approved</strong>
+                <span className="ts3-banner-sub"> — Entries are locked and cannot be edited.</span>
+              </div>
+            </div>
+          )}
+          {isSubmitted && (
+            <div className="ts3-banner ts3-banner--submitted">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" style={{ flexShrink: 0 }}>
+                <circle cx="10" cy="10" r="9" stroke="#3b82f6" strokeWidth="1.8"/>
+                <path d="M10 6v4l2.5 2.5" stroke="#3b82f6" strokeWidth="1.8" strokeLinecap="round"/>
+              </svg>
+              <div>
+                <strong>Awaiting approval</strong>
+                <span className="ts3-banner-sub"> — Submitted for manager review.</span>
+              </div>
+            </div>
+          )}
+          {isRejected && (
+            <div className="ts3-banner ts3-banner--rejected">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" style={{ flexShrink: 0 }}>
+                <circle cx="10" cy="10" r="9" stroke="#ef4444" strokeWidth="1.8"/>
+                <path d="M7 7l6 6M13 7l-6 6" stroke="#ef4444" strokeWidth="1.8" strokeLinecap="round"/>
+              </svg>
+              <div>
+                <strong>Timesheet rejected</strong>
+                <span className="ts3-banner-sub"> — Please review and resubmit.</span>
+              </div>
             </div>
           )}
 
@@ -615,14 +698,22 @@ export function Timesheets() {
           <div className="ts3-entries">
             {dayEntries.length === 0 ? (
               <div className="ts3-empty-state">
-                No entries for this day. Click &ldquo;+ Add Entry&rdquo; to get started.
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" style={{ color: "var(--n-300, #d1d5db)", marginBottom: 8 }}>
+                  <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                <div>No entries for this day.</div>
+                <div style={{ fontSize: "12px", color: "var(--n-400, #9ca3af)", marginTop: 4 }}>Click &ldquo;+ Add Entry&rdquo; to log your time.</div>
               </div>
             ) : (
               dayEntries.map((entry) => {
                 const parsed = parseNotes(entry.notes);
                 const color = projectColor(projects, entry.projectId);
                 return (
-                  <div key={entry.id} className="ts3-entry-card" style={{ borderLeftColor: color }}>
+                  <div
+                    key={entry.id}
+                    className={`ts3-entry-card${!isDraft ? " ts3-entry-card--locked" : ""}`}
+                    style={{ borderLeftColor: color }}
+                  >
                     <div className="ts3-entry-body">
                       <div className="ts3-entry-title">
                         {parsed.description || entry.taskCategoryName}
@@ -638,22 +729,21 @@ export function Timesheets() {
                       </div>
                     </div>
                     <div className="ts3-entry-hours">{fmtHours(entry.minutes)}</div>
-                    {isDraft && (
+                    {isDraft ? (
                       <div className="ts3-entry-actions">
-                        <button
-                          className="ts3-icon-btn"
-                          title="Edit"
-                          onClick={() => openEdit(entry)}
-                        >
+                        <button className="ts3-icon-btn" title="Edit" onClick={() => openEdit(entry)}>
                           <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M14.7 3.3a1 1 0 0 1 1.4 1.4L5.5 15.3l-3 .7.7-3L14.7 3.3z"/></svg>
                         </button>
-                        <button
-                          className="ts3-icon-btn ts3-icon-btn--danger"
-                          title="Delete"
-                          onClick={() => void deleteEntry(entry.id)}
-                        >
+                        <button className="ts3-icon-btn ts3-icon-btn--danger" title="Delete" onClick={() => void deleteEntry(entry.id)}>
                           <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 6h14M8 6V4h4v2M6 6l1 11h6l1-11"/></svg>
                         </button>
+                      </div>
+                    ) : (
+                      <div className="ts3-lock-icon" title={`Locked — ${dayData?.status}`}>
+                        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6">
+                          <rect x="3" y="7" width="10" height="8" rx="1.5"/>
+                          <path d="M5 7V5a3 3 0 0 1 6 0v2"/>
+                        </svg>
                       </div>
                     )}
                   </div>
@@ -665,7 +755,21 @@ export function Timesheets() {
           {/* Day summary bar */}
           <div className="ts3-day-bar">
             <span>{fmtDayBarLabel(selectedDate)}</span>
-            <span>{fmtHours(todayTotalMins)} / {fmtHours(todayExpectedMins)} target</span>
+            <div className="ts3-day-bar-right">
+              {todayExpectedMins > 0 ? (
+                <>
+                  <div className="ts3-day-mini-prog">
+                    <div
+                      className="ts3-day-mini-prog-fill"
+                      style={{ width: `${Math.min(100, todayExpectedMins > 0 ? Math.round((todayTotalMins / todayExpectedMins) * 100) : 0)}%` }}
+                    />
+                  </div>
+                  <span>{fmtHours(todayTotalMins)} / {fmtHours(todayExpectedMins)}</span>
+                </>
+              ) : (
+                <span style={{ color: "rgba(255,255,255,0.5)", fontSize: "12px" }}>Rest day — no target</span>
+              )}
+            </div>
           </div>
 
         </div>{/* /ts3-main */}
@@ -673,8 +777,8 @@ export function Timesheets() {
         {/* ── Sidebar ──────────────────────────────────────────────────────── */}
         <aside className="ts3-sidebar">
 
-          {/* Active Timer card */}
-          <div className="ts3-sidebar-card">
+          {/* Active Timer card — only show for current week or when checked in */}
+          {(isCurrentWeek || isCheckedIn) && <div className="ts3-sidebar-card">
             <div className="ts3-sidebar-section-label">
               {isCheckedIn && <span className="ts3-green-dot" />}
               ACTIVE TIMER
@@ -711,7 +815,7 @@ export function Timesheets() {
                 </button>
               </>
             )}
-          </div>
+          </div>}
 
           {/* Week Summary card */}
           <div className="ts3-sidebar-card">
@@ -720,6 +824,15 @@ export function Timesheets() {
               <div className="ts3-summary-row">
                 <span className="ts3-summary-key">Total logged</span>
                 <span className="ts3-summary-val">{fmtMins(weekTotalMins)}</span>
+              </div>
+              <div className="ts3-week-prog-wrap">
+                <div
+                  className="ts3-week-prog-fill"
+                  style={{ width: `${weekExpectedMins > 0 ? Math.min(100, Math.round((weekTotalMins / weekExpectedMins) * 100)) : 0}%` }}
+                />
+                <span className="ts3-week-prog-pct">
+                  {weekExpectedMins > 0 ? `${Math.min(100, Math.round((weekTotalMins / weekExpectedMins) * 100))}%` : "0%"}
+                </span>
               </div>
               <div className="ts3-summary-row">
                 <span className="ts3-summary-key">Weekly target</span>
@@ -730,15 +843,18 @@ export function Timesheets() {
                 <span className="ts3-summary-val">{fmtMins(weekAttendanceMins)}</span>
               </div>
               <div className="ts3-summary-row">
-                <span className="ts3-summary-key">Overtime</span>
-                <span className={`ts3-summary-val${weekOvertime > 0 ? " ts3-overtime-pos" : weekOvertime < 0 ? " ts3-overtime-neg" : ""}`}>
-                  {weekOvertime >= 0 ? "+" : ""}{fmtMins(Math.abs(weekOvertime))}
+                <span className="ts3-summary-key">
+                  {weekOvertime >= 0 ? "Overtime" : "Deficit"}
+                  <span className="ts3-info-tip" title={weekOvertime >= 0 ? "Hours logged above weekly target" : "Hours logged below weekly target"}> ℹ</span>
+                </span>
+                <span className={`ts3-summary-val${weekOvertime > 0 ? " ts3-overtime-pos" : weekOvertime < 0 ? " ts3-overtime-deficit" : ""}`}>
+                  {weekOvertime > 0 ? "+" : weekOvertime < 0 ? "−" : ""}{fmtMins(Math.abs(weekOvertime))}
                 </span>
               </div>
               <div className="ts3-summary-row">
                 <span className="ts3-summary-key">Status</span>
                 <span>
-                  <span className={`badge ${dayData?.status === "approved" ? "badge-success" : dayData?.status === "submitted" ? "badge-brand" : dayData?.status === "rejected" ? "badge-error" : "badge-warning"}`}>
+                  <span className={`badge ${isApproved ? "badge-success" : isSubmitted ? "badge-brand" : isRejected ? "badge-error" : "badge-warning"}`}>
                     {dayData?.status ?? "draft"}
                   </span>
                 </span>
@@ -816,8 +932,37 @@ const PAGE_STYLES = `
     align-items: center;
   }
 
+  /* Week navigation wrapper */
+  .ts3-week-nav {
+    display: flex;
+    align-items: stretch;
+    gap: 6px;
+  }
+  .ts3-week-nav-btn {
+    flex-shrink: 0;
+    width: 32px;
+    background: var(--surface, #fff);
+    border: 1.5px solid var(--border-subtle, #e5e7eb);
+    border-radius: 10px;
+    font-size: 22px;
+    color: var(--n-500, #6b7280);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+    padding: 0;
+    line-height: 1;
+  }
+  .ts3-week-nav-btn:hover {
+    border-color: #6366f1;
+    color: #6366f1;
+    background: #eef2ff;
+  }
+
   /* Week strip */
   .ts3-week-strip {
+    flex: 1;
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     gap: 6px;
@@ -845,6 +990,23 @@ const PAGE_STYLES = `
   .ts3-day-card--today .ts3-day-num {
     color: #6366f1;
     font-weight: 700;
+  }
+  .ts3-day-card--approved {
+    border-color: #6ee7b7;
+    background: #f0fdf4;
+  }
+  .ts3-day-card--approved .ts3-day-num {
+    color: #059669;
+  }
+  .ts3-day-num {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .ts3-day-approved-icon {
+    flex-shrink: 0;
+    vertical-align: middle;
   }
   .ts3-day-label {
     font-size: 10px;
@@ -1000,10 +1162,15 @@ const PAGE_STYLES = `
     gap: 8px;
   }
   .ts3-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     font-size: 13px;
-    color: var(--n-400, #9ca3af);
+    color: var(--n-500, #6b7280);
     text-align: center;
-    padding: 32px 0;
+    padding: 36px 0;
+    gap: 2px;
   }
   .ts3-entry-card {
     border: 1.5px solid var(--border-subtle, #e5e7eb);
@@ -1094,29 +1261,79 @@ const PAGE_STYLES = `
     border-color: #ef4444;
     color: #ef4444;
   }
+  .ts3-entry-card--locked {
+    background: #fafafa;
+    opacity: 0.85;
+  }
+  .ts3-lock-icon {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--n-400, #9ca3af);
+    flex-shrink: 0;
+  }
 
   /* Day summary bar */
   .ts3-day-bar {
-    background: var(--n-900, #111827);
-    border-radius: 99px;
-    padding: 10px 20px;
+    background: linear-gradient(135deg, #4338ca, #6366f1);
+    border-radius: 12px;
+    padding: 10px 18px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     font-size: 13px;
     font-weight: 500;
-    color: #f9fafb;
+    color: #fff;
     margin-top: 4px;
   }
+  .ts3-day-bar-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .ts3-day-mini-prog {
+    width: 60px;
+    height: 4px;
+    background: rgba(255,255,255,0.25);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .ts3-day-mini-prog-fill {
+    height: 100%;
+    background: rgba(255,255,255,0.9);
+    border-radius: 99px;
+    transition: width 0.3s;
+  }
 
-  /* Status banners */
-  .ts3-status-banner {
-    background: #fffbeb;
-    border: 1.5px solid #fcd34d;
-    border-radius: 8px;
-    padding: 10px 14px;
+  /* Semantic status banners */
+  .ts3-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-radius: 10px;
+    padding: 12px 16px;
     font-size: 13px;
-    color: #92400e;
+  }
+  .ts3-banner--approved {
+    background: #f0fdf4;
+    border: 1.5px solid #6ee7b7;
+    color: #065f46;
+  }
+  .ts3-banner--submitted {
+    background: #eff6ff;
+    border: 1.5px solid #93c5fd;
+    color: #1e40af;
+  }
+  .ts3-banner--rejected {
+    background: #fef2f2;
+    border: 1.5px solid #fca5a5;
+    color: #991b1b;
+  }
+  .ts3-banner-sub {
+    font-weight: 400;
+    opacity: 0.85;
   }
   .ts3-success-banner {
     background: #f0fdf4;
@@ -1213,6 +1430,42 @@ const PAGE_STYLES = `
   }
   .ts3-overtime-neg {
     color: #ef4444;
+  }
+  .ts3-overtime-deficit {
+    color: #b45309;
+  }
+
+  /* Week progress bar */
+  .ts3-week-prog-wrap {
+    position: relative;
+    height: 6px;
+    background: var(--n-100, #f3f4f6);
+    border-radius: 99px;
+    overflow: visible;
+    margin: -4px 0 2px;
+  }
+  .ts3-week-prog-fill {
+    height: 100%;
+    border-radius: 99px;
+    background: linear-gradient(90deg, #6366f1, #818cf8);
+    transition: width 0.4s cubic-bezier(0.16,1,0.3,1);
+  }
+  .ts3-week-prog-pct {
+    position: absolute;
+    right: 0;
+    top: -16px;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--brand-600, #4f46e5);
+  }
+
+  /* Overtime info icon */
+  .ts3-info-tip {
+    font-size: 10px;
+    color: var(--n-400, #9ca3af);
+    cursor: default;
+    margin-left: 2px;
+    font-style: normal;
   }
 
   /* Today by project */

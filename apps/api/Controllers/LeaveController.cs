@@ -465,7 +465,14 @@ public class LeaveController(TimeSheetDbContext dbContext, IAuditService auditSe
     {
         var leaveTypes = await dbContext.LeaveTypes.Where(lt => lt.IsActive).OrderBy(lt => lt.Name).ToListAsync();
 
-        var balances = await dbContext.LeaveBalances
+        // Policy allocations give the base entitlement (DaysPerYear)
+        var policyAllocations = await dbContext.Users
+            .Where(u => u.Id == userId && u.LeavePolicyId != null)
+            .SelectMany(u => u.LeavePolicy!.Allocations)
+            .ToListAsync();
+
+        // Manual adjustments stored per-user per-year (admin overrides)
+        var manualAdjustments = await dbContext.LeaveBalances
             .Where(lb => lb.UserId == userId && lb.Year == year)
             .ToListAsync();
 
@@ -479,9 +486,10 @@ public class LeaveController(TimeSheetDbContext dbContext, IAuditService auditSe
 
         return leaveTypes.Select(lt =>
         {
-            var bal = balances.FirstOrDefault(b => b.LeaveTypeId == lt.Id);
+            var policyAlloc = policyAllocations.FirstOrDefault(a => a.LeaveTypeId == lt.Id);
+            var manual = manualAdjustments.FirstOrDefault(b => b.LeaveTypeId == lt.Id);
             var used = usedByType.FirstOrDefault(u => u.LeaveTypeId == lt.Id)?.Count ?? 0;
-            var total = bal != null ? bal.AllocatedDays + bal.ManualAdjustmentDays : 0;
+            var total = (policyAlloc?.DaysPerYear ?? 0) + (manual?.ManualAdjustmentDays ?? 0);
             return new LeaveBalanceResponse(lt.Id, lt.Name, total, used, Math.Max(0, total - used));
         }).ToArray();
     }

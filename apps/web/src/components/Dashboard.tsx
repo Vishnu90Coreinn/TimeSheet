@@ -156,6 +156,11 @@ const IconChevronDown = ({ size = 14, color = "currentColor" }) => (
     <polyline points="6 9 12 15 18 9" />
   </svg>
 );
+const IconDownload = ({ size = 16, color = "currentColor" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+  </svg>
+);
 
 // ── Donut chart ───────────────────────────────────────────────────────────────
 const CIRC = 251.2;
@@ -262,6 +267,117 @@ function BarChartDept({ data, maxVal }: { data: DeptRow[]; maxVal: number }) {
   );
 }
 
+// ── Compliance 7-day heatmap ──────────────────────────────────────────────────
+type ComplianceItem = { workDate?: string; date?: string; username?: string; isCompliant?: boolean; compliant?: boolean; rule?: string };
+function ComplianceHeatmap({ data }: { data: ComplianceItem[] }) {
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    return d.toISOString().slice(0, 10);
+  });
+  const byDate: Record<string, boolean> = {};
+  data.forEach(r => {
+    const d = (r.workDate ?? r.date ?? "").slice(0, 10);
+    if (d) byDate[d] = r.isCompliant ?? r.compliant ?? false;
+  });
+  const knownDays = days.filter(d => d in byDate);
+  const compliantCount = knownDays.filter(d => byDate[d]).length;
+  const total = knownDays.length || 1;
+  const ratio = compliantCount / total;
+  const statusClass = ratio >= 0.8 ? "trend-up" : ratio >= 0.5 ? "trend-flat" : "trend-down";
+  const statusLabel = ratio >= 0.8 ? "Good" : ratio >= 0.5 ? "Fair" : "Poor";
+  const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+        <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--text-primary)" }}>
+          {compliantCount}/{knownDays.length} days compliant
+        </span>
+        <span className={`stat-trend ${statusClass}`}>{statusLabel}</span>
+      </div>
+      <div className="compliance-heatmap-grid">
+        {days.map(d => {
+          const val = byDate[d];
+          const bg = d in byDate ? (val ? "var(--success)" : "var(--danger)") : "var(--n-100)";
+          const opacity = d in byDate ? 1 : 0.4;
+          const label = new Date(d + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+          const status = !(d in byDate) ? "No data" : val ? "Compliant" : "Non-compliant";
+          return (
+            <div
+              key={d}
+              className="compliance-heatmap-cell"
+              style={{ background: bg, opacity }}
+              title={`${label}: ${status}`}
+            />
+          );
+        })}
+      </div>
+      <div className="compliance-day-labels">
+        {days.map((d, i) => (
+          <div key={d} className="compliance-day-label">{DAY_NAMES[new Date(d + "T12:00:00").getDay() === 0 ? 6 : new Date(d + "T12:00:00").getDay() - 1]}</div>
+        ))}
+      </div>
+      {data.slice(0, 3).filter(r => !(r.isCompliant ?? r.compliant ?? true)).length > 0 && (
+        <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 4 }}>
+          {data.slice(0, 3).filter(r => !(r.isCompliant ?? r.compliant ?? true)).map((r, i) => (
+            <div key={i} style={{ fontSize: "0.72rem", color: "var(--text-tertiary)", display: "flex", gap: 6 }}>
+              <span style={{ color: "var(--danger)", fontWeight: 600 }}>✗</span>
+              <span>{fmtDateHuman(r.workDate ?? r.date)}{r.username ? ` · ${r.username}` : ""}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Horizontal bar chart for departments ─────────────────────────────────────
+function HBarChartDept({ data }: { data: DeptRow[] }) {
+  const max = Math.max(...data.map(r => r.minutes), 1);
+  const avg = data.reduce((a, r) => a + r.minutes, 0) / Math.max(data.length, 1);
+  const avgPct = (avg / max) * 100;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {data.slice(0, 7).map((r, i) => {
+        const pct = Math.max(2, (r.minutes / max) * 100);
+        return (
+          <div key={r.department} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 88, fontSize: "0.72rem", color: "var(--text-secondary)", textAlign: "right", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flexShrink: 0 }} title={r.department}>
+              {r.department}
+            </div>
+            <div style={{ flex: 1, position: "relative", height: 18, borderRadius: "var(--r-sm)", overflow: "visible" }}>
+              <div style={{ position: "absolute", inset: 0, background: "var(--n-50)", borderRadius: "var(--r-sm)" }} />
+              <div style={{ position: "absolute", top: 0, left: 0, height: "100%", width: `${pct}%`, background: PALETTE[i % PALETTE.length], borderRadius: "var(--r-sm)", transition: "width 0.5s cubic-bezier(0.16,1,0.3,1)" }} />
+              <div style={{ position: "absolute", top: -3, bottom: -3, left: `${avgPct}%`, width: 1.5, background: "var(--n-400)", opacity: 0.7, pointerEvents: "none" }} title={`Avg: ${fmtMinutes(Math.round(avg))}`} />
+            </div>
+            <div style={{ width: 36, fontSize: "0.7rem", color: "var(--text-tertiary)", textAlign: "right", flexShrink: 0 }}>
+              {fmtMinutes(r.minutes)}
+            </div>
+          </div>
+        );
+      })}
+      <div style={{ paddingLeft: 96, fontSize: "0.68rem", color: "var(--text-tertiary)", display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
+        <div style={{ width: 12, height: 1.5, background: "var(--n-400)", opacity: 0.7 }} />
+        Avg: {fmtMinutes(Math.round(avg))}
+      </div>
+    </div>
+  );
+}
+
+// ── Single-department stat display ────────────────────────────────────────────
+function SingleDeptStat({ dept }: { dept: DeptRow }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "var(--space-6) 0", gap: "var(--space-2)" }}>
+      <div style={{ fontFamily: "var(--font-display)", fontSize: "2.5rem", fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.04em", lineHeight: 1 }}>
+        {fmtMinutes(dept.minutes)}
+      </div>
+      <div style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--text-secondary)", marginTop: 4 }}>{dept.department}</div>
+      <div style={{ fontSize: "0.75rem", color: "var(--text-tertiary)" }}>Total effort this period</div>
+    </div>
+  );
+}
+
 // ── KPI progress list item ────────────────────────────────────────────────────
 function KpiItem({ name, color, value, max, pctLabel, viewLink, onView }: {
   name: string; color: string; value: number; max: number;
@@ -299,13 +415,20 @@ const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 // ── Utilization mini bar ──────────────────────────────────────────────────────
 function UtilBar({ minutes, targetMinutes = 2400 }: { minutes: number; targetMinutes?: number }) {
   const pct = Math.min(100, targetMinutes > 0 ? Math.round((minutes / targetMinutes) * 100) : 0);
-  const color = pct < 50 ? "#ef4444" : pct < 80 ? "#f59e0b" : "#10b981";
+  const color = pct < 30 ? "#ef4444" : pct < 70 ? "#f59e0b" : "#10b981";
+  const label = pct < 30 ? "↓ Below target" : pct < 70 ? "→ Near target" : "↑ On track";
+  const actualH = (minutes / 60).toFixed(1);
+  const targetH = (targetMinutes / 60).toFixed(0);
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <div style={{ width: 60, height: 4, background: "var(--n-100)", borderRadius: 2, overflow: "hidden" }}>
-        <div style={{ width: `${pct}%`, height: "100%", background: color, borderRadius: 2, transition: "width 0.3s" }} />
+    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <div style={{ width: 60, height: 4, background: "var(--n-100)", borderRadius: 2, overflow: "hidden" }}>
+          <div style={{ width: `${pct}%`, height: "100%", background: color, borderRadius: 2, transition: "width 0.3s" }} />
+        </div>
+        <span style={{ fontSize: "0.7rem", color, fontWeight: 600, minWidth: 28 }}>{pct}%</span>
+        <span style={{ fontSize: "0.68rem", color: "var(--text-tertiary)" }}>{label}</span>
       </div>
-      <span style={{ fontSize: "0.7rem", color, fontWeight: 600, minWidth: 32 }}>{pct}%</span>
+      <div style={{ fontSize: "0.65rem", color: "var(--text-tertiary)" }}>{actualH}h / {targetH}h target</div>
     </div>
   );
 }
@@ -932,6 +1055,8 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
         </div>
         <div className="page-actions" style={{ gap: "var(--space-2)", alignItems: "center" }}>
           {/* Period selector */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: "0.72rem", color: "var(--text-tertiary)", fontWeight: 500, whiteSpace: "nowrap" }}>Viewing data for:</span>
           <div style={{ display: "flex", gap: 2, background: "var(--n-50)", borderRadius: "var(--r-md)", padding: 2, border: "1px solid var(--border-subtle)" }}>
             {(["today", "week", "30d", "quarter"] as const).map(p => (
               <button
@@ -947,11 +1072,12 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
               >{PERIOD_LABELS[p]}</button>
             ))}
           </div>
+          </div>
           {/* Export split button */}
           <div ref={exportRef} style={{ position: "relative" }}>
             <div style={{ display: "flex" }}>
               <button className="btn btn-outline btn-sm" style={{ borderRadius: "var(--r-md) 0 0 var(--r-md)", borderRight: "none" }}>
-                📥 Export
+                <IconDownload size={14} /> Export
               </button>
               <button
                 className="btn btn-outline btn-sm"
@@ -989,13 +1115,13 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
       </div>
 
       {/* Freshness bar */}
-      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.72rem", color: "var(--text-tertiary)" }}>
-        <span>Last updated: {fmtFreshness(lastRefreshed)}</span>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, fontSize: "0.78rem", color: "var(--text-tertiary)", marginTop: -8 }}>
+        <span style={{ fontWeight: 500 }}>Last updated: {fmtFreshness(lastRefreshed)}</span>
         <button
           onClick={() => window.location.reload()}
-          style={{ background: "none", border: "none", cursor: "pointer", color: "var(--brand-500)", display: "flex", alignItems: "center", gap: 4, padding: 0, fontSize: "0.72rem" }}
+          style={{ background: "none", border: "1px solid var(--border-subtle)", cursor: "pointer", color: "var(--brand-600)", display: "flex", alignItems: "center", gap: 4, padding: "3px 8px", fontSize: "0.75rem", borderRadius: "var(--r-sm)", fontWeight: 600 }}
         >
-          <IconRefresh /> Refresh
+          <IconRefresh size={12} /> Refresh
         </button>
       </div>
 
@@ -1007,8 +1133,8 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
             <span className="stat-trend trend-flat">{PERIOD_LABELS[period]}</span>
           </div>
           <div className="stat-value">{effortByDepartment.length}</div>
-          <h2 className="stat-label">Departments</h2>
-          <div className="stat-footer">With recorded effort</div>
+          <h2 className="stat-label">Active Departments</h2>
+          <div className="stat-footer">With recorded effort · {PERIOD_LABELS[period].toLowerCase()}</div>
         </div>
         <div className="stat-card">
           <div className="stat-card-top">
@@ -1022,15 +1148,17 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
               <Sparkline values={sparklineValues} color={billablePct >= 70 ? "#10b981" : "#f59e0b"} width={52} height={16} />
             </div>
           </div>
-          <div className="stat-value">{billablePct}<span style={{ fontSize: "1rem", color: "var(--text-tertiary)" }}>%</span></div>
+          <div className="stat-value">
+            {billablePct}<span style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-tertiary)", marginLeft: 1 }}>%</span>
+          </div>
           <h2 className="stat-label">Billable ratio</h2>
           <div className="stat-footer">{fmtMinutes(billable.billableMinutes)} billable · {PERIOD_LABELS[period].toLowerCase()}</div>
         </div>
         <div className="stat-card">
           <div className="stat-card-top">
             <div className="stat-icon" style={{ background: "var(--info-light)" }}><IconPeople color="#3b82f6" /></div>
-            <span className="stat-trend trend-flat">
-              {consultantVsInternal.internal}i · {consultantVsInternal.consultant}c
+            <span className="stat-trend trend-flat" title={`${consultantVsInternal.internal} Internal · ${consultantVsInternal.consultant} Consultants`}>
+              {consultantVsInternal.internal} Internal · {consultantVsInternal.consultant} Consultants
             </span>
           </div>
           <div className="stat-value">{consultantVsInternal.internal + consultantVsInternal.consultant}</div>
@@ -1042,7 +1170,7 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
             <div className="stat-icon" style={{ background: pendingCount > 0 ? "var(--warning-light)" : "var(--success-light)" }}>
               <IconAlert color={pendingCount > 0 ? "#f59e0b" : "#10b981"} />
             </div>
-            <span className={`stat-trend ${pendingCount > 0 ? "trend-down" : "trend-up"}`}>
+            <span className={`stat-trend ${pendingCount > 0 ? "trend-flat" : "trend-up"}`}>
               {pendingCount > 0 ? `${pendingCount} pending` : "All clear"}
             </span>
           </div>
@@ -1065,25 +1193,15 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
           </div>
           <div className="card-body">
             {effortByDepartment.length === 0 ? (
-              <div className="empty-state" style={{ padding: "var(--space-8) 0" }}><p className="empty-state__title">No data</p></div>
+              <div className="empty-state" style={{ padding: "var(--space-6) 0" }}>
+                <div className="empty-state__icon">🏢</div>
+                <p className="empty-state__title">No department data</p>
+                <p className="empty-state__sub">No effort recorded for this period.</p>
+              </div>
+            ) : effortByDepartment.length === 1 ? (
+              <SingleDeptStat dept={effortByDepartment[0]} />
             ) : (
-              <>
-                <BarChartDept data={effortByDepartment} maxVal={maxDept} />
-                <div className="chart-legend" style={{ marginTop: "var(--space-3)", flexWrap: "wrap" }}>
-                  {effortByDepartment.slice(0, 5).map((r, i) => (
-                    <div
-                      key={r.department}
-                      className="chart-legend-item"
-                      style={{ opacity: r.minutes === 0 ? 0.4 : 1 }}
-                    >
-                      <div className="chart-legend-dot" style={{ background: PALETTE[i % PALETTE.length] }} />
-                      <span title={r.department} style={{ maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {r.department}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </>
+              <HBarChartDept data={effortByDepartment} />
             )}
           </div>
         </div>
@@ -1098,15 +1216,32 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
                 <DonutChart
                   segments={donutSegs}
                   centerLabel={`${billablePct}%`}
-                  centerSub="Billable"
+                  centerSub="of total"
                   size={130}
                 />
               )}
               <div className="kpi-list" style={{ flex: 1 }}>
-                <KpiItem name="Billable" color="var(--success)" value={billable.billableMinutes} max={totalBillable} />
-                <KpiItem name="Non-Billable" color="var(--n-300)" value={billable.nonBillableMinutes} max={totalBillable} />
-                <KpiItem name="Internal Staff" color="var(--brand-500)" value={consultantVsInternal.internal} max={consultantVsInternal.internal + consultantVsInternal.consultant} />
-                <KpiItem name="Consultants" color="var(--info)" value={consultantVsInternal.consultant} max={consultantVsInternal.internal + consultantVsInternal.consultant} />
+                {billable.billableMinutes > 0 && <KpiItem name="Billable hours" color="var(--success)" value={billable.billableMinutes} max={totalBillable} />}
+                {billable.nonBillableMinutes > 0 && <KpiItem name="Non-Billable" color="var(--n-300)" value={billable.nonBillableMinutes} max={totalBillable} />}
+                {consultantVsInternal.internal > 0 && (
+                  <KpiItem
+                    name="Internal staff"
+                    color="var(--brand-500)"
+                    value={consultantVsInternal.internal}
+                    max={consultantVsInternal.internal + consultantVsInternal.consultant}
+                  />
+                )}
+                {consultantVsInternal.consultant > 0 && (
+                  <KpiItem
+                    name="Consultants"
+                    color="var(--info)"
+                    value={consultantVsInternal.consultant}
+                    max={consultantVsInternal.internal + consultantVsInternal.consultant}
+                  />
+                )}
+                {billable.billableMinutes === 0 && billable.nonBillableMinutes === 0 && (
+                  <div style={{ fontSize: "0.78rem", color: "var(--text-tertiary)", padding: "var(--space-4) 0" }}>No billable data for this period.</div>
+                )}
               </div>
             </div>
           </div>
@@ -1114,23 +1249,23 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
       </div>
 
       {/* Row 3: Utilization + Compliance + Effort by Project + Who's on Leave */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "var(--space-4)" }}>
+      <div className="dashboard-grid-4">
         <div className="card">
           <div className="card-header">
             <div><h2 className="card-title">Utilization</h2><div className="card-subtitle">Target: 40h/week</div></div>
           </div>
           <div className="card-body">
             {underOver.length === 0 ? (
-              <div className="empty-state" style={{ padding: "var(--space-8) 0" }}><p className="empty-state__title">No data</p></div>
+              <div className="empty-state" style={{ padding: "var(--space-6) 0" }}>
+                <div className="empty-state__icon">📊</div>
+                <p className="empty-state__title">No utilization data</p>
+              </div>
             ) : (
               <div className="activity-list">
                 {underOver.slice(0, 6).map((r) => (
                   <div key={r.username} className="activity-item">
-                    <div className="activity-icon-wrap" style={{ background: r.status === "overloaded" ? "var(--danger-light)" : r.status === "balanced" ? "var(--success-light)" : "var(--warning-light)" }}>
-                      {r.status === "overloaded" ? "↑" : r.status === "balanced" ? "✓" : "↓"}
-                    </div>
-                    <div className="activity-body">
-                      <div className="activity-text" style={{ color: "rgb(16,16,26)", fontWeight: 500 }}>{r.username}</div>
+                    <div className="activity-body" style={{ gap: 2 }}>
+                      <div className="activity-text" style={{ color: "rgb(16,16,26)", fontWeight: 500, marginBottom: 3 }}>{r.username}</div>
                       <UtilBar minutes={r.minutes} targetMinutes={2400} />
                     </div>
                   </div>
@@ -1142,33 +1277,16 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
 
         <div className="card">
           <div className="card-header">
-            <div><h2 className="card-title">Compliance Trend</h2><div className="card-subtitle">Recent records</div></div>
+            <div><h2 className="card-title">Compliance Trend</h2><div className="card-subtitle">Last 7 days</div></div>
           </div>
           <div className="card-body">
             {complianceList.length === 0 ? (
-              <div className="empty-state" style={{ padding: "var(--space-8) 0" }}><p className="empty-state__title">No data</p></div>
-            ) : (
-              <div className="activity-list">
-                {complianceList.slice(0, 6).map((r, i) => {
-                  const rawDate = r.workDate ?? r.date ?? "";
-                  const ok = r.isCompliant ?? r.compliant ?? false;
-                  const userName = r.username ?? "";
-                  const rule = r.rule ?? (ok ? "On time" : "Late / missing");
-                  return (
-                    <div key={i} className="activity-item" style={{ cursor: "pointer" }} onClick={() => onNavigate?.("reports")}>
-                      <div className="activity-icon-wrap" style={{ background: ok ? "var(--success-light)" : "var(--danger-light)" }}>{ok ? "✓" : "✗"}</div>
-                      <div className="activity-body">
-                        <div className="activity-text" style={{ color: "rgb(16,16,26)" }}>
-                          <strong>{fmtDateHuman(rawDate)}</strong>
-                          {userName && <span style={{ fontWeight: 400, color: "var(--text-secondary)" }}> · {userName}</span>}
-                        </div>
-                        <div className="activity-meta">{rule}</div>
-                      </div>
-                      <span className={`badge ${ok ? "badge-success" : "badge-error"}`}>{ok ? "OK" : "Fail"}</span>
-                    </div>
-                  );
-                })}
+              <div className="empty-state" style={{ padding: "var(--space-6) 0" }}>
+                <div className="empty-state__icon">📋</div>
+                <p className="empty-state__title">No compliance data</p>
               </div>
+            ) : (
+              <ComplianceHeatmap data={complianceList} />
             )}
           </div>
         </div>
@@ -1206,11 +1324,12 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
           <div className="card-header">
             <div><h2 className="card-title">On Leave Today</h2><div className="card-subtitle">Approved absences</div></div>
           </div>
-          <div className="card-body">
+          <div className="card-body" style={{ minHeight: 120 }}>
             {leaveToday.length === 0 ? (
-              <div className="empty-state" style={{ padding: "var(--space-6) 0" }}>
-                <p className="empty-state__title" style={{ fontSize: "0.85rem" }}>No one on leave today ✓</p>
-                <p className="empty-state__sub">Full team is in.</p>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 100, gap: 6, textAlign: "center" }}>
+                <div style={{ fontSize: "1.5rem", opacity: 0.5 }}>✓</div>
+                <p style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--text-secondary)" }}>No one on leave today</p>
+                <p style={{ fontSize: "0.72rem", color: "var(--text-tertiary)" }}>Full team is in.</p>
               </div>
             ) : (
               <div className="activity-list">

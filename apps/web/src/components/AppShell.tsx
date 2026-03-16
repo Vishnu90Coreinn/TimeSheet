@@ -1,7 +1,7 @@
 /**
  * AppShell.tsx — v3.0 exact Pulse reference layout
  */
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { NotificationBell } from "./Notifications";
 import type { Session } from "../types";
 import type { View } from "../types";
@@ -45,6 +45,7 @@ const VIEW_LABELS: Record<View, string> = {
 };
 
 export function AppShell({ session, view, nav, onNavigate, onLogout, children }: AppShellProps) {
+  const [collapsed, setCollapsed] = useState(false);
   const initials = session.username.slice(0, 2).toUpperCase();
   const mainItems    = NAV_ITEMS.filter((i) => i.group === "main"    && nav.includes(i.view));
   const managerItems = NAV_ITEMS.filter((i) => i.group === "manager" && nav.includes(i.view));
@@ -64,7 +65,7 @@ export function AppShell({ session, view, nav, onNavigate, onLogout, children }:
         <div className="shell-topnav__right">
           <NotificationBell />
           <div className="topbar-divider" />
-          <div className="topbar-user">
+          <div className="topbar-user" title="Profile & settings" style={{ cursor: "pointer" }}>
             <div style={{
               width: 28, height: 28, borderRadius: "var(--r-md)",
               background: "linear-gradient(135deg, var(--brand-500), var(--brand-700))",
@@ -82,12 +83,28 @@ export function AppShell({ session, view, nav, onNavigate, onLogout, children }:
       {/* ── Shell body ── */}
       <div className="shell-layout">
         {/* Sidebar */}
-        <aside className="shell-sidebar">
+        <aside className={`shell-sidebar${collapsed ? " collapsed" : ""}`}>
           {/* Sidebar header: brand + org switcher */}
           <div className="sidebar-header">
-            <div className="sidebar-brand">
-              <div className="sidebar-brand-icon">T</div>
-              <span className="sidebar-brand-name">TimeSheet</span>
+            <div className="sidebar-brand" style={{ justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+                <div className="sidebar-brand-icon">T</div>
+                <span className="sidebar-brand-name">TimeSheet</span>
+              </div>
+              <button
+                className="sidebar-collapse-btn"
+                onClick={() => setCollapsed(c => !c)}
+                title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                style={{
+                  background: "none", border: "none", cursor: "pointer",
+                  color: "var(--text-tertiary)", display: "flex", alignItems: "center",
+                  padding: 4, borderRadius: "var(--r-sm)", flexShrink: 0,
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = "var(--n-100)")}
+                onMouseLeave={e => (e.currentTarget.style.background = "none")}
+              >
+                <CollapseIcon collapsed={collapsed} />
+              </button>
             </div>
             <div className="org-switcher">
               <div className="org-logo">T</div>
@@ -149,7 +166,7 @@ export function AppShell({ session, view, nav, onNavigate, onLogout, children }:
             <button
               className="nav-item"
               onClick={onLogout}
-              style={{ color: "var(--danger)", width: "100%" }}
+              style={{ width: "100%", color: "var(--text-secondary)" }}
             >
               <LogoutIcon />
               <span>Sign Out</span>
@@ -169,6 +186,16 @@ export function AppShell({ session, view, nav, onNavigate, onLogout, children }:
 }
 
 /* ─── Inline SVG icons (18×18) ────────────────────────────── */
+function CollapseIcon({ collapsed }: { collapsed: boolean }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      {collapsed
+        ? <polyline points="9 18 15 12 9 6" />
+        : <polyline points="15 18 9 12 15 6" />
+      }
+    </svg>
+  );
+}
 function DashboardIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

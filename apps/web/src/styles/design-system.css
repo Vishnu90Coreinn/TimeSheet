@@ -1017,3 +1017,57 @@ a { text-decoration: none; color: inherit; }
   border: 1px solid rgba(245,158,11,0.4);
 }
 .btn-outline-warning:hover:not(:disabled) { background: var(--warning-light); border-color: var(--warning); }
+
+/* ── Sidebar brand — keep button visible in expanded state ── */
+.sidebar-brand { justify-content: space-between; }
+/* In collapsed state hide the icon+name div, center the collapse btn */
+.shell-sidebar.collapsed .sidebar-brand > div:first-child { display: none; }
+
+/* ── Progress fill severity tiers (Issue 3) ─────────────── */
+.progress-fill--critical { background: var(--danger) !important; }
+.progress-fill--warning  { background: var(--warning) !important; }
+.progress-fill--caution  { background: #f97316 !important; }
+.progress-fill--success  { background: var(--success) !important; }
+
+/* ── Notification badge (Issue 6) ───────────────────────── */
+.notif-badge {
+  position: absolute; top: 1px; right: 1px;
+  min-width: 16px; height: 16px; padding: 0 3px;
+  border-radius: var(--r-full);
+  background: var(--danger); color: #fff;
+  font-size: 0.6rem; font-weight: 700; line-height: 16px;
+  text-align: center; pointer-events: none;
+  border: 2px solid var(--surface);
+}
+
+/* ── KPI item hover (Issue 8) ───────────────────────────── */
+.kpi-item[role="button"]:hover { background: var(--n-25); border-radius: var(--r-md); }
+.kpi-item[role="button"]:focus-visible { outline: 2px solid var(--brand-500); outline-offset: 2px; border-radius: var(--r-md); }
+
+/* ── Split button (Issue 11) ────────────────────────────── */
+.btn-split { display: flex; }
+.btn-split__main { border-radius: var(--r-md) 0 0 var(--r-md) !important; border-right: none !important; }
+.btn-split__chevron { border-radius: 0 var(--r-md) var(--r-md) 0 !important; padding: 0 6px !important; }
+
+/* ── Focus-visible rings (Issue 12) ─────────────────────── */
+button:focus-visible, a:focus-visible {
+  outline: 2px solid var(--brand-500);
+  outline-offset: 2px;
+}
+button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
+
+/* ── Nav section separators (Issue 14) ──────────────────── */
+.nav-section + .nav-section {
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* ── Card footer link ───────────────────────────────────── */
+.card-footer-link {
+  background: none; border: none; cursor: pointer;
+  font-size: 0.78rem; font-weight: 600;
+  color: var(--brand-600); padding: 0;
+  transition: color 0.15s;
+}
+.card-footer-link:hover { color: var(--brand-700); text-decoration: underline; }

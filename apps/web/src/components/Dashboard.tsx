@@ -103,6 +103,15 @@ function avatarColor(name: string): string {
 function fmtFreshness(d: Date): string {
   return d.toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
+function relativeTime(date: Date): string {
+  const diffMs = Date.now() - date.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return "Updated just now";
+  if (diffMin < 60) return `Updated ${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `Updated ${diffHr}h ago`;
+  return `Updated ${date.toLocaleDateString()}`;
+}
 
 // ── SVG icons (20×20 stroke) ──────────────────────────────────────────────────
 const IconClock = ({ size = 20, color = "currentColor" }) => (
@@ -267,12 +276,12 @@ function BarChartDept({ data, maxVal }: { data: DeptRow[]; maxVal: number }) {
   );
 }
 
-// ── Compliance 7-day heatmap ──────────────────────────────────────────────────
+// ── Compliance 4-week heatmap ─────────────────────────────────────────────────
 type ComplianceItem = { workDate?: string; date?: string; username?: string; isCompliant?: boolean; compliant?: boolean; rule?: string };
-function ComplianceHeatmap({ data }: { data: ComplianceItem[] }) {
-  const days = Array.from({ length: 7 }, (_, i) => {
+function ComplianceHeatmap({ data, onViewReport }: { data: ComplianceItem[]; onViewReport?: () => void }) {
+  const days = Array.from({ length: 28 }, (_, i) => {
     const d = new Date();
-    d.setDate(d.getDate() - (6 - i));
+    d.setDate(d.getDate() - (27 - i));
     return d.toISOString().slice(0, 10);
   });
   const byDate: Record<string, boolean> = {};
@@ -282,50 +291,59 @@ function ComplianceHeatmap({ data }: { data: ComplianceItem[] }) {
   });
   const knownDays = days.filter(d => d in byDate);
   const compliantCount = knownDays.filter(d => byDate[d]).length;
-  const total = knownDays.length || 1;
-  const ratio = compliantCount / total;
+  const ratio = compliantCount / (knownDays.length || 1);
   const statusClass = ratio >= 0.8 ? "trend-up" : ratio >= 0.5 ? "trend-flat" : "trend-down";
   const statusLabel = ratio >= 0.8 ? "Good" : ratio >= 0.5 ? "Fair" : "Poor";
-  const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const DAY_NAMES = ["M", "T", "W", "T", "F", "S", "S"];
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
         <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--text-primary)" }}>
           {compliantCount}/{knownDays.length} days compliant
         </span>
         <span className={`stat-trend ${statusClass}`}>{statusLabel}</span>
       </div>
+      {/* Column headers */}
+      <div className="compliance-day-labels" style={{ marginBottom: 4 }}>
+        {DAY_NAMES.map((n, i) => <div key={i} className="compliance-day-label">{n}</div>)}
+      </div>
       <div className="compliance-heatmap-grid">
         {days.map(d => {
           const val = byDate[d];
-          const bg = d in byDate ? (val ? "var(--success)" : "var(--danger)") : "var(--n-100)";
+          const bg = d in byDate ? (val ? "var(--success)" : "var(--danger)") : "var(--n-150)";
           const opacity = d in byDate ? 1 : 0.4;
-          const label = new Date(d + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-          const status = !(d in byDate) ? "No data" : val ? "Compliant" : "Non-compliant";
+          const cellLabel = new Date(d + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+          const cellStatus = !(d in byDate) ? "No data" : val ? "Compliant" : "Non-compliant";
+          const ariaLabel = `${cellLabel}: ${cellStatus}`;
           return (
             <div
               key={d}
               className="compliance-heatmap-cell"
               style={{ background: bg, opacity }}
-              title={`${label}: ${status}`}
+              title={ariaLabel}
+              aria-label={ariaLabel}
             />
           );
         })}
       </div>
-      <div className="compliance-day-labels">
-        {days.map((d, i) => (
-          <div key={d} className="compliance-day-label">{DAY_NAMES[new Date(d + "T12:00:00").getDay() === 0 ? 6 : new Date(d + "T12:00:00").getDay() - 1]}</div>
+      {/* Legend */}
+      <div style={{ display: "flex", gap: 12, marginTop: 8, alignItems: "center", flexWrap: "wrap" }}>
+        {[
+          { color: "var(--success)", label: "Compliant" },
+          { color: "var(--danger)", label: "Non-compliant" },
+          { color: "var(--n-150)", label: "No data", opacity: 0.4 },
+        ].map(({ color, label, opacity }) => (
+          <div key={label} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: "0.7rem", color: "var(--text-tertiary)" }}>
+            <div style={{ width: 10, height: 10, borderRadius: 2, background: color, opacity }} />
+            {label}
+          </div>
         ))}
       </div>
-      {data.slice(0, 3).filter(r => !(r.isCompliant ?? r.compliant ?? true)).length > 0 && (
-        <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 4 }}>
-          {data.slice(0, 3).filter(r => !(r.isCompliant ?? r.compliant ?? true)).map((r, i) => (
-            <div key={i} style={{ fontSize: "0.72rem", color: "var(--text-tertiary)", display: "flex", gap: 6 }}>
-              <span style={{ color: "var(--danger)", fontWeight: 600 }}>✗</span>
-              <span>{fmtDateHuman(r.workDate ?? r.date)}{r.username ? ` · ${r.username}` : ""}</span>
-            </div>
-          ))}
+      {/* Footer CTA */}
+      {onViewReport && (
+        <div style={{ marginTop: 10, borderTop: "1px solid var(--border-subtle)", paddingTop: 8 }}>
+          <button onClick={onViewReport} className="card-footer-link">View compliance report →</button>
         </div>
       )}
     </div>
@@ -379,30 +397,36 @@ function SingleDeptStat({ dept }: { dept: DeptRow }) {
 }
 
 // ── KPI progress list item ────────────────────────────────────────────────────
-function KpiItem({ name, color, value, max, pctLabel, viewLink, onView }: {
+function KpiItem({ name, color, value, max, pctLabel, onView }: {
   name: string; color: string; value: number; max: number;
-  pctLabel?: string; viewLink?: boolean; onView?: () => void;
+  pctLabel?: string; onView?: () => void;
 }) {
   const pct = max > 0 ? Math.round((value / max) * 100) : 0;
   return (
-    <div className="kpi-item">
+    <div
+      className="kpi-item"
+      onClick={onView}
+      style={{ cursor: onView ? "pointer" : "default" }}
+      role={onView ? "button" : undefined}
+      tabIndex={onView ? 0 : undefined}
+      onKeyDown={onView ? (e) => { if (e.key === "Enter" || e.key === " ") onView(); } : undefined}
+    >
       <div className="kpi-header">
         <div className="kpi-name">
           <div className="kpi-dot" style={{ background: color }} />
           {name}
           {pctLabel && <span style={{ marginLeft: 4, fontSize: "0.68rem", color: "var(--text-tertiary)" }}>{pctLabel}</span>}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <div className="kpi-val">{fmtMinutes(value)}</div>
-          {viewLink && (
-            <button
-              onClick={onView}
-              style={{ fontSize: "0.7rem", color: "var(--brand-500)", background: "none", border: "none", cursor: "pointer", padding: 0, lineHeight: 1 }}
-            >→ View</button>
-          )}
-        </div>
+        <div className="kpi-val">{fmtMinutes(value)}</div>
       </div>
-      <div className="progress-track">
+      <div
+        className="progress-track"
+        role="progressbar"
+        aria-valuenow={pct}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`${name}: ${pct}%`}
+      >
         <div className="progress-fill" style={{ width: `${pct}%`, background: color }} />
       </div>
     </div>
@@ -413,22 +437,41 @@ const PALETTE = ["var(--brand-500)", "var(--info)", "var(--warning)", "var(--suc
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 // ── Utilization mini bar ──────────────────────────────────────────────────────
-function UtilBar({ minutes, targetMinutes = 2400 }: { minutes: number; targetMinutes?: number }) {
-  const pct = Math.min(100, targetMinutes > 0 ? Math.round((minutes / targetMinutes) * 100) : 0);
-  const color = pct < 30 ? "#ef4444" : pct < 70 ? "#f59e0b" : "#10b981";
-  const label = pct < 30 ? "↓ Below target" : pct < 70 ? "→ Near target" : "↑ On track";
+function UtilBar({ minutes, status }: { minutes: number; status?: string }) {
+  const barPct = Math.min(100, Math.round((minutes / 2400) * 100));
   const actualH = (minutes / 60).toFixed(1);
-  const targetH = (targetMinutes / 60).toFixed(0);
+  let fillClass: string;
+  let labelColor: string;
+  let label: string;
+  if (status === "overloaded") {
+    fillClass = "progress-fill--critical"; labelColor = "var(--danger)"; label = "↓ Critical";
+  } else if (status === "balanced") {
+    fillClass = "progress-fill--success"; labelColor = "var(--success)"; label = "↑ On track";
+  } else if (barPct < 10) {
+    fillClass = "progress-fill--critical"; labelColor = "var(--danger)"; label = "↓ Critical";
+  } else if (barPct < 60) {
+    fillClass = "progress-fill--warning"; labelColor = "var(--warning)"; label = "↓ Below target";
+  } else {
+    fillClass = "progress-fill--caution"; labelColor = "#f97316"; label = "~ Near target";
+  }
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <div style={{ width: 60, height: 4, background: "var(--n-100)", borderRadius: 2, overflow: "hidden" }}>
-          <div style={{ width: `${pct}%`, height: "100%", background: color, borderRadius: 2, transition: "width 0.3s" }} />
+        <div
+          className="progress-track"
+          style={{ flex: 1, maxWidth: 60, height: 4 }}
+          role="progressbar"
+          aria-valuenow={barPct}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={`Utilization: ${barPct}%`}
+        >
+          <div className={`progress-fill ${fillClass}`} style={{ width: `${barPct}%` }} />
         </div>
-        <span style={{ fontSize: "0.7rem", color, fontWeight: 600, minWidth: 28 }}>{pct}%</span>
-        <span style={{ fontSize: "0.68rem", color: "var(--text-tertiary)" }}>{label}</span>
+        <span style={{ fontSize: "0.7rem", color: labelColor, fontWeight: 600, minWidth: 28 }}>{barPct}%</span>
+        <span style={{ fontSize: "0.68rem", color: labelColor }}>{label}</span>
       </div>
-      <div style={{ fontSize: "0.65rem", color: "var(--text-tertiary)" }}>{actualH}h / {targetH}h target</div>
+      <div style={{ fontSize: "0.65rem", color: "var(--text-tertiary)" }}>{actualH}h this week</div>
     </div>
   );
 }
@@ -699,28 +742,38 @@ function EmployeeDashboard({ employee, week, leaveBalances, activeProjectCount, 
               </div>
             ) : (
               <div className="kpi-list">
-                {leaveBalances.map((lb, i) => (
-                  <div key={lb.leaveTypeId} className="kpi-item">
-                    <div className="kpi-header">
-                      <div className="kpi-name">
-                        <div className="kpi-dot" style={{ background: PALETTE[i % PALETTE.length] }} />
-                        {lb.leaveTypeName}
+                {leaveBalances.map((lb, i) => {
+                  const usedPct = lb.totalDays > 0 ? Math.round((lb.usedDays / lb.totalDays) * 100) : 0;
+                  return (
+                    <div key={lb.leaveTypeId} className="kpi-item">
+                      <div className="kpi-header">
+                        <div className="kpi-name">
+                          <div className="kpi-dot" style={{ background: PALETTE[i % PALETTE.length] }} />
+                          {lb.leaveTypeName}
+                        </div>
+                        <div className="kpi-val" style={{ color: lb.remainingDays <= 2 ? "var(--danger)" : "var(--text-primary)" }}>
+                          {lb.remainingDays}d
+                        </div>
                       </div>
-                      <div className="kpi-val" style={{ color: lb.remainingDays <= 2 ? "var(--danger)" : "var(--text-primary)" }}>
-                        {lb.remainingDays}d
+                      <div
+                        className="progress-track"
+                        role="progressbar"
+                        aria-valuenow={usedPct}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-label={`${lb.leaveTypeName}: ${lb.usedDays} of ${lb.totalDays} days used`}
+                      >
+                        <div className="progress-fill" style={{
+                          width: `${usedPct}%`,
+                          background: PALETTE[i % PALETTE.length],
+                        }} />
+                      </div>
+                      <div style={{ fontSize: "0.72rem", color: "var(--text-tertiary)", marginTop: 2 }}>
+                        {lb.usedDays}d used of {lb.totalDays}d
                       </div>
                     </div>
-                    <div className="progress-track">
-                      <div className="progress-fill" style={{
-                        width: `${lb.totalDays > 0 ? Math.round((lb.usedDays / lb.totalDays) * 100) : 0}%`,
-                        background: PALETTE[i % PALETTE.length],
-                      }} />
-                    </div>
-                    <div style={{ fontSize: "0.72rem", color: "var(--text-tertiary)", marginTop: 2 }}>
-                      {lb.usedDays}d used of {lb.totalDays}d
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -1048,40 +1101,20 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">{greeting(username)}</h1>
-          <div className="page-subtitle">Organisation overview — {todayStr()}</div>
-        </div>
-        <div className="page-actions" style={{ gap: "var(--space-2)", alignItems: "center" }}>
-          {/* Period selector */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: "0.72rem", color: "var(--text-tertiary)", fontWeight: 500, whiteSpace: "nowrap" }}>Viewing data for:</span>
-          <div style={{ display: "flex", gap: 2, background: "var(--n-50)", borderRadius: "var(--r-md)", padding: 2, border: "1px solid var(--border-subtle)" }}>
-            {(["today", "week", "30d", "quarter"] as const).map(p => (
-              <button
-                key={p}
-                onClick={() => setPeriod(p)}
-                style={{
-                  padding: "4px 10px", fontSize: "0.72rem", fontWeight: period === p ? 600 : 400,
-                  background: period === p ? "var(--surface)" : "transparent",
-                  color: period === p ? "var(--text-primary)" : "var(--text-tertiary)",
-                  border: period === p ? "1px solid var(--border-subtle)" : "1px solid transparent",
-                  borderRadius: "var(--r-sm)", cursor: "pointer",
-                }}
-              >{PERIOD_LABELS[p]}</button>
-            ))}
-          </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+        <div className="page-header">
+          <div>
+            <h1 className="page-title">{greeting(username)}</h1>
+            <div className="page-subtitle">Organisation overview — {todayStr()}</div>
           </div>
           {/* Export split button */}
           <div ref={exportRef} style={{ position: "relative" }}>
-            <div style={{ display: "flex" }}>
-              <button className="btn btn-outline btn-sm" style={{ borderRadius: "var(--r-md) 0 0 var(--r-md)", borderRight: "none" }}>
+            <div className="btn-split">
+              <button className="btn btn-outline btn-sm btn-split__main">
                 <IconDownload size={14} /> Export
               </button>
               <button
-                className="btn btn-outline btn-sm"
-                style={{ borderRadius: "0 var(--r-md) var(--r-md) 0", padding: "0 6px" }}
+                className="btn btn-outline btn-sm btn-split__chevron"
                 onClick={() => setShowExportMenu(v => !v)}
                 aria-label="Export options"
               >
@@ -1112,11 +1145,30 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
             )}
           </div>
         </div>
+        {/* Period selector sub-row */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: "0.72rem", color: "var(--text-tertiary)", fontWeight: 500, whiteSpace: "nowrap" }}>Viewing data for:</span>
+          <div style={{ display: "flex", gap: 2, background: "var(--n-50)", borderRadius: "var(--r-md)", padding: 2, border: "1px solid var(--border-subtle)" }}>
+            {(["today", "week", "30d", "quarter"] as const).map(p => (
+              <button
+                key={p}
+                onClick={() => setPeriod(p)}
+                style={{
+                  padding: "4px 10px", fontSize: "0.72rem", fontWeight: period === p ? 600 : 400,
+                  background: period === p ? "var(--surface)" : "transparent",
+                  color: period === p ? "var(--text-primary)" : "var(--text-tertiary)",
+                  border: period === p ? "1px solid var(--border-subtle)" : "1px solid transparent",
+                  borderRadius: "var(--r-sm)", cursor: "pointer",
+                }}
+              >{PERIOD_LABELS[p]}</button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Freshness bar */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, fontSize: "0.78rem", color: "var(--text-tertiary)", marginTop: -8 }}>
-        <span style={{ fontWeight: 500 }}>Last updated: {fmtFreshness(lastRefreshed)}</span>
+        <time dateTime={lastRefreshed.toISOString()} style={{ fontWeight: 500 }}>{relativeTime(lastRefreshed)}</time>
         <button
           onClick={() => window.location.reload()}
           style={{ background: "none", border: "1px solid var(--border-subtle)", cursor: "pointer", color: "var(--brand-600)", display: "flex", alignItems: "center", gap: 4, padding: "3px 8px", fontSize: "0.75rem", borderRadius: "var(--r-sm)", fontWeight: 600 }}
@@ -1134,7 +1186,7 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
           </div>
           <div className="stat-value">{effortByDepartment.length}</div>
           <h2 className="stat-label">Active Departments</h2>
-          <div className="stat-footer">With recorded effort · {PERIOD_LABELS[period].toLowerCase()}</div>
+          <div className="stat-footer">With recorded effort · no prior period data</div>
         </div>
         <div className="stat-card">
           <div className="stat-card-top">
@@ -1221,24 +1273,8 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
                 />
               )}
               <div className="kpi-list" style={{ flex: 1 }}>
-                {billable.billableMinutes > 0 && <KpiItem name="Billable hours" color="var(--success)" value={billable.billableMinutes} max={totalBillable} />}
+                {billable.billableMinutes > 0 && <KpiItem name="Billable" color="var(--success)" value={billable.billableMinutes} max={totalBillable} />}
                 {billable.nonBillableMinutes > 0 && <KpiItem name="Non-Billable" color="var(--n-300)" value={billable.nonBillableMinutes} max={totalBillable} />}
-                {consultantVsInternal.internal > 0 && (
-                  <KpiItem
-                    name="Internal staff"
-                    color="var(--brand-500)"
-                    value={consultantVsInternal.internal}
-                    max={consultantVsInternal.internal + consultantVsInternal.consultant}
-                  />
-                )}
-                {consultantVsInternal.consultant > 0 && (
-                  <KpiItem
-                    name="Consultants"
-                    color="var(--info)"
-                    value={consultantVsInternal.consultant}
-                    max={consultantVsInternal.internal + consultantVsInternal.consultant}
-                  />
-                )}
                 {billable.billableMinutes === 0 && billable.nonBillableMinutes === 0 && (
                   <div style={{ fontSize: "0.78rem", color: "var(--text-tertiary)", padding: "var(--space-4) 0" }}>No billable data for this period.</div>
                 )}
@@ -1252,7 +1288,7 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
       <div className="dashboard-grid-4">
         <div className="card">
           <div className="card-header">
-            <div><h2 className="card-title">Utilization</h2><div className="card-subtitle">Target: 40h/week</div></div>
+            <div><h2 className="card-title">Utilization</h2><div className="card-subtitle">Hours logged this week</div></div>
           </div>
           <div className="card-body">
             {underOver.length === 0 ? (
@@ -1266,7 +1302,7 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
                   <div key={r.username} className="activity-item">
                     <div className="activity-body" style={{ gap: 2 }}>
                       <div className="activity-text" style={{ color: "rgb(16,16,26)", fontWeight: 500, marginBottom: 3 }}>{r.username}</div>
-                      <UtilBar minutes={r.minutes} targetMinutes={2400} />
+                      <UtilBar minutes={r.minutes} status={r.status} />
                     </div>
                   </div>
                 ))}
@@ -1277,7 +1313,7 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
 
         <div className="card">
           <div className="card-header">
-            <div><h2 className="card-title">Compliance Trend</h2><div className="card-subtitle">Last 7 days</div></div>
+            <div><h2 className="card-title">Compliance Trend</h2><div className="card-subtitle">Last 28 days</div></div>
           </div>
           <div className="card-body">
             {complianceList.length === 0 ? (
@@ -1286,7 +1322,7 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
                 <p className="empty-state__title">No compliance data</p>
               </div>
             ) : (
-              <ComplianceHeatmap data={complianceList} />
+              <ComplianceHeatmap data={complianceList} onViewReport={() => onNavigate?.("reports")} />
             )}
           </div>
         </div>
@@ -1310,14 +1346,17 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
                       value={r.minutes}
                       max={maxProj}
                       pctLabel={pctOfTotal}
-                      viewLink={true}
-                      onView={() => onNavigate?.("reports")}
                     />
                   );
                 })}
               </div>
             )}
           </div>
+          {effortByProject.length > 0 && (
+            <div style={{ borderTop: "1px solid var(--border-subtle)", padding: "var(--space-3) var(--space-5)" }}>
+              <button onClick={() => onNavigate?.("reports")} className="card-footer-link">View all projects →</button>
+            </div>
+          )}
         </div>
 
         <div className="card">
@@ -1327,7 +1366,9 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
           <div className="card-body" style={{ minHeight: 120 }}>
             {leaveToday.length === 0 ? (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 100, gap: 6, textAlign: "center" }}>
-                <div style={{ fontSize: "1.5rem", opacity: 0.5 }}>✓</div>
+                <svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="var(--n-300)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ opacity: 0.7 }}>
+                  <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+                </svg>
                 <p style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--text-secondary)" }}>No one on leave today</p>
                 <p style={{ fontSize: "0.72rem", color: "var(--text-tertiary)" }}>Full team is in.</p>
               </div>
@@ -1366,27 +1407,32 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
             <h2 className="card-title">Timesheet Submission Rate</h2>
             <div className="card-subtitle">This week · {submittedCount} of {totalStaff || "?"} employees submitted</div>
           </div>
-          <button className="btn btn-outline btn-sm" onClick={() => onNavigate?.("approvals")}>Send reminder →</button>
         </div>
         <div className="card-body">
-          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)" }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ height: 8, background: "var(--n-100)", borderRadius: 4, overflow: "hidden" }}>
-                <div style={{
-                  height: "100%",
-                  width: totalStaff > 0 ? `${Math.round((submittedCount / totalStaff) * 100)}%` : "0%",
-                  background: "var(--brand-500)",
-                  borderRadius: 4,
-                  transition: "width 0.5s ease",
-                }} />
+          <div
+            className="progress-track"
+            style={{ height: 8 }}
+            role="progressbar"
+            aria-valuenow={totalStaff > 0 ? Math.round((submittedCount / totalStaff) * 100) : 0}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label={`Submission rate: ${totalStaff > 0 ? Math.round((submittedCount / totalStaff) * 100) : 0}%`}
+          >
+            <div className="progress-fill" style={{
+              width: totalStaff > 0 ? `${Math.round((submittedCount / totalStaff) * 100)}%` : "0%",
+              background: "var(--brand-500)",
+            }} />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "var(--space-3)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)" }}>
+              <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-primary)" }}>
+                {totalStaff > 0 ? `${Math.round((submittedCount / totalStaff) * 100)}%` : "—"}
+              </div>
+              <div style={{ fontSize: "0.75rem", color: "var(--text-tertiary)" }}>
+                {totalStaff > 0 ? `${totalStaff - submittedCount} not yet submitted` : ""}
               </div>
             </div>
-            <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-primary)", flexShrink: 0 }}>
-              {totalStaff > 0 ? `${Math.round((submittedCount / totalStaff) * 100)}%` : "—"}
-            </div>
-            <div style={{ fontSize: "0.75rem", color: "var(--text-tertiary)", flexShrink: 0 }}>
-              {totalStaff > 0 ? `${totalStaff - submittedCount} not yet submitted` : ""}
-            </div>
+            <button className="btn btn-outline btn-sm" onClick={() => onNavigate?.("approvals")}>Send reminder →</button>
           </div>
         </div>
       </div>

@@ -84,9 +84,9 @@ export function AppShell({ session, view, nav, onNavigate, onLogout, children }:
       <div className="shell-layout">
         {/* Sidebar */}
         <aside className={`shell-sidebar${collapsed ? " collapsed" : ""}`}>
-          {/* Sidebar header: brand + org switcher */}
+          {/* Sidebar header: brand */}
           <div className="sidebar-header">
-            <div className="sidebar-brand" style={{ justifyContent: "space-between" }}>
+            <div className="sidebar-brand">
               <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
                 <div className="sidebar-brand-icon">T</div>
                 <span className="sidebar-brand-name">TimeSheet</span>
@@ -105,11 +105,6 @@ export function AppShell({ session, view, nav, onNavigate, onLogout, children }:
               >
                 <CollapseIcon collapsed={collapsed} />
               </button>
-            </div>
-            <div className="org-switcher">
-              <div className="org-logo">T</div>
-              <span className="org-name">TimeSheet HQ</span>
-              <span className="org-chevron">⌄</span>
             </div>
           </div>
 

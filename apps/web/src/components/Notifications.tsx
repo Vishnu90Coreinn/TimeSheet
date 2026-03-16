@@ -50,7 +50,7 @@ export function NotificationBell() {
         aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
       >
         <BellIcon />
-        {unreadCount > 0 && <span className="icon-btn-dot" />}
+        {unreadCount > 0 && <span className="notif-badge" aria-hidden="true">{unreadCount > 9 ? "9+" : unreadCount}</span>}
       </button>
 
       {/* Dropdown panel */}

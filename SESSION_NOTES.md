@@ -563,9 +563,50 @@ Replaced `window.confirm()` with a themed modal: backdrop blur, indigo icon ring
 
 ---
 
+## Session 11 — Dashboard v2 (2026-03-16)
+
+### What Was Done
+
+#### Dashboard.tsx — 20 UI/UX Enhancements
+
+**Critical Bug Fixes:**
+- **Dept bar chart height=0** — Replaced CSS `.bar-tracks` with new `BarChartDept` component using inline flexbox + computed pixel heights. Bars now render correctly.
+- **Compliance dates** — All raw ISO strings now formatted via `fmtDateHuman()` (e.g. "Mar 14" / "2 days ago"). Username + rule shown as sub-label.
+- **Dept label truncation** — `r.department.slice(0, 4)` replaced with full name + `text-overflow: ellipsis` via `title` attribute.
+
+**High Priority:**
+- Replaced all emoji stat card icons with 10 dedicated stroke SVG components (IconClock, IconBuilding, IconBarChart, IconPeople, IconLeaf, IconCheckCircle, IconAlert, IconLayers, IconRefresh, IconChevronDown).
+- Stat card trend badges now reflect real data (↑/↓/flat based on values).
+- `UtilBar` component: 60px/4px mini progress bar, red <50%, amber 50–79%, green ≥80%; shown in both Manager and Admin Utilization cards. Header "Target: 40h/week".
+- Zero-value legend items dimmed to `opacity: 0.4`.
+- `DonutChart` enlarged (130px admin, 110px manager/employee); each arc now has `<title>` tooltip; `centerSub` shows dominant segment label.
+- 4th admin stat card changed from "Non-billable (30d)" → **Pending Approvals** (amber when >0, green when 0, "Review →" link).
+- Effort by Project: `% of total` label added per row + "→ View" link navigating to Reports.
+- Semantic heading hierarchy: `page-title` → `<h1>`, `card-title` → `<h2>`.
+
+**Medium Priority:**
+- Period selector added next to Export button: Today / This Week / Last 30 Days / This Quarter.
+- Data freshness label: "Last updated: [datetime] · ↻ Refresh" below page header.
+- Activity items are now interactive: `cursor: pointer` + `onClick` → navigate to relevant view.
+- Export button → split button with PDF / CSV / Copy link dropdown (closes on outside click).
+- Bottom admin row changed from 3-column to 4-column grid.
+
+**New Widgets:**
+- **"Who's on Leave Today"** — 4th column in bottom grid; fetches `/leave/team-on-leave`; empty state "No one on leave today ✓".
+- **Sparkline** on Billable Ratio stat card — 6-point SVG polyline (52×16px), color matches on-track/below-target.
+- **Timesheet Submission Rate** — full-width row below bottom grid; progress bar + "Send reminder →" CTA.
+
+**AdminDashboard additional fetches:** `/leave/team-on-leave`, `/approvals/pending-timesheets`, `/users`.
+
+**Tests:** All 44 frontend tests continue to pass. TypeScript: 0 errors.
+
+**Commits:** `982475b`
+
+---
+
 ## Pending For Next Session
 
-> Last updated: Session 10 (2026-03-16).
+> Last updated: Session 11 (2026-03-16). Dashboard v2 complete with all 20 enhancements. All 44 frontend tests pass.
 
 ### Priority 1 — Manual Smoke Test
 - [ ] Run API → confirm DB auto-migrates (`Sprint9` migration runs)

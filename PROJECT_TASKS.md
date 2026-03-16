@@ -484,6 +484,27 @@ All Phase 2 tasks address findings from the Phase 1 audit above.
 - TSK-RPT-013 — Overtime/Deficit report endpoint + DTO. ✅
 - TSK-RPT-006 — Reports page full redesign (16 improvements: tabs, date filter, KPI cards, sortable columns, pagination, search, employee filter, human-readable headers, hidden UUIDs, h:m formatting, status badges, utilization bars, balance bars, delta coloring, freshness indicator, row hover, scroll gradient, rows-per-page, "Showing X–Y of Z"). ✅
 
+### Sprint 11 (Dashboard v2) ✅ DONE
+- TSK-DASH-011 — Fix dept bar chart height=0 bug (BarChartDept with inline flexbox). ✅
+- TSK-DASH-012 — Fix compliance dates (ISO → human-readable, employee+rule sub-label). ✅
+- TSK-DASH-013 — Fix dept label truncation (full name + text-overflow ellipsis). ✅
+- TSK-DASH-014 — Replace emoji stat card icons with 20×20px stroke SVG components. ✅
+- TSK-DASH-015 — Real trend badges (up/down/flat based on live data). ✅
+- TSK-DASH-016 — Utilization UtilBar (60px/4px, red/amber/green) + "Target: 40h/week" header. ✅
+- TSK-DASH-017 — Zero-value legend items opacity 0.4. ✅
+- TSK-DASH-018 — DonutChart enlarged (130px admin, 110px others), arc tooltips, dominant segment label. ✅
+- TSK-DASH-019 — 4th admin stat card → Pending Approvals (amber/green + Review link). ✅
+- TSK-DASH-020 — Effort by Project: % of total label + "→ View" link per row. ✅
+- TSK-DASH-021 — Semantic headings (page-title → h1, card-title → h2). ✅
+- TSK-DASH-022 — Period selector (Today / This Week / Last 30 Days / This Quarter). ✅
+- TSK-DASH-023 — Data freshness label + ↻ Refresh button. ✅
+- TSK-DASH-024 — Activity items interactive (cursor pointer + navigate on click). ✅
+- TSK-DASH-025 — Export split button (PDF / CSV / Copy link dropdown). ✅
+- TSK-DASH-026 — Fix bottom grid: 4-column layout (was 3-column). ✅
+- TSK-DASH-027 — "Who's on Leave Today" widget (4th column, fetches /leave/team-on-leave). ✅
+- TSK-DASH-028 — Sparkline SVG polyline on Billable Ratio stat card. ✅
+- TSK-DASH-029 — Timesheet Submission Rate full-width widget with progress bar + CTA. ✅
+
 ---
 
 ## Initial Issue Creation Template (Optional)

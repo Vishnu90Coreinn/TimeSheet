@@ -88,7 +88,16 @@ public class LeaveController(TimeSheetDbContext dbContext, IAuditService auditSe
             .ToListAsync();
 
         if (existingDates.Count > 0)
-            return Conflict(new { message = $"You already have a leave request on {string.Join(", ", existingDates)}." });
+            return Conflict(new { message = $"You already have a leave request on {string.Join(", ", existingDates.Select(d => d.ToString("MMM d")))}. Cancel it first before re-applying." });
+
+        // Remove any rejected requests for these dates so the unique key constraint is not violated on re-apply
+        var rejectedToReplace = await dbContext.LeaveRequests
+            .Where(lr => lr.UserId == userId.Value &&
+                         lr.Status == LeaveRequestStatus.Rejected &&
+                         days.Contains(lr.LeaveDate))
+            .ToListAsync();
+        if (rejectedToReplace.Count > 0)
+            dbContext.LeaveRequests.RemoveRange(rejectedToReplace);
 
         var leaveGroupId = Guid.NewGuid();
         var requests = days.Select(day => new LeaveRequest
@@ -108,6 +117,26 @@ public class LeaveController(TimeSheetDbContext dbContext, IAuditService auditSe
         await dbContext.SaveChangesAsync();
 
         return Ok(new { leaveGroupId, count = requests.Count });
+    }
+
+    [HttpDelete("requests/{id:guid}")]
+    public async Task<IActionResult> CancelLeave(Guid id)
+    {
+        var userId = GetUserId();
+        if (userId is null) return Unauthorized();
+
+        // Match by group ID first (multi-day), then by individual request ID (legacy)
+        var requests = await dbContext.LeaveRequests
+            .Where(lr => lr.UserId == userId.Value && (lr.LeaveGroupId == id || lr.Id == id))
+            .ToListAsync();
+
+        if (requests.Count == 0) return NotFound(new { message = "Leave request not found." });
+        if (requests.Any(lr => lr.Status != LeaveRequestStatus.Pending))
+            return Conflict(new { message = "Only pending leave requests can be cancelled." });
+
+        dbContext.LeaveRequests.RemoveRange(requests);
+        await dbContext.SaveChangesAsync();
+        return NoContent();
     }
 
     [HttpGet("requests/my")]
@@ -395,14 +424,15 @@ public class LeaveController(TimeSheetDbContext dbContext, IAuditService auditSe
         var leaveRequests = await dbContext.LeaveRequests
             .Where(lr => lr.UserId == userId.Value
                 && lr.LeaveDate.Year == year
-                && lr.LeaveDate.Month == month
-                && lr.Status != LeaveRequestStatus.Rejected)
+                && lr.LeaveDate.Month == month)
             .Select(lr => new { lr.LeaveDate, lr.Status })
             .ToListAsync();
 
         var result = leaveRequests.Select(r => new LeaveCalendarDay(
             r.LeaveDate,
-            r.Status == LeaveRequestStatus.Approved ? "approved" : "pending"
+            r.Status == LeaveRequestStatus.Approved ? "approved"
+                : r.Status == LeaveRequestStatus.Rejected ? "rejected"
+                : "pending"
         ));
 
         return Ok(result);

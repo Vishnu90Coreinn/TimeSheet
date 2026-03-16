@@ -144,6 +144,150 @@ public class ReportsController(TimeSheetDbContext dbContext) : ControllerBase
         return Ok(new PagedReportResponse<LeaveUtilizationReportRow>(scope.Page, scope.PageSize, users.Count, rows));
     }
 
+    [HttpGet("leave-balance")]
+    public async Task<IActionResult> LeaveBalance([FromQuery] ReportFilterRequest filter)
+    {
+        var scope = await BuildScopeAsync(filter);
+        if (scope is null) return Forbid();
+
+        var year = scope.FromDate?.Year ?? DateTime.UtcNow.Year;
+        var yearStart = new DateOnly(year, 1, 1);
+        var yearEnd = new DateOnly(year, 12, 31);
+
+        var users = await dbContext.Users.AsNoTracking()
+            .Where(u => scope.UserIds.Contains(u.Id) && u.LeavePolicyId != null)
+            .Select(u => new { u.Id, u.Username, u.LeavePolicyId })
+            .OrderBy(u => u.Username)
+            .ToListAsync();
+
+        var policyIds = users.Select(u => u.LeavePolicyId!.Value).Distinct().ToList();
+        var allocations = await dbContext.LeavePolicyAllocations.AsNoTracking()
+            .Where(a => policyIds.Contains(a.LeavePolicyId))
+            .Select(a => new { a.LeavePolicyId, a.LeaveTypeId, LeaveTypeName = a.LeaveType.Name, a.DaysPerYear })
+            .ToListAsync();
+
+        var userIds = users.Select(u => u.Id).ToList();
+        var usedLeave = await dbContext.LeaveRequests.AsNoTracking()
+            .Where(lr => userIds.Contains(lr.UserId) &&
+                         lr.Status == LeaveRequestStatus.Approved &&
+                         lr.LeaveDate >= yearStart && lr.LeaveDate <= yearEnd)
+            .GroupBy(lr => new { lr.UserId, lr.LeaveTypeId })
+            .Select(g => new { g.Key.UserId, g.Key.LeaveTypeId, Count = g.Count() })
+            .ToListAsync();
+
+        var rows = new List<LeaveBalanceReportRow>();
+        foreach (var user in users)
+        {
+            foreach (var alloc in allocations.Where(a => a.LeavePolicyId == user.LeavePolicyId!.Value))
+            {
+                var used = usedLeave.FirstOrDefault(l => l.UserId == user.Id && l.LeaveTypeId == alloc.LeaveTypeId)?.Count ?? 0;
+                rows.Add(new LeaveBalanceReportRow(user.Id, user.Username, alloc.LeaveTypeName, alloc.DaysPerYear, used, alloc.DaysPerYear - used));
+            }
+        }
+
+        var total = rows.Count;
+        var paged = rows.OrderBy(r => r.Username).ThenBy(r => r.LeaveTypeName)
+            .Skip((scope.Page - 1) * scope.PageSize).Take(scope.PageSize).ToList();
+        return Ok(new PagedReportResponse<LeaveBalanceReportRow>(scope.Page, scope.PageSize, total, paged));
+    }
+
+    [HttpGet("timesheet-approval-status")]
+    public async Task<IActionResult> TimesheetApprovalStatus([FromQuery] ReportFilterRequest filter)
+    {
+        var scope = await BuildScopeAsync(filter);
+        if (scope is null) return Forbid();
+
+        var query = dbContext.Timesheets.AsNoTracking().Where(x => scope.UserIds.Contains(x.UserId));
+        if (scope.FromDate is { } fromDate) query = query.Where(x => x.WorkDate >= fromDate);
+        if (scope.ToDate is { } toDate) query = query.Where(x => x.WorkDate <= toDate);
+
+        var total = await query.CountAsync();
+
+        var approverIds = await query.Where(x => x.ApprovedByUserId != null)
+            .Select(x => x.ApprovedByUserId!.Value).Distinct().ToListAsync();
+        var approvers = await dbContext.Users.AsNoTracking()
+            .Where(u => approverIds.Contains(u.Id))
+            .Select(u => new { u.Id, u.Username })
+            .ToListAsync();
+
+        var rawRows = await query
+            .OrderByDescending(x => x.WorkDate)
+            .Skip((scope.Page - 1) * scope.PageSize)
+            .Take(scope.PageSize)
+            .Select(x => new
+            {
+                x.UserId,
+                Username = x.User.Username,
+                x.WorkDate,
+                EnteredMinutes = x.Entries.Sum(e => e.Minutes),
+                Status = x.Status.ToString(),
+                x.ApprovedByUserId,
+                x.ApprovedAtUtc
+            })
+            .ToListAsync();
+
+        var rows = rawRows.Select(x => new TimesheetApprovalStatusReportRow(
+            x.UserId, x.Username, x.WorkDate, x.EnteredMinutes, x.Status,
+            x.ApprovedByUserId != null ? approvers.FirstOrDefault(a => a.Id == x.ApprovedByUserId.Value)?.Username : null,
+            x.ApprovedAtUtc)).ToList();
+
+        return Ok(new PagedReportResponse<TimesheetApprovalStatusReportRow>(scope.Page, scope.PageSize, total, rows));
+    }
+
+    [HttpGet("overtime-deficit")]
+    public async Task<IActionResult> OvertimeDeficit([FromQuery] ReportFilterRequest filter)
+    {
+        var scope = await BuildScopeAsync(filter);
+        if (scope is null) return Forbid();
+
+        var fromDate = scope.FromDate ?? DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-28));
+        var toDate = scope.ToDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+
+        var userInfos = await dbContext.Users.AsNoTracking()
+            .Where(u => scope.UserIds.Contains(u.Id))
+            .Select(u => new { u.Id, u.Username, u.WorkPolicyId })
+            .ToListAsync();
+
+        var policyIds = userInfos.Where(u => u.WorkPolicyId != null).Select(u => u.WorkPolicyId!.Value).Distinct().ToList();
+        var policies = await dbContext.WorkPolicies.AsNoTracking()
+            .Where(wp => policyIds.Contains(wp.Id))
+            .Select(wp => new { wp.Id, wp.DailyExpectedMinutes })
+            .ToListAsync();
+
+        var expectedPerUser = userInfos.ToDictionary(
+            u => u.Id,
+            u => u.WorkPolicyId != null ? (policies.FirstOrDefault(p => p.Id == u.WorkPolicyId.Value)?.DailyExpectedMinutes ?? 480) : 480);
+
+        var timesheets = await dbContext.Timesheets.AsNoTracking()
+            .Where(x => scope.UserIds.Contains(x.UserId) && x.WorkDate >= fromDate && x.WorkDate <= toDate)
+            .Select(x => new { x.UserId, x.WorkDate, LoggedMinutes = x.Entries.Sum(e => e.Minutes) })
+            .ToListAsync();
+
+        static DateOnly GetWeekStart(DateOnly date)
+        {
+            int dow = (int)date.DayOfWeek;
+            return date.AddDays(dow == 0 ? -6 : -(dow - 1));
+        }
+
+        var rows = timesheets
+            .GroupBy(t => new { t.UserId, WeekStart = GetWeekStart(t.WorkDate) })
+            .Select(g =>
+            {
+                var info = userInfos.First(u => u.Id == g.Key.UserId);
+                var logged = g.Sum(t => t.LoggedMinutes);
+                var workDays = g.Count(t => t.WorkDate.DayOfWeek != DayOfWeek.Sunday);
+                var target = workDays * expectedPerUser[g.Key.UserId];
+                return new OvertimeDeficitReportRow(g.Key.UserId, info.Username, g.Key.WeekStart, target, logged, logged - target);
+            })
+            .OrderByDescending(r => r.WeekStart)
+            .ThenBy(r => r.Username)
+            .ToList();
+
+        var total = rows.Count;
+        var paged = rows.Skip((scope.Page - 1) * scope.PageSize).Take(scope.PageSize).ToList();
+        return Ok(new PagedReportResponse<OvertimeDeficitReportRow>(scope.Page, scope.PageSize, total, paged));
+    }
+
     [HttpGet("{reportKey}/export")]
     public async Task<IActionResult> Export(string reportKey, [FromQuery] string format = "csv", [FromQuery] ReportFilterRequest? filter = null)
     {
@@ -188,6 +332,24 @@ public class ReportsController(TimeSheetDbContext dbContext) : ControllerBase
                 var data = (await LeaveAndUtilization(filter) as OkObjectResult)?.Value as PagedReportResponse<LeaveUtilizationReportRow>;
                 if (data is null) return null;
                 return (new[] { "userId", "username", "leaveDays", "halfDays", "timesheetMinutes", "utilizationPercent" }, data.Items.Select(x => new[] { x.UserId.ToString(), x.Username, x.LeaveDays.ToString(), x.HalfDays.ToString(), x.TimesheetMinutes.ToString(), x.UtilizationPercent.ToString(CultureInfo.InvariantCulture) }).ToList());
+            }
+            case "leave-balance":
+            {
+                var data = (await LeaveBalance(filter) as OkObjectResult)?.Value as PagedReportResponse<LeaveBalanceReportRow>;
+                if (data is null) return null;
+                return (new[] { "userId", "username", "leaveTypeName", "allocatedDays", "usedDays", "remainingDays" }, data.Items.Select(x => new[] { x.UserId.ToString(), x.Username, x.LeaveTypeName, x.AllocatedDays.ToString(), x.UsedDays.ToString(), x.RemainingDays.ToString() }).ToList());
+            }
+            case "timesheet-approval-status":
+            {
+                var data = (await TimesheetApprovalStatus(filter) as OkObjectResult)?.Value as PagedReportResponse<TimesheetApprovalStatusReportRow>;
+                if (data is null) return null;
+                return (new[] { "userId", "username", "workDate", "enteredMinutes", "status", "approvedByUsername", "approvedAtUtc" }, data.Items.Select(x => new[] { x.UserId.ToString(), x.Username, x.WorkDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), x.EnteredMinutes.ToString(), x.Status, x.ApprovedByUsername ?? "", x.ApprovedAtUtc?.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) ?? "" }).ToList());
+            }
+            case "overtime-deficit":
+            {
+                var data = (await OvertimeDeficit(filter) as OkObjectResult)?.Value as PagedReportResponse<OvertimeDeficitReportRow>;
+                if (data is null) return null;
+                return (new[] { "userId", "username", "weekStart", "targetMinutes", "loggedMinutes", "deltaMinutes" }, data.Items.Select(x => new[] { x.UserId.ToString(), x.Username, x.WeekStart.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), x.TargetMinutes.ToString(), x.LoggedMinutes.ToString(), x.DeltaMinutes.ToString() }).ToList());
             }
             default:
                 return null;

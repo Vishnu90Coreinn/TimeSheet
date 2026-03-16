@@ -70,3 +70,28 @@ public record ManagementDashboardResponse(
     object ConsultantVsInternal,
     IReadOnlyCollection<object> UnderOver,
     IReadOnlyCollection<object> Compliance);
+
+public record LeaveBalanceReportRow(
+    Guid UserId,
+    string Username,
+    string LeaveTypeName,
+    int AllocatedDays,
+    int UsedDays,
+    int RemainingDays);
+
+public record TimesheetApprovalStatusReportRow(
+    Guid UserId,
+    string Username,
+    DateOnly WorkDate,
+    int EnteredMinutes,
+    string Status,
+    string? ApprovedByUsername,
+    DateTime? ApprovedAtUtc);
+
+public record OvertimeDeficitReportRow(
+    Guid UserId,
+    string Username,
+    DateOnly WeekStart,
+    int TargetMinutes,
+    int LoggedMinutes,
+    int DeltaMinutes);

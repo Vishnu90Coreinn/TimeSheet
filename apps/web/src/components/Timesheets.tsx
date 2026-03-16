@@ -165,6 +165,9 @@ export function Timesheets() {
   const [submitError, setSubmitError] = useState("");
   const [submitSuccess, setSubmitSuccess] = useState("");
 
+  // Delete confirm modal
+  const [deleteModal, setDeleteModal] = useState<string | null>(null); // entry id
+
   /* ── Attendance ───────────────────────────────────────────────────────────── */
   const loadAttendance = useCallback(async () => {
     const r = await apiFetch("/attendance/summary/today");
@@ -351,8 +354,14 @@ export function Timesheets() {
   }
 
   async function deleteEntry(entryId: string) {
-    if (!confirm("Delete this time entry? This cannot be undone.")) return;
-    const r = await apiFetch(`/timesheets/entries/${entryId}`, { method: "DELETE" });
+    setDeleteModal(entryId);
+  }
+
+  async function confirmDeleteEntry() {
+    if (!deleteModal) return;
+    const id = deleteModal;
+    setDeleteModal(null);
+    const r = await apiFetch(`/timesheets/entries/${id}`, { method: "DELETE" });
     if (r.ok) {
       setDayData(await r.json() as TimesheetDay);
       void loadWeek(selectedDate);
@@ -445,8 +454,8 @@ export function Timesheets() {
                 className="btn btn-primary"
                 onClick={openNew}
                 disabled={isLocked}
-                title={isLocked ? `Entries cannot be added to a ${dayData?.status} timesheet` : undefined}
-                style={isLocked ? { opacity: 0.45, cursor: "not-allowed" } : undefined}
+                title={isLocked ? `Entries cannot be added to ${isApproved ? "an" : "a"} ${dayData?.status} timesheet` : undefined}
+                style={isLocked ? { opacity: 0.45, cursor: "not-allowed", pointerEvents: "none" } : undefined}
               >
                 + Add Entry
               </button>
@@ -468,7 +477,15 @@ export function Timesheets() {
               const meta = weekDayMap.get(date);
               const mins = meta?.enteredMinutes ?? 0;
               const expected = meta?.expectedMinutes ?? 480;
-              const pct = expected > 0 ? Math.min(100, Math.round((mins / expected) * 100)) : 0;
+              // When expected === 0 (rest/Sunday) but hours logged, show bar as filled
+              const pct = expected > 0
+                ? Math.min(100, Math.round((mins / expected) * 100))
+                : mins > 0 ? 100 : 0;
+              const fillColor = expected === 0 && mins > 0
+                ? "#a5b4fc"                              // light indigo — rest day, no target
+                : pct >= 100 ? "#10b981"                // green — target met
+                : pct > 0   ? "#6366f1"                 // indigo — in progress
+                : "transparent";
               const isSelected = date === selectedDate;
               const isToday = date === todayIso();
               const dayApproved = meta?.status === "approved";
@@ -495,7 +512,7 @@ export function Timesheets() {
                     <div className="ts3-day-bar-track">
                       <div
                         className="ts3-day-bar-fill"
-                        style={{ width: `${pct}%`, backgroundColor: pct >= 100 ? "#10b981" : pct > 0 ? "#6366f1" : "transparent" }}
+                        style={{ width: `${pct}%`, backgroundColor: fillColor }}
                       />
                     </div>
                   </div>
@@ -711,8 +728,8 @@ export function Timesheets() {
                 return (
                   <div
                     key={entry.id}
-                    className={`ts3-entry-card${!isDraft ? " ts3-entry-card--locked" : ""}`}
-                    style={{ borderLeftColor: color }}
+                    className={`ts3-entry-card${!isDraft ? " ts3-entry-card--locked" : ""}${isApproved ? " ts3-entry-card--approved" : ""}`}
+                    style={{ borderLeftColor: isApproved ? "rgb(5, 150, 105)" : color }}
                   >
                     <div className="ts3-entry-body">
                       <div className="ts3-entry-title">
@@ -753,7 +770,7 @@ export function Timesheets() {
           </div>
 
           {/* Day summary bar */}
-          <div className="ts3-day-bar">
+          <div className={`ts3-day-bar${isApproved ? " ts3-day-bar--approved" : ""}`}>
             <span>{fmtDayBarLabel(selectedDate)}</span>
             <div className="ts3-day-bar-right">
               {todayExpectedMins > 0 ? (
@@ -826,10 +843,12 @@ export function Timesheets() {
                 <span className="ts3-summary-val">{fmtMins(weekTotalMins)}</span>
               </div>
               <div className="ts3-week-prog-wrap">
-                <div
-                  className="ts3-week-prog-fill"
-                  style={{ width: `${weekExpectedMins > 0 ? Math.min(100, Math.round((weekTotalMins / weekExpectedMins) * 100)) : 0}%` }}
-                />
+                <div className="ts3-week-prog-bar">
+                  <div
+                    className="ts3-week-prog-fill"
+                    style={{ width: `${weekExpectedMins > 0 ? Math.min(100, Math.round((weekTotalMins / weekExpectedMins) * 100)) : 0}%` }}
+                  />
+                </div>
                 <span className="ts3-week-prog-pct">
                   {weekExpectedMins > 0 ? `${Math.min(100, Math.round((weekTotalMins / weekExpectedMins) * 100))}%` : "0%"}
                 </span>
@@ -888,6 +907,31 @@ export function Timesheets() {
 
         </aside>
       </div>{/* /ts3-page */}
+
+      {/* ── Delete entry confirmation modal ─────────────────── */}
+      {deleteModal && (
+        <div className="ts3-modal-backdrop" onClick={() => setDeleteModal(null)}>
+          <div className="ts3-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="ts3-modal-icon">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#ef4444" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 6h14M8 6V4h4v2M6 6l1 11h6l1-11"/>
+              </svg>
+            </div>
+            <div className="ts3-modal-title">Delete time entry?</div>
+            <div className="ts3-modal-body">This entry will be permanently removed. You can&rsquo;t undo this action.</div>
+            <div className="ts3-modal-actions">
+              <button className="btn btn-outline btn-sm" onClick={() => setDeleteModal(null)}>Keep it</button>
+              <button
+                className="btn btn-sm"
+                style={{ background: "#ef4444", color: "#fff", border: "none" }}
+                onClick={() => void confirmDeleteEntry()}
+              >
+                Delete entry
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
@@ -1028,6 +1072,9 @@ const PAGE_STYLES = `
   .ts3-day-hours--logged {
     color: #6366f1;
     font-weight: 600;
+  }
+  .ts3-day-card--approved .ts3-day-hours--logged {
+    color: rgb(5, 150, 105);
   }
   .ts3-day-bar-wrap {
     width: 100%;
@@ -1265,6 +1312,10 @@ const PAGE_STYLES = `
     background: #fafafa;
     opacity: 0.85;
   }
+  .ts3-entry-card--approved {
+    border-left-color: rgb(5, 150, 105) !important;
+    background: #f0fdf4;
+  }
   .ts3-lock-icon {
     width: 28px;
     height: 28px;
@@ -1287,6 +1338,9 @@ const PAGE_STYLES = `
     font-weight: 500;
     color: #fff;
     margin-top: 4px;
+  }
+  .ts3-day-bar--approved {
+    background: linear-gradient(135deg, rgb(5, 150, 105), rgb(16, 185, 129));
   }
   .ts3-day-bar-right {
     display: flex;
@@ -1410,7 +1464,7 @@ const PAGE_STYLES = `
   .ts3-summary-rows {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
   }
   .ts3-summary-row {
     display: flex;
@@ -1437,12 +1491,17 @@ const PAGE_STYLES = `
 
   /* Week progress bar */
   .ts3-week-prog-wrap {
-    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .ts3-week-prog-bar {
+    flex: 1;
     height: 6px;
     background: var(--n-100, #f3f4f6);
     border-radius: 99px;
-    overflow: visible;
-    margin: -4px 0 2px;
+    overflow: hidden;
+    position: relative;
   }
   .ts3-week-prog-fill {
     height: 100%;
@@ -1451,13 +1510,25 @@ const PAGE_STYLES = `
     transition: width 0.4s cubic-bezier(0.16,1,0.3,1);
   }
   .ts3-week-prog-pct {
-    position: absolute;
-    right: 0;
-    top: -16px;
     font-size: 10px;
     font-weight: 700;
     color: var(--brand-600, #4f46e5);
+    white-space: nowrap;
+    flex-shrink: 0;
   }
+
+  /* Confirmation modal */
+  .ts3-modal-backdrop { position: fixed; inset: 0; background: rgba(17,24,39,0.45); z-index: 1000;
+    display: flex; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
+  .ts3-modal { background: #fff; border-radius: 16px; padding: 24px 24px 20px;
+    max-width: 360px; width: calc(100% - 32px);
+    box-shadow: 0 24px 64px rgba(0,0,0,0.22), 0 4px 16px rgba(0,0,0,0.10);
+    display: flex; flex-direction: column; gap: 10px; }
+  .ts3-modal-icon { width: 42px; height: 42px; border-radius: 11px; background: #fef2f2;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .ts3-modal-title { font-size: 15px; font-weight: 700; color: var(--n-900, #111827); }
+  .ts3-modal-body { font-size: 13px; color: var(--n-600, #4b5563); line-height: 1.55; }
+  .ts3-modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
 
   /* Overtime info icon */
   .ts3-info-tip {

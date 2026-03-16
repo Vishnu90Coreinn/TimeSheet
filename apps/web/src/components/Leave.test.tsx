@@ -114,15 +114,12 @@ describe("Leave", () => {
     });
   });
 
-  it("renders table column headers: TYPE, DATES, DAYS, APPLIED ON, APPROVED BY, STATUS", async () => {
+  it("renders Leave History section with year selector", async () => {
     render(<Leave isManager={false} isAdmin={false} />);
     await waitFor(() => {
-      expect(screen.getByText("TYPE")).toBeTruthy();
-      expect(screen.getByText("DATES")).toBeTruthy();
-      expect(screen.getByText("DAYS")).toBeTruthy();
-      expect(screen.getByText("APPLIED ON")).toBeTruthy();
-      expect(screen.getByText("APPROVED BY")).toBeTruthy();
-      expect(screen.getByText("STATUS")).toBeTruthy();
+      expect(screen.getByText(/Leave History/i)).toBeTruthy();
+      // Year selector is present
+      expect(screen.getByLabelText(/Select year/i)).toBeTruthy();
     });
   });
 
@@ -174,8 +171,8 @@ describe("Leave", () => {
   it("renders calendar legend items", () => {
     render(<Leave isManager={false} isAdmin={false} />);
     expect(screen.getByText(/Today/i)).toBeTruthy();
-    expect(screen.getByText(/Pending leave/i)).toBeTruthy();
-    expect(screen.getByText(/Approved leave/i)).toBeTruthy();
+    expect(screen.getByText(/^Pending$/i)).toBeTruthy();
+    expect(screen.getByText(/^Approved$/i)).toBeTruthy();
   });
 
   it("does NOT render manager section when isManager=false", () => {
@@ -206,15 +203,16 @@ describe("Leave", () => {
     });
   });
 
-  it("does NOT render admin section when isAdmin=false", () => {
+  it("does NOT render admin on-behalf dropdown when isAdmin=false", () => {
     render(<Leave isManager={false} isAdmin={false} />);
-    expect(screen.queryByText(/Create Leave Type/i)).toBeNull();
+    expect(screen.queryByText(/Apply on behalf of/i)).toBeNull();
   });
 
-  it("renders admin section when isAdmin=true", () => {
+  it("renders admin on-behalf dropdown when isAdmin=true", () => {
     render(<Leave isManager={false} isAdmin={true} />);
-    expect(screen.getByText(/Create Leave Type/i)).toBeTruthy();
-    expect(screen.getByText(/Save Leave Type/i)).toBeTruthy();
+    expect(screen.getByText(/Apply on behalf of/i)).toBeTruthy();
+    // Create Leave Type has been moved to the Leave Policies admin page
+    expect(screen.queryByText(/Create Leave Type/i)).toBeNull();
   });
 
   it("renders the page subtitle with current year", () => {

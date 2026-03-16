@@ -3,10 +3,10 @@
  */
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { apiFetch } from "../api/client";
-import type { LeaveBalance, LeaveRequest, LeaveRequestGroup, LeaveType, TeamLeaveEntry } from "../types";
+import type { LeaveBalance, LeaveRequest, LeaveRequestGroup, LeaveType, TeamLeaveEntry, User } from "../types";
 
 // ─── Types ─────────────────────────────────────────────────────
-interface CalendarEntry { date: string; type: "pending" | "approved" }
+interface CalendarEntry { date: string; type: "pending" | "approved" | "rejected" }
 
 interface LeaveProps {
   isManager: boolean;
@@ -14,8 +14,6 @@ interface LeaveProps {
 }
 
 // ─── Helpers ───────────────────────────────────────────────────
-const BALANCE_COLORS = ["#6366f1","#10b981","#f59e0b","#3b82f6","#ec4899","#8b5cf6"];
-
 const AVATAR_PALETTE = ["#818cf8","#a78bfa","#34d399","#60a5fa","#f472b6","#fb923c","#facc15","#4ade80","#38bdf8","#f87171"];
 function avatarColor(name: string): string {
   let n = 0;
@@ -28,7 +26,33 @@ function initials(name: string): string {
 }
 
 function today(): string {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** "Mar 26, 2026" */
+function fmtDate(iso: string): string {
+  return new Date(iso + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+/** "Mar 17–18, 2026" for same month; "Mar 26 – Apr 2, 2026" for cross-month */
+function fmtDateRange(from: string, to: string): string {
+  if (from === to) return fmtDate(from);
+  const f = new Date(from + "T00:00:00");
+  const t = new Date(to + "T00:00:00");
+  if (f.getFullYear() === t.getFullYear() && f.getMonth() === t.getMonth()) {
+    return `${f.toLocaleDateString(undefined, { month: "short", day: "numeric" })}–${t.getDate()}, ${t.getFullYear()}`;
+  }
+  return `${fmtDate(from)} – ${fmtDate(to)}`;
+}
+
+/** Semantic bar color: green ≥50%, amber ≥20%, red <20% remaining */
+function balanceBarColor(remaining: number, total: number): string {
+  if (total === 0) return "#e5e7eb";
+  const pct = (remaining / total) * 100;
+  if (pct >= 50) return "#10b981";
+  if (pct >= 20) return "#f59e0b";
+  return "#ef4444";
 }
 
 function statusBadge(status: string) {
@@ -56,24 +80,52 @@ const PAGE_STYLES = `
 .lv3-balances { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: var(--space-4); }
 .lv3-bal-card { background: var(--n-0); border: 1px solid var(--border-subtle); border-radius: var(--r-xl);
   padding: var(--space-5); box-shadow: var(--shadow-xs); display: flex; flex-direction: column; gap: var(--space-3); }
+.lv3-bal-card--zero { background: var(--n-25, #fafafa); border: 1px dashed var(--border-default);
+  border-radius: var(--r-xl); padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-3); opacity: 0.7; }
 .lv3-bal-type { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
   color: var(--text-tertiary); }
 .lv3-bal-days { font-size: 2.25rem; font-weight: 800; line-height: 1; font-family: var(--font-display); }
 .lv3-bal-of   { font-size: 0.78rem; color: var(--text-secondary); }
-.lv3-bal-bar  { height: 5px; border-radius: var(--r-full); background: var(--n-100); overflow: hidden; }
+.lv3-bal-bar  { height: 5px; border-radius: var(--r-full); background: var(--n-100); overflow: hidden; cursor: default; }
 .lv3-bal-fill { height: 100%; border-radius: var(--r-full); transition: width 0.4s; }
+.lv3-bal-zero-cta { font-size: 0.7rem; color: var(--brand-600, #4f46e5); font-weight: 600; text-decoration: none;
+  display: inline-flex; align-items: center; gap: 3px; }
 
-/* Form grid */
+/* Form */
 .lv3-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
 @media (max-width: 640px) { .lv3-form-grid { grid-template-columns: 1fr; } }
 .lv3-form-full { grid-column: 1 / -1; }
+.form-label { font-size: 0.8125rem !important; }
 
-/* History header */
+/* History cards */
 .lv3-hist-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-3); }
 .lv3-year-sel { font-size: 0.825rem; padding: 5px var(--space-3); border: 1px solid var(--border-default);
   border-radius: var(--r-md); background: var(--n-0); color: var(--text-primary);
   font-family: var(--font-sans); cursor: pointer; }
 .lv3-hist-sub { font-size: 0.8rem; color: var(--text-secondary); margin-top: var(--space-2); }
+.lv3-hist-cards { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4) var(--space-5) var(--space-5); }
+.lv3-hist-card { background: var(--n-25, #fafafa); border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg); padding: var(--space-4); display: flex; align-items: flex-start;
+  justify-content: space-between; gap: var(--space-4); }
+.lv3-hist-card-left { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.lv3-hist-card-type { font-size: 0.65rem; font-weight: 700; color: var(--text-tertiary);
+  text-transform: uppercase; letter-spacing: 0.08em; }
+.lv3-hist-card-dates { font-size: 0.9rem; font-weight: 600; color: var(--text-primary); }
+.lv3-hist-card-meta { font-size: 0.75rem; color: var(--text-tertiary); margin-top: 1px; }
+.lv3-hist-card-right { display: flex; flex-direction: column; align-items: flex-end;
+  gap: var(--space-2); flex-shrink: 0; }
+.lv3-hist-card-actions { display: flex; gap: var(--space-2); margin-top: var(--space-1); }
+.lv3-hist-empty { display: flex; flex-direction: column; align-items: center; text-align: center;
+  padding: var(--space-10) var(--space-6); gap: var(--space-2); color: var(--text-tertiary); }
+.lv3-hist-empty-title { font-size: 0.875rem; font-weight: 600; color: var(--text-secondary); }
+.lv3-hist-empty-sub { font-size: 0.8rem; }
+
+/* Pending approvals empty state */
+.lv3-pending-empty { display: flex; flex-direction: column; align-items: center; text-align: center;
+  padding: var(--space-10) var(--space-6); gap: var(--space-3); }
+.lv3-pending-empty-icon { color: var(--n-300, #d1d5db); }
+.lv3-pending-empty-title { font-size: 0.9rem; font-weight: 700; color: var(--text-primary); }
+.lv3-pending-empty-sub { font-size: 0.8rem; color: var(--text-secondary); max-width: 280px; line-height: 1.5; }
 
 /* Mini calendar */
 .lv3-cal { background: var(--n-0); border: 1px solid var(--border-subtle); border-radius: var(--r-xl);
@@ -93,13 +145,14 @@ const PAGE_STYLES = `
   display: flex; align-items: center; justify-content: center; border-radius: var(--r-full); }
 .lv3-cal-num.today { background: #6366f1; color: #fff; font-weight: 700; }
 .lv3-cal-num.other-month { color: var(--text-tertiary); }
-.lv3-cal-dot { width: 5px; height: 5px; border-radius: var(--r-full); }
+.lv3-cal-dot { width: 6px; height: 6px; border-radius: var(--r-full); }
 .lv3-cal-legend { display: flex; align-items: center; gap: var(--space-4); margin-top: var(--space-4);
   flex-wrap: wrap; }
 .lv3-cal-leg-item { display: flex; align-items: center; gap: var(--space-2); font-size: 0.72rem;
   color: var(--text-secondary); }
-.lv3-cal-leg-dot { width: 7px; height: 7px; border-radius: var(--r-full); }
-.lv3-cal-leg-circle { width: 14px; height: 14px; border-radius: var(--r-full); background: #6366f1; }
+/* Normalized 10px circles for all legend indicators */
+.lv3-cal-leg-dot { width: 10px; height: 10px; border-radius: var(--r-full); flex-shrink: 0; }
+.lv3-cal-leg-today { width: 10px; height: 10px; border-radius: var(--r-full); background: #6366f1; flex-shrink: 0; }
 
 /* Team on leave */
 .lv3-team-head { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
@@ -120,17 +173,35 @@ const PAGE_STYLES = `
 .lv3-pill-upcoming { font-size: 0.65rem; font-weight: 700; padding: 2px 8px; border-radius: var(--r-full);
   background: #f0fdfa; color: #0d9488; }
 
-/* Manager pending */
+/* Manager pending reject row */
 .lv3-mgr-reject-row { background: var(--n-50); border-top: 1px solid var(--border-subtle);
   padding: var(--space-4) var(--space-5); display: flex; gap: var(--space-3);
   align-items: center; flex-wrap: wrap; }
+
+/* Confirmation modal */
+.lv3-modal-backdrop { position: fixed; inset: 0; background: rgba(17,24,39,0.45); z-index: 1000;
+  display: flex; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
+.lv3-modal { background: var(--n-0); border-radius: 16px; padding: 28px 28px 24px;
+  max-width: 400px; width: calc(100% - 32px);
+  box-shadow: 0 24px 64px rgba(0,0,0,0.22), 0 4px 16px rgba(0,0,0,0.12);
+  display: flex; flex-direction: column; gap: var(--space-3); }
+.lv3-modal-icon { width: 44px; height: 44px; border-radius: 12px; background: #fef2f2;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.lv3-modal-title { font-size: 1rem; font-weight: 700; color: var(--text-primary); }
+.lv3-modal-body { font-size: 0.875rem; color: var(--text-secondary); line-height: 1.55; }
+.lv3-modal-actions { display: flex; gap: var(--space-3); justify-content: flex-end; margin-top: var(--space-2); }
+
+/* On-behalf banner */
+.lv3-onbehalf-banner { display: flex; align-items: center; gap: var(--space-2); font-size: 0.8rem;
+  color: #1d4ed8; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--r-md);
+  padding: 8px 12px; }
 `;
 
 // ─── Mini Calendar Component ────────────────────────────────────
 function MiniCalendar() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth()); // 0-indexed
+  const [month, setMonth] = useState(now.getMonth());
   const [calEntries, setCalEntries] = useState<CalendarEntry[]>([]);
 
   function loadCalendar(y: number, m: number) {
@@ -142,37 +213,36 @@ function MiniCalendar() {
   useEffect(() => { loadCalendar(year, month); }, [year, month]);
 
   function prevMonth() {
-    if (month === 0) { setYear(y => y - 1); setMonth(11); }
-    else setMonth(m => m - 1);
+    if (month === 0) { setYear((y) => y - 1); setMonth(11); }
+    else setMonth((m) => m - 1);
   }
   function nextMonth() {
-    if (month === 11) { setYear(y => y + 1); setMonth(0); }
-    else setMonth(m => m + 1);
+    if (month === 11) { setYear((y) => y + 1); setMonth(0); }
+    else setMonth((m) => m + 1);
   }
 
-  // Build calendar grid
-  const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
+  const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const daysInPrev = new Date(year, month, 0).getDate();
-  const todayStr = now.toISOString().slice(0, 10);
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
-  const entryMap = new Map<string, "pending" | "approved">();
+  const entryMap = new Map<string, CalendarEntry["type"]>();
   for (const e of calEntries) entryMap.set(e.date, e.type);
 
   const cells: { day: number; monthOffset: number; dateStr: string }[] = [];
   for (let i = 0; i < firstDay; i++) {
     const day = daysInPrev - firstDay + 1 + i;
     const d = new Date(year, month - 1, day);
-    cells.push({ day, monthOffset: -1, dateStr: d.toISOString().slice(0, 10) });
+    cells.push({ day, monthOffset: -1, dateStr: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}` });
   }
   for (let d = 1; d <= daysInMonth; d++) {
     const dateObj = new Date(year, month, d);
-    cells.push({ day: d, monthOffset: 0, dateStr: dateObj.toISOString().slice(0, 10) });
+    cells.push({ day: d, monthOffset: 0, dateStr: `${dateObj.getFullYear()}-${String(dateObj.getMonth()+1).padStart(2,"0")}-${String(dateObj.getDate()).padStart(2,"0")}` });
   }
   const remaining = 42 - cells.length;
   for (let d = 1; d <= remaining; d++) {
     const dateObj = new Date(year, month + 1, d);
-    cells.push({ day: d, monthOffset: 1, dateStr: dateObj.toISOString().slice(0, 10) });
+    cells.push({ day: d, monthOffset: 1, dateStr: `${dateObj.getFullYear()}-${String(dateObj.getMonth()+1).padStart(2,"0")}-${String(dateObj.getDate()).padStart(2,"0")}` });
   }
 
   return (
@@ -194,22 +264,27 @@ function MiniCalendar() {
               </span>
               {entry === "pending"  && <div className="lv3-cal-dot" style={{ background: "#f59e0b" }} />}
               {entry === "approved" && <div className="lv3-cal-dot" style={{ background: "#10b981" }} />}
+              {entry === "rejected" && <div className="lv3-cal-dot" style={{ background: "#ef4444" }} />}
             </div>
           );
         })}
       </div>
       <div className="lv3-cal-legend">
         <div className="lv3-cal-leg-item">
-          <div className="lv3-cal-leg-circle" />
+          <div className="lv3-cal-leg-today" />
           <span>Today</span>
         </div>
         <div className="lv3-cal-leg-item">
           <div className="lv3-cal-leg-dot" style={{ background: "#f59e0b" }} />
-          <span>Pending leave</span>
+          <span>Pending</span>
         </div>
         <div className="lv3-cal-leg-item">
           <div className="lv3-cal-leg-dot" style={{ background: "#10b981" }} />
-          <span>Approved leave</span>
+          <span>Approved</span>
+        </div>
+        <div className="lv3-cal-leg-item">
+          <div className="lv3-cal-leg-dot" style={{ background: "#ef4444" }} />
+          <span>Rejected</span>
         </div>
       </div>
     </div>
@@ -221,14 +296,15 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
   const currentYear = new Date().getFullYear();
 
   // State
-  const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
-  const [balances, setBalances]     = useState<LeaveBalance[]>([]);
-  const [history, setHistory]       = useState<LeaveRequestGroup[]>([]);
+  const [leaveTypes, setLeaveTypes]     = useState<LeaveType[]>([]);
+  const [balances, setBalances]         = useState<LeaveBalance[]>([]);
+  const [history, setHistory]           = useState<LeaveRequestGroup[]>([]);
   const [histFallback, setHistFallback] = useState<LeaveRequest[]>([]);
-  const [useFallback, setUseFallback] = useState(false);
-  const [histYear, setHistYear]     = useState(currentYear);
-  const [teamOnLeave, setTeamOnLeave] = useState<TeamLeaveEntry[]>([]);
-  const [showTeam, setShowTeam]     = useState(false);
+  const [useFallback, setUseFallback]   = useState(false);
+  const [histYear, setHistYear]         = useState(currentYear);
+  const [teamOnLeave, setTeamOnLeave]   = useState<TeamLeaveEntry[]>([]);
+  const [showTeam, setShowTeam]         = useState(false);
+  const [allUsers, setAllUsers]         = useState<User[]>([]);
 
   // Apply form
   const applyRef = useRef<HTMLDivElement>(null);
@@ -238,30 +314,30 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
     toDate: today(),
     isHalfDay: false,
     comment: "",
+    onBehalfOfUserId: "",
   });
+
+  // Apply form error
+  const [applyError, setApplyError] = useState("");
+  const [applySuccess, setApplySuccess] = useState("");
 
   // Manager state
   const [pendingLeaves, setPendingLeaves]   = useState<LeaveRequest[]>([]);
   const [rejectComments, setRejectComments] = useState<Record<string, string>>({});
   const [showRejectForm, setShowRejectForm] = useState<string | null>(null);
 
-  // Admin state
-  const [leaveTypeForm, setLeaveTypeForm] = useState({ name: "", isActive: true });
-
   // ── Loaders ──────────────────────────────────────────────────
   function loadBalances() {
     apiFetch("/leave/balance/my")
       .then(async (r) => { if (r.ok) setBalances(await r.json()); else setBalances([]); })
-      .catch(() => { setBalances([]); });
+      .catch(() => setBalances([]));
   }
 
   function loadHistory() {
     apiFetch("/leave/requests/my/grouped")
       .then(async (r) => {
-        if (r.ok) {
-          setHistory(await r.json());
-          setUseFallback(false);
-        } else {
+        if (r.ok) { setHistory(await r.json()); setUseFallback(false); }
+        else {
           setUseFallback(true);
           apiFetch("/leave/requests/my")
             .then(async (r2) => { if (r2.ok) setHistFallback(await r2.json()); })
@@ -307,31 +383,90 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
       .catch(() => {});
   }
 
+  function loadUsers() {
+    if (!isAdmin) return;
+    apiFetch("/users")
+      .then(async (r) => { if (r.ok) setAllUsers(await r.json()); })
+      .catch(() => {});
+  }
+
   useEffect(() => {
     loadTypes();
     loadBalances();
     loadHistory();
     loadTeamOnLeave();
     loadPending();
+    loadUsers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isManager]);
+  }, [isManager, isAdmin]);
 
   // ── Apply form submit ────────────────────────────────────────
   async function applyLeave(e: FormEvent) {
     e.preventDefault();
-    const body = {
+    setApplyError("");
+    setApplySuccess("");
+
+    // Client-side date validation
+    if (leaveForm.toDate < leaveForm.fromDate) {
+      setApplyError("'To Date' must be on or after 'From Date'.");
+      return;
+    }
+
+    const body: Record<string, unknown> = {
       leaveTypeId: leaveForm.leaveTypeId,
       fromDate: leaveForm.fromDate,
       toDate: leaveForm.toDate,
       isHalfDay: leaveForm.isHalfDay,
       comment: leaveForm.comment,
     };
+    if (isAdmin && leaveForm.onBehalfOfUserId) {
+      body.onBehalfOfUserId = leaveForm.onBehalfOfUserId;
+    }
     const r = await apiFetch("/leave/requests", { method: "POST", body: JSON.stringify(body) });
     if (r.ok) {
-      setLeaveForm({ leaveTypeId: leaveTypes[0]?.id ?? "", fromDate: today(), toDate: today(), isHalfDay: false, comment: "" });
+      setLeaveForm({ leaveTypeId: leaveTypes[0]?.id ?? "", fromDate: today(), toDate: today(), isHalfDay: false, comment: "", onBehalfOfUserId: "" });
+      setApplySuccess("Leave request submitted successfully.");
       loadBalances();
       loadHistory();
+    } else {
+      const body2 = await r.json().catch(() => ({})) as { message?: string; detail?: string };
+      setApplyError(body2.message ?? body2.detail ?? "Failed to submit leave request. Please try again.");
     }
+  }
+
+  // ── Cancel leave (with themed modal) ─────────────────────────
+  const [cancelModal, setCancelModal] = useState<string | null>(null); // holds leave id
+
+  async function confirmCancelLeave() {
+    if (!cancelModal) return;
+    const id = cancelModal;
+    setCancelModal(null);
+    const r = await apiFetch(`/leave/requests/${id}`, { method: "DELETE" });
+    if (r.ok) {
+      loadHistory();
+      loadBalances();
+    } else {
+      const body = await r.json().catch(() => ({})) as { message?: string };
+      alert(body.message ?? "Could not cancel this request.");
+    }
+  }
+
+  // ── Re-apply (pre-fill form) ─────────────────────────────────
+  function reApply(group: LeaveRequestGroup) {
+    const leaveType = leaveTypes.find((lt) => lt.name === group.leaveTypeName);
+    setLeaveForm({
+      leaveTypeId: leaveType?.id ?? leaveTypes[0]?.id ?? "",
+      fromDate: group.fromDate,
+      toDate: group.toDate,
+      isHalfDay: false,
+      comment: group.comment ?? "",
+      onBehalfOfUserId: "",
+    });
+    applyRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setTimeout(() => {
+      const firstInput = applyRef.current?.querySelector("input, select") as HTMLElement | null;
+      firstInput?.focus();
+    }, 300);
   }
 
   // ── Manager review ───────────────────────────────────────────
@@ -339,34 +474,27 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
     const comment = approve ? "" : (rejectComments[id] ?? "");
     if (!approve && !comment.trim()) { alert("Rejection comment is required."); return; }
     const r = await apiFetch(`/leave/requests/${id}/review`, { method: "POST", body: JSON.stringify({ approve, comment }) });
-    if (r.ok) {
-      loadPending();
-      setShowRejectForm(null);
-    }
-  }
-
-  // ── Admin: create leave type ─────────────────────────────────
-  async function createLeaveType(e: FormEvent) {
-    e.preventDefault();
-    const r = await apiFetch("/leave/types", { method: "POST", body: JSON.stringify(leaveTypeForm) });
-    if (r.ok) {
-      setLeaveTypeForm({ name: "", isActive: true });
-      loadTypes();
-    }
+    if (r.ok) { loadPending(); setShowRejectForm(null); }
   }
 
   // ── Helpers ──────────────────────────────────────────────────
   function scrollToApply() {
     applyRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    const firstInput = applyRef.current?.querySelector("input, select") as HTMLElement | null;
-    firstInput?.focus();
+    setTimeout(() => {
+      const firstInput = applyRef.current?.querySelector("input, select") as HTMLElement | null;
+      firstInput?.focus();
+    }, 300);
   }
 
+  // Years with data + always include current year
+  const yearsWithData = new Set(history.map((h) => Number(h.fromDate.slice(0, 4))));
+  yearsWithData.add(currentYear);
   const historyYearOptions = [2023, 2024, 2025, 2026, 2027, 2028];
 
-  // Filter grouped history by year
-  const filteredHistory = history.filter((h) => h.fromDate.startsWith(String(histYear)));
+  // Filtered history
+  const filteredHistory  = history.filter((h) => h.fromDate.startsWith(String(histYear)));
   const filteredFallback = histFallback.filter((h) => h.leaveDate.startsWith(String(histYear)));
+  const historyEmpty = (!useFallback && filteredHistory.length === 0) || (useFallback && filteredFallback.length === 0);
 
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
@@ -376,10 +504,21 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
       <div className="page-header">
         <div>
           <div className="page-title">Leave Management</div>
-          <div className="page-subtitle">FY {currentYear} · Track, apply, and manage your time off</div>
+          <div className="page-subtitle">
+            {isAdmin
+              ? "Manage team leave, approvals, and policies."
+              : `FY ${currentYear} · Track, apply, and manage your time off`}
+          </div>
         </div>
         <div className="page-actions">
-          <button className="btn btn-outline">Leave Report</button>
+          {/* Leave Report — with download icon */}
+          <button className="btn btn-outline" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M10 3v10M6 9l4 4 4-4"/><rect x="3" y="14" width="14" height="3" rx="1"/>
+            </svg>
+            Leave Report
+          </button>
+          {/* Scroll-to-form CTA — only when not already in view */}
           <button className="btn btn-primary" onClick={scrollToApply}>+ Apply for Leave</button>
         </div>
       </div>
@@ -393,16 +532,29 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
           {/* Balance cards */}
           {balances.length > 0 && (
             <div className="lv3-balances">
-              {balances.map((b, i) => {
-                const color = BALANCE_COLORS[i % BALANCE_COLORS.length];
+              {balances.map((b) => {
+                const barColor = balanceBarColor(b.remainingDays, b.totalDays);
                 const pct = b.totalDays > 0 ? Math.max(0, Math.min(100, (b.remainingDays / b.totalDays) * 100)) : 0;
+                const tooltip = `${b.usedDays} of ${b.totalDays} days used`;
+                if (b.totalDays === 0) {
+                  return (
+                    <div className="lv3-bal-card--zero" key={b.leaveTypeId}>
+                      <div className="lv3-bal-type">{b.leaveTypeName}</div>
+                      <div className="lv3-bal-days" style={{ color: "var(--n-300, #d1d5db)" }}>0</div>
+                      <div className="lv3-bal-of" style={{ color: "var(--text-tertiary)" }}>No days allocated</div>
+                      {isAdmin && (
+                        <span className="lv3-bal-zero-cta">Set policy →</span>
+                      )}
+                    </div>
+                  );
+                }
                 return (
                   <div className="lv3-bal-card" key={b.leaveTypeId}>
                     <div className="lv3-bal-type">{b.leaveTypeName}</div>
-                    <div className="lv3-bal-days" style={{ color }}>{b.remainingDays}</div>
+                    <div className="lv3-bal-days" style={{ color: barColor }}>{b.remainingDays}</div>
                     <div className="lv3-bal-of">of {b.totalDays} days available</div>
-                    <div className="lv3-bal-bar">
-                      <div className="lv3-bal-fill" style={{ width: `${pct}%`, background: color }} />
+                    <div className="lv3-bal-bar" title={tooltip}>
+                      <div className="lv3-bal-fill" style={{ width: `${pct}%`, background: barColor }} />
                     </div>
                   </div>
                 );
@@ -421,6 +573,35 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
             <div className="card-body">
               <form onSubmit={(e) => void applyLeave(e)}>
                 <div className="lv3-form-grid">
+
+                  {/* Admin: Apply on behalf of */}
+                  {isAdmin && (
+                    <div className="form-field lv3-form-full">
+                      <label className="form-label" htmlFor="lv-onbehalf">
+                        Apply on behalf of
+                      </label>
+                      <select
+                        id="lv-onbehalf"
+                        className="input-field"
+                        value={leaveForm.onBehalfOfUserId}
+                        onChange={(e) => setLeaveForm((p) => ({ ...p, onBehalfOfUserId: e.target.value }))}
+                      >
+                        <option value="">Myself</option>
+                        {allUsers.filter((u) => u.isActive).map((u) => (
+                          <option key={u.id} value={u.id}>{u.username}</option>
+                        ))}
+                      </select>
+                      {leaveForm.onBehalfOfUserId && (
+                        <div className="lv3-onbehalf-banner">
+                          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8">
+                            <circle cx="10" cy="7" r="3"/><path d="M4 18c0-3.3 2.7-6 6-6s6 2.7 6 6"/>
+                          </svg>
+                          Submitting on behalf of {allUsers.find((u) => u.id === leaveForm.onBehalfOfUserId)?.username}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Leave type */}
                   <div className="form-field">
                     <label className="form-label" htmlFor="lv-type">Leave Type <span className="required">*</span></label>
@@ -434,6 +615,7 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
                       {leaveTypes.map((lt) => <option key={lt.id} value={lt.id}>{lt.name}</option>)}
                     </select>
                   </div>
+
                   {/* Duration */}
                   <div className="form-field">
                     <label className="form-label" htmlFor="lv-duration">Duration <span className="required">*</span></label>
@@ -447,6 +629,7 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
                       <option value="half">Half day</option>
                     </select>
                   </div>
+
                   {/* From date */}
                   <div className="form-field">
                     <label className="form-label" htmlFor="lv-from">From Date <span className="required">*</span></label>
@@ -459,6 +642,7 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
                       required
                     />
                   </div>
+
                   {/* To date */}
                   <div className="form-field">
                     <label className="form-label" htmlFor="lv-to">To Date <span className="required">*</span></label>
@@ -471,6 +655,7 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
                       required
                     />
                   </div>
+
                   {/* Reason — full width */}
                   <div className="form-field lv3-form-full">
                     <label className="form-label" htmlFor="lv-reason">Reason</label>
@@ -482,20 +667,43 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
                       value={leaveForm.comment}
                       onChange={(e) => setLeaveForm((p) => ({ ...p, comment: e.target.value }))}
                       maxLength={1000}
-                      style={{ resize: "vertical" }}
+                      style={{ resize: "vertical", minHeight: 80 }}
                     />
                   </div>
                 </div>
+
                 <div style={{ display: "flex", gap: "var(--space-3)", marginTop: "var(--space-4)" }}>
                   <button
                     type="button"
-                    className="btn btn-ghost"
-                    onClick={() => setLeaveForm({ leaveTypeId: leaveTypes[0]?.id ?? "", fromDate: today(), toDate: today(), isHalfDay: false, comment: "" })}
+                    className="btn btn-outline"
+                    onClick={() => setLeaveForm({ leaveTypeId: leaveTypes[0]?.id ?? "", fromDate: today(), toDate: today(), isHalfDay: false, comment: "", onBehalfOfUserId: "" })}
                   >
                     Reset form
                   </button>
                   <button type="submit" className="btn btn-primary">Submit request</button>
                 </div>
+
+                {/* Form feedback */}
+                {applyError && (
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginTop: "var(--space-3)",
+                    background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8,
+                    padding: "10px 14px", fontSize: "0.825rem", color: "#b91c1c" }}>
+                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ flexShrink: 0, marginTop: 1 }}>
+                      <circle cx="10" cy="10" r="9"/><path d="M10 6v4M10 14h.01"/>
+                    </svg>
+                    {applyError}
+                  </div>
+                )}
+                {applySuccess && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: "var(--space-3)",
+                    background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 8,
+                    padding: "10px 14px", fontSize: "0.825rem", color: "#166534" }}>
+                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ flexShrink: 0 }}>
+                      <circle cx="10" cy="10" r="9"/><path d="M6 10l3 3 5-5"/>
+                    </svg>
+                    {applySuccess}
+                  </div>
+                )}
               </form>
             </div>
           </div>
@@ -511,54 +719,77 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
                   onChange={(e) => setHistYear(Number(e.target.value))}
                   aria-label="Select year"
                 >
-                  {historyYearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
+                  {historyYearOptions.map((y) => (
+                    <option
+                      key={y}
+                      value={y}
+                      disabled={y > currentYear && !yearsWithData.has(y)}
+                    >
+                      {y}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
-            <div style={{ padding: "0 var(--space-5) var(--space-2)" }}>
-              <div className="lv3-hist-sub">FY {histYear}</div>
-            </div>
-            <div className="table-wrap">
-              <table className="table-base">
-                <thead>
-                  <tr>
-                    <th>TYPE</th>
-                    <th>DATES</th>
-                    <th>DAYS</th>
-                    <th>APPLIED ON</th>
-                    <th>APPROVED BY</th>
-                    <th>STATUS</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {!useFallback && filteredHistory.map((h) => (
-                    <tr key={h.id}>
-                      <td>{h.leaveTypeName}</td>
-                      <td>{h.fromDate === h.toDate ? h.fromDate : `${h.fromDate} – ${h.toDate}`}</td>
-                      <td>{h.days}</td>
-                      <td>{h.appliedOnDate}</td>
-                      <td>{h.approvedByUsername ?? "—"}</td>
-                      <td>{statusBadge(h.status)}</td>
-                    </tr>
-                  ))}
-                  {useFallback && filteredFallback.map((h) => (
-                    <tr key={h.id}>
-                      <td>{h.leaveTypeName}</td>
-                      <td>{h.leaveDate}</td>
-                      <td>1</td>
-                      <td>—</td>
-                      <td>—</td>
-                      <td>{statusBadge(h.status)}</td>
-                    </tr>
-                  ))}
-                  {((!useFallback && filteredHistory.length === 0) || (useFallback && filteredFallback.length === 0)) && (
-                    <tr className="empty-row">
-                      <td colSpan={6}>No leave records for {histYear}.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+
+            {historyEmpty ? (
+              <div className="lv3-hist-empty">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" style={{ color: "var(--n-300, #d1d5db)" }}>
+                  <rect x="3" y="4" width="18" height="18" rx="2"/>
+                  <line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/>
+                  <line x1="3" y1="10" x2="21" y2="10"/>
+                  <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/>
+                </svg>
+                <div className="lv3-hist-empty-title">No leave records for {histYear}</div>
+                <div className="lv3-hist-empty-sub">Approved and pending leave for this year will appear here.</div>
+              </div>
+            ) : (
+              <div className="lv3-hist-cards">
+                {!useFallback && filteredHistory.map((h) => (
+                  <div className="lv3-hist-card" key={h.id}>
+                    <div className="lv3-hist-card-left">
+                      <div className="lv3-hist-card-type">{h.leaveTypeName}</div>
+                      <div className="lv3-hist-card-dates">{fmtDateRange(h.fromDate, h.toDate)}</div>
+                      <div className="lv3-hist-card-meta">
+                        {h.days} {h.days === 1 ? "day" : "days"}
+                        {" · "}Applied {fmtDate(h.appliedOnDate)}
+                        {h.approvedByUsername && ` · Approved by ${h.approvedByUsername}`}
+                      </div>
+                    </div>
+                    <div className="lv3-hist-card-right">
+                      {statusBadge(h.status)}
+                      {(h.status === "pending" || h.status === "rejected") && (
+                        <div className="lv3-hist-card-actions">
+                          {h.status === "rejected" && (
+                            <button className="btn btn-outline btn-sm" onClick={() => reApply(h)}>Re-apply</button>
+                          )}
+                          {h.status === "pending" && (
+                            <button
+                              className="btn btn-sm"
+                              style={{ border: "1px solid #ef4444", color: "#ef4444", background: "transparent" }}
+                              onClick={() => setCancelModal(h.id)}
+                            >
+                              Cancel
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {useFallback && filteredFallback.map((h) => (
+                  <div className="lv3-hist-card" key={h.id}>
+                    <div className="lv3-hist-card-left">
+                      <div className="lv3-hist-card-type">{h.leaveTypeName}</div>
+                      <div className="lv3-hist-card-dates">{fmtDate(h.leaveDate)}</div>
+                    </div>
+                    <div className="lv3-hist-card-right">
+                      {statusBadge(h.status)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Manager: Pending Leave Approvals */}
@@ -571,108 +802,78 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
                 </div>
                 {pendingLeaves.length > 0 && <span className="badge badge-warning">{pendingLeaves.length}</span>}
               </div>
-              <div className="table-wrap">
-                <table className="table-base">
-                  <thead>
-                    <tr><th>Employee</th><th>Date</th><th>Type</th><th>Duration</th><th>Actions</th></tr>
-                  </thead>
-                  <tbody>
-                    {pendingLeaves.map((l) => (
-                      <>
-                        <tr key={l.id}>
-                          <td>
-                            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
-                              <div
-                                style={{
+
+              {pendingLeaves.length === 0 ? (
+                <div className="lv3-pending-empty">
+                  <svg className="lv3-pending-empty-icon" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 12l2 2 4-4"/>
+                    <path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"/>
+                  </svg>
+                  <div className="lv3-pending-empty-title">All caught up!</div>
+                  <div className="lv3-pending-empty-sub">No pending leave requests right now. Your team is on track — check back later.</div>
+                </div>
+              ) : (
+                <div className="table-wrap">
+                  <table className="table-base">
+                    <thead>
+                      <tr><th>Employee</th><th>Date</th><th>Type</th><th>Duration</th><th>Actions</th></tr>
+                    </thead>
+                    <tbody>
+                      {pendingLeaves.map((l) => (
+                        <>
+                          <tr key={l.id}>
+                            <td>
+                              <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+                                <div style={{
                                   width: 28, height: 28, borderRadius: 8,
                                   background: avatarColor(l.username),
                                   display: "flex", alignItems: "center", justifyContent: "center",
                                   fontSize: "0.7rem", fontWeight: 700, color: "#fff", flexShrink: 0,
-                                }}
-                              >
-                                {initials(l.username)}
+                                }}>
+                                  {initials(l.username)}
+                                </div>
+                                <strong>{l.username}</strong>
                               </div>
-                              <strong>{l.username}</strong>
-                            </div>
-                          </td>
-                          <td>{l.leaveDate}</td>
-                          <td>{l.leaveTypeName}</td>
-                          <td>{l.isHalfDay ? "Half Day" : "Full Day"}</td>
-                          <td>
-                            <div style={{ display: "flex", gap: "var(--space-2)" }}>
-                              <button className="btn btn-outline-success btn-sm" onClick={() => void reviewLeave(l.id, true)}>✓ Approve</button>
-                              <button className="btn btn-outline-reject btn-sm" onClick={() => setShowRejectForm(showRejectForm === l.id ? null : l.id)}>✗ Reject</button>
-                            </div>
-                          </td>
-                        </tr>
-                        {showRejectForm === l.id && (
-                          <tr key={`${l.id}-rej`}>
-                            <td colSpan={5} style={{ padding: 0 }}>
-                              <div className="lv3-mgr-reject-row">
-                                <input
-                                  className="input-field"
-                                  style={{ flex: 1, maxWidth: 360 }}
-                                  placeholder="Rejection comment (required)"
-                                  value={rejectComments[l.id] ?? ""}
-                                  onChange={(e) => setRejectComments((p) => ({ ...p, [l.id]: e.target.value }))}
-                                  required
-                                  maxLength={1000}
-                                />
-                                <button className="btn btn-danger btn-sm" onClick={() => void reviewLeave(l.id, false)}>Confirm Reject</button>
-                                <button className="btn btn-ghost btn-sm" onClick={() => setShowRejectForm(null)}>Cancel</button>
+                            </td>
+                            <td>{fmtDate(l.leaveDate)}</td>
+                            <td>{l.leaveTypeName}</td>
+                            <td>{l.isHalfDay ? "Half Day" : "Full Day"}</td>
+                            <td>
+                              <div style={{ display: "flex", gap: "var(--space-2)" }}>
+                                <button className="btn btn-outline-success btn-sm" onClick={() => void reviewLeave(l.id, true)}>✓ Approve</button>
+                                <button className="btn btn-outline-reject btn-sm" onClick={() => setShowRejectForm(showRejectForm === l.id ? null : l.id)}>✗ Reject</button>
                               </div>
                             </td>
                           </tr>
-                        )}
-                      </>
-                    ))}
-                    {pendingLeaves.length === 0 && (
-                      <tr className="empty-row"><td colSpan={5}>No pending leave requests.</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                          {showRejectForm === l.id && (
+                            <tr key={`${l.id}-rej`}>
+                              <td colSpan={5} style={{ padding: 0 }}>
+                                <div className="lv3-mgr-reject-row">
+                                  <input
+                                    className="input-field"
+                                    style={{ flex: 1, maxWidth: 360 }}
+                                    placeholder="Rejection comment (required)"
+                                    value={rejectComments[l.id] ?? ""}
+                                    onChange={(e) => setRejectComments((p) => ({ ...p, [l.id]: e.target.value }))}
+                                    required
+                                    maxLength={1000}
+                                  />
+                                  <button className="btn btn-danger btn-sm" onClick={() => void reviewLeave(l.id, false)}>Confirm Reject</button>
+                                  <button className="btn btn-ghost btn-sm" onClick={() => setShowRejectForm(null)}>Cancel</button>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 
-          {/* Admin: Create Leave Type */}
-          {isAdmin && (
-            <div className="card">
-              <div className="card-header">
-                <div>
-                  <div className="card-title">Create Leave Type</div>
-                  <div className="card-subtitle">Add a new leave category for the organisation</div>
-                </div>
-              </div>
-              <div className="card-body">
-                <form onSubmit={(e) => void createLeaveType(e)} style={{ display: "flex", gap: "var(--space-3)", alignItems: "flex-end", flexWrap: "wrap" }}>
-                  <div className="form-field" style={{ flex: 1, minWidth: 200 }}>
-                    <label className="form-label" htmlFor="lt-name">Leave Type Name <span className="required">*</span></label>
-                    <input
-                      id="lt-name"
-                      className="input-field"
-                      placeholder="e.g. Maternity Leave"
-                      value={leaveTypeForm.name}
-                      onChange={(e) => setLeaveTypeForm((p) => ({ ...p, name: e.target.value }))}
-                      required
-                      maxLength={120}
-                    />
-                  </div>
-                  <label style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", fontSize: "0.825rem", color: "var(--text-secondary)", paddingBottom: 2 }}>
-                    <input
-                      type="checkbox"
-                      checked={leaveTypeForm.isActive}
-                      onChange={(e) => setLeaveTypeForm((p) => ({ ...p, isActive: e.target.checked }))}
-                      style={{ accentColor: "var(--brand-600)" }}
-                    />
-                    Active
-                  </label>
-                  <button type="submit" className="btn btn-primary">Save Leave Type</button>
-                </form>
-              </div>
-            </div>
-          )}
-        </div>
+        </div>{/* /lv3-main */}
 
         {/* ══ SIDEBAR ══════════════════════════════════════ */}
         <div className="lv3-sidebar">
@@ -695,7 +896,7 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
                         </div>
                         <div className="lv3-team-meta">
                           <div className="lv3-team-name">{t.username}</div>
-                          <div className="lv3-team-sub">{t.fromDate === t.toDate ? t.fromDate : `${t.fromDate} – ${t.toDate}`} · {t.leaveTypeName}</div>
+                          <div className="lv3-team-sub">{fmtDateRange(t.fromDate, t.toDate)} · {t.leaveTypeName}</div>
                         </div>
                         <span className={isAway ? "lv3-pill-away" : "lv3-pill-upcoming"}>
                           {isAway ? "Away" : "Upcoming"}
@@ -709,6 +910,34 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
           )}
         </div>
       </div>
+
+      {/* ── Cancel leave confirmation modal ─────────────────── */}
+      {cancelModal && (
+        <div className="lv3-modal-backdrop" onClick={() => setCancelModal(null)}>
+          <div className="lv3-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="lv3-modal-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+              </svg>
+            </div>
+            <div className="lv3-modal-title">Cancel Leave Request</div>
+            <div className="lv3-modal-body">
+              Are you sure you want to cancel this leave request? This action cannot be undone.
+            </div>
+            <div className="lv3-modal-actions">
+              <button className="btn btn-outline btn-sm" onClick={() => setCancelModal(null)}>Keep it</button>
+              <button
+                className="btn btn-sm"
+                style={{ background: "#ef4444", color: "#fff", border: "none" }}
+                onClick={() => void confirmCancelLeave()}
+              >
+                Yes, cancel request
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

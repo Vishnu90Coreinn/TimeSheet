@@ -389,45 +389,25 @@ PROJECT_TASKS.md                   — UPDATED: audit findings + Phase 2 task li
 
 ## Pending For Next Session
 
-> Last updated: Session 8 (2026-03-16). All Sprint 9 backend endpoints are implemented and pushed. Dashboard redesign is complete. Next session should start with DB migration, smoke test, and deciding on next features.
+> Last updated: Session 10 (2026-03-16). Reports page fully refactored (7 tabs, 3 new endpoints, 16 UX improvements). All session 9 Leave + Timesheets work committed and pushed. Smoke test and next feature selection is the immediate priority.
 
-### Priority 1 — DB Schema Migration (manual step in SSMS)
-All changes are already in `db/schema.sql`. Just run the new sections in SSMS:
-
-```sql
--- Sprint 9 new tables
-CREATE TABLE LeavePolicies ( ... );
-CREATE TABLE LeavePolicyAllocations ( ... );
-CREATE TABLE LeaveBalances ( ... );
-ALTER TABLE LeaveRequests ADD LeaveGroupId UNIQUEIDENTIFIER NULL;
-ALTER TABLE Users ADD LeavePolicyId UNIQUEIDENTIFIER NULL REFERENCES LeavePolicies(Id);
-
--- Session 8 new column
-ALTER TABLE Projects ADD BudgetedHours INT NOT NULL DEFAULT 0;
-```
-
-Refer to `db/schema.sql` for the exact DDL.
-
-### Priority 2 — Manual Smoke Test
+### Priority 1 — Manual Smoke Test
 Work through these flows and confirm they work end-to-end:
-- [ ] Login as employee → Dashboard loads (4 KPI cards, weekly chart, project split visible)
-- [ ] Check in → Attendance widget updates elapsed timer
-- [ ] Log time entry → Timesheet submits → Manager sees it in Pending Approvals on dashboard
-- [ ] Manager quick-approves from dashboard ✓ button → item disappears from panel
-- [ ] Leave page → Balance cards show correct remaining days from policy
-- [ ] Admin creates a Leave Policy → assigns to user → employee sees balance on dashboard
-- [ ] Verify `GET /api/v1/holidays?year=2026` returns seed holidays
-- [ ] Verify notification bell shows unread count after approval action
+- [ ] Run API → confirm DB auto-migrates (Sprint9 migration runs, creates LeavePolicies/LeaveBalances tables)
+- [ ] Admin creates Leave Policy → assigns to user → employee sees correct balances on Leave page
+- [ ] Employee applies leave → cancel it → re-apply (confirm no 500 error)
+- [ ] Admin: Reports → Leave Balance tab → verify allocations and used days
+- [ ] Admin: Reports → Overtime/Deficit tab → verify weekly grouping and delta coloring
+- [ ] Admin: Reports → Approvals tab → verify two-line Approved At, status chips, approver name
+- [ ] Submit timesheet → delete entry modal appears (themed, not browser confirm)
 
-### Priority 3 — Next Features (choose one to build)
-Suggested candidates — discuss with user at start of next session:
+### Priority 2 — Next Features (choose one to build)
 
 | Feature | Effort | Value |
 |---------|--------|-------|
-| **Reports page redesign** — match PulseHQ style (charts, export) | Medium | High |
-| **BudgetedHours UI** — add budget field to Projects admin form + show in Budget Health panel with real % | Small | Medium |
-| **Dashboard activity feed** — new `GET /dashboard/activity` endpoint returning real last-24h events | Medium | High |
-| **Notifications improvements** — mark individual as read inline, group by type | Small | Medium |
+| **True Excel/PDF export** — EPPlus/ClosedXML for real Excel; PDF renderer | Medium | High |
+| **`GET /approvals/stats`** backend — approved/rejected this month, avg response hours for KPI cards | Small | High |
+| **Dashboard activity feed** — real last-24h events from `GET /dashboard/activity` | Medium | High |
 | **Mobile responsive layout** — sidebar collapses to hamburger on small screens | Medium | Medium |
 
 ---
@@ -490,6 +470,122 @@ Suggested candidates — discuss with user at start of next session:
 
 ### Commit & Push
 - Committed and pushed to `master`
+
+---
+
+---
+
+## Session 9 — Leave Backend + UX Polish (2026-03-16)
+
+### What Was Done
+
+#### Leave Backend (Sprint 9 APIs)
+- `GET /leave/policies`, `POST`, `PUT /{id}`, `DELETE /{id}` — full Leave Policy CRUD.
+- `GET /leave/balance/my` — reads `LeavePolicyAllocations.DaysPerYear` (not the `LeaveBalances` table which is for manual overrides only).
+- `POST /leave/requests` — now accepts `fromDate`/`toDate` date range; expands to per-day `LeaveRequest` rows server-side.
+- `GET /leave/calendar?year=&month=` — returns pending/approved/**rejected** leave dates.
+- `GET /leave/team-on-leave` — team members on leave.
+- `GET /leave/requests/my/grouped` — grouped history (one record per request, not per day).
+- `DELETE /leave/requests/{id}` — cancel endpoint; matches by `LeaveGroupId` first then `Id`; enforces pending-only guard.
+- **Bug fix:** `POST /leave/requests` re-apply 500 error — `UQ_LeaveRequests_UserDate` unique constraint blocks re-inserting after rejection. Fix: delete rejected rows for those dates before inserting new ones.
+
+#### DB Migrations — Two-Migration Split
+- `Baseline` migration: marks `Initial` as already applied without re-running it.
+- `Sprint9` migration: adds `LeavePolicies`, `LeavePolicyAllocations`, `LeaveBalances` tables.
+- `DbInitializer.MigrateAsync()` bootstraps `__EFMigrationsHistory`, marks `Initial` applied, then `MigrateAsync()` runs `Sprint9` delta automatically on API start.
+
+#### Leave.tsx — 18 UX Improvements
+Full rewrite covering: responsive history cards (not table), human-readable date ranges (`fmtDateRange`), Re-apply/Cancel actions per row, `ToDate < FromDate` validation shown inline, admin "Apply on behalf of" user dropdown, zero-allocation balance card greyed, rejected calendar dots, Leave Report icon, form label 13px, Reset btn-outline style, semantic bar colors, min-height textarea, normalized legend circles, standardized header casing, Remove "Create Leave Type" from this page (moved to LeavePolicies admin).
+
+#### LeavePolicies.tsx — Leave Types Section
+New card below policies table: inline form (name + active checkbox + submit) + table of all leave types with Active/Inactive badges. Calls `POST /leave/types` and refreshes list.
+
+#### Timesheets.tsx — 8 UX Fixes
+- Entry card left border turns **green** for approved timesheets.
+- Progress bar "13%" label: fixed from absolute positioning to flex layout (no overlap).
+- Hours text **green** color on approved day cards.
+- **+ Add Entry** button visually disabled (opacity 0.45, `pointer-events: none`) on locked timesheets; tooltip grammar fixed "a approved" → "an approved".
+- Day bar pill turns **green** when the selected day is approved.
+- Sunday pct = 0 bug fixed: if `expectedMinutes === 0` and `mins > 0`, set pct = 100 and use light-indigo color `#a5b4fc` ("rest day with work").
+- Notification bell **unread indicator dot** added.
+- Removed negative margin on `.ts3-week-prog-wrap`.
+
+#### Delete Entry Modal
+Replaced `window.confirm()` with a themed modal: backdrop blur, indigo icon ring, Keep/Delete buttons styled to match PulseHQ v3.0 design system.
+
+#### Leave.test.tsx — Tests Updated
+- 3 tests rewritten for history cards (no longer a table), calendar legend text (`.^Pending$`/`.^Approved$`), admin section dropdown check.
+
+### Build & Tests
+- `npm run test` — ✅ 44/44 tests pass
+- `dotnet build` — ✅ 0 errors
+
+---
+
+## Session 10 — Reports Page Full Refactor (2026-03-16)
+
+### What Was Done
+
+#### Backend — 3 New Report Endpoints
+- `GET /reports/leave-balance` — reads `LeavePolicyAllocations` × approved `LeaveRequests` per user+type for the requested year. Returns `LeaveBalanceReportRow(UserId, Username, LeaveTypeName, AllocatedDays, UsedDays, RemainingDays)`.
+- `GET /reports/timesheet-approval-status` — timesheets with `Status`, `EnteredMinutes`, `ApprovedByUsername`, `ApprovedAtUtc`. Returns `TimesheetApprovalStatusReportRow`.
+- `GET /reports/overtime-deficit` — weekly grouping (Mon–Sun) of logged vs target minutes. Target = non-Sunday workdays × `WorkPolicy.DailyExpectedMinutes` (defaults to 480 if no policy). Returns `OvertimeDeficitReportRow(UserId, Username, WeekStart, TargetMinutes, LoggedMinutes, DeltaMinutes)`.
+- `BuildRawReport` updated with 3 new cases for CSV export of all new report types.
+- `ReportDtos.cs`: 3 new records added.
+
+#### Frontend — Reports.tsx Full Redesign (16 improvements)
+1. **Default date range**: From = first day of current month, To = today — pre-filled on mount.
+2. **Tab strip scroll arrows**: `‹` `›` buttons with `scrollBy` on the tabs container; hidden scrollbar.
+3. **Attendance aggregation**: `aggregateAttendance()` deduplicates rows by employee+date, summing minutes and OR-ing exception flag.
+4. **Utilization bar thresholds**: `< 50%` red, `50–79%` amber, `≥ 80%` green (was 40/70).
+5. **Sort icons**: `↕` on all sortable headers (inactive), `↑`/`↓` when active; `aria-sort` attribute.
+6. **Leave Balance bar**: `minWidth: 90px` track; rows with `allocatedDays === 0` get `opacity: 0.4`.
+7. **`d` unit suffix**: New `"leave-days"` format renders `Nd` for all day-count columns.
+8. **KPI accent borders**: `border-left: 3px solid` in red/amber/green per card significance. Exceptions → red, Deficit Weeks → amber, Overtime Weeks → green, Zero Balance → red, Approved → green, Net Delta → colored.
+9. **Approved At two-line**: Date bold on line 1, muted time on line 2; full datetime in `title` tooltip.
+10. **PDF export**: `↓ PDF` button added alongside CSV/Excel.
+11. **Employee filter**: Dynamic `<select>` from unique usernames on current page. Resets on tab switch.
+12. **Context-specific KPI labels**: "Days Tracked", "Weeks Tracked", "Allocations" — no generic "Records".
+13. **Primary text color**: `rgb(16,16,26)` + `font-weight: 500` on Employee, hours, and delta columns via `primary: true` ColConfig flag.
+14. **Target column hidden**: `targetMinutes` hidden from UI; avg target shown as subtitle `"vs. Xh avg target/wk"` on Weeks Tracked KPI.
+15. **Row hover**: `rgba(99,102,241,0.04)` on `tbody tr:hover`.
+16. **Rich pagination footer**: "Showing 1–25 of 120" text + rows-per-page selector (10/25/50/100) + Prev/Next buttons.
+
+#### types.ts
+- `ReportKey` union extended: `| "leave-balance" | "timesheet-approval-status" | "overtime-deficit"`.
+
+### Build & Tests
+- `npm run test` — ✅ 44/44 tests pass
+- `dotnet build` — ✅ 0 errors (file-lock warning only — API was running)
+
+### Commit & Push
+- All changes committed and pushed to `master` (this session).
+
+---
+
+## Pending For Next Session
+
+> Last updated: Session 10 (2026-03-16).
+
+### Priority 1 — Manual Smoke Test
+- [ ] Run API → confirm DB auto-migrates (`Sprint9` migration runs)
+- [ ] Admin: create Leave Policy → assign to user → employee sees correct balance on Leave page
+- [ ] Admin: navigate to Reports → **Leave Balance** tab → verify allocations + used days shown
+- [ ] Admin: Reports → **Overtime / Deficit** tab → verify weekly grouping and delta coloring
+- [ ] Admin: Reports → **Approvals** tab → verify status chips, two-line Approved At, approver name
+- [ ] Employee: apply leave → cancel it → re-apply → confirm no 500 error
+- [ ] Timesheets: submit day → verify delete entry modal (themed, not browser confirm)
+- [ ] Reports: change date range → Apply → verify data refreshes; change rows/page → verify pagination
+
+### Priority 2 — Next Features (choose one)
+
+| Feature | Effort | Value |
+|---------|--------|-------|
+| **True Excel/PDF export** — integrate EPPlus/ClosedXML for real Excel; use a PDF renderer for PDF | Medium | High |
+| **`GET /approvals/stats`** — backend endpoint for Approvals KPI cards (approved/rejected this month, avg response hours) | Small | High |
+| **Dashboard activity feed** — real last-24h events from `GET /dashboard/activity` | Medium | High |
+| **Mobile responsive layout** — sidebar collapses to hamburger on small screens | Medium | Medium |
+| **Reports: category breakdown sub-rows** — expandable contributor list per project in Project Effort tab | Medium | Medium |
 
 ---
 

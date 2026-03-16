@@ -1,7 +1,7 @@
 /**
  * LeavePolicies.tsx — Pulse SaaS design v2.0
  */
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { apiFetch } from "../../api/client";
 import type { LeavePolicy, LeavePolicyAlloc, LeaveType } from "../../types";
 
@@ -20,15 +20,43 @@ export function LeavePolicies() {
   const [form, setForm] = useState<PolicyForm>(BLANK);
   const [error, setError] = useState("");
 
+  // Leave type creation
+  const [ltName, setLtName] = useState("");
+  const [ltActive, setLtActive] = useState(true);
+  const [ltError, setLtError] = useState("");
+  const [ltSuccess, setLtSuccess] = useState("");
+
   async function load() {
     const r = await apiFetch("/leave/policies");
     if (r.ok) setPolicies(await r.json());
   }
 
+  async function loadTypes() {
+    const r = await apiFetch("/leave/types");
+    if (r.ok) setLeaveTypes(await r.json());
+  }
+
   useEffect(() => {
     void load();
-    apiFetch("/leave/types").then(async (r) => { if (r.ok) setLeaveTypes(await r.json()); });
+    void loadTypes();
   }, []);
+
+  async function saveLeaveType(e: FormEvent) {
+    e.preventDefault();
+    setLtError("");
+    setLtSuccess("");
+    const name = ltName.trim();
+    if (!name) { setLtError("Name is required."); return; }
+    const r = await apiFetch("/leave/types", { method: "POST", body: JSON.stringify({ name, isActive: ltActive }) });
+    if (r.ok) {
+      setLtName(""); setLtActive(true);
+      setLtSuccess(`Leave type "${name}" saved.`);
+      void loadTypes();
+    } else {
+      const d = await r.json().catch(() => ({})) as { message?: string };
+      setLtError(d.message ?? "Failed to save leave type.");
+    }
+  }
 
   function openCreate() {
     const allocs: Record<string, number> = {};
@@ -196,6 +224,70 @@ export function LeavePolicies() {
               {policies.length === 0 && <tr className="empty-row"><td colSpan={4}>No leave policies found.</td></tr>}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* ── Leave Types management ─────────────────────────── */}
+      <div className="card">
+        <div className="card-header">
+          <div>
+            <div className="card-title">Leave Types</div>
+            <div className="card-subtitle">Add or update leave categories used across all policies</div>
+          </div>
+        </div>
+        <div className="card-body">
+          <form onSubmit={(e) => void saveLeaveType(e)} style={{ display: "flex", gap: "var(--space-3)", alignItems: "flex-end", flexWrap: "wrap", marginBottom: "var(--space-4)" }}>
+            <div className="form-field" style={{ flex: 1, minWidth: 200 }}>
+              <label className="form-label" htmlFor="lt-name">Leave Type Name <span className="required">*</span></label>
+              <input
+                id="lt-name"
+                className="input-field"
+                placeholder="e.g. Maternity Leave"
+                value={ltName}
+                onChange={(e) => setLtName(e.target.value)}
+                required
+                maxLength={120}
+              />
+            </div>
+            <label style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", fontSize: "0.825rem", color: "var(--text-secondary)", paddingBottom: 2 }}>
+              <input
+                type="checkbox"
+                checked={ltActive}
+                onChange={(e) => setLtActive(e.target.checked)}
+                style={{ accentColor: "var(--brand-600)" }}
+              />
+              Active
+            </label>
+            <button type="submit" className="btn btn-primary">Save Leave Type</button>
+          </form>
+
+          {ltError && (
+            <div style={{ fontSize: "0.8rem", color: "#b91c1c", background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 7, padding: "8px 12px", marginBottom: "var(--space-3)" }}>
+              {ltError}
+            </div>
+          )}
+          {ltSuccess && (
+            <div style={{ fontSize: "0.8rem", color: "#166534", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 7, padding: "8px 12px", marginBottom: "var(--space-3)" }}>
+              {ltSuccess}
+            </div>
+          )}
+
+          <div className="table-wrap">
+            <table className="table-base">
+              <thead>
+                <tr><th>Name</th><th>Status</th></tr>
+              </thead>
+              <tbody>
+                {leaveTypes.map((t) => (
+                  <tr key={t.id}>
+                    <td><strong>{t.name}</strong></td>
+                    <td>{t.isActive ? <span className="badge badge-success">Active</span> : <span className="badge badge-neutral">Inactive</span>}</td>
+                  </tr>
+                ))}
+                {leaveTypes.length === 0 && <tr className="empty-row"><td colSpan={2}>No leave types defined.</td></tr>}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </section>

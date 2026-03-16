@@ -134,15 +134,21 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 - [x] **TSK-LV-009** Add tests for full-day and half-day expectation adjustment.
 
 ### E5-F3 Leave Policy and Balance *(added session 7)*
-- [ ] **TSK-LV-010** Create `LeavePolicy` + `LeavePolicyAllocation` schemas; admin CRUD APIs (`GET/POST/PUT/DELETE /leave/policies`).
-- [ ] **TSK-LV-011** Implement leave balance tracking: `GET /leave/balance/my`, `GET /leave/balance/{userId}`, `PUT /leave/balance/{userId}/{leaveTypeId}` (manual override).
-- [ ] **TSK-LV-012** Extend `POST /leave/requests` to accept `fromDate`/`toDate` date range; expand to per-day records server-side.
-- [ ] **TSK-LV-013** Implement `GET /leave/calendar?year=&month=` — return pending/approved leave dates for calendar widget.
-- [ ] **TSK-LV-014** Implement `GET /leave/team-on-leave` — return team members currently on leave or upcoming.
-- [ ] **TSK-LV-015** Implement `GET /leave/requests/my/grouped` — return history as date-range records (not per-day rows).
+- [x] **TSK-LV-010** Create `LeavePolicy` + `LeavePolicyAllocation` schemas; admin CRUD APIs (`GET/POST/PUT/DELETE /leave/policies`). *(DONE session 9)*
+- [x] **TSK-LV-011** Implement leave balance tracking: `GET /leave/balance/my`, `GET /leave/balance/{userId}`. *(DONE session 9)*
+- [x] **TSK-LV-012** Extend `POST /leave/requests` to accept `fromDate`/`toDate` date range; expand to per-day records server-side. *(DONE session 9)*
+- [x] **TSK-LV-013** Implement `GET /leave/calendar?year=&month=` — return pending/approved/rejected leave dates for calendar widget. *(DONE session 9)*
+- [x] **TSK-LV-014** Implement `GET /leave/team-on-leave` — return team members currently on leave or upcoming. *(DONE session 9)*
+- [x] **TSK-LV-015** Implement `GET /leave/requests/my/grouped` — return history as date-range records (not per-day rows). *(DONE session 9)*
 - [x] **TSK-LV-016** Build Leave Policy admin UI (`Admin/LeavePolicies.tsx`) — list/create/edit policies with per-type day allocations. *(DONE session 7)*
 - [x] **TSK-LV-017** Extend Users create/edit form to assign a Leave Policy (`leavePolicyId`). *(DONE session 7)*
 - [x] **TSK-LV-018** Build Leave page PulseHQ v3.0 redesign — balance cards, date-range form, grouped history table, mini calendar sidebar, Team on Leave panel. *(DONE session 7 — graceful fallback for unimplemented APIs)*
+
+### E5-F4 Leave UX Polish & Bug Fixes *(added session 9)*
+- [x] **TSK-LV-019** Fix 500 error on re-apply: delete rejected `LeaveRequest` rows before inserting new ones to avoid `UQ_LeaveRequests_UserDate` unique constraint violation. *(DONE session 9)*
+- [x] **TSK-LV-020** Implement `DELETE /leave/requests/{id}` cancel endpoint — matches by `LeaveGroupId` or `Id`, enforces pending-only guard. *(DONE session 9)*
+- [x] **TSK-LV-021** Leave history cards: human-readable date ranges, Re-apply/Cancel row actions, `ToDate < FromDate` validation error shown inline, admin "Apply on behalf of" dropdown. *(DONE session 9)*
+- [x] **TSK-LV-022** Add Leave Types management section to `Admin/LeavePolicies.tsx` — inline form + table with Active/Inactive badges. *(DONE session 9)*
 
 ---
 
@@ -194,13 +200,16 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 - [x] **TSK-RPT-002** Implement timesheet summary report endpoint.
 - [x] **TSK-RPT-003** Implement project effort report endpoint.
 - [x] **TSK-RPT-004** Implement leave and utilization reports.
-- [x] **TSK-RPT-005** Implement common report filter framework.
-- [x] **TSK-RPT-006** Build reports UI (tabular, filterable, paginated).
+- [x] **TSK-RPT-005** Implement common report filter framework (`ReportFilterRequest`, `BuildScopeAsync`, role-based user scoping).
+- [x] **TSK-RPT-006** Build reports UI — 7-tab strip, date range filter, KPI cards, sortable columns, pagination, inline search, human-readable headers, status badges, utilization/balance bars, delta coloring, freshness indicator, scroll gradient, employee filter, rows-per-page selector, PDF/CSV/Excel export. *(Full redesign DONE session 10)*
+- [x] **TSK-RPT-011** Implement Leave Balance report: `GET /reports/leave-balance` — reads `LeavePolicyAllocations` + approved `LeaveRequests` grouped by user+type; `LeaveBalanceReportRow` DTO. *(DONE session 10)*
+- [x] **TSK-RPT-012** Implement Timesheet Approval Status report: `GET /reports/timesheet-approval-status` — timesheets with status, hours, approver username, approvedAt. *(DONE session 10)*
+- [x] **TSK-RPT-013** Implement Overtime/Deficit report: `GET /reports/overtime-deficit` — weekly grouping of logged vs target (respects `WorkPolicy.DailyExpectedMinutes` per user). *(DONE session 10)*
 
 ### E8-F2 Export
 - [x] **TSK-RPT-007** Implement CSV export service.
-- [ ] **TSK-RPT-008** Implement Excel export service. *(Phase 1 audit: SEC-009 — export returns CSV bytes with wrong MIME type for excel/pdf formats; fix in Phase 2)*
-- [ ] **TSK-RPT-009** Implement selective PDF export for summary reports. *(Phase 1 audit: SEC-009 — same issue as above)*
+- [ ] **TSK-RPT-008** Implement true Excel export service. *(Currently returns CSV bytes with Excel MIME — corrupt when opened in Excel; needs EPPlus or ClosedXML)*
+- [ ] **TSK-RPT-009** Implement true PDF export for summary reports. *(Currently returns CSV bytes with PDF MIME — needs a PDF rendering library)*
 - [x] **TSK-RPT-010** Ensure exports respect filters and role-based scope.
 
 ---
@@ -455,14 +464,25 @@ All Phase 2 tasks address findings from the Phase 1 audit above.
 ### Sprint 8 (UI Redesign — Sessions 6–7)
 - FIX-FE-007..013 — React Router, Timesheets v3, Approvals v3, Leave v3, LeavePolicies admin.
 
-### Sprint 9 (Leave Policy — Backend, pending)
-- TSK-LV-010 — LeavePolicy + LeavePolicyAllocation schema and admin CRUD APIs.
-- TSK-LV-011 — Leave balance tracking APIs (my balance, user balance, manual override).
-- TSK-LV-012 — Extend `POST /leave/requests` for `fromDate`/`toDate` range.
-- TSK-LV-013 — `GET /leave/calendar` API for calendar dots.
-- TSK-LV-014 — `GET /leave/team-on-leave` API.
-- TSK-LV-015 — `GET /leave/requests/my/grouped` for grouped history.
-- TSK-APR-009 — `GET /approvals/stats` for KPI cards.
+### Sprint 9 (Leave Policy — Backend + UX Polish) ✅ DONE
+- TSK-LV-010 — LeavePolicy + LeavePolicyAllocation schema and admin CRUD APIs. ✅
+- TSK-LV-011 — Leave balance tracking APIs (my balance, user balance). ✅
+- TSK-LV-012 — Extend `POST /leave/requests` for `fromDate`/`toDate` range. ✅
+- TSK-LV-013 — `GET /leave/calendar` API for calendar dots (includes rejected). ✅
+- TSK-LV-014 — `GET /leave/team-on-leave` API. ✅
+- TSK-LV-015 — `GET /leave/requests/my/grouped` for grouped history. ✅
+- TSK-LV-019 — Fix 500 re-apply bug (unique constraint). ✅
+- TSK-LV-020 — Cancel leave endpoint. ✅
+- TSK-LV-021 — Leave history cards UX (date ranges, actions, validation errors). ✅
+- TSK-LV-022 — Leave Types section in LeavePolicies admin. ✅
+- Timesheets UX: approved state green border, progress bar overlap fix, day bar green, delete modal, Sunday pct fix, notification bell dot. ✅
+- [ ] TSK-APR-009 — `GET /approvals/stats` for KPI cards. *(Backend pending)*
+
+### Sprint 10 (Reports Refactor) ✅ DONE
+- TSK-RPT-011 — Leave Balance report endpoint + DTO. ✅
+- TSK-RPT-012 — Timesheet Approval Status report endpoint + DTO. ✅
+- TSK-RPT-013 — Overtime/Deficit report endpoint + DTO. ✅
+- TSK-RPT-006 — Reports page full redesign (16 improvements: tabs, date filter, KPI cards, sortable columns, pagination, search, employee filter, human-readable headers, hidden UUIDs, h:m formatting, status badges, utilization bars, balance bars, delta coloring, freshness indicator, row hover, scroll gradient, rows-per-page, "Showing X–Y of Z"). ✅
 
 ---
 

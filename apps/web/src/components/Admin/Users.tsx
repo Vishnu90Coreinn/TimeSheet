@@ -12,6 +12,12 @@ type UserForm = {
 const BLANK: UserForm = { username: "", email: "", employeeId: "", password: "", role: "employee", isActive: true, departmentId: "", workPolicyId: "", leavePolicyId: "", managerId: "" };
 
 const EMP_ID_RE = /^EMP-\d{4}$/;
+type SortDir = "asc" | "desc";
+
+function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
+  if (!active) return <span style={{ opacity: 0.4, fontSize: "0.7rem", marginLeft: 3 }}>↕</span>;
+  return <span style={{ fontSize: "0.75rem", marginLeft: 3, color: "var(--brand-600)" }}>{dir === "asc" ? "↑" : "↓"}</span>;
+}
 
 function pwdStrength(pwd: string): "weak" | "medium" | "strong" | null {
   if (!pwd) return null;
@@ -60,6 +66,13 @@ export function Users() {
   const [leavePolicies, setLeavePolicies] = useState<LeavePolicy[]>([]);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
+  const [sortCol, setSortCol] = useState<"username" | "role" | "departmentName" | "isActive">("username");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  function toggleSort(col: typeof sortCol) {
+    if (sortCol === col) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortCol(col); setSortDir("asc"); }
+  }
   const [editing, setEditing] = useState<User | "new" | null>(null);
   const [form, setForm] = useState<UserForm>(BLANK);
   const [error, setError] = useState("");
@@ -117,6 +130,15 @@ export function Users() {
     const matchesSearch = !q || u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || (u.employeeId ?? "").toLowerCase().includes(q);
     const matchesRole = !roleFilter || u.role === roleFilter;
     return matchesSearch && matchesRole;
+  });
+
+  const sorted = [...filtered].sort((a, b) => {
+    const mul = sortDir === "asc" ? 1 : -1;
+    if (sortCol === "username") return mul * a.username.localeCompare(b.username);
+    if (sortCol === "role") return mul * a.role.localeCompare(b.role);
+    if (sortCol === "departmentName") return mul * (a.departmentName ?? "").localeCompare(b.departmentName ?? "");
+    if (sortCol === "isActive") return mul * (Number(b.isActive) - Number(a.isActive));
+    return 0;
   });
 
   const drawerTitle = editing === "new" ? "Create User" : editing ? `Edit: ${(editing as User).username}` : "";
@@ -239,7 +261,7 @@ export function Users() {
       </div>
 
       {/* Table */}
-      <div className="card" style={{ overflow: "hidden" }}>
+      <div className="card" style={{ overflow: "visible" }}>
         <div className="card-header">
           <div>
             <div className="card-title">All Users</div>
@@ -270,18 +292,26 @@ export function Users() {
             <thead>
               <tr>
                 <th style={{ width: 44 }}></th>
-                <th>Username</th>
+                <th className="th-sort" onClick={() => toggleSort("username")} aria-sort={sortCol === "username" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
+                  Username <SortIcon active={sortCol === "username"} dir={sortDir} />
+                </th>
                 <th>Email</th>
                 <th style={{ width: 110 }}>Employee ID</th>
-                <th style={{ width: 90 }}>Role</th>
-                <th>Department</th>
+                <th className="th-sort" style={{ width: 90 }} onClick={() => toggleSort("role")} aria-sort={sortCol === "role" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
+                  Role <SortIcon active={sortCol === "role"} dir={sortDir} />
+                </th>
+                <th className="th-sort" onClick={() => toggleSort("departmentName")} aria-sort={sortCol === "departmentName" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
+                  Department <SortIcon active={sortCol === "departmentName"} dir={sortDir} />
+                </th>
                 <th>Leave Policy</th>
-                <th style={{ width: 90 }}>Status</th>
+                <th className="th-sort" style={{ width: 90 }} onClick={() => toggleSort("isActive")} aria-sort={sortCol === "isActive" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
+                  Status <SortIcon active={sortCol === "isActive"} dir={sortDir} />
+                </th>
                 <th style={{ width: 130 }}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((u) => (
+              {sorted.map((u) => (
                 <tr key={u.id} style={{ opacity: u.isActive ? 1 : 0.55 }}>
                   <td>
                     <div style={{ width: 32, height: 32, borderRadius: "var(--r-md)", background: avatarColor(u.username), display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: "0.72rem" }}>
@@ -305,7 +335,7 @@ export function Users() {
                   </td>
                 </tr>
               ))}
-              {filtered.length === 0 && (
+              {sorted.length === 0 && (
                 <tr className="empty-row">
                   <td colSpan={9}>{search || roleFilter ? "No users match your filters." : "No users found."}</td>
                 </tr>

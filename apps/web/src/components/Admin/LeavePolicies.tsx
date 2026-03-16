@@ -12,6 +12,12 @@ type PolicyForm = {
 };
 
 const BLANK: PolicyForm = { name: "", isActive: true, allocations: {} };
+type SortDir = "asc" | "desc";
+
+function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
+  if (!active) return <span style={{ opacity: 0.4, fontSize: "0.7rem", marginLeft: 3 }}>↕</span>;
+  return <span style={{ fontSize: "0.75rem", marginLeft: 3, color: "var(--brand-600)" }}>{dir === "asc" ? "↑" : "↓"}</span>;
+}
 
 function Drawer({ open, title, onClose, children, footer }: { open: boolean; title: string; onClose: () => void; children: ReactNode; footer?: ReactNode }) {
   if (!open) return null;
@@ -70,6 +76,13 @@ export function LeavePolicies() {
   const [error, setError] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [sortCol, setSortCol] = useState<"name" | "isActive">("name");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  function toggleSort(col: typeof sortCol) {
+    if (sortCol === col) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortCol(col); setSortDir("asc"); }
+  }
 
   // Leave type creation
   const [ltName, setLtName] = useState("");
@@ -155,6 +168,13 @@ export function LeavePolicies() {
   const filtered = policies.filter(p =>
     !search.trim() || p.name.toLowerCase().includes(search.toLowerCase())
   );
+
+  const sorted = [...filtered].sort((a, b) => {
+    const mul = sortDir === "asc" ? 1 : -1;
+    if (sortCol === "name") return mul * a.name.localeCompare(b.name);
+    if (sortCol === "isActive") return mul * (Number(b.isActive) - Number(a.isActive));
+    return 0;
+  });
 
   const drawerTitle = editing === "new" ? "New Leave Policy" : editing ? `Edit: ${(editing as LeavePolicy).name}` : "";
 
@@ -243,7 +263,7 @@ export function LeavePolicies() {
       </div>
 
       {/* Policies table */}
-      <div className="card" style={{ overflow: "hidden" }}>
+      <div className="card" style={{ overflow: "visible" }}>
         <div className="card-header">
           <div>
             <div className="card-title">All Leave Policies</div>
@@ -256,10 +276,19 @@ export function LeavePolicies() {
         <div className="table-wrap">
           <table className="table-base">
             <thead>
-              <tr><th>Name</th><th>Allocations</th><th style={{ width: 100 }}>Status</th><th style={{ width: 100 }}>Actions</th></tr>
+              <tr>
+                <th className="th-sort" onClick={() => toggleSort("name")} aria-sort={sortCol === "name" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
+                  Name <SortIcon active={sortCol === "name"} dir={sortDir} />
+                </th>
+                <th>Allocations</th>
+                <th className="th-sort" style={{ width: 100 }} onClick={() => toggleSort("isActive")} aria-sort={sortCol === "isActive" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
+                  Status <SortIcon active={sortCol === "isActive"} dir={sortDir} />
+                </th>
+                <th style={{ width: 100 }}>Actions</th>
+              </tr>
             </thead>
             <tbody>
-              {filtered.map((p) => (
+              {sorted.map((p) => (
                 <tr key={p.id}>
                   <td>
                     <button style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-primary)", fontWeight: 600, padding: 0, textAlign: "left", fontSize: "inherit" }} onClick={() => openEdit(p)}>
@@ -276,7 +305,7 @@ export function LeavePolicies() {
                   </td>
                 </tr>
               ))}
-              {filtered.length === 0 && <tr className="empty-row"><td colSpan={4}>{search ? "No policies match your search." : "No leave policies found."}</td></tr>}
+              {sorted.length === 0 && <tr className="empty-row"><td colSpan={4}>{search ? "No policies match your search." : "No leave policies found."}</td></tr>}
             </tbody>
           </table>
         </div>

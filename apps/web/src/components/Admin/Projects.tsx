@@ -1,12 +1,18 @@
 /**
  * Projects.tsx — Pulse SaaS design v3.0
  */
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { apiFetch } from "../../api/client";
 import type { Project } from "../../types";
 
 type ProjectForm = { name: string; code: string; isActive: boolean };
 const BLANK: ProjectForm = { name: "", code: "", isActive: true };
+type SortDir = "asc" | "desc";
+
+function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
+  if (!active) return <span style={{ opacity: 0.4, fontSize: "0.7rem", marginLeft: 3 }}>↕</span>;
+  return <span style={{ fontSize: "0.75rem", marginLeft: 3, color: "var(--brand-600)" }}>{dir === "asc" ? "↑" : "↓"}</span>;
+}
 
 function Drawer({ open, title, onClose, children, footer }: { open: boolean; title: string; onClose: () => void; children: ReactNode; footer?: ReactNode }) {
   if (!open) return null;
@@ -43,17 +49,33 @@ function ConfirmModal({ open, title, body, confirmLabel = "Delete", onConfirm, o
 
 function OverflowMenu({ items }: { items: { label: string; onClick: () => void; danger?: boolean; warning?: boolean }[] }) {
   const [open, setOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  function handleOpen() {
+    if (btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+    }
+    setOpen(o => !o);
+  }
+
   return (
     <div className="overflow-wrap">
-      <button className="overflow-btn" onClick={() => setOpen(o => !o)}>···</button>
+      <button ref={btnRef} className="overflow-btn" onClick={handleOpen}>···</button>
       {open && (
         <>
-          <div style={{ position: "fixed", inset: 0, zIndex: 99 }} onClick={() => setOpen(false)} />
-          <div className="overflow-menu">
+          <div style={{ position: "fixed", inset: 0, zIndex: 199 }} onClick={() => setOpen(false)} />
+          <div
+            className="overflow-menu"
+            style={{ position: "fixed", top: menuPos.top, right: menuPos.right, zIndex: 200 }}
+          >
             {items.map(item => (
-              <button key={item.label}
+              <button
+                key={item.label}
                 className={`overflow-item${item.danger ? " overflow-item--danger" : item.warning ? " overflow-item--warning" : ""}`}
-                onClick={() => { item.onClick(); setOpen(false); }}>
+                onClick={() => { item.onClick(); setOpen(false); }}
+              >
                 {item.label}
               </button>
             ))}
@@ -71,6 +93,8 @@ export function Projects() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [confirm, setConfirm] = useState<{ id: string; action: "archive" | "delete" } | null>(null);
+  const [sortCol, setSortCol] = useState<"name" | "code" | "status">("name");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   async function load() {
     const r = await apiFetch("/projects");
@@ -104,13 +128,28 @@ export function Projects() {
     void load();
   }
 
+  function toggleSort(col: typeof sortCol) {
+    if (sortCol === col) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortCol(col); setSortDir("asc"); }
+  }
+
   const f = (k: keyof ProjectForm, v: string | boolean) => setForm((p) => ({ ...p, [k]: v }));
+
+  const statusOf = (p: Project) => p.isArchived ? "archived" : p.isActive ? "active" : "inactive";
 
   const filtered = projects.filter(p =>
     !search.trim() ||
     p.name.toLowerCase().includes(search.toLowerCase()) ||
     p.code.toLowerCase().includes(search.toLowerCase())
   );
+
+  const sorted = [...filtered].sort((a, b) => {
+    const mul = sortDir === "asc" ? 1 : -1;
+    if (sortCol === "name") return mul * a.name.localeCompare(b.name);
+    if (sortCol === "code") return mul * a.code.localeCompare(b.code);
+    if (sortCol === "status") return mul * statusOf(a).localeCompare(statusOf(b));
+    return 0;
+  });
 
   const drawerTitle = editing === "new" ? "New Project" : editing ? `Edit: ${(editing as Project).name}` : "";
 
@@ -165,7 +204,7 @@ export function Projects() {
       </div>
 
       {/* Table */}
-      <div className="card" style={{ overflow: "hidden" }}>
+      <div className="card" style={{ overflow: "visible" }}>
         <div className="card-header">
           <div>
             <div className="card-title">All Projects</div>
@@ -179,14 +218,35 @@ export function Projects() {
           <table className="table-base">
             <thead>
               <tr>
-                <th>Name</th>
-                <th style={{ width: 120 }}><span title="Project code used in reports" style={{ borderBottom: "1px dashed var(--n-300)", cursor: "help" }}>Code</span></th>
-                <th style={{ width: 110 }}>Status</th>
+                <th
+                  className="th-sort"
+                  onClick={() => toggleSort("name")}
+                  aria-sort={sortCol === "name" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
+                >
+                  Name <SortIcon active={sortCol === "name"} dir={sortDir} />
+                </th>
+                <th
+                  className="th-sort"
+                  style={{ width: 120 }}
+                  onClick={() => toggleSort("code")}
+                  aria-sort={sortCol === "code" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
+                >
+                  <span title="Project code used in reports" style={{ borderBottom: "1px dashed var(--n-300)", cursor: "help" }}>Code</span>
+                  <SortIcon active={sortCol === "code"} dir={sortDir} />
+                </th>
+                <th
+                  className="th-sort"
+                  style={{ width: 110 }}
+                  onClick={() => toggleSort("status")}
+                  aria-sort={sortCol === "status" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
+                >
+                  Status <SortIcon active={sortCol === "status"} dir={sortDir} />
+                </th>
                 <th style={{ width: 60 }}></th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((p) => (
+              {sorted.map((p) => (
                 <tr key={p.id} style={{ opacity: p.isActive ? 1 : 0.5 }}>
                   <td>
                     <button style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-primary)", fontWeight: 600, padding: 0, textAlign: "left", fontSize: "inherit" }} onClick={() => openEdit(p)}>
@@ -210,7 +270,7 @@ export function Projects() {
                   </td>
                 </tr>
               ))}
-              {filtered.length === 0 && <tr className="empty-row"><td colSpan={4}>{search ? "No projects match your search." : "No projects found."}</td></tr>}
+              {sorted.length === 0 && <tr className="empty-row"><td colSpan={4}>{search ? "No projects match your search." : "No projects found."}</td></tr>}
             </tbody>
           </table>
         </div>

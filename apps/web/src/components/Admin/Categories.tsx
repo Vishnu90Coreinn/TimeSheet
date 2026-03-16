@@ -7,6 +7,12 @@ import type { TaskCategory } from "../../types";
 
 type CatForm = { name: string; isBillable: boolean; isActive: boolean };
 const BLANK: CatForm = { name: "", isBillable: false, isActive: true };
+type SortDir = "asc" | "desc";
+
+function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
+  if (!active) return <span style={{ opacity: 0.4, fontSize: "0.7rem", marginLeft: 3 }}>↕</span>;
+  return <span style={{ fontSize: "0.75rem", marginLeft: 3, color: "var(--brand-600)" }}>{dir === "asc" ? "↑" : "↓"}</span>;
+}
 
 function Drawer({ open, title, onClose, children, footer }: { open: boolean; title: string; onClose: () => void; children: ReactNode; footer?: ReactNode }) {
   if (!open) return null;
@@ -59,6 +65,13 @@ export function Categories() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
+  const [sortCol, setSortCol] = useState<"name" | "isBillable" | "isActive">("name");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  function toggleSort(col: typeof sortCol) {
+    if (sortCol === col) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortCol(col); setSortDir("asc"); }
+  }
 
   function showToast(msg: string, ok = true) {
     setToast({ msg, ok });
@@ -119,6 +132,14 @@ export function Categories() {
     !search.trim() || c.name.toLowerCase().includes(search.toLowerCase())
   );
 
+  const sorted = [...filtered].sort((a, b) => {
+    const mul = sortDir === "asc" ? 1 : -1;
+    if (sortCol === "name") return mul * a.name.localeCompare(b.name);
+    if (sortCol === "isBillable") return mul * (Number(b.isBillable) - Number(a.isBillable));
+    if (sortCol === "isActive") return mul * (Number(b.isActive) - Number(a.isActive));
+    return 0;
+  });
+
   const drawerTitle = editing === "new" ? "New Category" : editing ? `Edit: ${(editing as TaskCategory).name}` : "";
 
   return (
@@ -172,7 +193,7 @@ export function Categories() {
       </div>
 
       {/* Table */}
-      <div className="card" style={{ overflow: "hidden" }}>
+      <div className="card" style={{ overflow: "visible" }}>
         <div className="card-header">
           <div>
             <div className="card-title">All Categories</div>
@@ -185,10 +206,21 @@ export function Categories() {
         <div className="table-wrap">
           <table className="table-base">
             <thead>
-              <tr><th>Name</th><th style={{ width: 110 }}>Billable</th><th style={{ width: 110 }}>Active</th><th style={{ width: 80 }}>Actions</th></tr>
+              <tr>
+                <th className="th-sort" onClick={() => toggleSort("name")} aria-sort={sortCol === "name" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
+                  Name <SortIcon active={sortCol === "name"} dir={sortDir} />
+                </th>
+                <th className="th-sort" style={{ width: 110 }} onClick={() => toggleSort("isBillable")} aria-sort={sortCol === "isBillable" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
+                  Billable <SortIcon active={sortCol === "isBillable"} dir={sortDir} />
+                </th>
+                <th className="th-sort" style={{ width: 110 }} onClick={() => toggleSort("isActive")} aria-sort={sortCol === "isActive" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
+                  Active <SortIcon active={sortCol === "isActive"} dir={sortDir} />
+                </th>
+                <th style={{ width: 80 }}>Actions</th>
+              </tr>
             </thead>
             <tbody>
-              {filtered.map((c) => (
+              {sorted.map((c) => (
                 <tr key={c.id} style={{ opacity: c.isActive ? 1 : 0.55 }}>
                   <td>
                     <button style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-primary)", fontWeight: 600, padding: 0, textAlign: "left", fontSize: "inherit" }} onClick={() => openEdit(c)}>
@@ -205,7 +237,7 @@ export function Categories() {
                   </td>
                 </tr>
               ))}
-              {filtered.length === 0 && <tr className="empty-row"><td colSpan={4}>{search ? "No categories match your search." : "No categories found."}</td></tr>}
+              {sorted.length === 0 && <tr className="empty-row"><td colSpan={4}>{search ? "No categories match your search." : "No categories found."}</td></tr>}
             </tbody>
           </table>
         </div>

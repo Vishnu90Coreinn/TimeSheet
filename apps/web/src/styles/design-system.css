@@ -409,6 +409,9 @@ a { text-decoration: none; color: inherit; }
 .data-table td strong, .table-base td strong { color: var(--text-primary); font-weight: 600; }
 .td-muted, .data-table td.td-muted { color: var(--text-tertiary); font-size: 0.8rem; }
 .table-wrap { overflow-x: auto; }
+/* Sortable column header */
+.th-sort { cursor: pointer; user-select: none; white-space: nowrap; }
+.th-sort:hover { color: var(--brand-600); }
 .table-base tbody tr.row-status-success td:first-child { box-shadow: inset 3px 0 0 var(--success); }
 .table-base tbody tr.row-status-warning td:first-child { box-shadow: inset 3px 0 0 var(--warning); }
 .table-base tbody tr.row-status-error   td:first-child { box-shadow: inset 3px 0 0 var(--danger);  }

@@ -7,6 +7,12 @@ import type { Holiday } from "../../types";
 
 type HolidayForm = { name: string; date: string; isRecurring: boolean };
 const BLANK: HolidayForm = { name: "", date: "", isRecurring: false };
+type SortDir = "asc" | "desc";
+
+function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
+  if (!active) return <span style={{ opacity: 0.4, fontSize: "0.7rem", marginLeft: 3 }}>↕</span>;
+  return <span style={{ fontSize: "0.75rem", marginLeft: 3, color: "var(--brand-600)" }}>{dir === "asc" ? "↑" : "↓"}</span>;
+}
 
 function fmtDate(iso: string): string {
   if (!iso) return "—";
@@ -56,6 +62,13 @@ export function Holidays() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [showImport, setShowImport] = useState(false);
+  const [sortCol, setSortCol] = useState<"name" | "date" | "isRecurring">("date");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  function toggleSort(col: typeof sortCol) {
+    if (sortCol === col) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortCol(col); setSortDir("asc"); }
+  }
   const [importText, setImportText] = useState("");
   const [importError, setImportError] = useState("");
 
@@ -107,6 +120,14 @@ export function Holidays() {
   const filtered = holidays.filter(h =>
     !search.trim() || h.name.toLowerCase().includes(search.toLowerCase())
   );
+
+  const sorted = [...filtered].sort((a, b) => {
+    const mul = sortDir === "asc" ? 1 : -1;
+    if (sortCol === "name") return mul * a.name.localeCompare(b.name);
+    if (sortCol === "date") return mul * a.date.localeCompare(b.date);
+    if (sortCol === "isRecurring") return mul * (Number(b.isRecurring) - Number(a.isRecurring));
+    return 0;
+  });
 
   const drawerTitle = editing === "new" ? "Add Holiday" : editing ? `Edit: ${(editing as Holiday).name}` : "";
 
@@ -190,7 +211,7 @@ export function Holidays() {
       </div>
 
       {/* Table */}
-      <div className="card" style={{ overflow: "hidden" }}>
+      <div className="card" style={{ overflow: "visible" }}>
         <div className="card-header">
           <div>
             <div className="card-title">Holidays — {year}</div>
@@ -203,10 +224,21 @@ export function Holidays() {
         <div className="table-wrap">
           <table className="table-base">
             <thead>
-              <tr><th>Name</th><th style={{ width: 200 }}>Date</th><th style={{ width: 140 }}>Recurrence</th><th style={{ width: 100 }}>Actions</th></tr>
+              <tr>
+                <th className="th-sort" onClick={() => toggleSort("name")} aria-sort={sortCol === "name" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
+                  Name <SortIcon active={sortCol === "name"} dir={sortDir} />
+                </th>
+                <th className="th-sort" style={{ width: 200 }} onClick={() => toggleSort("date")} aria-sort={sortCol === "date" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
+                  Date <SortIcon active={sortCol === "date"} dir={sortDir} />
+                </th>
+                <th className="th-sort" style={{ width: 140 }} onClick={() => toggleSort("isRecurring")} aria-sort={sortCol === "isRecurring" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
+                  Recurrence <SortIcon active={sortCol === "isRecurring"} dir={sortDir} />
+                </th>
+                <th style={{ width: 100 }}>Actions</th>
+              </tr>
             </thead>
             <tbody>
-              {filtered.map((h) => (
+              {sorted.map((h) => (
                 <tr key={h.id}>
                   <td>
                     <button style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-primary)", fontWeight: 600, padding: 0, textAlign: "left", fontSize: "inherit" }} onClick={() => openEdit(h)}>
@@ -227,7 +259,7 @@ export function Holidays() {
                   </td>
                 </tr>
               ))}
-              {filtered.length === 0 && <tr className="empty-row"><td colSpan={4}>{search ? "No holidays match your search." : `No holidays for ${year}.`}</td></tr>}
+              {sorted.length === 0 && <tr className="empty-row"><td colSpan={4}>{search ? "No holidays match your search." : `No holidays for ${year}.`}</td></tr>}
             </tbody>
           </table>
         </div>

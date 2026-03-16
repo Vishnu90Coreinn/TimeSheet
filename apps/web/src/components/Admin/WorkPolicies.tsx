@@ -7,6 +7,12 @@ import type { WorkPolicy } from "../../types";
 
 type PolicyForm = { name: string; dailyHours: string; workDaysPerWeek: number; isActive: boolean };
 const BLANK: PolicyForm = { name: "", dailyHours: "8", workDaysPerWeek: 5, isActive: true };
+type SortDir = "asc" | "desc";
+
+function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
+  if (!active) return <span style={{ opacity: 0.4, fontSize: "0.7rem", marginLeft: 3 }}>↕</span>;
+  return <span style={{ fontSize: "0.75rem", marginLeft: 3, color: "var(--brand-600)" }}>{dir === "asc" ? "↑" : "↓"}</span>;
+}
 
 function Drawer({ open, title, onClose, children, footer }: { open: boolean; title: string; onClose: () => void; children: ReactNode; footer?: ReactNode }) {
   if (!open) return null;
@@ -48,6 +54,13 @@ export function WorkPolicies() {
   const [error, setError] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<WorkPolicy | null>(null);
   const [search, setSearch] = useState("");
+  const [sortCol, setSortCol] = useState<"name" | "dailyExpectedMinutes" | "isActive">("name");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  function toggleSort(col: typeof sortCol) {
+    if (sortCol === col) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortCol(col); setSortDir("asc"); }
+  }
 
   async function load() {
     const r = await apiFetch("/masters/work-policies");
@@ -98,6 +111,14 @@ export function WorkPolicies() {
   const filtered = policies.filter(p =>
     !search.trim() || p.name.toLowerCase().includes(search.toLowerCase())
   );
+
+  const sorted = [...filtered].sort((a, b) => {
+    const mul = sortDir === "asc" ? 1 : -1;
+    if (sortCol === "name") return mul * a.name.localeCompare(b.name);
+    if (sortCol === "dailyExpectedMinutes") return mul * (a.dailyExpectedMinutes - b.dailyExpectedMinutes);
+    if (sortCol === "isActive") return mul * (Number(b.isActive) - Number(a.isActive));
+    return 0;
+  });
 
   const drawerTitle = editing === "new" ? "New Work Policy" : editing ? `Edit — ${(editing as WorkPolicy).name}` : "";
 
@@ -162,7 +183,7 @@ export function WorkPolicies() {
       </div>
 
       {/* Table */}
-      <div className="card" style={{ overflow: "hidden" }}>
+      <div className="card" style={{ overflow: "visible" }}>
         <div className="card-header">
           <div>
             <div className="card-title">All Work Policies</div>
@@ -176,18 +197,24 @@ export function WorkPolicies() {
           <table className="table-base">
             <thead>
               <tr>
-                <th>Policy Name</th>
-                <th style={{ width: 130 }}>Daily Hours</th>
+                <th className="th-sort" onClick={() => toggleSort("name")} aria-sort={sortCol === "name" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
+                  Policy Name <SortIcon active={sortCol === "name"} dir={sortDir} />
+                </th>
+                <th className="th-sort" style={{ width: 130 }} onClick={() => toggleSort("dailyExpectedMinutes")} aria-sort={sortCol === "dailyExpectedMinutes" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
+                  Daily Hours <SortIcon active={sortCol === "dailyExpectedMinutes"} dir={sortDir} />
+                </th>
                 <th style={{ width: 160 }}>Weekly Target</th>
-                <th style={{ width: 100 }}>Status</th>
+                <th className="th-sort" style={{ width: 100 }} onClick={() => toggleSort("isActive")} aria-sort={sortCol === "isActive" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
+                  Status <SortIcon active={sortCol === "isActive"} dir={sortDir} />
+                </th>
                 <th style={{ width: 100, textAlign: "right" }}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 && (
+              {sorted.length === 0 && (
                 <tr className="empty-row"><td colSpan={5}>{search ? "No policies match your search." : "No work policies. Click \"+ New Policy\" to create one."}</td></tr>
               )}
-              {filtered.map((p) => (
+              {sorted.map((p) => (
                 <tr key={p.id}>
                   <td>
                     <button style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-primary)", fontWeight: 600, padding: 0, textAlign: "left", fontSize: "inherit" }} onClick={() => openEdit(p)}>

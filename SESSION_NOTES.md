@@ -389,52 +389,46 @@ PROJECT_TASKS.md                   — UPDATED: audit findings + Phase 2 task li
 
 ## Pending For Next Session
 
-### Priority 1 — DB Schema Update (manual step in SSMS)
-Run the following to add the new `BudgetedHours` column to `Projects` (if not already present via schema.sql):
+> Last updated: Session 8 (2026-03-16). All Sprint 9 backend endpoints are implemented and pushed. Dashboard redesign is complete. Next session should start with DB migration, smoke test, and deciding on next features.
+
+### Priority 1 — DB Schema Migration (manual step in SSMS)
+All changes are already in `db/schema.sql`. Just run the new sections in SSMS:
+
 ```sql
+-- Sprint 9 new tables
+CREATE TABLE LeavePolicies ( ... );
+CREATE TABLE LeavePolicyAllocations ( ... );
+CREATE TABLE LeaveBalances ( ... );
+ALTER TABLE LeaveRequests ADD LeaveGroupId UNIQUEIDENTIFIER NULL;
+ALTER TABLE Users ADD LeavePolicyId UNIQUEIDENTIFIER NULL REFERENCES LeavePolicies(Id);
+
+-- Session 8 new column
 ALTER TABLE Projects ADD BudgetedHours INT NOT NULL DEFAULT 0;
 ```
-Also run Sprint 9 schema additions:
-- `LeavePolicies`, `LeavePolicyAllocations`, `LeaveBalances` tables
-- `LeaveGroupId` column on `LeaveRequests`
-- `LeavePolicyId` FK on `Users`
+
+Refer to `db/schema.sql` for the exact DDL.
 
 ### Priority 2 — Manual Smoke Test
-- Login → check-in → timesheet entry → submit → manager approve flow.
-- Verify dashboard loads correctly for all 3 roles (employee, manager, admin).
-- Verify leave balance shows correct remaining days on the dashboard KPI card.
-- Verify weekly bar chart shows Mon–Sun bars with logged vs target.
+Work through these flows and confirm they work end-to-end:
+- [ ] Login as employee → Dashboard loads (4 KPI cards, weekly chart, project split visible)
+- [ ] Check in → Attendance widget updates elapsed timer
+- [ ] Log time entry → Timesheet submits → Manager sees it in Pending Approvals on dashboard
+- [ ] Manager quick-approves from dashboard ✓ button → item disappears from panel
+- [ ] Leave page → Balance cards show correct remaining days from policy
+- [ ] Admin creates a Leave Policy → assigns to user → employee sees balance on dashboard
+- [ ] Verify `GET /api/v1/holidays?year=2026` returns seed holidays
+- [ ] Verify notification bell shows unread count after approval action
 
-### ~~Priority 3 — Backend: Leave Policy APIs (Sprint 9)~~
-The following backend endpoints need to be implemented for the Leave page to be fully functional:
+### Priority 3 — Next Features (choose one to build)
+Suggested candidates — discuss with user at start of next session:
 
-| Endpoint | Purpose |
-|---|---|
-| `GET /leave/policies` | List leave policies |
-| `POST /leave/policies` | Create policy with allocations |
-| `PUT /leave/policies/{id}` | Update policy |
-| `DELETE /leave/policies/{id}` | Delete policy |
-| `GET /leave/balance/my` | Employee leave balance per type |
-| `GET /leave/balance/{userId}` | Admin: specific user balance |
-| `PUT /leave/balance/{userId}/{leaveTypeId}` | Admin: manual override |
-| `GET /leave/requests/my/grouped` | Grouped date-range leave history |
-| `GET /leave/calendar?year=&month=` | Leave calendar markers |
-| `GET /leave/team-on-leave` | Team members on leave |
-| `POST /leave/requests` *(modified)* | Accept `fromDate`/`toDate` instead of `leaveDate` |
-| `POST/PUT /users` *(modified)* | Accept `leavePolicyId` |
-| `GET /approvals/stats` | KPI: approved/rejected this month, avg response time |
-
-### Priority 3 — Manual Smoke Test (still pending)
-- Login → check-in → timesheet entry → submit → manager approve flow.
-- Verify ProblemDetails returned on invalid input.
-- Verify holiday endpoint (`GET /api/v1/holidays?year=2026`).
-- Verify notification bell shows unread count after approval.
-
-### Priority 4 — DB Schema Updates
-Run in SSMS after Sprint 9 backend is built:
-- Add `LeavePolicy` and `LeavePolicyAllocation` tables.
-- Add `LeaveBalance` table (or computed from requests).
-- Add `LeavePolicyId` FK column to `Users` table.
+| Feature | Effort | Value |
+|---------|--------|-------|
+| **Reports page redesign** — match PulseHQ style (charts, export) | Medium | High |
+| **BudgetedHours UI** — add budget field to Projects admin form + show in Budget Health panel with real % | Small | Medium |
+| **Dashboard activity feed** — new `GET /dashboard/activity` endpoint returning real last-24h events | Medium | High |
+| **Notifications improvements** — mark individual as read inline, group by type | Small | Medium |
+| **Mobile responsive layout** — sidebar collapses to hamburger on small screens | Medium | Medium |
 
 ---
 

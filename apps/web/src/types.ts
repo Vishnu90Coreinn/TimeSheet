@@ -18,6 +18,6 @@ export type Notification = { id: string; title: string; message: string; type: s
 export type User = { id: string; username: string; email: string; employeeId: string; role: string; isActive: boolean; departmentId: string | null; departmentName: string | null; workPolicyId: string | null; workPolicyName: string | null; leavePolicyId: string | null; leavePolicyName: string | null; managerId: string | null; managerUsername: string | null };
 export type Holiday = { id: string; name: string; date: string; isRecurring: boolean; createdAtUtc: string };
 export type Department = { id: string; name: string; isActive: boolean };
-export type WorkPolicy = { id: string; name: string; dailyExpectedMinutes: number; isActive: boolean };
+export type WorkPolicy = { id: string; name: string; dailyExpectedMinutes: number; workDaysPerWeek: number; isActive: boolean };
 export type View = "dashboard" | "reports" | "timesheets" | "leave" | "approvals" | "projects" | "categories" | "users" | "holidays" | "leave-policies" | "work-policies";
 export type ReportKey = "attendance-summary" | "timesheet-summary" | "project-effort" | "leave-utilization" | "leave-balance" | "timesheet-approval-status" | "overtime-deficit";

@@ -50,4 +50,4 @@ public record AssignRoleRequest([Required] string RoleName);
 public record RoleResponse(Guid Id, string Name);
 
 public record DepartmentResponse(Guid Id, string Name, bool IsActive);
-public record WorkPolicyResponse(Guid Id, string Name, int DailyExpectedMinutes, bool IsActive);
+public record WorkPolicyResponse(Guid Id, string Name, int DailyExpectedMinutes, int WorkDaysPerWeek, bool IsActive);

@@ -99,7 +99,8 @@ public static class DbInitializer
             db.Roles.AddRange(
                 new Role { Id = Guid.NewGuid(), Name = "admin" },
                 new Role { Id = Guid.NewGuid(), Name = "manager" },
-                new Role { Id = Guid.NewGuid(), Name = "employee" }
+                new Role { Id = Guid.NewGuid(), Name = "employee" },
+                new Role { Id = Guid.NewGuid(), Name = "consultant" }
             );
         }
 

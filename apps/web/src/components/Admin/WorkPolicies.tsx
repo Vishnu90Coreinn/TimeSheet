@@ -5,8 +5,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import { apiFetch } from "../../api/client";
 import type { WorkPolicy } from "../../types";
 
-type PolicyForm = { name: string; dailyHours: string; isActive: boolean };
-const BLANK: PolicyForm = { name: "", dailyHours: "8", isActive: true };
+type PolicyForm = { name: string; dailyHours: string; workDaysPerWeek: number; isActive: boolean };
+const BLANK: PolicyForm = { name: "", dailyHours: "8", workDaysPerWeek: 5, isActive: true };
 
 function Drawer({ open, title, onClose, children, footer }: { open: boolean; title: string; onClose: () => void; children: ReactNode; footer?: ReactNode }) {
   if (!open) return null;
@@ -58,7 +58,7 @@ export function WorkPolicies() {
 
   function openCreate() { setForm(BLANK); setError(""); setEditing("new"); }
   function openEdit(p: WorkPolicy) {
-    setForm({ name: p.name, dailyHours: String(p.dailyExpectedMinutes / 60), isActive: p.isActive });
+    setForm({ name: p.name, dailyHours: String(p.dailyExpectedMinutes / 60), workDaysPerWeek: p.workDaysPerWeek ?? 5, isActive: p.isActive });
     setError(""); setEditing(p);
   }
 
@@ -71,6 +71,7 @@ export function WorkPolicies() {
       id: editing === "new" ? "00000000-0000-0000-0000-000000000000" : (editing as WorkPolicy).id,
       name: form.name.trim(),
       dailyExpectedMinutes: Math.round(hours * 60),
+      workDaysPerWeek: form.workDaysPerWeek,
       isActive: form.isActive,
     };
     const r = editing === "new"
@@ -86,12 +87,13 @@ export function WorkPolicies() {
     void load();
   }
 
-  const f = (k: keyof PolicyForm, v: string | boolean) => setForm((prev) => ({ ...prev, [k]: v }));
+  const f = (k: keyof PolicyForm, v: string | boolean | number) => setForm((prev) => ({ ...prev, [k]: v }));
 
   // Live weekly preview
   const hours = parseFloat(form.dailyHours);
-  const weeklyHours = isNaN(hours) ? null : (hours * 5).toFixed(1).replace(/\.0$/, "");
-  const weeklyPreview = weeklyHours ? `= ${hours}h × 5 / week (Mon–Fri)` : "";
+  const daysLabel = form.workDaysPerWeek === 6 ? "Mon–Sat" : "Mon–Fri";
+  const weeklyHours = isNaN(hours) ? null : (hours * form.workDaysPerWeek).toFixed(1).replace(/\.0$/, "");
+  const weeklyPreview = weeklyHours ? `= ${hours}h × ${form.workDaysPerWeek} / week (${daysLabel})` : "";
 
   const filtered = policies.filter(p =>
     !search.trim() || p.name.toLowerCase().includes(search.toLowerCase())
@@ -120,6 +122,13 @@ export function WorkPolicies() {
             <label className="form-label">Daily Hours <span className="required">*</span></label>
             <input className="input-field" type="number" min="0.5" max="24" step="0.5" placeholder="e.g. 8" value={form.dailyHours} onChange={(e) => f("dailyHours", e.target.value)} />
             {weeklyPreview && <div style={{ fontSize: "0.75rem", color: "var(--text-tertiary)", marginTop: 4 }}>{weeklyPreview}</div>}
+          </div>
+          <div className="form-field">
+            <label className="form-label">Work Days / Week</label>
+            <select className="input-field" value={form.workDaysPerWeek} onChange={(e) => f("workDaysPerWeek", Number(e.target.value))}>
+              <option value={5}>5 days (Mon–Fri)</option>
+              <option value={6}>6 days (Mon–Sat)</option>
+            </select>
           </div>
           <div className="form-field">
             <label className="form-label">Status</label>
@@ -187,8 +196,8 @@ export function WorkPolicies() {
                   </td>
                   <td>{(p.dailyExpectedMinutes / 60).toFixed(1)}h / day</td>
                   <td>
-                    <span>{((p.dailyExpectedMinutes / 60) * 5).toFixed(0)}h / week</span>
-                    <span style={{ color: "var(--text-tertiary)", fontSize: "0.75rem", marginLeft: 4 }}>(Mon–Fri)</span>
+                    <span>{((p.dailyExpectedMinutes / 60) * (p.workDaysPerWeek ?? 5)).toFixed(0)}h / week</span>
+                    <span style={{ color: "var(--text-tertiary)", fontSize: "0.75rem", marginLeft: 4 }}>({p.workDaysPerWeek === 6 ? "Mon–Sat" : "Mon–Fri"})</span>
                   </td>
                   <td>
                     <span className={`badge ${p.isActive ? "badge-success" : "badge-neutral"}`}>{p.isActive ? "Active" : "Inactive"}</span>

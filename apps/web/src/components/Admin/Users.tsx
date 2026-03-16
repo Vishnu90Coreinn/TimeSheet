@@ -159,6 +159,7 @@ export function Users() {
             <label className="form-label" htmlFor="u-role">Role</label>
             <select id="u-role" className="input-field" value={form.role} onChange={(e) => f("role", e.target.value)}>
               <option value="employee">Employee</option>
+              <option value="consultant">Consultant</option>
               <option value="manager">Manager</option>
               <option value="admin">Admin</option>
             </select>
@@ -216,7 +217,7 @@ export function Users() {
             <label className="form-label" htmlFor="u-mgr">Manager</label>
             <select id="u-mgr" className="input-field" value={form.managerId} onChange={(e) => f("managerId", e.target.value)}>
               <option value="">— none —</option>
-              {users.filter((u) => editing === "new" || (editing as User).id !== u.id).map((u) => <option key={u.id} value={u.id}>{u.username}</option>)}
+              {users.filter((u) => !editing || editing === "new" || (editing as User).id !== u.id).map((u) => <option key={u.id} value={u.id}>{u.username}</option>)}
             </select>
           </div>
           <label style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", fontSize: "0.825rem", color: "var(--text-secondary)", alignSelf: "end", paddingBottom: 10 }}>
@@ -290,7 +291,7 @@ export function Users() {
                   <td><strong>{u.username}</strong></td>
                   <td className="td-muted" style={{ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.email}</td>
                   <td><code style={{ fontFamily: "monospace", fontSize: "0.75rem", background: "var(--n-100)", padding: "2px 5px", borderRadius: "var(--r-sm)" }}>{u.employeeId || "—"}</code></td>
-                  <td><span className={`badge ${u.role === "admin" ? "badge-error" : u.role === "manager" ? "badge-warning" : "badge-brand"}`}>{u.role}</span></td>
+                  <td><span className={`badge ${u.role === "admin" ? "badge-error" : u.role === "manager" ? "badge-warning" : u.role === "consultant" ? "badge-brand" : "badge-brand"}`}>{u.role}</span></td>
                   <td className="td-muted">{u.departmentName ?? "—"}</td>
                   <td className="td-muted">{u.leavePolicyName ?? "—"}</td>
                   <td>{u.isActive ? <span className="badge badge-success">Active</span> : <span className="badge badge-neutral">Inactive</span>}</td>

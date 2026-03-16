@@ -43,7 +43,7 @@ public class MastersController(TimeSheetDbContext dbContext) : ControllerBase
     {
         var policies = await dbContext.WorkPolicies.AsNoTracking()
             .OrderBy(w => w.Name)
-            .Select(w => new WorkPolicyResponse(w.Id, w.Name, w.DailyExpectedMinutes, w.IsActive))
+            .Select(w => new WorkPolicyResponse(w.Id, w.Name, w.DailyExpectedMinutes, w.WorkDaysPerWeek, w.IsActive))
             .ToListAsync();
 
         return Ok(policies);
@@ -62,13 +62,14 @@ public class MastersController(TimeSheetDbContext dbContext) : ControllerBase
             Id = Guid.NewGuid(),
             Name = request.Name.Trim(),
             DailyExpectedMinutes = request.DailyExpectedMinutes,
+            WorkDaysPerWeek = request.WorkDaysPerWeek is >= 5 and <= 6 ? request.WorkDaysPerWeek : 5,
             IsActive = request.IsActive
         };
 
         dbContext.WorkPolicies.Add(policy);
         await dbContext.SaveChangesAsync();
 
-        return Ok(new WorkPolicyResponse(policy.Id, policy.Name, policy.DailyExpectedMinutes, policy.IsActive));
+        return Ok(new WorkPolicyResponse(policy.Id, policy.Name, policy.DailyExpectedMinutes, policy.WorkDaysPerWeek, policy.IsActive));
     }
 
     [HttpPut("work-policies/{id:guid}")]
@@ -82,10 +83,11 @@ public class MastersController(TimeSheetDbContext dbContext) : ControllerBase
 
         policy.Name = request.Name.Trim();
         policy.DailyExpectedMinutes = request.DailyExpectedMinutes;
+        policy.WorkDaysPerWeek = request.WorkDaysPerWeek is >= 5 and <= 6 ? request.WorkDaysPerWeek : 5;
         policy.IsActive = request.IsActive;
 
         await dbContext.SaveChangesAsync();
-        return Ok(new WorkPolicyResponse(policy.Id, policy.Name, policy.DailyExpectedMinutes, policy.IsActive));
+        return Ok(new WorkPolicyResponse(policy.Id, policy.Name, policy.DailyExpectedMinutes, policy.WorkDaysPerWeek, policy.IsActive));
     }
 
     [HttpDelete("work-policies/{id:guid}")]

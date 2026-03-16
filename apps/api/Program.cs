@@ -123,6 +123,7 @@ try
 
     app.MapControllers();
 
+    await DbInitializer.MigrateAsync(app.Services);
     await DbInitializer.SeedAsync(app.Services);
 
     app.Run();

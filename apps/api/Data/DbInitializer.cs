@@ -6,13 +6,93 @@ namespace TimeSheet.Api.Data;
 
 public static class DbInitializer
 {
+    // ── Migration bootstrap ───────────────────────────────────────────────────
+    // Handles three cases:
+    //   1. New DB          → MigrateAsync creates DB + runs all migrations
+    //   2. Existing DB, no migration history → bootstraps __EFMigrationsHistory,
+    //      marks the "Initial" migration as already applied, then runs any newer ones
+    //   3. Existing DB, history present → MigrateAsync applies only pending migrations
+    public static async Task MigrateAsync(IServiceProvider services)
+    {
+        using var scope = services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<TimeSheetDbContext>();
+
+        // InMemory (used in tests) doesn't support migrations — use EnsureCreated instead
+        if (!db.Database.IsRelational())
+        {
+            await db.Database.EnsureCreatedAsync();
+            return;
+        }
+
+        bool canConnect;
+        try { canConnect = await db.Database.CanConnectAsync(); }
+        catch { canConnect = false; }
+
+        if (!canConnect)
+        {
+            // New or unreachable DB — let EF create it from scratch
+            await db.Database.MigrateAsync();
+            return;
+        }
+
+        // DB exists — check whether migrations have been bootstrapped yet
+        var usersExist   = await TableExistsAsync(db, "Users");
+        var historyExist = await TableExistsAsync(db, "__EFMigrationsHistory");
+
+        if (usersExist && !historyExist)
+        {
+            // Pre-migrations database: create history table and mark the
+            // initial snapshot as already applied so EF won't try to
+            // re-create tables that already exist.
+            await db.Database.ExecuteSqlRawAsync("""
+                CREATE TABLE [__EFMigrationsHistory] (
+                    [MigrationId]    nvarchar(150) NOT NULL,
+                    [ProductVersion] nvarchar(32)  NOT NULL,
+                    CONSTRAINT [PK___EFMigrationsHistory] PRIMARY KEY ([MigrationId])
+                )
+                """);
+
+            await db.Database.ExecuteSqlRawAsync("""
+                INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+                VALUES ('20260316071602_Initial', '10.0.5')
+                """);
+        }
+
+        // Apply any migrations that are pending (new tables, new columns, etc.)
+        await db.Database.MigrateAsync();
+    }
+
+    private static async Task<bool> TableExistsAsync(TimeSheetDbContext db, string tableName)
+    {
+        var conn = db.Database.GetDbConnection();
+        var shouldClose = conn.State != System.Data.ConnectionState.Open;
+        if (shouldClose) await conn.OpenAsync();
+        try
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText =
+                "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = @t";
+            var p = cmd.CreateParameter();
+            p.ParameterName = "@t";
+            p.Value = tableName;
+            cmd.Parameters.Add(p);
+            var result = await cmd.ExecuteScalarAsync();
+            return Convert.ToInt32(result) > 0;
+        }
+        finally
+        {
+            if (shouldClose) await conn.CloseAsync();
+        }
+    }
+
+    // ── Seed ─────────────────────────────────────────────────────────────────
     public static async Task SeedAsync(IServiceProvider services)
     {
         using var scope = services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<TimeSheetDbContext>();
         var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
 
-        await db.Database.EnsureCreatedAsync();
+        // DB is already created/migrated by MigrateAsync — no EnsureCreated needed
 
         if (!await db.Roles.AnyAsync())
         {

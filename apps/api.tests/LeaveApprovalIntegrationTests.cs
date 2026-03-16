@@ -26,7 +26,7 @@ public class LeaveApprovalIntegrationTests : IClassFixture<CustomWebApplicationF
         var setup = await CreateManagerEmployeeSetup("employee.leave.halfday");
 
         var leaveTypeId = await GetLeaveTypeId();
-        var apply = await setup.EmployeeClient.PostAsJsonAsync("/api/v1/leave/requests", new ApplyLeaveRequest(setup.WorkDate, leaveTypeId, true, "medical"));
+        var apply = await setup.EmployeeClient.PostAsJsonAsync("/api/v1/leave/requests", new ApplyLeaveRequest(setup.WorkDate, setup.WorkDate, leaveTypeId, true, "medical"));
         Assert.Equal(HttpStatusCode.OK, apply.StatusCode);
 
         var pending = await setup.ManagerClient.GetFromJsonAsync<List<LeaveRequestResponse>>("/api/v1/leave/requests/pending");

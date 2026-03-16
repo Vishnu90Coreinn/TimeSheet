@@ -88,7 +88,9 @@ public class TimesheetIntegrationTests : IClassFixture<CustomWebApplicationFacto
             60,
             "should fail"));
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        // Session 2 intentionally removed membership enforcement —
+        // all authenticated users may log time against any active project.
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]

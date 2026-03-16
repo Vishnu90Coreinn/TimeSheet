@@ -544,6 +544,290 @@ All Phase 2 tasks address findings from the Phase 1 audit above.
 
 ---
 
+## Phase 3 — Product Roadmap (Principal Designer Review, 2026-03-17)
+
+> **Rules for all Phase 3 sprints:**
+> - Each sprint lives on its own branch: `feature/sprint-XX-short-name`
+> - Backend data model + APIs must be built and tested BEFORE any UI work starts
+> - Merge to `master` only after manual testing sign-off
+> - One sprint at a time — do not start the next until current is approved
+
+---
+
+### Sprint 13 — User Profile & Self-Service 🔴 NEXT
+**Branch:** `feature/sprint-13-user-profile`
+**Goal:** Users can manage their own account without admin intervention.
+
+#### Backend
+- [ ] **TSK-PRF-001** `GET /users/me` — return full profile (username, email, employeeId, role, dept, workPolicy, leavePolicy, managerId, notificationPrefs).
+- [ ] **TSK-PRF-002** `PUT /users/me` — update own display name and email (no role/dept change — admin only).
+- [ ] **TSK-PRF-003** `PUT /users/me/password` — change password with `currentPassword` + `newPassword`; verify current before updating hash.
+- [ ] **TSK-PRF-004** New `UserNotificationPreferences` table: `{ userId, onApproval, onRejection, onLeaveStatus, onReminder, emailEnabled, inAppEnabled }`.
+- [ ] **TSK-PRF-005** `GET /users/me/notification-preferences` + `PUT /users/me/notification-preferences`.
+- [ ] **TSK-PRF-006** Integrate preferences into `NotificationSchedulerService` — skip notifications for types the user has disabled.
+
+#### Frontend
+- [ ] **TSK-PRF-007** `/profile` route + `Profile.tsx` page (admin + all roles).
+- [ ] **TSK-PRF-008** Profile card: read-only fields (role, dept, employee ID, policy) + editable name/email with inline save.
+- [ ] **TSK-PRF-009** Password change section: current password + new password with strength meter + confirm.
+- [ ] **TSK-PRF-010** Notification preferences: toggle grid (approval, rejection, leave status, reminders) × (in-app, email).
+- [ ] **TSK-PRF-011** Add "My Profile" link in topbar user avatar dropdown.
+
+---
+
+### Sprint 14 — Bulk Timesheet Submission 🔴
+**Branch:** `feature/sprint-14-bulk-submit`
+**Goal:** Submit an entire week's worth of draft timesheets in one action.
+
+#### Backend
+- [ ] **TSK-BULK-001** `POST /timesheets/submit-week` — accepts `{ weekStart: "YYYY-MM-DD" }`; finds all `Draft` timesheets for that Mon–Sun range for the calling user; runs the same validation as single-submit for each day; commits all or returns per-day errors.
+- [ ] **TSK-BULK-002** Response DTO: `{ submitted: ["2026-03-16", ...], skipped: [{ date, reason }], errors: [{ date, message }] }`.
+- [ ] **TSK-BULK-003** Extend existing `POST /timesheets/{id}/submit` tests to cover the new bulk path.
+
+#### Frontend
+- [ ] **TSK-BULK-004** "Submit This Week" primary button on weekly timesheet header.
+- [ ] **TSK-BULK-005** Pre-submit preview modal: table of each day's status (Draft / Already Submitted / No Entries), with warnings for missing days.
+- [ ] **TSK-BULK-006** Result summary: toast showing "X days submitted, Y skipped" with per-day error details if any failed.
+
+---
+
+### Sprint 15 — Manager Team Status Board 🔴
+**Branch:** `feature/sprint-15-team-status`
+**Goal:** Managers see every direct report's daily status in one glance with inline actions.
+
+#### Backend
+- [ ] **TSK-TEAM-001** `GET /manager/team-status?date=YYYY-MM-DD` — for each direct report return:
+  - `attendance`: checkedIn | checkedOut | onLeave | absent
+  - `checkInTime`, `checkOutTime` (if available)
+  - `weekLoggedMinutes`, `weekExpectedMinutes`
+  - `todayTimesheetStatus`: draft | submitted | approved | missing
+  - `pendingApprovalCount`: number of timesheets awaiting this manager's approval from this user
+- [ ] **TSK-TEAM-002** `POST /manager/remind/{userId}` — sends a `Notification` of type `MissingTimesheetReminder` to the specified user.
+
+#### Frontend
+- [ ] **TSK-TEAM-003** `TeamStatus.tsx` page, accessible at `"team"` view (manager + admin only).
+- [ ] **TSK-TEAM-004** Status table: Avatar · Name · Today Status · Week Progress bar · Timesheet · Actions.
+- [ ] **TSK-TEAM-005** Filter bar: All / Missing Today / Needs Approval / On Leave.
+- [ ] **TSK-TEAM-006** Inline actions: [Remind] for missing timesheet, [Approve] jumps to Approvals filtered to that user.
+- [ ] **TSK-TEAM-007** Add "Team" nav item to AppShell for manager/admin.
+
+---
+
+### Sprint 16 — Task-Level Timer ⏱
+**Branch:** `feature/sprint-16-task-timer`
+**Goal:** Capture time as it happens — timer auto-creates timesheet entries on stop.
+
+#### Backend
+- [ ] **TSK-TMR-001** New `TimerSessions` table: `{ id, userId, projectId, categoryId, note, startedAtUtc, stoppedAtUtc, durationMinutes, convertedToEntryId }`.
+- [ ] **TSK-TMR-002** `GET /timers/active` — returns the currently running timer for the calling user, or 404.
+- [ ] **TSK-TMR-003** `POST /timers/start` — `{ projectId, categoryId, note? }`; enforces one active timer per user.
+- [ ] **TSK-TMR-004** `POST /timers/stop` — stops active timer, calculates `durationMinutes`, returns the record. Does NOT auto-create entry (user confirms).
+- [ ] **TSK-TMR-005** `POST /timers/{id}/convert` — creates a draft timesheet entry from the timer record; sets `convertedToEntryId`.
+- [ ] **TSK-TMR-006** `GET /timers/history?date=YYYY-MM-DD` — recent timer sessions for the day.
+
+#### Frontend
+- [ ] **TSK-TMR-007** Persistent timer widget in Timesheets sidebar (replaces/extends current Active Timer section).
+- [ ] **TSK-TMR-008** Project + Category selector dropdowns on timer start.
+- [ ] **TSK-TMR-009** Live HH:MM:SS counter when timer running (polling `/timers/active` every 30s to survive page refresh).
+- [ ] **TSK-TMR-010** Stop → "Add to Timesheet?" confirmation with pre-filled entry form showing computed duration.
+- [ ] **TSK-TMR-011** Timer persists across page navigation (stored in localStorage with startedAt; reconciled with server on load).
+
+---
+
+### Sprint 17 — Project Budget Burn 📊
+**Branch:** `feature/sprint-17-project-budget`
+**Goal:** Expose `budgetedHours` data as actionable project health indicators.
+
+#### Backend
+- [ ] **TSK-BDG-001** `GET /projects/{id}/budget-summary` — returns `{ budgetedHours, loggedHours, remainingHours, burnRateHoursPerWeek, projectedWeeksRemaining, weeklyBreakdown: [{ weekStart, hours }] }` (last 8 weeks).
+- [ ] **TSK-BDG-002** `GET /projects/budget-health` — admin/manager list: all active projects with `{ id, name, budgetedHours, loggedHours, pctUsed, status: "on-track"|"warning"|"critical"|"over-budget" }`. Thresholds: warning ≥80%, critical ≥95%.
+- [ ] **TSK-BDG-003** `BudgetedHours` validation in `UpsertProjectRequest` — must be ≥ 0.
+
+#### Frontend
+- [ ] **TSK-BDG-004** Budget burn panel in `Admin/Projects.tsx` edit drawer: burn bar, pct used, projected completion date.
+- [ ] **TSK-BDG-005** Budget column in Projects table: mini burn bar + pct label; color-coded by status.
+- [ ] **TSK-BDG-006** Admin dashboard: "Budget Health" card showing count of warning/critical projects with drill-down list.
+
+---
+
+### Sprint 18 — Recurring Entry Templates 📋
+**Branch:** `feature/sprint-18-entry-templates`
+**Goal:** One-click pre-fill for users who log the same entries daily.
+
+#### Backend
+- [ ] **TSK-TPL-001** New `TimesheetTemplates` table: `{ id, userId, name, createdAt, entries: JSON[] (projectId, categoryId, durationMinutes, note) }`.
+- [ ] **TSK-TPL-002** `GET /timesheets/templates` — user's saved templates.
+- [ ] **TSK-TPL-003** `POST /timesheets/templates` — save a named template.
+- [ ] **TSK-TPL-004** `PUT /timesheets/templates/{id}` — rename or update entries.
+- [ ] **TSK-TPL-005** `DELETE /timesheets/templates/{id}`.
+- [ ] **TSK-TPL-006** `POST /timesheets/templates/{id}/apply` — `{ date: "YYYY-MM-DD" }`; creates draft entries for that date from the template; skips if entries already exist; returns created entry IDs.
+
+#### Frontend
+- [ ] **TSK-TPL-007** "Use Template" button on Timesheets daily view — opens template picker modal.
+- [ ] **TSK-TPL-008** "Save as Template" option in entry form context menu or week-view actions.
+- [ ] **TSK-TPL-009** Template management section in `Profile.tsx` — list, rename, delete saved templates.
+
+---
+
+### Sprint 19 — Leave Team Calendar 🗓
+**Branch:** `feature/sprint-19-leave-team-calendar`
+**Goal:** Show who else is off when employees apply for leave; prevent understaffed days.
+
+#### Backend
+- [ ] **TSK-LTC-001** `GET /leave/team-calendar?year=&month=` — returns approved + pending leaves for all members of the calling user's department (employee) or direct reports (manager). DTO: `{ date, entries: [{ userId, username, leaveTypeName, status }] }`.
+- [ ] **TSK-LTC-002** `GET /leave/conflicts?fromDate=&toDate=&userId=` — returns count of team members on leave during the requested dates; used for conflict warning on apply form.
+
+#### Frontend
+- [ ] **TSK-LTC-003** Enhance Leave page mini calendar: overlay team leave chips (small colored dots per user) on each date alongside personal leave dots.
+- [ ] **TSK-LTC-004** Conflict warning banner on leave apply form: "3 team members are already off during these dates: [names]."
+- [ ] **TSK-LTC-005** Tooltip on calendar date: hover shows list of who is off that day.
+
+---
+
+### Sprint 20 — Anomaly Detection & Alerts 🔔
+**Branch:** `feature/sprint-20-anomaly-alerts`
+**Goal:** Surface unusual patterns automatically so admins don't need to hunt in reports.
+
+#### Backend
+- [ ] **TSK-ANM-001** New `AnomalyRules` enum: `ExcessiveDailyHours` (>12h), `ExtendedMissingTimesheet` (>5 consecutive working days), `ProjectBudgetWarning` (≥80%), `ProjectBudgetCritical` (≥95%), `ComplianceDropped` (team compliance down ≥15% vs prior month).
+- [ ] **TSK-ANM-002** `AnomalyDetectionService` — background service, runs daily at 07:00 UTC; evaluates all rules; creates `Notification` records with `Type = Anomaly`, deduplicates (don't re-alert same anomaly within 7 days).
+- [ ] **TSK-ANM-003** `GET /admin/anomalies` — active unresolved anomaly notifications; supports `?severity=warning|critical` filter.
+- [ ] **TSK-ANM-004** `POST /admin/anomalies/{id}/dismiss` — marks anomaly notification as dismissed.
+
+#### Frontend
+- [ ] **TSK-ANM-005** "Anomaly Alerts" panel on admin dashboard — shows active alerts grouped by severity (critical first). Each: icon, description, affected entity, [Dismiss] button, [Investigate →] link to relevant page.
+- [ ] **TSK-ANM-006** Anomaly notifications appear in the notification bell with a distinct icon.
+
+---
+
+### Sprint 21 — Saved & Scheduled Reports 📧
+**Branch:** `feature/sprint-21-saved-reports`
+**Goal:** Reports are persistent and can be auto-delivered without manual action.
+
+#### Backend
+- [ ] **TSK-SVR-001** New `SavedReports` table: `{ id, userId, name, reportKey, filtersJson, scheduleType (none|weekly|monthly), scheduleDayOfWeek, scheduleHour, recipientEmailsJson, lastRunAt, createdAt }`.
+- [ ] **TSK-SVR-002** `GET /reports/saved` — user's saved reports list.
+- [ ] **TSK-SVR-003** `POST /reports/saved` — save current filter set as named report.
+- [ ] **TSK-SVR-004** `PUT /reports/saved/{id}` — update name/schedule/recipients.
+- [ ] **TSK-SVR-005** `DELETE /reports/saved/{id}`.
+- [ ] **TSK-SVR-006** `GET /reports/saved/{id}/run` — execute saved report with stored filters; returns same DTO as live report.
+- [ ] **TSK-SVR-007** `ReportSchedulerService` — background service checks saved reports due for delivery; generates CSV; sends via `SmtpClient` or stub email service; updates `lastRunAt`.
+
+#### Frontend
+- [ ] **TSK-SVR-008** "Save Current Filters" button on Reports page → modal: name input + optional schedule (frequency, day/time, recipients).
+- [ ] **TSK-SVR-009** Saved reports list in Reports page left panel / dropdown — click to reload filters.
+- [ ] **TSK-SVR-010** "Manage Saved Reports" sub-page: list with last run time, edit schedule, delete.
+
+---
+
+### Sprint 22 — Approval Delegation 🤝
+**Branch:** `feature/sprint-22-approval-delegation`
+**Goal:** Managers can delegate approvals during absence; no backlogs during leave.
+
+#### Backend
+- [ ] **TSK-DEL-001** New `ApprovalDelegations` table: `{ id, fromUserId, toUserId, fromDate, toDate, isActive, createdAt }`. Constraint: one active delegation per `fromUserId` at a time.
+- [ ] **TSK-DEL-002** `GET /approvals/delegation` — current active delegation for the calling user.
+- [ ] **TSK-DEL-003** `POST /approvals/delegation` — create delegation; validates `toUserId` is a manager or admin; validates no date overlap with existing active delegation.
+- [ ] **TSK-DEL-004** `DELETE /approvals/delegation/{id}` — revoke delegation.
+- [ ] **TSK-DEL-005** Modify `GET /approvals/pending-timesheets` — if the calling user is a delegate, also return items where `fromUser` is the delegating manager (and delegation is currently active).
+- [ ] **TSK-DEL-006** Modify approval/reject APIs — accept actions from delegate; record `ActedByUserId` and `DelegatedFromUserId` in `ApprovalActions`.
+
+#### Frontend
+- [ ] **TSK-DEL-007** "Delegate Approvals" section in `Profile.tsx` or Approvals page — select user, date range, save.
+- [ ] **TSK-DEL-008** Active delegation banner on Approvals page: "You are approving on behalf of [name] until [date]. [Revoke]"
+- [ ] **TSK-DEL-009** Delegated items visually tagged in approval list: "via [delegating manager]".
+
+---
+
+### Sprint 23 — Command Palette ⌨️
+**Branch:** `feature/sprint-23-command-palette`
+**Goal:** Keyboard-first power navigation — Cmd+K launches a global action/search overlay.
+
+#### Backend
+- No new endpoints. All data comes from existing APIs already loaded in the app.
+
+#### Frontend
+- [ ] **TSK-CMD-001** `CommandPalette.tsx` — modal overlay triggered by `Cmd+K` / `Ctrl+K`.
+- [ ] **TSK-CMD-002** Static command list: navigate to all views, open create forms (New Entry, Apply Leave, New User, New Project).
+- [ ] **TSK-CMD-003** Dynamic search: fuzzy match against loaded users (admin), projects, recent timesheets.
+- [ ] **TSK-CMD-004** Keyboard navigation: ↑/↓ to move, `Enter` to execute, `Esc` to close, type to filter.
+- [ ] **TSK-CMD-005** Keyboard shortcut hints panel: `?` key opens a modal listing all available shortcuts.
+- [ ] **TSK-CMD-006** Global shortcuts: `N` = new timesheet entry (if on Timesheets), `S` = submit week, `A` = approve selected (if on Approvals), `/` = focus search.
+- [ ] **TSK-CMD-007** Mount palette globally in `AppShell.tsx`; pass navigation handler down.
+
+---
+
+### Sprint 24 — Mobile PWA 📱
+**Branch:** `feature/sprint-24-mobile-pwa`
+**Goal:** Core workflows (check in/out, quick timesheet entry) usable on a phone.
+
+#### Backend
+- No changes — the existing API is already mobile-compatible.
+
+#### Frontend
+- [ ] **TSK-MOB-001** `manifest.json` + `vite-plugin-pwa` — add PWA manifest (name, icons, theme color, display: standalone).
+- [ ] **TSK-MOB-002** Service worker: cache app shell + static assets for offline load; network-first for API calls.
+- [ ] **TSK-MOB-003** Responsive sidebar: `@media (max-width: 768px)` — sidebar hidden by default, hamburger button in topbar toggles it as a slide-over drawer.
+- [ ] **TSK-MOB-004** Mobile-optimized `AttendanceWidget` — large check-in/out tap targets (min 48px), simplified layout.
+- [ ] **TSK-MOB-005** Mobile timesheet entry form — full-width fields, native date/time pickers, bottom sheet pattern instead of inline form.
+- [ ] **TSK-MOB-006** Touch-friendly table rows — tap row to open detail/edit instead of requiring small button targets.
+
+---
+
+### Sprint 25 — Dark Mode 🌙
+**Branch:** `feature/sprint-25-dark-mode`
+**Goal:** Full dark theme using existing CSS variable architecture.
+
+#### Backend
+- No changes.
+
+#### Frontend
+- [ ] **TSK-DRK-001** `[data-theme="dark"]` override block in `design-system.css` — map all `--n-*`, `--brand-*`, `--text-*`, `--border-*` tokens to dark equivalents.
+- [ ] **TSK-DRK-002** `useTheme` hook — stores preference in `localStorage`; applies `data-theme` on `<html>`.
+- [ ] **TSK-DRK-003** Respects `prefers-color-scheme` media query on first load if no preference saved.
+- [ ] **TSK-DRK-004** Theme toggle in `Profile.tsx` notification preferences + topbar icon shortcut.
+- [ ] **TSK-DRK-005** Audit all inline `style={{ background: ... }}` hardcoded values in components — replace with CSS variable equivalents so dark mode applies correctly.
+
+---
+
+## Phase 3 Branch Naming Convention
+
+```
+feature/sprint-13-user-profile
+feature/sprint-14-bulk-submit
+feature/sprint-15-team-status
+feature/sprint-16-task-timer
+feature/sprint-17-project-budget
+feature/sprint-18-entry-templates
+feature/sprint-19-leave-team-calendar
+feature/sprint-20-anomaly-alerts
+feature/sprint-21-saved-reports
+feature/sprint-22-approval-delegation
+feature/sprint-23-command-palette
+feature/sprint-24-mobile-pwa
+feature/sprint-25-dark-mode
+```
+
+## Phase 3 Delivery Order (Recommended)
+
+| Priority | Sprint | Why first |
+|----------|--------|-----------|
+| 1 | 13 — User Profile | Foundational — needed before notification prefs in later sprints |
+| 2 | 14 — Bulk Submit | Highest daily-friction fix; pure backend extension, low risk |
+| 3 | 15 — Team Status | Highest manager value; new endpoint, no schema change |
+| 4 | 16 — Task Timer | New table + persistent widget; biggest engagement driver |
+| 5 | 17 — Budget Burn | Uses existing `budgetedHours` field; low backend effort |
+| 6 | 18 — Templates | Comfort feature; reduces daily friction |
+| 7 | 19 — Leave Team Cal | Extend existing leave endpoints |
+| 8 | 20 — Anomaly Alerts | Background service; builds on existing notification infra |
+| 9 | 21 — Saved Reports | Persistence layer for reports; needs email service |
+| 10 | 22 — Approval Delegation | Schema change + routing logic; test thoroughly |
+| 11 | 23 — Command Palette | Pure frontend; do after all pages are stable |
+| 12 | 24 — Mobile PWA | Layout overhaul; needs all features settled first |
+| 13 | 25 — Dark Mode | Last; needs all inline styles cleaned up first |
+
+---
+
 ## Initial Issue Creation Template (Optional)
 Use this for each task when opening tracker issues.
 

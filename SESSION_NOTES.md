@@ -706,15 +706,23 @@ Each: `SortIcon` component, `sortCol/sortDir` state, `toggleSort()`, `sorted` co
 - [ ] Sidebar: collapse → hover nav items → confirm tooltips appear; expand → confirm works
 - [ ] Admin pages: verify all table column headers show sort icons and sort correctly
 
-### Priority 2 — Next Features (choose one)
+### Priority 2 — Phase 3 Roadmap (Planned 2026-03-17)
+Full 13-sprint product roadmap added to `PROJECT_TASKS.md`. Delivery order:
+1. **Sprint 13** — User Profile & Self-Service (`feature/sprint-13-user-profile`)
+2. **Sprint 14** — Bulk Timesheet Submission (`feature/sprint-14-bulk-submit`)
+3. **Sprint 15** — Manager Team Status Board (`feature/sprint-15-team-status`)
+4. **Sprint 16** — Task-Level Timer (`feature/sprint-16-task-timer`)
+5. **Sprint 17** — Project Budget Burn (`feature/sprint-17-project-budget`)
+6. **Sprint 18** — Recurring Entry Templates (`feature/sprint-18-entry-templates`)
+7. **Sprint 19** — Leave Team Calendar (`feature/sprint-19-leave-team-calendar`)
+8. **Sprint 20** — Anomaly Detection & Alerts (`feature/sprint-20-anomaly-alerts`)
+9. **Sprint 21** — Saved & Scheduled Reports (`feature/sprint-21-saved-reports`)
+10. **Sprint 22** — Approval Delegation (`feature/sprint-22-approval-delegation`)
+11. **Sprint 23** — Command Palette (`feature/sprint-23-command-palette`)
+12. **Sprint 24** — Mobile PWA (`feature/sprint-24-mobile-pwa`)
+13. **Sprint 25** — Dark Mode (`feature/sprint-25-dark-mode`)
 
-| Feature | Effort | Value |
-|---------|--------|-------|
-| **True Excel/PDF export** — integrate EPPlus/ClosedXML for real Excel; use a PDF renderer for PDF | Medium | High |
-| **`GET /approvals/stats`** — backend endpoint for Approvals KPI cards (approved/rejected this month, avg response hours) | Small | High |
-| **Dashboard activity feed** — real last-24h events from `GET /dashboard/activity` | Medium | High |
-| **Mobile responsive layout** — sidebar collapses to hamburger on small screens | Medium | Medium |
-| **Reports: category breakdown sub-rows** — expandable contributor list per project in Project Effort tab | Medium | Medium |
+**Rules:** Backend-first on every sprint. Separate branch per sprint. Merge to master only after manual testing approval.
 
 ---
 

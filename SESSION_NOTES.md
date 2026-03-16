@@ -604,9 +604,96 @@ Replaced `window.confirm()` with a themed modal: backdrop blur, indigo icon ring
 
 ---
 
+---
+
+## Session 12 — Dashboard UX Polish + Sidebar Overhaul + Admin Table Sort (2026-03-17)
+
+### What Was Done
+
+#### Dashboard.tsx — 14 UX Improvements
+- **Compact page header**: Period filter (`Today / This Week / Last 30 Days / This Quarter`) moved to a sub-row below the title/actions row.
+- **Relative time freshness**: `fmtFreshness` replaced with `relativeTime()` inside `<time dateTime={...}>` element.
+- **ARIA on progress bars**: `role="progressbar"`, `aria-valuenow/min/max/label` added to all progress-track elements in KPI rows and Leave Balance card.
+- **Severity tiers on progress fills**: `.progress-fill--critical/warning/caution/success` classes applied to all `UtilBar` and Leave Balance bars.
+- **Stat card deltas**: Active Departments card gets "no prior period data" footer note.
+- **Billable card label fix**: Removed Internal staff/Consultants KpiItems; "Billable hours" → "Billable".
+- **Utilization card**: Subtitle → "Hours logged this week"; `UtilBar` now receives `status` from `UserLoad` backend field instead of hardcoded `targetMinutes={2400}` — fixes "40h" hardcode bug.
+- **Compliance card**: Subtitle → "Last 28 days"; View link navigates to `"reports"`.
+- **Clickable KPI rows**: `KpiItem` whole row clickable via `onView` callback; removed `viewLink` prop.
+- **Calendar SVG empty state**: On Leave Today empty state replaced `✓` character with inline calendar SVG.
+- **Submission Rate**: Button moved from card-header to below the progress bar.
+- **Effort by Project**: `viewLink` prop removed; footer has `<button onClick={() => onNavigate?.("projects")}>View all projects →</button>`.
+- **Bug fix**: "View all projects" was calling `onNavigate?.("reports")` → fixed to `"projects"`.
+- **Split-button fix**: Export split button `btn-split` CSS corrected.
+
+#### AppShell.tsx — Sidebar Overhaul (12 Fixes)
+- **FIX 1 — User profile section**: Avatar with colored initials, online dot, username and role rendered between brand and nav (collapses in collapsed state via CSS).
+- **FIX 2 — CSS-only tooltips**: `data-tooltip={item.label}` on every nav button; `.shell-sidebar.collapsed .nav-item::after/::before` pseudo-elements show tooltip on hover.
+- **FIX 3 — Sign Out danger style**: `className="nav-item nav-item--danger"` with `.nav-item--danger` CSS rule.
+- **FIX 4 — Live Approvals badge**: `useEffect` + `apiFetch("/approvals/pending-timesheets")` populates `pendingCount`; rendered as `.nav-badge` on Approvals nav item.
+- **FIX 5 — Collapse button affordance**: `aria-label="Collapse sidebar"` / `"Expand sidebar"`; `.sidebar-collapse-btn` CSS with border and brand hover.
+- **FIX 6 — SVG aria-hidden**: `aria-hidden="true"` added to all inline SVG nav icons.
+- **FIX 7 — "Workspace" section label**: First unlabelled nav section given `<span className="nav-section-label">Workspace</span>`.
+- **FIX 8 — Nav section gap**: `.nav-section { gap: 4px }` (was 1px).
+- **FIX 9 — Active item indicator**: `.nav-item.active { box-shadow: inset 3px 0 0 var(--brand-500) }`.
+- **FIX 10 — Icon color differentiation**: `.nav-item svg { color: var(--n-400) }` + active/hover overrides (no more opacity hack).
+- **FIX 11 — Distinct icons**: `LeavePolicyIcon` (calendar with cross-lines) for Leave Policies; `BriefcaseIcon` for Work Policies (replaced duplicate `ClockIcon`/`PolicyIcon`).
+- **FIX 12 — Crisp sidebar border**: `.shell-sidebar { border-right: none; box-shadow: inset -1px 0 0 var(--border-subtle) }`.
+- **Removed org-switcher**: `<div className="org-switcher">` block removed entirely.
+- **Removed duplicate username**: `sidebar-brand` label changed from `session.username` to `"TimeSheet HQ"`.
+- **Sidebar collapse toggle bug fixed**: Removed inline `style={{ justifyContent: ... }}` that overrode collapsed CSS; moved to `.sidebar-brand` CSS rule; added `.shell-sidebar.collapsed .sidebar-brand > div:first-child { display: none }`.
+
+#### Notifications.tsx — Numeric Badge
+- Unread indicator dot replaced with numeric badge: `<span className="notif-badge">{unreadCount > 9 ? "9+" : unreadCount}</span>` (`.notif-badge` CSS: position absolute, danger bg, white text).
+
+#### Admin Tables — Sort on All Master Pages
+All 6 admin pages updated to match the Reports Attendance table sort pattern:
+
+| File | Sortable Columns |
+|------|-----------------|
+| `Admin/Projects.tsx` | name, code, status |
+| `Admin/Categories.tsx` | name, isBillable, isActive |
+| `Admin/Holidays.tsx` | name, date (default), isRecurring |
+| `Admin/WorkPolicies.tsx` | name, dailyExpectedMinutes, isActive |
+| `Admin/LeavePolicies.tsx` | name, isActive |
+| `Admin/Users.tsx` | username, role, departmentName, isActive |
+
+Each: `SortIcon` component, `sortCol/sortDir` state, `toggleSort()`, `sorted` computed array, `className="th-sort"` + `onClick` + `aria-sort` on `<th>`, card `overflow: "visible"`.
+
+#### Admin/Projects.tsx — Overflow Menu Fix
+- **Root cause**: Card had `overflow: "hidden"` clipping absolutely-positioned dropdown.
+- **Fix**: `OverflowMenu` now uses `useRef<HTMLButtonElement>` + `getBoundingClientRect()` to calculate viewport coords; menu renders with `position: fixed, top/right` — escapes all overflow-hidden ancestors.
+- Card changed to `overflow: "visible"`.
+
+#### Users.tsx — Empty Row Fix
+- `{filtered.length === 0 &&` → `{sorted.length === 0 &&` (was checking wrong array).
+
+#### design-system.css — New Rules
+- `.progress-fill--critical/warning/caution/success` severity tier classes
+- `.notif-badge` numeric badge styles
+- `.kpi-item[role="button"]:hover` + `:focus-visible` rings
+- `button:focus-visible, a:focus-visible` ring rules
+- `.nav-item--danger` color/hover
+- `.sidebar-collapse-btn` full rule
+- `.nav-section { gap: 4px }` (FIX 8)
+- `.nav-item.active { box-shadow: inset 3px 0 0 var(--brand-500) }` (FIX 9)
+- `.nav-item svg { color: var(--n-400) }` + hover/active overrides (FIX 10)
+- `.shell-sidebar { box-shadow: inset -1px 0 0 var(--border-subtle) }` (FIX 12)
+- `.th-sort { cursor: pointer; user-select: none; white-space: nowrap }` + hover color
+- FIX 1–4 collapsed sidebar rules (user section hide, tooltips, badge hide)
+
+### Build & Tests
+- `npx tsc --noEmit` — ✅ 0 errors
+- TypeScript: clean across all 6 admin files + AppShell + Dashboard + Notifications
+
+### Commits
+- `7e91218` — feat: sortable tables + fixed overflow menu across all admin pages
+
+---
+
 ## Pending For Next Session
 
-> Last updated: Session 11 (2026-03-16). Dashboard v2 complete with all 20 enhancements. All 44 frontend tests pass.
+> Last updated: Session 12 (2026-03-17). Admin table sort on all master pages, sidebar overhaul, dashboard UX polish all committed.
 
 ### Priority 1 — Manual Smoke Test
 - [ ] Run API → confirm DB auto-migrates (`Sprint9` migration runs)
@@ -616,7 +703,8 @@ Replaced `window.confirm()` with a themed modal: backdrop blur, indigo icon ring
 - [ ] Admin: Reports → **Approvals** tab → verify status chips, two-line Approved At, approver name
 - [ ] Employee: apply leave → cancel it → re-apply → confirm no 500 error
 - [ ] Timesheets: submit day → verify delete entry modal (themed, not browser confirm)
-- [ ] Reports: change date range → Apply → verify data refreshes; change rows/page → verify pagination
+- [ ] Sidebar: collapse → hover nav items → confirm tooltips appear; expand → confirm works
+- [ ] Admin pages: verify all table column headers show sort icons and sort correctly
 
 ### Priority 2 — Next Features (choose one)
 

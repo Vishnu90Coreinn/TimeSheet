@@ -505,6 +505,43 @@ All Phase 2 tasks address findings from the Phase 1 audit above.
 - TSK-DASH-028 — Sparkline SVG polyline on Billable Ratio stat card. ✅
 - TSK-DASH-029 — Timesheet Submission Rate full-width widget with progress bar + CTA. ✅
 
+### Sprint 12 (Dashboard UX Polish + Sidebar Overhaul + Admin Table Sort) ✅ DONE
+#### Dashboard UX Polish
+- TSK-DASH-030 — Compact page header: period filter moved to sub-row below title/actions. ✅
+- TSK-DASH-031 — Relative time freshness: `relativeTime()` inside `<time dateTime>` element. ✅
+- TSK-DASH-032 — ARIA progressbar role + aria-valuenow/min/max/label on all progress tracks. ✅
+- TSK-DASH-033 — Severity tiers: `.progress-fill--critical/warning/caution/success` on all bars. ✅
+- TSK-DASH-034 — Utilization hardcode fix: `UtilBar` uses `status` from backend `UserLoad` (removed `targetMinutes={2400}`). ✅
+- TSK-DASH-035 — Billable card label fix: removed redundant KpiItems; renamed to "Billable". ✅
+- TSK-DASH-036 — Calendar SVG empty state in "On Leave Today" widget. ✅
+- TSK-DASH-037 — Submission Rate CTA button moved from card-header to below progress bar. ✅
+- TSK-DASH-038 — "View all projects" nav bug fixed (`"reports"` → `"projects"`). ✅
+- TSK-DASH-039 — Focus-visible rings on `button` and `a` elements; KPI row hover + focus. ✅
+
+#### Sidebar Overhaul (AppShell.tsx)
+- TSK-SHELL-001 — User profile section: avatar, online dot, name, role between brand and nav. ✅
+- TSK-SHELL-002 — CSS-only tooltips via `data-tooltip` + `::after/::before` in collapsed state. ✅
+- TSK-SHELL-003 — Sign Out styled with `.nav-item--danger`. ✅
+- TSK-SHELL-004 — Live Approvals `.nav-badge` wired to `/approvals/pending-timesheets` count. ✅
+- TSK-SHELL-005 — Collapse button `aria-label` + `.sidebar-collapse-btn` CSS affordance. ✅
+- TSK-SHELL-006 — `aria-hidden="true"` on all SVG nav icons. ✅
+- TSK-SHELL-007 — "Workspace" label on first unlabelled nav section. ✅
+- TSK-SHELL-008 — `.nav-section` gap 1px → 4px. ✅
+- TSK-SHELL-009 — Active item left-border via `box-shadow: inset 3px 0 0 var(--brand-500)`. ✅
+- TSK-SHELL-010 — Nav icon color-based differentiation (no more opacity hack). ✅
+- TSK-SHELL-011 — Distinct icons: `LeavePolicyIcon` and `BriefcaseIcon` for admin nav. ✅
+- TSK-SHELL-012 — Sidebar border → `box-shadow: inset -1px 0 0` (sub-pixel crisp). ✅
+- TSK-SHELL-013 — Removed org-switcher block; sidebar collapse toggle bug fixed. ✅
+- TSK-SHELL-014 — Numeric unread badge on notification bell (Notifications.tsx). ✅
+
+#### Admin Tables — Sort on All Master Pages
+- TSK-ADM-010 — `Admin/Projects.tsx`: overflow menu fixed positioning (escapes clip) + sortable columns. ✅
+- TSK-ADM-011 — `Admin/Categories.tsx`: sortable by name, isBillable, isActive. ✅
+- TSK-ADM-012 — `Admin/Holidays.tsx`: sortable by name, date (default), isRecurring. ✅
+- TSK-ADM-013 — `Admin/WorkPolicies.tsx`: sortable by name, dailyExpectedMinutes, isActive. ✅
+- TSK-ADM-014 — `Admin/LeavePolicies.tsx`: sortable by name, isActive. ✅
+- TSK-ADM-015 — `Admin/Users.tsx`: sortable by username, role, departmentName, isActive; empty-row guard fixed. ✅
+
 ---
 
 ## Initial Issue Creation Template (Optional)

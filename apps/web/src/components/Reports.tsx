@@ -240,7 +240,7 @@ function renderCell(col: ColConfig, row: Record<string, unknown>): ReactNode {
 
 // ── Sort icon ─────────────────────────────────────────────────────────────────
 function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
-  if (!active) return <span style={{ opacity: 0.35, fontSize: "0.7rem", marginLeft: 3 }}>↕</span>;
+  if (!active) return <span style={{ opacity: 0.45, fontSize: "0.7rem", marginLeft: 3 }}>↕</span>;
   return <span style={{ fontSize: "0.75rem", marginLeft: 3, color: "var(--brand-600,#4f46e5)" }}>{dir === "asc" ? "↑" : "↓"}</span>;
 }
 
@@ -258,7 +258,7 @@ function computeKpi(key: ReportKey, items: Record<string, unknown>[]): KpiCard[]
         { label: "Days Tracked", value: String(agg.length) },
         { label: "Total Present", value: fmtMins(totalMins) },
         { label: "Avg / Day", value: fmtMins(agg.length > 0 ? Math.round(totalMins / agg.length) : 0) },
-        { label: "Exceptions", value: String(exCount), sub: `${agg.length > 0 ? Math.round(exCount * 100 / agg.length) : 0}%`, accent: exCount > 0 ? "red" : undefined },
+        { label: "Exceptions", value: String(exCount), sub: `${agg.length > 0 ? Math.round(exCount * 100 / agg.length) : 0}%`, accent: exCount > 0 ? "amber" : undefined },
       ];
     }
     case "timesheet-summary": {
@@ -373,6 +373,11 @@ const PAGE_STYLES = `
 .rpt-page-info { font-size: 0.825rem; color: var(--text-secondary, #6b7280); }
 .rpt-freshness { font-size: 0.72rem; color: var(--text-tertiary, #9ca3af); margin-left: 8px; }
 .rpt-zero-alloc { opacity: 0.4; }
+.rpt-tabs-select { display: none; width: 100%; }
+@media (max-width: 640px) {
+  .rpt-tabs-row { display: none; }
+  .rpt-tabs-select { display: block; }
+}
 `;
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -389,6 +394,7 @@ export function Reports() {
   const [search, setSearch] = useState("");
   const [employeeFilter, setEmployeeFilter] = useState("");
   const [lastLoaded, setLastLoaded] = useState<Date | null>(null);
+  const [exportOpen, setExportOpen] = useState(false);
   const tabsRef = useRef<HTMLDivElement>(null);
 
   function scrollTabs(dir: -1 | 1) {
@@ -499,6 +505,15 @@ export function Reports() {
         </div>
       </div>
 
+      {/* Mobile tab select */}
+      <select
+        className="input-field rpt-tabs-select"
+        value={reportKey}
+        onChange={(e) => switchTab(e.target.value as ReportKey)}
+      >
+        {TABS.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
+      </select>
+
       {/* Tab strip with scroll arrows */}
       <div className="rpt-tabs-row">
         <button className="rpt-tab-arrow" onClick={() => scrollTabs(-1)} aria-label="Scroll tabs left">‹</button>
@@ -539,12 +554,6 @@ export function Reports() {
           </div>
         )}
         <button className="btn btn-primary" onClick={() => void loadReport(reportKey, 1)}>Apply</button>
-        <div style={{ flex: 1 }} />
-        <div className="form-field" style={{ minWidth: 200 }}>
-          <label className="form-label" htmlFor="rpt-search">Search</label>
-          <input id="rpt-search" type="text" className="input-field" placeholder="Filter rows…"
-            value={search} onChange={e => setSearch(e.target.value)} />
-        </div>
       </div>
 
       {/* KPI strip */}
@@ -571,9 +580,36 @@ export function Reports() {
             </div>
           </div>
           <div className="page-actions">
-            <button className="btn btn-outline btn-sm" onClick={() => void exportReport("csv")}>↓ CSV</button>
-            <button className="btn btn-outline btn-sm" onClick={() => void exportReport("excel")}>↓ Excel</button>
-            <button className="btn btn-outline btn-sm" onClick={() => void exportReport("pdf")}>↓ PDF</button>
+            <input
+              type="text"
+              className="input-field"
+              placeholder="Search rows…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{ width: 200, height: 30, fontSize: "0.8rem" }}
+            />
+            <div style={{ position: "relative", display: "inline-block" }}>
+              <button className="btn btn-outline btn-sm" onClick={() => setExportOpen(o => !o)} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Export ▾
+              </button>
+              {exportOpen && (
+                <>
+                  <div style={{ position: "fixed", inset: 0, zIndex: 99 }} onClick={() => setExportOpen(false)} />
+                  <div style={{ position: "absolute", right: 0, top: "calc(100% + 4px)", background: "var(--n-0)", border: "1px solid var(--border-default)", borderRadius: "var(--r-lg)", boxShadow: "var(--shadow-md)", zIndex: 100, minWidth: 130, padding: "4px 0" }}>
+                    {(["csv", "excel", "pdf"] as const).map(fmt => (
+                      <button key={fmt}
+                        style={{ display: "block", padding: "8px 16px", fontSize: "0.825rem", cursor: "pointer", background: "none", border: "none", width: "100%", textAlign: "left", color: "var(--text-secondary)", fontFamily: "var(--font-sans)" }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--n-50)"; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "none"; }}
+                        onClick={() => { void exportReport(fmt); setExportOpen(false); }}>
+                        {fmt.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
 

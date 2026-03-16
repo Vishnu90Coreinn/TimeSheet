@@ -25,12 +25,54 @@ function fmtHours(mins: number): string {
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
 }
 
+function fmtResponseTime(hours: number | null): string {
+  if (hours == null) return "—";
+  const totalMins = Math.round(hours * 60);
+  if (totalMins < 60) return `${totalMins}m`;
+  const h = Math.floor(totalMins / 60);
+  const m = totalMins % 60;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
+function sanitizeMismatch(reason: string | null): string | null {
+  if (!reason) return null;
+  if (reason.includes("DEBUG:") || reason.length > 100) return "Time mismatch detected";
+  return reason;
+}
+
 const AVATAR_PALETTE = ["#818cf8","#a78bfa","#34d399","#60a5fa","#f472b6","#fb923c","#facc15","#4ade80","#38bdf8","#f87171"];
 function avatarColor(name: string): string {
   let n = 0;
   for (const c of name) n = (n * 31 + c.charCodeAt(0)) & 0xffff;
   return AVATAR_PALETTE[n % AVATAR_PALETTE.length];
 }
+
+// ─── SVG Icons ────────────────────────────────────────────────
+const IconPending = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M5 22h14"/><path d="M5 2h14"/>
+    <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"/>
+    <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"/>
+  </svg>
+);
+
+const IconApproved = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>
+  </svg>
+);
+
+const IconRejected = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>
+  </svg>
+);
+
+const IconClock = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+  </svg>
+);
 
 // ─── Scoped styles ────────────────────────────────────────────
 const PAGE_STYLES = `
@@ -40,7 +82,7 @@ const PAGE_STYLES = `
 .apr3-stat { background: var(--n-0); border: 1px solid var(--border-subtle); border-radius: var(--r-xl);
   padding: var(--space-5); display: flex; align-items: center; gap: var(--space-4); box-shadow: var(--shadow-xs); }
 .apr3-stat-icon { width: 40px; height: 40px; border-radius: var(--r-lg); display: flex; align-items: center;
-  justify-content: center; font-size: 18px; flex-shrink: 0; }
+  justify-content: center; flex-shrink: 0; }
 .apr3-stat-num { font-size: 1.75rem; font-weight: 700; line-height: 1; font-family: var(--font-display); }
 .apr3-stat-label { font-size: 0.78rem; color: var(--text-secondary); margin-top: 3px; }
 .apr3-tabs { display: flex; align-items: center; gap: var(--space-1); background: var(--n-100);
@@ -75,6 +117,7 @@ const PAGE_STYLES = `
 .apr3-empty { display: flex; flex-direction: column; align-items: center; gap: var(--space-3);
   padding: 60px var(--space-6); color: var(--text-secondary); text-align: center; }
 .apr3-empty-icon { font-size: 2.5rem; opacity: 0.35; }
+.apr3-select-bar { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) 0; margin-bottom: var(--space-2); }
 `;
 
 // ─── Component ────────────────────────────────────────────────
@@ -86,6 +129,7 @@ export function Approvals() {
   const [rejectFor, setRejectFor]     = useState<{ id: string; kind: "ts" | "leave" } | null>(null);
   const [rejectComment, setRejectComment] = useState("");
   const [bulkApproving, setBulkApproving] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   function loadData() {
     apiFetch("/approvals/pending-timesheets").then(async (r) => { if (r.ok) setTsPending(await r.json()); });
@@ -117,11 +161,29 @@ export function Approvals() {
     if (r.ok) { setRejectFor(null); setRejectComment(""); loadData(); }
   }
 
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (selectedIds.size === tsPending.length && tsPending.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(tsPending.map(a => a.timesheetId)));
+    }
+  }
+
   async function bulkApprove() {
     setBulkApproving(true);
-    await Promise.all(tsPending.map((a) =>
+    const toApprove = tsPending.filter(a => selectedIds.has(a.timesheetId));
+    await Promise.all(toApprove.map((a) =>
       apiFetch(`/approvals/timesheets/${a.timesheetId}/approve`, { method: "POST", body: JSON.stringify({ comment: "" }) })
     ));
+    setSelectedIds(new Set());
     setBulkApproving(false);
     loadData();
   }
@@ -159,9 +221,9 @@ export function Approvals() {
           <button
             className="btn btn-outline"
             onClick={() => void bulkApprove()}
-            disabled={bulkApproving || tsPending.length === 0}
+            disabled={bulkApproving || selectedIds.size === 0}
           >
-            {bulkApproving ? "Approving…" : "Bulk approve"}
+            {bulkApproving ? "Approving…" : `Approve selected${selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}`}
           </button>
         </div>
       </div>
@@ -169,30 +231,30 @@ export function Approvals() {
       {/* KPI stats */}
       <div className="apr3-stats">
         <div className="apr3-stat">
-          <div className="apr3-stat-icon" style={{ background: "#fff7ed" }}>⏳</div>
+          <div className="apr3-stat-icon" style={{ background: "#fff7ed", color: "#ea580c" }}><IconPending /></div>
           <div>
             <div className="apr3-stat-num" style={{ color: "#ea580c" }}>{pendingCount}</div>
             <div className="apr3-stat-label">Pending action</div>
           </div>
         </div>
         <div className="apr3-stat">
-          <div className="apr3-stat-icon" style={{ background: "#f0fdf4" }}>✓</div>
+          <div className="apr3-stat-icon" style={{ background: "#f0fdf4", color: "#16a34a" }}><IconApproved /></div>
           <div>
             <div className="apr3-stat-num" style={{ color: "#16a34a" }}>{stats.approvedThisMonth ?? "—"}</div>
             <div className="apr3-stat-label">Approved this month</div>
           </div>
         </div>
         <div className="apr3-stat">
-          <div className="apr3-stat-icon" style={{ background: "#fef2f2" }}>✗</div>
+          <div className="apr3-stat-icon" style={{ background: "#fef2f2", color: "#dc2626" }}><IconRejected /></div>
           <div>
             <div className="apr3-stat-num" style={{ color: "#dc2626" }}>{stats.rejectedThisMonth ?? "—"}</div>
             <div className="apr3-stat-label">Rejected this month</div>
           </div>
         </div>
         <div className="apr3-stat">
-          <div className="apr3-stat-icon" style={{ background: "#f8fafc" }}>⌀</div>
+          <div className="apr3-stat-icon" style={{ background: "#f8fafc", color: "var(--text-secondary)" }}><IconClock /></div>
           <div>
-            <div className="apr3-stat-num">{stats.avgResponseHours != null ? `${stats.avgResponseHours}h` : "—"}</div>
+            <div className="apr3-stat-num">{fmtResponseTime(stats.avgResponseHours)}</div>
             <div className="apr3-stat-label">Avg. response time</div>
           </div>
         </div>
@@ -222,56 +284,87 @@ export function Approvals() {
           </div>
         )}
 
-        {/* Timesheet approval cards */}
-        {showTs && tsPending.map((a) => (
-          <div key={a.timesheetId} className="apr3-card" style={{ borderLeft: "3px solid var(--brand-500)" }}>
-            <div className="apr3-card-inner">
-              <div className="apr3-avatar" style={{ background: avatarColor(a.username) }}>
-                {initials(a.username)}
-              </div>
-              <div className="apr3-meta">
-                <div className="apr3-meta-title">{a.username} — Timesheet {a.workDate}</div>
-                <div className="apr3-meta-sub">
-                  {a.workDate} — <strong>{fmtHours(a.enteredMinutes)} logged</strong>
-                  {a.mismatchReason && <> — <span style={{ color: "#d97706" }}>⚠ {a.mismatchReason}</span></>}
-                </div>
-              </div>
-              <div className="apr3-right">
-                <div className="apr3-type-metric">
-                  <div className="apr3-type-label">Timesheet</div>
-                  <div className="apr3-type-value">{fmtHours(a.enteredMinutes)}</div>
-                </div>
-                <div className="apr3-actions">
-                  <button className="btn btn-outline-success btn-sm" onClick={() => void approveTs(a.timesheetId)}>
-                    ✓ Approve
-                  </button>
-                  <button
-                    className="btn btn-outline-reject btn-sm"
-                    onClick={() => toggleReject(a.timesheetId, "ts")}
-                  >
-                    ✗ Reject
-                  </button>
-                </div>
-              </div>
-            </div>
-            {rejectFor?.id === a.timesheetId && rejectFor.kind === "ts" && (
-              <div className="apr3-reject-row">
-                <input
-                  className="input-field"
-                  style={{ flex: 1, maxWidth: 420 }}
-                  placeholder="Rejection comment (required)"
-                  value={rejectComment}
-                  onChange={(e) => setRejectComment(e.target.value)}
-                  autoFocus
-                />
-                <button className="btn btn-danger btn-sm" onClick={() => void confirmRejectTs(a.timesheetId)}>
-                  Confirm Reject
-                </button>
-                <button className="btn btn-ghost btn-sm" onClick={() => setRejectFor(null)}>Cancel</button>
-              </div>
+        {/* Select all bar for timesheets */}
+        {showTs && tsPending.length > 0 && (
+          <div className="apr3-select-bar">
+            <input
+              type="checkbox"
+              checked={selectedIds.size === tsPending.length && tsPending.length > 0}
+              onChange={toggleSelectAll}
+              style={{ width: 16, height: 16, accentColor: "var(--brand-600)", cursor: "pointer" }}
+            />
+            <span style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
+              {selectedIds.size === tsPending.length && tsPending.length > 0
+                ? "Deselect all"
+                : `Select all ${tsPending.length} timesheet${tsPending.length === 1 ? "" : "s"}`}
+            </span>
+            {selectedIds.size > 0 && (
+              <span style={{ fontSize: "0.78rem", color: "var(--brand-600)", fontWeight: 600 }}>
+                {selectedIds.size} selected
+              </span>
             )}
           </div>
-        ))}
+        )}
+
+        {/* Timesheet approval cards */}
+        {showTs && tsPending.map((a) => {
+          const mismatch = sanitizeMismatch(a.mismatchReason);
+          return (
+            <div key={a.timesheetId} className="apr3-card" style={{ borderLeft: "3px solid var(--brand-500)" }}>
+              <div className="apr3-card-inner">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(a.timesheetId)}
+                  onChange={() => toggleSelect(a.timesheetId)}
+                  style={{ width: 16, height: 16, accentColor: "var(--brand-600)", flexShrink: 0, cursor: "pointer" }}
+                />
+                <div className="apr3-avatar" style={{ background: avatarColor(a.username) }}>
+                  {initials(a.username)}
+                </div>
+                <div className="apr3-meta">
+                  <div className="apr3-meta-title">{a.username} — Timesheet {a.workDate}</div>
+                  <div className="apr3-meta-sub">
+                    {a.workDate} — <strong>{fmtHours(a.enteredMinutes)} logged</strong>
+                    {mismatch && <> — <span style={{ color: "#d97706" }}>⚠ {mismatch}</span></>}
+                  </div>
+                </div>
+                <div className="apr3-right">
+                  <div className="apr3-type-metric">
+                    <div className="apr3-type-label">Timesheet</div>
+                    <div className="apr3-type-value">{fmtHours(a.enteredMinutes)}</div>
+                  </div>
+                  <div className="apr3-actions">
+                    <button className="btn btn-outline-success btn-sm" onClick={() => void approveTs(a.timesheetId)}>
+                      ✓ Approve
+                    </button>
+                    <button
+                      className="btn btn-outline-reject btn-sm"
+                      onClick={() => toggleReject(a.timesheetId, "ts")}
+                    >
+                      ✗ Reject
+                    </button>
+                  </div>
+                </div>
+              </div>
+              {rejectFor?.id === a.timesheetId && rejectFor.kind === "ts" && (
+                <div className="apr3-reject-row">
+                  <input
+                    className="input-field"
+                    style={{ flex: 1, maxWidth: 420 }}
+                    placeholder="Rejection comment (required)"
+                    value={rejectComment}
+                    onChange={(e) => setRejectComment(e.target.value)}
+                    autoFocus
+                  />
+                  <button className="btn btn-danger btn-sm" onClick={() => void confirmRejectTs(a.timesheetId)}>
+                    Confirm Reject
+                  </button>
+                  <button className="btn btn-ghost btn-sm" onClick={() => setRejectFor(null)}>Cancel</button>
+                </div>
+              )}
+            </div>
+          );
+        })}
 
         {/* Leave approval cards */}
         {showLeave && leavePending.map((l) => (

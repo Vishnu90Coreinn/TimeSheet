@@ -1,20 +1,53 @@
 /**
- * WorkPolicies.tsx — Admin page to manage work schedule policies.
- * Allows creating / editing policies that define daily expected hours per user type
- * (e.g. "Standard 8h", "Consultant 2h", "Part-time 4h").
+ * WorkPolicies.tsx — Pulse SaaS design v3.0
  */
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { apiFetch } from "../../api/client";
 import type { WorkPolicy } from "../../types";
 
 type PolicyForm = { name: string; dailyHours: string; isActive: boolean };
 const BLANK: PolicyForm = { name: "", dailyHours: "8", isActive: true };
 
+function Drawer({ open, title, onClose, children, footer }: { open: boolean; title: string; onClose: () => void; children: ReactNode; footer?: ReactNode }) {
+  if (!open) return null;
+  return (
+    <>
+      <div className="drawer-overlay" onClick={onClose} />
+      <div className="drawer" role="dialog" aria-modal="true">
+        <div className="drawer-header">
+          <div className="drawer-title">{title}</div>
+          <button className="drawer-close" onClick={onClose}>✕</button>
+        </div>
+        <div className="drawer-body">{children}</div>
+        {footer && <div className="drawer-footer">{footer}</div>}
+      </div>
+    </>
+  );
+}
+
+function ConfirmModal({ open, title, body, onConfirm, onCancel }: { open: boolean; title: string; body: string; onConfirm: () => void; onCancel: () => void }) {
+  if (!open) return null;
+  return (
+    <div className="modal-overlay" onClick={onCancel}>
+      <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-title">{title}</div>
+        <div className="modal-body">{body}</div>
+        <div className="modal-actions">
+          <button className="btn btn-ghost btn-sm" onClick={onCancel}>Cancel</button>
+          <button className="btn btn-danger btn-sm" onClick={onConfirm}>Delete</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function WorkPolicies() {
   const [policies, setPolicies] = useState<WorkPolicy[]>([]);
   const [editing, setEditing] = useState<WorkPolicy | "new" | null>(null);
   const [form, setForm] = useState<PolicyForm>(BLANK);
   const [error, setError] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<WorkPolicy | null>(null);
+  const [search, setSearch] = useState("");
 
   async function load() {
     const r = await apiFetch("/masters/work-policies");
@@ -34,7 +67,12 @@ export function WorkPolicies() {
     const hours = parseFloat(form.dailyHours);
     if (!form.name.trim()) { setError("Name is required."); return; }
     if (isNaN(hours) || hours <= 0 || hours > 24) { setError("Enter a valid daily hours (e.g. 2, 4, 8)."); return; }
-    const body = { id: editing === "new" ? "00000000-0000-0000-0000-000000000000" : (editing as WorkPolicy).id, name: form.name.trim(), dailyExpectedMinutes: Math.round(hours * 60), isActive: form.isActive };
+    const body = {
+      id: editing === "new" ? "00000000-0000-0000-0000-000000000000" : (editing as WorkPolicy).id,
+      name: form.name.trim(),
+      dailyExpectedMinutes: Math.round(hours * 60),
+      isActive: form.isActive,
+    };
     const r = editing === "new"
       ? await apiFetch("/masters/work-policies", { method: "POST", body: JSON.stringify(body) })
       : await apiFetch(`/masters/work-policies/${(editing as WorkPolicy).id}`, { method: "PUT", body: JSON.stringify(body) });
@@ -42,20 +80,71 @@ export function WorkPolicies() {
     else { const d = await r.json().catch(() => ({})); setError((d as { message?: string }).message ?? "Save failed."); }
   }
 
-  async function remove(p: WorkPolicy) {
-    if (!confirm(`Delete "${p.name}"? Users assigned to this policy will lose their schedule.`)) return;
+  async function doDelete(p: WorkPolicy) {
     await apiFetch(`/masters/work-policies/${p.id}`, { method: "DELETE" });
+    setDeleteTarget(null);
     void load();
   }
 
   const f = (k: keyof PolicyForm, v: string | boolean) => setForm((prev) => ({ ...prev, [k]: v }));
 
+  // Live weekly preview
+  const hours = parseFloat(form.dailyHours);
+  const weeklyHours = isNaN(hours) ? null : (hours * 5).toFixed(1).replace(/\.0$/, "");
+  const weeklyPreview = weeklyHours ? `= ${hours}h × 5 / week (Mon–Fri)` : "";
+
+  const filtered = policies.filter(p =>
+    !search.trim() || p.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const drawerTitle = editing === "new" ? "New Work Policy" : editing ? `Edit — ${(editing as WorkPolicy).name}` : "";
+
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
+      {/* Drawer */}
+      <Drawer open={!!editing} title={drawerTitle} onClose={() => setEditing(null)}
+        footer={
+          <>
+            <button className="btn btn-primary" onClick={() => void save()}>Save Policy</button>
+            <button className="btn btn-ghost" onClick={() => setEditing(null)}>Cancel</button>
+          </>
+        }
+      >
+        {error && <p style={{ color: "var(--danger)", fontSize: "0.825rem", margin: 0 }}>{error}</p>}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-4)" }}>
+          <div className="form-field" style={{ gridColumn: "1 / -1" }}>
+            <label className="form-label">Policy Name <span className="required">*</span></label>
+            <input className="input-field" placeholder="e.g. Standard 8h, Consultant 2h" value={form.name} onChange={(e) => f("name", e.target.value)} />
+          </div>
+          <div className="form-field">
+            <label className="form-label">Daily Hours <span className="required">*</span></label>
+            <input className="input-field" type="number" min="0.5" max="24" step="0.5" placeholder="e.g. 8" value={form.dailyHours} onChange={(e) => f("dailyHours", e.target.value)} />
+            {weeklyPreview && <div style={{ fontSize: "0.75rem", color: "var(--text-tertiary)", marginTop: 4 }}>{weeklyPreview}</div>}
+          </div>
+          <div className="form-field">
+            <label className="form-label">Status</label>
+            <label style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", height: 38, cursor: "pointer", fontSize: "0.825rem", color: "var(--text-secondary)" }}>
+              <input type="checkbox" checked={form.isActive} onChange={(e) => f("isActive", e.target.checked)} style={{ accentColor: "var(--brand-600)" }} />
+              Active
+            </label>
+          </div>
+        </div>
+      </Drawer>
+
+      {/* Confirm delete */}
+      <ConfirmModal
+        open={!!deleteTarget}
+        title={`Delete "${deleteTarget?.name}"?`}
+        body="Users assigned to this policy will lose their schedule. This action cannot be undone."
+        onConfirm={() => deleteTarget && void doDelete(deleteTarget)}
+        onCancel={() => setDeleteTarget(null)}
+      />
+
+      {/* Page header */}
       <div className="page-header">
         <div>
-          <div className="page-title">Work Policies</div>
-          <div className="page-subtitle">Define daily expected hours for different employee types (consultants, full-time, part-time)</div>
+          <div className="page-title">Work Policy Management</div>
+          <div className="page-subtitle">Define daily expected hours for different employee types</div>
         </div>
         <div className="page-actions">
           <button className="btn btn-ghost" onClick={() => void load()}>Refresh</button>
@@ -63,77 +152,66 @@ export function WorkPolicies() {
         </div>
       </div>
 
-      {editing && (
-        <div className="card">
-          <div className="card-header">
-            <div className="card-title">{editing === "new" ? "New Work Policy" : `Edit — ${(editing as WorkPolicy).name}`}</div>
-          </div>
-          <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 180px auto", gap: 12, alignItems: "end" }}>
-              <div className="form-field">
-                <label className="form-label">Policy Name</label>
-                <input className="input-field" placeholder="e.g. Standard 8h, Consultant 2h" value={form.name} onChange={(e) => f("name", e.target.value)} />
-              </div>
-              <div className="form-field">
-                <label className="form-label">Daily Hours</label>
-                <input className="input-field" type="number" min="0.5" max="24" step="0.5" placeholder="e.g. 8" value={form.dailyHours} onChange={(e) => f("dailyHours", e.target.value)} />
-              </div>
-              <div className="form-field">
-                <label className="form-label">Active</label>
-                <label style={{ display: "flex", alignItems: "center", gap: 8, height: 38, cursor: "pointer" }}>
-                  <input type="checkbox" checked={form.isActive} onChange={(e) => f("isActive", e.target.checked)} />
-                  <span style={{ fontSize: 13 }}>Active</span>
-                </label>
-              </div>
-            </div>
-            {error && <p style={{ color: "#ef4444", fontSize: 13, margin: 0 }}>{error}</p>}
-            <div style={{ display: "flex", gap: 8 }}>
-              <button className="btn btn-outline btn-sm" onClick={() => setEditing(null)}>Cancel</button>
-              <button className="btn btn-primary btn-sm" onClick={() => void save()}>Save Policy</button>
-            </div>
+      {/* Table */}
+      <div className="card" style={{ overflow: "hidden" }}>
+        <div className="card-header">
+          <div>
+            <div className="card-title">All Work Policies</div>
+            <div className="card-subtitle">{policies.length} polic{policies.length === 1 ? "y" : "ies"}</div>
           </div>
         </div>
-      )}
-
-      <div className="card">
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr style={{ borderBottom: "1.5px solid var(--border-subtle)" }}>
-              <th style={TH}>Policy Name</th>
-              <th style={TH}>Daily Hours</th>
-              <th style={TH}>Weekly Target</th>
-              <th style={TH}>Status</th>
-              <th style={{ ...TH, textAlign: "right" }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {policies.length === 0 && (
-              <tr><td colSpan={5} style={{ textAlign: "center", padding: "32px 0", color: "var(--text-tertiary)", fontSize: 13 }}>No work policies. Click "+ New Policy" to create one.</td></tr>
-            )}
-            {policies.map((p) => (
-              <tr key={p.id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                <td style={TD}><span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{p.name}</span></td>
-                <td style={TD}>{(p.dailyExpectedMinutes / 60).toFixed(1)}h / day</td>
-                <td style={TD}>{((p.dailyExpectedMinutes / 60) * 6).toFixed(0)}h / week <span style={{ color: "var(--text-tertiary)", fontSize: 11 }}>(Mon–Sat)</span></td>
-                <td style={TD}>
-                  <span className={`badge ${p.isActive ? "badge-success" : "badge-neutral"}`}>{p.isActive ? "Active" : "Inactive"}</span>
-                </td>
-                <td style={{ ...TD, textAlign: "right" }}>
-                  <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                    <button className="btn btn-ghost btn-sm" onClick={() => openEdit(p)}>Edit</button>
-                    <button className="btn btn-ghost btn-sm" style={{ color: "#ef4444" }} onClick={() => void remove(p)}>Delete</button>
-                  </div>
-                </td>
+        <div className="table-search-bar">
+          <input className="input-field table-search-input" placeholder="Search policies…" value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
+        <div className="table-wrap">
+          <table className="table-base">
+            <thead>
+              <tr>
+                <th>Policy Name</th>
+                <th style={{ width: 130 }}>Daily Hours</th>
+                <th style={{ width: 160 }}>Weekly Target</th>
+                <th style={{ width: 100 }}>Status</th>
+                <th style={{ width: 100, textAlign: "right" }}>Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filtered.length === 0 && (
+                <tr className="empty-row"><td colSpan={5}>{search ? "No policies match your search." : "No work policies. Click \"+ New Policy\" to create one."}</td></tr>
+              )}
+              {filtered.map((p) => (
+                <tr key={p.id}>
+                  <td>
+                    <button style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-primary)", fontWeight: 600, padding: 0, textAlign: "left", fontSize: "inherit" }} onClick={() => openEdit(p)}>
+                      {p.name}
+                    </button>
+                  </td>
+                  <td>{(p.dailyExpectedMinutes / 60).toFixed(1)}h / day</td>
+                  <td>
+                    <span>{((p.dailyExpectedMinutes / 60) * 5).toFixed(0)}h / week</span>
+                    <span style={{ color: "var(--text-tertiary)", fontSize: "0.75rem", marginLeft: 4 }}>(Mon–Fri)</span>
+                  </td>
+                  <td>
+                    <span className={`badge ${p.isActive ? "badge-success" : "badge-neutral"}`}>{p.isActive ? "Active" : "Inactive"}</span>
+                  </td>
+                  <td style={{ textAlign: "right" }}>
+                    <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                      <button className="btn btn-ghost btn-sm" onClick={() => openEdit(p)}>Edit</button>
+                      <button className="btn btn-subtle-danger btn-sm" onClick={() => setDeleteTarget(p)}>Delete</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      <div className="card" style={{ background: "var(--n-50, #f9fafb)", border: "1px solid var(--border-subtle)" }}>
-        <div className="card-body">
-          <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: 0, lineHeight: 1.6 }}>
-            <strong>How it works:</strong> Each employee is assigned a Work Policy in the Users admin page.
+      {/* How it works */}
+      <div className="card" style={{ background: "var(--n-50)", border: "1px solid var(--border-subtle)" }}>
+        <div className="card-body" style={{ padding: "var(--space-4) var(--space-5)" }}>
+          <p style={{ fontSize: "0.825rem", color: "var(--text-secondary)", margin: 0, lineHeight: 1.6 }}>
+            <strong style={{ color: "var(--text-primary)" }}>How it works:</strong> Each employee is assigned a Work Policy in the{" "}
+            <strong style={{ color: "var(--brand-600)" }}>Users</strong> admin page.
             The policy defines their daily expected hours, which determines the weekly target shown in the Timesheet.
             Create separate policies for consultants (2h), part-time (4h), and full-time employees (8h).
           </p>
@@ -142,6 +220,3 @@ export function WorkPolicies() {
     </section>
   );
 }
-
-const TH: React.CSSProperties = { padding: "10px 16px", textAlign: "left", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-tertiary)" };
-const TD: React.CSSProperties = { padding: "12px 16px", fontSize: 13, color: "var(--text-secondary)" };

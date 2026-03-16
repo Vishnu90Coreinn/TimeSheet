@@ -917,3 +917,103 @@ a { text-decoration: none; color: inherit; }
   font-size: 0.6rem;
   color: var(--text-tertiary);
 }
+
+/* ── Drawer (slide-over panel) ─────────────────────────── */
+.drawer-overlay { position: fixed; inset: 0; background: rgba(16,16,26,0.35); z-index: 200; }
+.drawer { position: fixed; top: 0; right: 0; height: 100vh; width: 480px; max-width: 100vw;
+  background: var(--n-0); box-shadow: var(--shadow-xl); z-index: 201;
+  display: flex; flex-direction: column; }
+.drawer-header { padding: var(--space-5) var(--space-6); border-bottom: 1px solid var(--border-subtle);
+  display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.drawer-title { font-size: 1rem; font-weight: 700; color: var(--text-primary); }
+.drawer-close { width: 32px; height: 32px; border-radius: var(--r-md); border: none;
+  background: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  color: var(--text-secondary); transition: background 0.15s; font-size: 1rem; }
+.drawer-close:hover { background: var(--n-100); color: var(--text-primary); }
+.drawer-body { flex: 1; overflow-y: auto; padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-4); }
+.drawer-footer { padding: var(--space-4) var(--space-6); border-top: 1px solid var(--border-subtle);
+  display: flex; gap: var(--space-3); flex-shrink: 0; }
+
+/* ── Confirm Modal ──────────────────────────────────────── */
+.modal-overlay { position: fixed; inset: 0; background: rgba(16,16,26,0.4); z-index: 300;
+  display: flex; align-items: center; justify-content: center; padding: var(--space-4); }
+.modal-box { background: var(--n-0); border-radius: var(--r-xl); box-shadow: var(--shadow-xl);
+  padding: var(--space-6); max-width: 400px; width: 100%; }
+.modal-title { font-size: 1rem; font-weight: 700; color: var(--text-primary); margin-bottom: var(--space-2); }
+.modal-body { font-size: 0.875rem; color: var(--text-secondary); margin-bottom: var(--space-5); line-height: 1.5; }
+.modal-actions { display: flex; gap: var(--space-3); justify-content: flex-end; }
+
+/* ── Overflow Menu (3-dot) ──────────────────────────────── */
+.overflow-wrap { position: relative; display: inline-block; }
+.overflow-btn { width: 32px; height: 32px; border-radius: var(--r-md); border: 1px solid var(--border-subtle);
+  background: var(--n-0); cursor: pointer; display: flex; align-items: center; justify-content: center;
+  color: var(--text-secondary); font-size: 1.2rem; transition: all 0.15s; padding: 0; line-height: 1; }
+.overflow-btn:hover { background: var(--n-100); color: var(--text-primary); border-color: var(--border-default); }
+.overflow-menu { position: absolute; right: 0; top: calc(100% + 4px); background: var(--n-0);
+  border: 1px solid var(--border-default); border-radius: var(--r-lg); box-shadow: var(--shadow-md);
+  z-index: 100; min-width: 160px; padding: 4px 0; }
+.overflow-item { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-4);
+  font-size: 0.825rem; cursor: pointer; background: none; border: none; width: 100%; text-align: left;
+  color: var(--text-secondary); transition: background 0.1s; font-family: var(--font-sans); }
+.overflow-item:hover { background: var(--n-50); color: var(--text-primary); }
+.overflow-item--danger { color: var(--danger); }
+.overflow-item--danger:hover { background: var(--danger-light); color: var(--danger-dark); }
+.overflow-item--warning { color: var(--warning-dark); }
+.overflow-item--warning:hover { background: var(--warning-light); }
+
+/* ── Toggle Switch ──────────────────────────────────────── */
+.toggle-wrap { display: inline-flex; align-items: center; gap: var(--space-2); cursor: pointer; }
+.toggle-track { position: relative; width: 36px; height: 20px; border-radius: var(--r-full);
+  background: var(--n-300); transition: background 0.2s; flex-shrink: 0; }
+.toggle-track.on { background: var(--success); }
+.toggle-thumb { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px;
+  border-radius: var(--r-full); background: #fff; transition: transform 0.2s; box-shadow: var(--shadow-xs); }
+.toggle-track.on .toggle-thumb { transform: translateX(16px); }
+
+/* ── Toast ──────────────────────────────────────────────── */
+.toast { position: fixed; bottom: var(--space-6); right: var(--space-6); z-index: 500;
+  background: var(--n-800); color: var(--n-0); padding: var(--space-3) var(--space-4);
+  border-radius: var(--r-lg); font-size: 0.825rem; font-weight: 500; box-shadow: var(--shadow-md);
+  max-width: 300px; display: flex; align-items: center; gap: var(--space-2); }
+.toast--ok { background: var(--success-dark); }
+.toast--err { background: var(--danger-dark); }
+
+/* ── Year stepper ──────────────────────────────────────── */
+.year-stepper { display: flex; align-items: center; gap: var(--space-2); }
+.year-stepper-btn { width: 30px; height: 30px; border-radius: var(--r-md); border: 1px solid var(--border-default);
+  background: var(--n-0); cursor: pointer; display: flex; align-items: center; justify-content: center;
+  font-size: 1rem; color: var(--text-secondary); transition: all 0.15s; }
+.year-stepper-btn:hover { background: var(--n-100); color: var(--text-primary); }
+.year-stepper-val { font-size: 0.925rem; font-weight: 700; color: var(--text-primary); min-width: 48px; text-align: center; }
+
+/* ── Allocation pills ──────────────────────────────────── */
+.alloc-pills { display: flex; flex-wrap: wrap; gap: 4px; }
+.alloc-pill { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px;
+  border-radius: var(--r-full); font-size: 0.72rem; font-weight: 600;
+  background: var(--brand-50); color: var(--brand-700); border: 1px solid var(--brand-200); }
+
+/* ── Table search bar ──────────────────────────────────── */
+.table-search-bar { padding: var(--space-3) var(--space-5); border-bottom: 1px solid var(--border-subtle);
+  display: flex; align-items: center; gap: var(--space-3); background: var(--n-0); }
+.table-search-input { flex: 1; max-width: 360px; }
+
+/* ── Password strength ─────────────────────────────────── */
+.pwd-strength-bar { height: 4px; border-radius: var(--r-full); margin-top: 6px; transition: all 0.3s; background: var(--n-200); }
+.pwd-strength-bar--weak   { background: var(--danger); width: 33%; }
+.pwd-strength-bar--medium { background: var(--warning); width: 66%; }
+.pwd-strength-bar--strong { background: var(--success); width: 100%; }
+.pwd-strength-label { font-size: 0.7rem; margin-top: 3px; font-weight: 600; }
+
+/* ── Outlined danger / warning buttons ────────────────── */
+.btn-outline-danger {
+  background: var(--n-0); color: var(--danger);
+  border: 1px solid rgba(239,68,68,0.4);
+}
+.btn-outline-danger:hover:not(:disabled) { background: var(--danger-light); border-color: var(--danger); }
+.btn-outline-danger:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-outline-warning {
+  background: var(--n-0); color: var(--warning-dark);
+  border: 1px solid rgba(245,158,11,0.4);
+}
+.btn-outline-warning:hover:not(:disabled) { background: var(--warning-light); border-color: var(--warning); }

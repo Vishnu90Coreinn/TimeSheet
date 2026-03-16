@@ -1354,7 +1354,7 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
           </div>
           {effortByProject.length > 0 && (
             <div style={{ borderTop: "1px solid var(--border-subtle)", padding: "var(--space-3) var(--space-5)" }}>
-              <button onClick={() => onNavigate?.("reports")} className="card-footer-link">View all projects →</button>
+              <button onClick={() => onNavigate?.("projects")} className="card-footer-link">View all projects →</button>
             </div>
           )}
         </div>

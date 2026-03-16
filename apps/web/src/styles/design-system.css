@@ -689,7 +689,7 @@ a { text-decoration: none; color: inherit; }
 .input-icon-wrap .input-field { padding-left: 36px; }
 
 /* ── Page enter animation ─────────────────────────────────── */
-@keyframes page-enter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes page-enter { from { opacity: 0; } to { opacity: 1; } }
 .page-enter { animation: page-enter var(--transition-page) both; }
 
 /* ── Pulse status dot ─────────────────────────────────────── */

@@ -29,7 +29,7 @@ public class TimesheetsController(TimeSheetDbContext dbContext, IAttendanceCalcu
         var projects = await dbContext.Projects.AsNoTracking()
             .Where(p => p.IsActive && !p.IsArchived)
             .OrderBy(p => p.Name)
-            .Select(p => new ProjectResponse(p.Id, p.Name, p.Code, p.IsActive, p.IsArchived))
+            .Select(p => new ProjectResponse(p.Id, p.Name, p.Code, p.IsActive, p.IsArchived, p.BudgetedHours))
             .ToListAsync();
 
         var categories = await dbContext.TaskCategories.AsNoTracking()

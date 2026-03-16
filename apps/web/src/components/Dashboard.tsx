@@ -1,17 +1,29 @@
 import { useEffect, useState } from "react";
 import { apiFetch } from "../api/client";
 import { AttendanceWidget } from "./AttendanceWidget";
+import type { LeaveBalance } from "../types";
 
 interface DashboardProps { role: string; username: string; }
 
-// ── Interfaces ────────────────────────────────────────────────────────────────
+// ── Employee interfaces ───────────────────────────────────────────────────────
 interface EmployeeSession { workDate: string; checkedIn: string | null; checkedOut: string | null; breakMinutes: number; attendanceMinutes: number; }
 interface EmployeeTimesheet { status: string; mismatchReason: string | null; enteredMinutes: number; pendingActions: number; }
 interface EmployeeWeekly { entered: number; breaks: number; }
 interface ProjectEffortRow { project: string; minutes: number; }
 interface ComplianceRow { workDate: string; isCompliant: boolean; }
-interface EmployeeData { todaySession: EmployeeSession; todayTimesheet: EmployeeTimesheet; weeklyHours: EmployeeWeekly; projectEffort: ProjectEffortRow[]; monthlyComplianceTrend: ComplianceRow[]; }
+interface EmployeeData {
+  todaySession: EmployeeSession;
+  todayTimesheet: EmployeeTimesheet;
+  weeklyHours: EmployeeWeekly;
+  projectEffort: ProjectEffortRow[];
+  monthlyComplianceTrend: ComplianceRow[];
+}
 
+// ── Week summary ──────────────────────────────────────────────────────────────
+interface WeekDayMeta { workDate: string; status: string; enteredMinutes: number; expectedMinutes: number; attendanceNetMinutes: number; hasMismatch: boolean; }
+interface WeekSummary { weekStartDate: string; weekEndDate: string; weekEnteredMinutes: number; weekExpectedMinutes: number; weekAttendanceNetMinutes: number; days: WeekDayMeta[]; }
+
+// ── Manager interfaces ────────────────────────────────────────────────────────
 interface TeamAttendance { present: number; onLeave: number; notCheckedIn: number; }
 interface TimesheetHealth { missing: number; pendingApprovals: number; }
 interface MismatchRow { username: string; workDate: string; mismatchReason: string; }
@@ -19,12 +31,16 @@ interface Utilization { avgMinutes: number; }
 interface ContributionRow { project: string; minutes: number; }
 interface ManagerData { teamAttendance: TeamAttendance; timesheetHealth: TimesheetHealth; mismatches: MismatchRow[]; utilization: Utilization; contributions: ContributionRow[]; }
 
+// ── Admin interfaces ──────────────────────────────────────────────────────────
 interface DeptRow { department: string; minutes: number; }
 interface ProjectRow { project: string; minutes: number; }
 interface Billable { billableMinutes: number; nonBillableMinutes: number; }
 interface ConsultantInternal { consultant: number; internal: number; }
 interface UserLoad { username: string; status: "underutilized" | "balanced" | "overloaded"; minutes: number; }
 interface AdminData { effortByDepartment: DeptRow[]; effortByProject: ProjectRow[]; billable: Billable; consultantVsInternal: ConsultantInternal; underOver: UserLoad[]; compliance: unknown[]; }
+
+// ── Pending approval ──────────────────────────────────────────────────────────
+interface PendingApproval { timesheetId: string; username: string; workDate: string; enteredMinutes: number; status: string; hasMismatch: boolean; }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fmtMinutes(m: number): string {
@@ -45,17 +61,29 @@ function todayStr(): string {
   return new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric", year: "numeric" });
 }
 function statusBadge(s: string) {
-  const m: Record<string,string> = { draft:"badge badge-warning", submitted:"badge badge-info", approved:"badge badge-success", rejected:"badge badge-error" };
+  const m: Record<string, string> = { draft: "badge badge-warning", submitted: "badge badge-info", approved: "badge badge-success", rejected: "badge badge-error" };
   return <span className={m[s?.toLowerCase()] ?? "badge badge-neutral"}>{s}</span>;
 }
 function loadBadge(s: string) {
-  const m: Record<string,string> = { underutilized:"badge badge-warning", balanced:"badge badge-success", overloaded:"badge badge-error" };
+  const m: Record<string, string> = { underutilized: "badge badge-warning", balanced: "badge badge-success", overloaded: "badge badge-error" };
   return <span className={m[s] ?? "badge badge-neutral"}>{s}</span>;
 }
+function avatarColor(name: string): string {
+  const colors = [
+    "linear-gradient(135deg,#6366f1,#4338ca)",
+    "linear-gradient(135deg,#10b981,#065f46)",
+    "linear-gradient(135deg,#f59e0b,#b45309)",
+    "linear-gradient(135deg,#3b82f6,#1e40af)",
+    "linear-gradient(135deg,#ec4899,#be185d)",
+  ];
+  let h = 0;
+  for (const c of name) h = (h * 31 + c.charCodeAt(0)) & 0xffff;
+  return colors[h % colors.length];
+}
 
-// Donut chart helper — circumference of r=40 circle ≈ 251.2
+// ── Donut chart ───────────────────────────────────────────────────────────────
 const CIRC = 251.2;
-function DonutChart({ segments }: { segments: { pct: number; color: string }[] }) {
+function DonutChart({ segments, centerLabel, centerSub }: { segments: { pct: number; color: string }[]; centerLabel?: string; centerSub?: string }) {
   let offset = 0;
   const arcs = segments.map((s) => {
     const len = (s.pct / 100) * CIRC;
@@ -77,14 +105,14 @@ function DonutChart({ segments }: { segments: { pct: number; color: string }[] }
         ))}
       </svg>
       <div className="donut-label">
-        <div className="donut-val">{Math.round(total)}%</div>
-        <div className="donut-sub">used</div>
+        <div className="donut-val">{centerLabel ?? `${Math.round(total)}%`}</div>
+        <div className="donut-sub">{centerSub ?? "used"}</div>
       </div>
     </div>
   );
 }
 
-// KPI list item
+// ── KPI progress list item ────────────────────────────────────────────────────
 function KpiItem({ name, color, value, max }: { name: string; color: string; value: number; max: number }) {
   const pct = max > 0 ? Math.round((value / max) * 100) : 0;
   return (
@@ -103,21 +131,61 @@ function KpiItem({ name, color, value, max }: { name: string; color: string; val
   );
 }
 
-// Palette for projects
 const PALETTE = ["var(--brand-500)", "var(--info)", "var(--warning)", "var(--success)", "var(--n-300)"];
+const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+// ── Weekly bar chart ──────────────────────────────────────────────────────────
+function WeeklyBarChart({ days }: { days: WeekDayMeta[] }) {
+  if (days.length === 0) {
+    return (
+      <div className="empty-state" style={{ padding: "var(--space-6) 0" }}>
+        <p className="empty-state__title">No data this week</p>
+      </div>
+    );
+  }
+  const maxMinutes = Math.max(...days.map(d => Math.max(d.enteredMinutes, d.expectedMinutes > 0 ? d.expectedMinutes : 480)), 1);
+  const todayIso = new Date().toISOString().slice(0, 10);
+
+  return (
+    <div className="wbc-wrap">
+      {days.map((day, i) => {
+        const target = day.expectedMinutes > 0 ? day.expectedMinutes : 480;
+        const logged = day.enteredMinutes;
+        const targetPct = Math.min(100, (target / maxMinutes) * 100);
+        const loggedPct = Math.min(100, (logged / maxMinutes) * 100);
+        const isToday = day.workDate === todayIso;
+        return (
+          <div key={day.workDate} className="wbc-col">
+            <div className="wbc-val">{logged > 0 ? `${(logged / 60).toFixed(1)}h` : ""}</div>
+            <div className="wbc-tracks">
+              <div className="wbc-target" style={{ height: `${targetPct}%` }} />
+              {logged > 0 && (
+                <div className="wbc-bar" style={{
+                  height: `${loggedPct}%`,
+                  background: isToday ? "var(--brand-500)" : "var(--brand-400)",
+                }} />
+              )}
+            </div>
+            <div className={`wbc-day${isToday ? " wbc-day--today" : ""}`}>{DAY_LABELS[i]}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────
 function DashboardSkeleton() {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
       <div className="page-header">
         <div>
           <div className="skeleton skeleton-title" style={{ width: 260, height: 24, marginBottom: 8 }} />
           <div className="skeleton skeleton-text" style={{ width: 200 }} />
         </div>
       </div>
-      <div className="stat-grid-4 mb-5">
-        {[1,2,3,4].map(i => (
+      <div className="stat-grid-4">
+        {[1, 2, 3, 4].map(i => (
           <div key={i} className="stat-card">
             <div className="stat-card-top">
               <div className="skeleton" style={{ width: 36, height: 36, borderRadius: "var(--r-md)" }} />
@@ -129,7 +197,7 @@ function DashboardSkeleton() {
         ))}
       </div>
       <div className="dashboard-grid-2">
-        {[1,2].map(i => (
+        {[1, 2].map(i => (
           <div key={i} className="card" style={{ padding: "var(--space-5)", minHeight: 200 }}>
             <div className="skeleton skeleton-title" style={{ width: 140, height: 16, marginBottom: 20 }} />
             <div className="skeleton" style={{ width: "100%", height: 120, borderRadius: "var(--r-md)" }} />
@@ -141,22 +209,47 @@ function DashboardSkeleton() {
 }
 
 // ── Employee View ─────────────────────────────────────────────────────────────
-function EmployeeDashboard({ data, username }: { data: EmployeeData; username: string }) {
-  const { todaySession, todayTimesheet, weeklyHours, projectEffort, monthlyComplianceTrend } = data;
-  const compliantDays = monthlyComplianceTrend.filter(r => r.isCompliant).length;
-  const compliancePct = monthlyComplianceTrend.length > 0 ? Math.round((compliantDays / monthlyComplianceTrend.length) * 100) : 0;
-  const maxEffort = Math.max(...projectEffort.map(r => r.minutes), 1);
+function EmployeeDashboard({ employee, week, leaveBalances, activeProjectCount, username }: {
+  employee: EmployeeData;
+  week: WeekSummary;
+  leaveBalances: LeaveBalance[];
+  activeProjectCount: number;
+  username: string;
+}) {
+  const { todaySession, todayTimesheet, projectEffort, monthlyComplianceTrend } = employee;
 
-  // Donut segments for project split
+  // KPI computations
+  const hoursThisWeek = week.weekEnteredMinutes / 60;
+  const pctTarget = week.weekExpectedMinutes > 0
+    ? Math.round((week.weekEnteredMinutes / week.weekExpectedMinutes) * 100)
+    : 0;
+  const compliantDays = monthlyComplianceTrend.filter(r => r.isCompliant).length;
+  const approvalRate = monthlyComplianceTrend.length > 0
+    ? Math.round((compliantDays / monthlyComplianceTrend.length) * 100)
+    : 0;
+  const annualLeave = leaveBalances.find(b => b.leaveTypeName.toLowerCase().includes("annual")) ?? leaveBalances[0];
+
+  // Project split
   const totalEffort = projectEffort.reduce((a, r) => a + r.minutes, 0);
+  const totalEffortH = (totalEffort / 60).toFixed(1);
+  const maxEffort = Math.max(...projectEffort.map(r => r.minutes), 1);
   const donutSegs = projectEffort.slice(0, 4).map((r, i) => ({
     pct: totalEffort > 0 ? (r.minutes / totalEffort) * 100 : 0,
     color: PALETTE[i] ?? "var(--n-300)",
   }));
 
+  // Recent activity (synthesised from available data)
+  const activities: Array<{ icon: string; iconBg: string; text: string; sub: string; ts: string }> = [];
+  if (todaySession.checkedIn) activities.push({ icon: "✓", iconBg: "var(--success-light)", text: "Checked in", sub: `At ${fmtTime(todaySession.checkedIn)}`, ts: "Today" });
+  if (todaySession.checkedOut) activities.push({ icon: "○", iconBg: "var(--n-100)", text: "Checked out", sub: `At ${fmtTime(todaySession.checkedOut)}`, ts: "Today" });
+  activities.push({ icon: "◈", iconBg: "var(--brand-50)", text: `Timesheet: ${todayTimesheet.status}`, sub: todayTimesheet.enteredMinutes > 0 ? `${fmtMinutes(todayTimesheet.enteredMinutes)} entered today` : "No entries yet", ts: "Today" });
+  projectEffort.slice(0, 2).forEach(r => {
+    activities.push({ icon: "⏱", iconBg: "var(--info-light)", text: `Time on ${r.project}`, sub: `${fmtMinutes(r.minutes)} this week`, ts: "This week" });
+  });
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
-      {/* Page header */}
+      {/* Header */}
       <div className="page-header">
         <div>
           <div className="page-title">{greeting(username)}</div>
@@ -164,99 +257,86 @@ function EmployeeDashboard({ data, username }: { data: EmployeeData; username: s
         </div>
         <div className="page-actions">
           <button className="btn btn-outline btn-sm">📥 Export</button>
+          <button className="btn btn-primary btn-sm">+ Log Time</button>
         </div>
       </div>
 
-      {/* Stat grid */}
-      <div className="stat-grid-4 mb-5">
+      {/* 4 KPI Cards */}
+      <div className="stat-grid-4">
         <div className="stat-card">
           <div className="stat-card-top">
             <div className="stat-icon" style={{ background: "var(--brand-50)" }}>⏱</div>
-            <span className={`stat-trend ${todaySession.checkedIn ? "trend-up" : "trend-flat"}`}>
-              {todaySession.checkedIn ? "● Checked in" : "○ Not started"}
+            <span className={`stat-trend ${pctTarget >= 80 ? "trend-up" : "trend-flat"}`}>
+              {pctTarget > 0 ? `↑${pctTarget}% target` : "No entries"}
             </span>
           </div>
-          <div className="stat-value">{fmtMinutes(todaySession.attendanceMinutes)}<span style={{ fontSize: "1rem", color: "var(--text-tertiary)" }}></span></div>
-          <div className="stat-label">Attendance today</div>
-          <div className="stat-footer">{todaySession.checkedIn ? `In at ${fmtTime(todaySession.checkedIn)}` : "Clock in to start tracking"}</div>
+          <div className="stat-value">{hoursThisWeek.toFixed(1)}<span style={{ fontSize: "1rem", color: "var(--text-tertiary)" }}>h</span></div>
+          <div className="stat-label">Hours this week</div>
+          <div className="stat-footer">{week.weekExpectedMinutes > 0 ? `${(week.weekExpectedMinutes / 60).toFixed(0)}h expected this week` : "No schedule set"}</div>
         </div>
+
         <div className="stat-card">
           <div className="stat-card-top">
             <div className="stat-icon" style={{ background: "var(--success-light)" }}>✓</div>
-            <span className="stat-trend trend-flat">This week</span>
-          </div>
-          <div className="stat-value">{fmtMinutes(weeklyHours.entered)}</div>
-          <div className="stat-label">Hours logged</div>
-          <div className="stat-footer">{weeklyHours.breaks > 0 ? `${fmtMinutes(weeklyHours.breaks)} break time` : "No breaks recorded"}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-card-top">
-            <div className="stat-icon" style={{ background: todayTimesheet.pendingActions > 0 ? "var(--warning-light)" : "var(--info-light)" }}>◈</div>
-            {statusBadge(todayTimesheet.status)}
-          </div>
-          <div className="stat-value">{todayTimesheet.pendingActions}</div>
-          <div className="stat-label">Pending actions</div>
-          <div className="stat-footer">Today's timesheet: {todayTimesheet.status}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-card-top">
-            <div className="stat-icon" style={{ background: "var(--warning-light)" }}>🛡</div>
-            <span className={`stat-trend ${compliancePct >= 80 ? "trend-up" : "trend-down"}`}>
-              {compliantDays}/{monthlyComplianceTrend.length} days
+            <span className={`stat-trend ${approvalRate >= 90 ? "trend-up" : "trend-flat"}`}>
+              {approvalRate >= 90 ? `↑${approvalRate - 90}%` : "On track"}
             </span>
           </div>
-          <div className="stat-value">{compliancePct}<span style={{ fontSize: "1rem", color: "var(--text-tertiary)" }}>%</span></div>
-          <div className="stat-label">Monthly compliance</div>
-          <div className="stat-footer">Last {monthlyComplianceTrend.length} working days</div>
+          <div className="stat-value">{approvalRate}<span style={{ fontSize: "1rem", color: "var(--text-tertiary)" }}>%</span></div>
+          <div className="stat-label">Approval rate</div>
+          <div className="stat-footer">{compliantDays} of {monthlyComplianceTrend.length} submitted this month</div>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-card-top">
+            <div className="stat-icon" style={{ background: "var(--info-light)" }}>◈</div>
+            <span className="stat-trend trend-flat">Assigned</span>
+          </div>
+          <div className="stat-value">{activeProjectCount}</div>
+          <div className="stat-label">Active projects</div>
+          <div className="stat-footer">{projectEffort.length} with hours this week</div>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-card-top">
+            <div className="stat-icon" style={{ background: "var(--warning-light)" }}>🌿</div>
+            <span className="stat-trend trend-flat">FY {new Date().getFullYear()}</span>
+          </div>
+          <div className="stat-value">{annualLeave?.remainingDays ?? 0}<span style={{ fontSize: "1rem", color: "var(--text-tertiary)" }}>d</span></div>
+          <div className="stat-label">Leave balance</div>
+          <div className="stat-footer">{annualLeave?.leaveTypeName ?? "Annual"} · FY {new Date().getFullYear()}</div>
         </div>
       </div>
 
-      {/* Row 2: Project hours bar chart + Project split donut */}
+      {/* Row 2: Weekly Hours Breakdown + Project Split */}
       <div className="dashboard-grid-2">
-        {/* Bar chart — project effort */}
         <div className="card">
           <div className="card-header">
             <div>
-              <div className="card-title">Project Hours This Week</div>
-              <div className="card-subtitle">Hours logged per project vs. others</div>
+              <div className="card-title">Weekly Hours Breakdown</div>
+              <div className="card-subtitle">Logged hours vs daily target</div>
             </div>
+            {pctTarget > 0 && (
+              <span className={`stat-trend ${pctTarget >= 100 ? "trend-up" : "trend-flat"}`}>
+                {pctTarget >= 100 ? "↑" : ""}{pctTarget}% target hit
+              </span>
+            )}
           </div>
           <div className="card-body">
-            {projectEffort.length === 0 ? (
-              <div className="empty-state" style={{ padding: "var(--space-8) 0" }}>
-                <p className="empty-state__title">No entries yet</p>
-                <p className="empty-state__sub">Log time on the Timesheets page to see effort here.</p>
+            <WeeklyBarChart days={week.days} />
+            <div className="chart-legend" style={{ marginTop: "var(--space-3)" }}>
+              <div className="chart-legend-item">
+                <div className="chart-legend-dot" style={{ background: "var(--brand-400)" }} />
+                Logged hours
               </div>
-            ) : (
-              <>
-                <div className="bar-chart">
-                  {projectEffort.slice(0, 7).map((r, i) => {
-                    const pct = Math.round((r.minutes / maxEffort) * 100);
-                    return (
-                      <div key={r.project} className="bar-col">
-                        <div className="bar-tracks">
-                          <div className="bar-seg" style={{ height: "100%", background: "var(--n-100)" }} title="Max" />
-                          <div className="bar-seg" style={{ height: `${pct}%`, background: PALETTE[i % PALETTE.length] }} title={`${r.project}: ${fmtMinutes(r.minutes)}`} />
-                        </div>
-                        <div className="bar-day">{r.project.slice(0, 4)}</div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="chart-legend">
-                  {projectEffort.slice(0, 4).map((r, i) => (
-                    <div key={r.project} className="chart-legend-item">
-                      <div className="chart-legend-dot" style={{ background: PALETTE[i % PALETTE.length] }} />
-                      {r.project.length > 12 ? r.project.slice(0, 12) + "…" : r.project}
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
+              <div className="chart-legend-item">
+                <div className="chart-legend-dot" style={{ background: "var(--n-200)" }} />
+                Daily target
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Project split donut */}
         <div className="card">
           <div className="card-header">
             <div>
@@ -267,11 +347,12 @@ function EmployeeDashboard({ data, username }: { data: EmployeeData; username: s
           <div className="card-body">
             {projectEffort.length === 0 ? (
               <div className="empty-state" style={{ padding: "var(--space-8) 0" }}>
-                <p className="empty-state__title">No data</p>
+                <p className="empty-state__title">No entries yet</p>
+                <p className="empty-state__sub">Log time to see your project split.</p>
               </div>
             ) : (
               <div style={{ display: "flex", alignItems: "center", gap: "var(--space-5)" }}>
-                <DonutChart segments={donutSegs} />
+                <DonutChart segments={donutSegs} centerLabel={`${totalEffortH}h`} centerSub="Total" />
                 <div className="kpi-list" style={{ flex: 1 }}>
                   {projectEffort.slice(0, 4).map((r, i) => (
                     <KpiItem key={r.project} name={r.project} color={PALETTE[i % PALETTE.length]} value={r.minutes} max={maxEffort} />
@@ -283,83 +364,69 @@ function EmployeeDashboard({ data, username }: { data: EmployeeData; username: s
         </div>
       </div>
 
-      {/* Row 3: Activity + Attendance Widget + Compliance */}
+      {/* Row 3: Recent Activity + Attendance Widget + Leave Balance */}
       <div className="dashboard-grid">
-        {/* Activity feed */}
         <div className="card">
           <div className="card-header">
             <div>
-              <div className="card-title">Today's Status</div>
-              <div className="card-subtitle">Your timesheet activity</div>
+              <div className="card-title">Recent Activity</div>
+              <div className="card-subtitle">Last 24 hours</div>
             </div>
           </div>
           <div className="card-body">
             <div className="activity-list">
-              <div className="activity-item">
-                <div className="activity-icon-wrap" style={{ background: todaySession.checkedIn ? "var(--success-light)" : "var(--n-100)" }}>
-                  {todaySession.checkedIn ? "✓" : "○"}
-                </div>
-                <div className="activity-body">
-                  <div className="activity-text">
-                    {todaySession.checkedIn ? <><strong>Checked in</strong> successfully</> : "Not checked in yet"}
-                  </div>
-                  <div className="activity-meta">{todaySession.checkedIn ? `At ${fmtTime(todaySession.checkedIn)}` : "Use the widget to check in"}</div>
-                </div>
-                <div className="activity-ts">Today</div>
-              </div>
-              <div className="activity-item">
-                <div className="activity-icon-wrap" style={{ background: "var(--brand-50)" }}>◈</div>
-                <div className="activity-body">
-                  <div className="activity-text">Timesheet status: <strong>{todayTimesheet.status}</strong></div>
-                  <div className="activity-meta">{todayTimesheet.enteredMinutes > 0 ? `${fmtMinutes(todayTimesheet.enteredMinutes)} entered` : "No entries yet"}</div>
-                </div>
-                <div className="activity-ts">Today</div>
-              </div>
-              {projectEffort.slice(0, 2).map((r) => (
-                <div key={r.project} className="activity-item">
-                  <div className="activity-icon-wrap" style={{ background: "var(--info-light)" }}>⏱</div>
+              {activities.slice(0, 5).map((a, i) => (
+                <div key={i} className="activity-item">
+                  <div className="activity-icon-wrap" style={{ background: a.iconBg }}>{a.icon}</div>
                   <div className="activity-body">
-                    <div className="activity-text">Time logged on <strong>{r.project}</strong></div>
-                    <div className="activity-meta">{fmtMinutes(r.minutes)} this week</div>
+                    <div className="activity-text">{a.text}</div>
+                    <div className="activity-meta">{a.sub}</div>
                   </div>
-                  <div className="activity-ts">This week</div>
+                  <div className="activity-ts">{a.ts}</div>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Attendance Widget */}
         <div style={{ display: "flex", flexDirection: "column" }}>
           <AttendanceWidget />
         </div>
 
-        {/* Monthly compliance calendar */}
         <div className="card">
           <div className="card-header">
             <div>
-              <div className="card-title">Compliance Calendar</div>
-              <div className="card-subtitle">{compliantDays}/{monthlyComplianceTrend.length} days compliant</div>
+              <div className="card-title">Leave Balance</div>
+              <div className="card-subtitle">FY {new Date().getFullYear()}</div>
             </div>
-            <span className={`badge ${compliancePct >= 80 ? "badge-success" : "badge-error"}`}>{compliancePct}%</span>
           </div>
           <div className="card-body">
-            {monthlyComplianceTrend.length === 0 ? (
+            {leaveBalances.length === 0 ? (
               <div className="empty-state" style={{ padding: "var(--space-6) 0" }}>
-                <p className="empty-state__title">No data</p>
+                <p className="empty-state__title">No leave policy assigned</p>
               </div>
             ) : (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                {monthlyComplianceTrend.map(r => (
-                  <div key={r.workDate} title={r.workDate} style={{
-                    width: 26, height: 26, borderRadius: 6,
-                    background: r.isCompliant ? "var(--success-light)" : "var(--danger-light)",
-                    border: `1px solid ${r.isCompliant ? "rgba(16,185,129,0.2)" : "rgba(239,68,68,0.2)"}`,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 11, fontWeight: 700,
-                    color: r.isCompliant ? "var(--success-dark)" : "var(--danger-dark)",
-                  }}>
-                    {r.isCompliant ? "✓" : "✗"}
+              <div className="kpi-list">
+                {leaveBalances.map((lb, i) => (
+                  <div key={lb.leaveTypeId} className="kpi-item">
+                    <div className="kpi-header">
+                      <div className="kpi-name">
+                        <div className="kpi-dot" style={{ background: PALETTE[i % PALETTE.length] }} />
+                        {lb.leaveTypeName}
+                      </div>
+                      <div className="kpi-val" style={{ color: lb.remainingDays <= 2 ? "var(--danger)" : "var(--text-primary)" }}>
+                        {lb.remainingDays}d
+                      </div>
+                    </div>
+                    <div className="progress-track">
+                      <div className="progress-fill" style={{
+                        width: `${lb.totalDays > 0 ? Math.round((lb.usedDays / lb.totalDays) * 100) : 0}%`,
+                        background: PALETTE[i % PALETTE.length],
+                      }} />
+                    </div>
+                    <div style={{ fontSize: "0.72rem", color: "var(--text-tertiary)", marginTop: 2 }}>
+                      {lb.usedDays}d used of {lb.totalDays}d
+                    </div>
                   </div>
                 ))}
               </div>
@@ -382,6 +449,26 @@ function ManagerDashboard({ data, username }: { data: ManagerData; username: str
   }));
   const totalTeam = teamAttendance.present + teamAttendance.onLeave + teamAttendance.notCheckedIn;
 
+  // Inline pending approvals
+  const [pendingList, setPendingList] = useState<PendingApproval[]>([]);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+  useEffect(() => {
+    apiFetch("/approvals/pending-timesheets").then(async r => {
+      if (r.ok) { const d = await r.json(); setPendingList((d as PendingApproval[]).slice(0, 5)); }
+    }).catch(() => {});
+  }, []);
+
+  const quickApprove = async (id: string) => {
+    setApprovingId(id);
+    await apiFetch(`/approvals/${id}/approve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ comment: "" }),
+    }).catch(() => {});
+    setPendingList(prev => prev.filter(a => a.timesheetId !== id));
+    setApprovingId(null);
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
       <div className="page-header">
@@ -394,7 +481,7 @@ function ManagerDashboard({ data, username }: { data: ManagerData; username: str
         </div>
       </div>
 
-      <div className="stat-grid-4 mb-5">
+      <div className="stat-grid-4">
         <div className="stat-card">
           <div className="stat-card-top">
             <div className="stat-icon" style={{ background: "var(--success-light)" }}>👥</div>
@@ -437,7 +524,7 @@ function ManagerDashboard({ data, username }: { data: ManagerData; username: str
         </div>
       </div>
 
-      {/* Row 2: Mismatches bar + contributions donut */}
+      {/* Row 2: Team Attendance bar + Project Contributions donut */}
       <div className="dashboard-grid-2">
         <div className="card">
           <div className="card-header">
@@ -485,7 +572,7 @@ function ManagerDashboard({ data, username }: { data: ManagerData; username: str
               <div className="empty-state" style={{ padding: "var(--space-6) 0" }}><p className="empty-state__title">No data</p></div>
             ) : (
               <div style={{ display: "flex", alignItems: "center", gap: "var(--space-5)" }}>
-                <DonutChart segments={donutSegs} />
+                <DonutChart segments={donutSegs} centerLabel={`${(totalContrib / 60).toFixed(0)}h`} centerSub="Team" />
                 <div className="kpi-list" style={{ flex: 1 }}>
                   {contributions.slice(0, 4).map((r, i) => (
                     <KpiItem key={r.project} name={r.project} color={PALETTE[i % PALETTE.length]} value={r.minutes} max={maxContrib} />
@@ -497,18 +584,18 @@ function ManagerDashboard({ data, username }: { data: ManagerData; username: str
         </div>
       </div>
 
-      {/* Row 3: Mismatches activity + quick-approvals style + KPI */}
+      {/* Row 3: Recent Activity | Pending Approvals | Budget Health */}
       <div className="dashboard-grid">
         <div className="card">
           <div className="card-header">
-            <div><div className="card-title">Recent Mismatches</div><div className="card-subtitle">Attendance vs. timesheet discrepancies</div></div>
+            <div><div className="card-title">Recent Activity</div><div className="card-subtitle">Team attendance & timesheet flags</div></div>
             {mismatches.length > 0 && <span className="badge badge-error">{mismatches.length}</span>}
           </div>
           <div className="card-body">
             {mismatches.length === 0 ? (
               <div className="empty-state" style={{ padding: "var(--space-8) 0" }}>
                 <p className="empty-state__title">No mismatches</p>
-                <p className="empty-state__sub">All timesheets match attendance records.</p>
+                <p className="empty-state__sub">All timesheets match attendance.</p>
               </div>
             ) : (
               <div className="activity-list">
@@ -533,34 +620,42 @@ function ManagerDashboard({ data, username }: { data: ManagerData; username: str
             {timesheetHealth.pendingApprovals > 0 && <span className="badge badge-danger">{timesheetHealth.pendingApprovals}</span>}
           </div>
           <div className="card-body">
-            {timesheetHealth.pendingApprovals === 0 ? (
+            {pendingList.length === 0 && timesheetHealth.pendingApprovals === 0 ? (
               <div className="empty-state" style={{ padding: "var(--space-8) 0" }}>
                 <p className="empty-state__title">All clear</p>
-                <p className="empty-state__sub">No approvals pending.</p>
+                <p className="empty-state__sub">No pending approvals.</p>
               </div>
             ) : (
               <div>
-                <div className="quick-approve-list">
-                  <div className="qa-item">
-                    <div className="av av-lg" style={{ background: "linear-gradient(135deg,var(--brand-400),var(--brand-700))", borderRadius: "var(--r-md)", marginLeft: 0 }}>T</div>
-                    <div className="qa-info">
-                      <div className="qa-name">Timesheets pending</div>
-                      <div className="qa-detail">{timesheetHealth.pendingApprovals} submissions · review required</div>
-                    </div>
-                  </div>
-                  {timesheetHealth.missing > 0 && (
-                    <div className="qa-item">
-                      <div className="av av-lg" style={{ background: "linear-gradient(135deg,#f59e0b,#d97706)", borderRadius: "var(--r-md)", marginLeft: 0 }}>!</div>
-                      <div className="qa-info">
-                        <div className="qa-name">Missing timesheets</div>
-                        <div className="qa-detail">{timesheetHealth.missing} employees have not submitted</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+                  {pendingList.map(a => (
+                    <div key={a.timesheetId} style={{
+                      display: "flex", alignItems: "center", gap: "var(--space-2)",
+                      padding: "var(--space-2)", background: "var(--n-25)",
+                      borderRadius: "var(--r-md)", border: "1px solid var(--border-subtle)",
+                    }}>
+                      <div className="av" style={{ background: avatarColor(a.username), borderRadius: "var(--r-md)", flexShrink: 0 }}>
+                        {a.username.slice(0, 2).toUpperCase()}
                       </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.username}</div>
+                        <div style={{ fontSize: "0.7rem", color: "var(--text-tertiary)" }}>{a.workDate} · {fmtMinutes(a.enteredMinutes)}</div>
+                      </div>
+                      <button
+                        className="btn btn-outline-success btn-sm"
+                        style={{ padding: "3px 8px", height: 26, fontSize: "0.72rem", minWidth: 28 }}
+                        onClick={() => quickApprove(a.timesheetId)}
+                        disabled={approvingId === a.timesheetId}
+                        title="Approve"
+                      >✓</button>
                     </div>
-                  )}
+                  ))}
                 </div>
-                <div style={{ marginTop: "var(--space-4)" }}>
-                  <button className="btn btn-outline w-full btn-sm">View all {timesheetHealth.pendingApprovals} pending →</button>
-                </div>
+                {timesheetHealth.pendingApprovals > 0 && (
+                  <div style={{ marginTop: "var(--space-3)" }}>
+                    <button className="btn btn-outline w-full btn-sm">View all {timesheetHealth.pendingApprovals} pending →</button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -612,7 +707,7 @@ function AdminDashboard({ data, username }: { data: AdminData; username: string 
         </div>
       </div>
 
-      <div className="stat-grid-4 mb-5">
+      <div className="stat-grid-4">
         <div className="stat-card">
           <div className="stat-card-top">
             <div className="stat-icon" style={{ background: "var(--brand-50)" }}>◈</div>
@@ -651,7 +746,6 @@ function AdminDashboard({ data, username }: { data: AdminData; username: string 
         </div>
       </div>
 
-      {/* Row 2: Dept bar chart + billable donut */}
       <div className="dashboard-grid-2">
         <div className="card">
           <div className="card-header">
@@ -707,7 +801,6 @@ function AdminDashboard({ data, username }: { data: AdminData; username: string 
         </div>
       </div>
 
-      {/* Row 3: Under/over + Compliance + Project KPI */}
       <div className="dashboard-grid">
         <div className="card">
           <div className="card-header">
@@ -785,28 +878,67 @@ function AdminDashboard({ data, username }: { data: AdminData; username: string 
 }
 
 // ── Root ──────────────────────────────────────────────────────────────────────
+interface EmpState { employee: EmployeeData; week: WeekSummary; leaveBalances: LeaveBalance[]; activeProjectCount: number; }
+
 export function Dashboard({ role, username }: DashboardProps) {
-  const [data, setData] = useState<EmployeeData | ManagerData | AdminData | null>(null);
+  const [empState, setEmpState] = useState<EmpState | null>(null);
+  const [mgrData, setMgrData] = useState<ManagerData | null>(null);
+  const [adminData, setAdminData] = useState<AdminData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
-    const path = role === "admin" ? "/dashboard/management" : role === "manager" ? "/dashboard/manager" : "/dashboard/employee";
-    apiFetch(path).then(async (r) => { if (r.ok) setData(await r.json()); }).finally(() => setLoading(false));
+    if (role === "employee") {
+      Promise.all([
+        apiFetch("/dashboard/employee").then(r => r.ok ? r.json() : null),
+        apiFetch("/timesheets/week").then(r => r.ok ? r.json() : null),
+        apiFetch("/leave/balance/my").then(r => r.ok ? r.json() : null),
+        apiFetch("/projects").then(r => r.ok ? r.json() : null),
+      ]).then(([employee, week, leaveBalances, projects]) => {
+        if (employee) {
+          const activeProjectCount = Array.isArray(projects)
+            ? (projects as Array<{ isActive: boolean }>).filter(p => p.isActive).length
+            : 0;
+          setEmpState({
+            employee,
+            week: week ?? { weekStartDate: "", weekEndDate: "", weekEnteredMinutes: 0, weekExpectedMinutes: 0, weekAttendanceNetMinutes: 0, days: [] },
+            leaveBalances: Array.isArray(leaveBalances) ? leaveBalances : [],
+            activeProjectCount,
+          });
+        } else {
+          setError(true);
+        }
+      }).catch(() => setError(true)).finally(() => setLoading(false));
+    } else if (role === "manager") {
+      apiFetch("/dashboard/manager")
+        .then(async r => { if (r.ok) setMgrData(await r.json()); else setError(true); })
+        .catch(() => setError(true))
+        .finally(() => setLoading(false));
+    } else {
+      apiFetch("/dashboard/management")
+        .then(async r => { if (r.ok) setAdminData(await r.json()); else setError(true); })
+        .catch(() => setError(true))
+        .finally(() => setLoading(false));
+    }
   }, [role]);
+
+  if (loading) return <DashboardSkeleton />;
+
+  if (error || (!empState && !mgrData && !adminData)) {
+    return (
+      <div className="empty-state">
+        <div className="empty-state__icon">⚠</div>
+        <p className="empty-state__title">Failed to load dashboard</p>
+        <p className="empty-state__sub">Could not fetch your data. Please refresh the page.</p>
+      </div>
+    );
+  }
 
   return (
     <section>
-      {loading && <DashboardSkeleton />}
-      {!loading && !data && (
-        <div className="empty-state">
-          <div className="empty-state__icon">⚠</div>
-          <p className="empty-state__title">Failed to load dashboard</p>
-          <p className="empty-state__sub">Could not fetch your data. Please refresh the page.</p>
-        </div>
-      )}
-      {!loading && data && role === "employee" && <EmployeeDashboard data={data as EmployeeData} username={username} />}
-      {!loading && data && role === "manager"  && <ManagerDashboard  data={data as ManagerData}  username={username} />}
-      {!loading && data && role === "admin"    && <AdminDashboard    data={data as AdminData}    username={username} />}
+      {empState && <EmployeeDashboard {...empState} username={username} />}
+      {mgrData && <ManagerDashboard data={mgrData} username={username} />}
+      {adminData && <AdminDashboard data={adminData} username={username} />}
     </section>
   );
 }

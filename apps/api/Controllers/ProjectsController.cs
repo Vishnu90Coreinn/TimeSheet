@@ -18,7 +18,7 @@ public class ProjectsController(TimeSheetDbContext dbContext) : ControllerBase
         var projects = await dbContext.Projects.AsNoTracking()
             .Where(p => !p.IsArchived)
             .OrderBy(p => p.Name)
-            .Select(p => new ProjectResponse(p.Id, p.Name, p.Code, p.IsActive, p.IsArchived))
+            .Select(p => new ProjectResponse(p.Id, p.Name, p.Code, p.IsActive, p.IsArchived, p.BudgetedHours))
             .ToListAsync();
 
         return Ok(projects);
@@ -33,7 +33,7 @@ public class ProjectsController(TimeSheetDbContext dbContext) : ControllerBase
             return NotFound();
         }
 
-        return Ok(new ProjectResponse(project.Id, project.Name, project.Code, project.IsActive, project.IsArchived));
+        return Ok(new ProjectResponse(project.Id, project.Name, project.Code, project.IsActive, project.IsArchived, project.BudgetedHours));
     }
 
     [Authorize(Roles = "admin")]
@@ -50,13 +50,14 @@ public class ProjectsController(TimeSheetDbContext dbContext) : ControllerBase
             Id = Guid.NewGuid(),
             Name = request.Name.Trim(),
             Code = request.Code.Trim(),
-            IsActive = request.IsActive
+            IsActive = request.IsActive,
+            BudgetedHours = request.BudgetedHours
         };
 
         dbContext.Projects.Add(project);
         await dbContext.SaveChangesAsync();
 
-        return Ok(new ProjectResponse(project.Id, project.Name, project.Code, project.IsActive, project.IsArchived));
+        return Ok(new ProjectResponse(project.Id, project.Name, project.Code, project.IsActive, project.IsArchived, project.BudgetedHours));
     }
 
     [Authorize(Roles = "admin")]
@@ -78,6 +79,7 @@ public class ProjectsController(TimeSheetDbContext dbContext) : ControllerBase
         project.Name = request.Name.Trim();
         project.Code = request.Code.Trim();
         project.IsActive = request.IsActive && !project.IsArchived;
+        project.BudgetedHours = request.BudgetedHours;
         await dbContext.SaveChangesAsync();
         return NoContent();
     }

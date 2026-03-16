@@ -99,8 +99,8 @@
   --space-16: 64px;
 
   /* Layout */
-  --sidebar-width:   252px;
-  --topbar-height:   60px;
+  --sidebar-width:   248px;
+  --topbar-height:   52px;
   --content-max:     1440px;
 
   /* Typography */
@@ -616,13 +616,13 @@ a { text-decoration: none; color: inherit; }
   min-width: 0; overflow-y: auto;
 }
 .page-content {
-  padding: var(--space-8);
+  padding: var(--space-6);
   max-width: var(--content-max);
   width: 100%;
 }
 .page-header {
   display: flex; align-items: flex-start; justify-content: space-between;
-  margin-bottom: var(--space-6); gap: var(--space-4);
+  margin-bottom: var(--space-4); gap: var(--space-4);
 }
 .page-title {
   font-family: var(--font-display);
@@ -836,3 +836,23 @@ a { text-decoration: none; color: inherit; }
 
 /* ── Extra spacing utilities ──────────────────────────────── */
 .mb-5 { margin-bottom: var(--space-5); }
+
+/* ── Weekly bar chart ─────────────────────────────────────── */
+.wbc-wrap {
+  display: flex; align-items: flex-end; gap: 8px;
+  height: 120px; padding-bottom: var(--space-3);
+}
+.wbc-col { display: flex; flex-direction: column; align-items: center; flex: 1; min-width: 0; gap: 3px; }
+.wbc-val { font-size: 0.65rem; font-weight: 600; color: var(--brand-600); min-height: 14px; line-height: 14px; }
+.wbc-tracks { position: relative; width: 100%; flex: 1; }
+.wbc-target {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: var(--n-100); border-radius: var(--r-xs) var(--r-xs) 0 0;
+}
+.wbc-bar {
+  position: absolute; bottom: 0; left: 1px; right: 1px;
+  border-radius: var(--r-xs) var(--r-xs) 0 0;
+  transition: height 0.5s cubic-bezier(0.16,1,0.3,1);
+}
+.wbc-day { font-size: 0.7rem; color: var(--text-tertiary); }
+.wbc-day--today { color: var(--brand-600); font-weight: 700; }

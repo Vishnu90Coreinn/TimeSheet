@@ -88,23 +88,9 @@ export function AppShell({ session, view, nav, onNavigate, onLogout, children }:
               <span className="sidebar-brand-name">TimeSheet</span>
             </div>
             <div className="org-switcher">
-              <div className="org-logo">{initials[0]}</div>
-              <span className="org-name">{session.username}</span>
+              <div className="org-logo">T</div>
+              <span className="org-name">TimeSheet HQ</span>
               <span className="org-chevron">⌄</span>
-            </div>
-          </div>
-
-          {/* User */}
-          <div className="sidebar-user-section">
-            <div className="sidebar-user-row">
-              <div className="sidebar-user-avatar" style={{ position: "relative" }}>
-                {initials}
-                <span className="sidebar-user-online" />
-              </div>
-              <div className="sidebar-user-info">
-                <div className="sidebar-user-name">{session.username}</div>
-                <div className="sidebar-user-role" style={{ textTransform: "capitalize" }}>{session.role}</div>
-              </div>
             </div>
           </div>
 

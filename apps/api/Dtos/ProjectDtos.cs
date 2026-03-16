@@ -5,10 +5,11 @@ namespace TimeSheet.Api.Dtos;
 public record UpsertProjectRequest(
     [Required][MaxLength(200)] string Name,
     [Required][MaxLength(50)] string Code,
-    bool IsActive
+    bool IsActive,
+    int BudgetedHours = 0
 );
 
-public record ProjectResponse(Guid Id, string Name, string Code, bool IsActive, bool IsArchived);
+public record ProjectResponse(Guid Id, string Name, string Code, bool IsActive, bool IsArchived, int BudgetedHours);
 
 public record AssignProjectMembersRequest([Required] IReadOnlyCollection<Guid> UserIds);
 

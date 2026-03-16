@@ -1,5 +1,5 @@
 export type Session = { userId: string; accessToken: string; refreshToken: string; username: string; role: string };
-export type Project = { id: string; name: string; code: string; isActive: boolean; isArchived: boolean };
+export type Project = { id: string; name: string; code: string; isActive: boolean; isArchived: boolean; budgetedHours: number };
 export type TaskCategory = { id: string; name: string; isActive: boolean; isBillable: boolean };
 export type LeaveType = { id: string; name: string; isActive: boolean };
 export type LeaveRequest = { id: string; userId: string; username: string; leaveDate: string; leaveTypeName: string; isHalfDay: boolean; status: string; comment: string | null; reviewerComment: string | null };

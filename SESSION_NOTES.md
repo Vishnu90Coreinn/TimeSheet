@@ -389,10 +389,23 @@ PROJECT_TASKS.md                   — UPDATED: audit findings + Phase 2 task li
 
 ## Pending For Next Session
 
-### Priority 1 — Merge feature/leave-policy-redesign PR
-- Review and merge the open PR for Leave v3 + Leave Policy frontend.
+### Priority 1 — DB Schema Update (manual step in SSMS)
+Run the following to add the new `BudgetedHours` column to `Projects` (if not already present via schema.sql):
+```sql
+ALTER TABLE Projects ADD BudgetedHours INT NOT NULL DEFAULT 0;
+```
+Also run Sprint 9 schema additions:
+- `LeavePolicies`, `LeavePolicyAllocations`, `LeaveBalances` tables
+- `LeaveGroupId` column on `LeaveRequests`
+- `LeavePolicyId` FK on `Users`
 
-### Priority 2 — Backend: Leave Policy APIs (Sprint 9)
+### Priority 2 — Manual Smoke Test
+- Login → check-in → timesheet entry → submit → manager approve flow.
+- Verify dashboard loads correctly for all 3 roles (employee, manager, admin).
+- Verify leave balance shows correct remaining days on the dashboard KPI card.
+- Verify weekly bar chart shows Mon–Sun bars with logged vs target.
+
+### ~~Priority 3 — Backend: Leave Policy APIs (Sprint 9)~~
 The following backend endpoints need to be implemented for the Leave page to be fully functional:
 
 | Endpoint | Purpose |
@@ -422,6 +435,67 @@ Run in SSMS after Sprint 9 backend is built:
 - Add `LeavePolicy` and `LeavePolicyAllocation` tables.
 - Add `LeaveBalance` table (or computed from requests).
 - Add `LeavePolicyId` FK column to `Users` table.
+
+---
+
+## Session 8 — UI Compactness + Dashboard Redesign (2026-03-16)
+
+### What Was Done
+
+#### AppShell Cleanup
+- Removed the redundant `sidebar-user-section` block (username/avatar/role shown a second time in the sidebar below the org switcher — it was already in the topbar right corner).
+- Changed `org-switcher` label from `session.username` → `"TimeSheet HQ"` so the username no longer appears in two places in the sidebar.
+
+#### Global UI Compactness (`design-system.css`)
+- Topbar height: `60px` → `52px`
+- Sidebar width: `252px` → `248px`
+- Page content padding: `var(--space-8)` (32px) → `var(--space-6)` (24px)
+- Page header margin-bottom: `var(--space-6)` (24px) → `var(--space-4)` (16px)
+- Added `.wbc-*` classes for the new Weekly Bar Chart component
+
+#### Dashboard Redesign — Employee View (matching screenshots 6.png / 7.png)
+`Dashboard.tsx` complete redesign of `EmployeeDashboard`. Now fetches **4 endpoints in parallel**:
+- `GET /dashboard/employee` — attendance, timesheet status, project effort, compliance trend
+- `GET /timesheets/week` — per-day breakdown Mon–Sun with enteredMinutes / expectedMinutes
+- `GET /leave/balance/my` — all leave types with remaining days
+- `GET /projects` — for active project count KPI
+
+**New layout:**
+- **Row 1 — Page Header:** Greeting `Good morning, {username} 👋` + today's date subtitle + Export + `+ Log Time` buttons
+- **Row 2 — 4 KPI Cards:**
+  1. Hours This Week (`{h}h`, % of target hit badge)
+  2. Approval Rate (`{pct}%`, computed from monthly compliance trend)
+  3. Active Projects (count of active projects assigned to user)
+  4. Leave Balance (`{n}d`, annual leave type + FY)
+- **Row 3 — 2 columns:**
+  - Weekly Hours Breakdown bar chart (Mon–Sun, indigo filled bars vs n-100 ghost target bars, `↑X% target hit` badge)
+  - Project Split donut (`{totalH}h` centre label + per-project KPI bars)
+- **Row 4 — 3 columns:**
+  - Recent Activity (synthesised from check-in, timesheet status, project entries)
+  - Attendance Widget (existing)
+  - Leave Balance card (all leave types with used/total progress bars)
+
+#### Dashboard Redesign — Manager View
+- Added **inline Pending Approvals panel** in the bottom row (fetches `GET /approvals/pending-timesheets` locally inside `ManagerDashboard`).
+- Quick ✓ approve button per row (calls `POST /approvals/{id}/approve` inline from dashboard).
+- Renamed bottom-right panel from generic to **Budget Health** (project effort bars).
+- DonutChart updated to accept optional `centerLabel` / `centerSub` props (shows `44h / Total` instead of `%`).
+
+#### Backend — BudgetedHours on Project
+- `apps/api/Models/Project.cs` — added `BudgetedHours: int = 0`
+- `apps/api/Dtos/ProjectDtos.cs` — added to `UpsertProjectRequest` (default 0) and `ProjectResponse`
+- `apps/api/Controllers/ProjectsController.cs` — all 4 projections updated
+- `apps/api/Controllers/TimesheetsController.cs` — fixed missing `BudgetedHours` in `ProjectResponse` constructor call
+- `db/schema.sql` — `BudgetedHours INT NOT NULL DEFAULT 0` column added to `Projects`
+- `apps/web/src/types.ts` — `Project.budgetedHours: number` added
+
+### Build & Tests
+- `npm run build` — ✅ passes, zero TypeScript errors, 331 KB JS bundle
+- `npm run test` — ✅ 44/44 tests pass (5 test files)
+- `dotnet build` — ✅ passes, 0 errors
+
+### Commit & Push
+- Committed and pushed to `master`
 
 ---
 

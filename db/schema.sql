@@ -46,7 +46,8 @@ CREATE TABLE Projects (
   Name NVARCHAR(200) NOT NULL,
   Code NVARCHAR(50) NOT NULL UNIQUE,
   IsActive BIT NOT NULL,
-  IsArchived BIT NOT NULL
+  IsArchived BIT NOT NULL,
+  BudgetedHours INT NOT NULL DEFAULT 0
 );
 
 CREATE TABLE ProjectMembers (

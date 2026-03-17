@@ -62,7 +62,7 @@ export function buildSubtitle(
   return parts.join(" · ");
 }
 
-// ── Custom Date Picker (H1) ───────────────────────────────────────────────────
+// ── Custom Date Picker — trigger + fully custom calendar grid (H1) ───────────
 
 function CalendarIcon() {
   return (
@@ -73,6 +73,136 @@ function CalendarIcon() {
       <line x1="8" y1="2" x2="8" y2="6"/>
       <line x1="3" y1="10" x2="21" y2="10"/>
     </svg>
+  );
+}
+
+const MONTH_NAMES = [
+  "January","February","March","April","May","June",
+  "July","August","September","October","November","December",
+];
+const CAL_DAY_LABELS = ["Su","Mo","Tu","We","Th","Fr","Sa"];
+
+/** Fully custom calendar grid — no <input type="date"> */
+function MiniCalendar({
+  value,
+  onChange,
+  onClose,
+}: {
+  value: string;
+  onChange: (d: string) => void;
+  onClose: () => void;
+}) {
+  const parsedDate = (() => { try { return new Date(value + "T00:00:00"); } catch { return new Date(); } })();
+  const [viewYear, setViewYear]   = useState(parsedDate.getFullYear());
+  const [viewMonth, setViewMonth] = useState(parsedDate.getMonth());
+
+  const todayStr = todayIso();
+
+  // Build a 6-row × 7-col grid (42 cells)
+  const firstWeekday = new Date(viewYear, viewMonth, 1).getDay();       // 0=Sun
+  const daysInMonth   = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const daysInPrev    = new Date(viewYear, viewMonth, 0).getDate();
+
+  type CalCell = { iso: string; day: number; inMonth: boolean };
+  const cells: CalCell[] = [];
+
+  // Trailing days from previous month
+  for (let i = firstWeekday - 1; i >= 0; i--) {
+    const d = daysInPrev - i;
+    const m = viewMonth === 0 ? 12 : viewMonth;
+    const y = viewMonth === 0 ? viewYear - 1 : viewYear;
+    cells.push({ iso: `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`, day: d, inMonth: false });
+  }
+  // Current month days
+  for (let d = 1; d <= daysInMonth; d++) {
+    cells.push({ iso: `${viewYear}-${String(viewMonth + 1).padStart(2,"0")}-${String(d).padStart(2,"0")}`, day: d, inMonth: true });
+  }
+  // Leading days from next month
+  const trailing = 42 - cells.length;
+  for (let d = 1; d <= trailing; d++) {
+    const m = viewMonth === 11 ? 1 : viewMonth + 2;
+    const y = viewMonth === 11 ? viewYear + 1 : viewYear;
+    cells.push({ iso: `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`, day: d, inMonth: false });
+  }
+
+  function prevMonth() {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
+    else setViewMonth(m => m - 1);
+  }
+  function nextMonth() {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
+    else setViewMonth(m => m + 1);
+  }
+
+  const navBtn: React.CSSProperties = {
+    background: "none", border: "none", cursor: "pointer", padding: "2px 8px",
+    borderRadius: "var(--r-sm)", fontSize: "1rem", lineHeight: 1,
+    color: "var(--text-secondary)", display: "flex", alignItems: "center",
+  };
+
+  return (
+    <div style={{ userSelect: "none", width: 224 }}>
+      {/* Month / year navigation */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+        <button type="button" style={navBtn} onClick={prevMonth} aria-label="Previous month">‹</button>
+        <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--text-primary)" }}>
+          {MONTH_NAMES[viewMonth]} {viewYear}
+        </span>
+        <button type="button" style={navBtn} onClick={nextMonth} aria-label="Next month">›</button>
+      </div>
+
+      {/* Day-of-week labels */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 4 }}>
+        {CAL_DAY_LABELS.map(d => (
+          <div key={d} style={{ textAlign: "center", fontSize: "0.62rem", color: "var(--text-tertiary)", fontWeight: 600, padding: "2px 0" }}>
+            {d}
+          </div>
+        ))}
+      </div>
+
+      {/* Day grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2 }}>
+        {cells.map(cell => {
+          const isSelected = cell.iso === value;
+          const isToday    = cell.iso === todayStr;
+          return (
+            <button
+              key={cell.iso}
+              type="button"
+              onClick={() => { onChange(cell.iso); onClose(); }}
+              style={{
+                border: isToday && !isSelected ? "1px solid var(--brand-400)" : "1px solid transparent",
+                borderRadius: 4, cursor: "pointer",
+                fontSize: "0.72rem", lineHeight: "28px", height: 28, padding: 0,
+                fontWeight: isSelected || isToday ? 700 : 400,
+                background: isSelected ? "var(--brand-500)" : "transparent",
+                color: isSelected ? "#fff"
+                  : isToday      ? "var(--brand-600)"
+                  : cell.inMonth ? "var(--text-primary)"
+                  : "var(--text-tertiary)",
+                opacity: cell.inMonth ? 1 : 0.45,
+              }}
+              aria-label={cell.iso}
+              aria-pressed={isSelected}
+            >
+              {cell.day}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Today shortcut */}
+      <div style={{ marginTop: 8, borderTop: "1px solid var(--border-subtle)", paddingTop: 8 }}>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          style={{ width: "100%", fontSize: "0.75rem" }}
+          onClick={() => { onChange(todayIso()); onClose(); }}
+        >
+          Today
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -96,34 +226,25 @@ function DatePicker({ value, onChange }: { value: string; onChange: (d: string) 
         style={{ display: "flex", alignItems: "center", gap: 6 }}
         onClick={() => setOpen(v => !v)}
         aria-label={`Selected date: ${fmtDateDisplay(value)}. Click to change`}
+        aria-expanded={open}
+        aria-haspopup="dialog"
       >
         <CalendarIcon />
         {fmtDateDisplay(value)}
       </button>
 
       {open && (
-        <div style={{
-          position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 200,
-          background: "var(--surface)", border: "1px solid var(--border-subtle)",
-          borderRadius: "var(--r-md)", boxShadow: "var(--shadow-md)",
-          padding: "var(--space-3)", display: "flex", flexDirection: "column",
-          gap: "var(--space-2)", minWidth: 220,
-        }}>
-          <input
-            type="date"
-            className="input-field"
-            value={value}
-            style={{ width: "100%" }}
-            onChange={e => { onChange(e.target.value); setOpen(false); }}
-          />
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            style={{ width: "100%" }}
-            onClick={() => { onChange(todayIso()); setOpen(false); }}
-          >
-            Today
-          </button>
+        <div
+          role="dialog"
+          aria-label="Date picker"
+          style={{
+            position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 200,
+            background: "var(--surface)", border: "1px solid var(--border-subtle)",
+            borderRadius: "var(--r-md)", boxShadow: "var(--shadow-md)",
+            padding: "var(--space-3)",
+          }}
+        >
+          <MiniCalendar value={value} onChange={onChange} onClose={() => setOpen(false)} />
         </div>
       )}
     </div>
@@ -332,12 +453,10 @@ export function TeamStatus() {
           </div>
         </div>
 
-        {/* C3 — Filter bar with standardized badges */}
+        {/* C3 + NEW-2 — Filter bar: ALL four tabs always show their count badge */}
         <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
           {(Object.keys(FILTER_LABELS) as Filter[]).map(f => {
             const isActive = filter === f;
-            // C3 — "on-leave" badge always shown; others only when > 0
-            const showBadge = f === "on-leave" || counts[f] > 0;
             return (
               <button
                 key={f}
@@ -346,17 +465,17 @@ export function TeamStatus() {
                 className={`btn btn-sm ${isActive ? "btn-primary" : "btn-ghost"}`}
               >
                 {FILTER_LABELS[f]}
-                {showBadge && (
-                  <span style={{
-                    marginLeft: 6,
-                    background: isActive ? "rgba(255,255,255,0.25)" : "var(--n-200)",
-                    color: isActive ? "#fff" : "var(--text-secondary)",
-                    borderRadius: 10, padding: "1px 7px",
-                    fontSize: 11, fontWeight: 700,
-                  }}>
-                    {counts[f]}
-                  </span>
-                )}
+                {/* Badge always rendered for every tab */}
+                <span style={{
+                  marginLeft: 6,
+                  background: isActive ? "rgba(255,255,255,0.25)" : "var(--n-200)",
+                  color: isActive ? "#fff" : "var(--text-secondary)",
+                  borderRadius: 10, padding: "1px 7px",
+                  fontSize: 11, fontWeight: 700,
+                  minWidth: 18, textAlign: "center", display: "inline-block",
+                }}>
+                  {counts[f]}
+                </span>
               </button>
             );
           })}
@@ -391,25 +510,36 @@ export function TeamStatus() {
               No team members match this filter.
             </div>
           ) : (
-            /* C2 — table-layout: fixed with balanced widths to prevent clip */
+            /*
+             * C2 — table-layout: fixed, 100% width, no minWidth.
+             * "Pending Actions" is position:sticky right:0 so it is always
+             * visible even if the viewport is very narrow and the table scrolls.
+             * NEW-1 — all <th> cells get overflow:hidden + text-overflow:ellipsis
+             * so header text never bleeds into adjacent columns.
+             */
             <table
               className="data-table"
-              style={{ tableLayout: "fixed", minWidth: 700 }}
+              style={{ tableLayout: "fixed", width: "100%" }}
               role="grid"
             >
               <thead>
                 <tr>
-                  {/* C1 — clear column headers */}
-                  <th style={{ width: "22%" }}>Member</th>
-                  <th style={{ width: "13%" }}>Attendance</th>
-                  {/* H2 — renamed + clock icon */}
-                  <th style={{ width: "11%" }}>
+                  {/* NEW-1 — th base style: overflow hidden, no wrap, ellipsis */}
+                  <th style={{ width: "23%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Member</th>
+                  <th style={{ width: "13%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Attendance</th>
+                  <th style={{ width: "11%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     <ClockIcon />Check-in Time
                   </th>
-                  <th style={{ width: "18%" }}>Week Progress</th>
-                  <th style={{ width: "12%" }}>Timesheet</th>
-                  {/* C1 — merged "Pending Actions" header */}
-                  <th style={{ width: "24%" }}>Pending Actions</th>
+                  <th style={{ width: "19%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Week Progress</th>
+                  <th style={{ width: "12%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Timesheet</th>
+                  {/* C2 — sticky right column */}
+                  <th style={{
+                    width: "22%",
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    position: "sticky", right: 0, zIndex: 2,
+                    background: "var(--n-50)",
+                    boxShadow: "-2px 0 6px rgba(0,0,0,0.06)",
+                  }}>Pending Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -419,9 +549,15 @@ export function TeamStatus() {
                   const attStatus = toBadgeStatus(
                     m.attendance === "onLeave" ? "on-leave" : m.attendance
                   );
+                  // C2 — sticky td style reused per row
+                  const stickyTd: React.CSSProperties = {
+                    position: "sticky", right: 0, zIndex: 1,
+                    background: "var(--surface)",
+                    boxShadow: "-2px 0 6px rgba(0,0,0,0.04)",
+                  };
                   return (
                     <tr key={m.userId}>
-                      {/* Member — C1 title tooltip for truncated names */}
+                      {/* Member — title tooltip for truncated names */}
                       <td>
                         <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
                           <Avatar member={m} />
@@ -451,10 +587,10 @@ export function TeamStatus() {
                         </div>
                       </td>
 
-                      {/* Attendance — M4 StatusBadge */}
+                      {/* Attendance */}
                       <td><StatusBadge status={attStatus} /></td>
 
-                      {/* Check-in / Check-out — H2 aria-label on empty */}
+                      {/* Check-in / out */}
                       <td style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
                         {m.checkInAtUtc ? (
                           <div>
@@ -470,18 +606,17 @@ export function TeamStatus() {
                         )}
                       </td>
 
-                      {/* Week progress — H3 with %, tooltip, new colors */}
+                      {/* Week progress */}
                       <td>
                         <WeekBar logged={m.weekLoggedMinutes} expected={m.weekExpectedMinutes} />
                       </td>
 
-                      {/* Timesheet — M4 StatusBadge */}
+                      {/* Timesheet */}
                       <td><StatusBadge status={tsStatus} /></td>
 
-                      {/* Pending + Actions — C1 merged column, C2 no overflow */}
-                      <td>
+                      {/* Pending Actions — sticky right */}
+                      <td style={stickyTd}>
                         <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap" }}>
-                          {/* H4 — pending count as navigable link */}
                           {m.pendingApprovalCount > 0 && (
                             <button
                               type="button"
@@ -501,7 +636,6 @@ export function TeamStatus() {
                             </button>
                           )}
 
-                          {/* M3 — Remind: secondary outlined button */}
                           {m.todayTimesheetStatus === "missing" && (
                             <button
                               type="button"
@@ -520,7 +654,6 @@ export function TeamStatus() {
                             </button>
                           )}
 
-                          {/* M3 — Approve: primary purple button with checkmark */}
                           {m.pendingApprovalCount > 0 && (
                             <button
                               type="button"
@@ -533,7 +666,6 @@ export function TeamStatus() {
                             </button>
                           )}
 
-                          {/* No actions */}
                           {m.pendingApprovalCount === 0 && m.todayTimesheetStatus !== "missing" && (
                             <span style={{ fontSize: "0.8rem", color: "var(--text-tertiary)" }}>—</span>
                           )}

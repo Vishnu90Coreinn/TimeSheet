@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Navigate, Route, Routes, useNavigate, useLocation } from "react-router-dom";
 import { AppShell } from "./components/AppShell";
 import { Approvals } from "./components/Approvals";
+import { TeamStatus } from "./components/TeamStatus";
 import { Profile } from "./components/Profile";
 import { Categories } from "./components/Admin/Categories";
 import { Dashboard } from "./components/Dashboard";
@@ -33,6 +34,7 @@ const VIEW_PATHS: Record<View, string> = {
   leave:            "/leave",
   reports:          "/reports",
   approvals:        "/approvals",
+  team:             "/team",
   projects:         "/projects",
   categories:       "/categories",
   users:            "/users",
@@ -55,7 +57,7 @@ function AppRoutes() {
   const isManager = session?.role === "manager" || isAdmin;
 
   const nav = useMemo(
-    () => ["dashboard", "timesheets", "leave", "reports", ...(isManager ? ["approvals"] : []), ...(isAdmin ? ["projects", "categories", "users", "holidays", "leave-policies", "work-policies"] : [])] as View[],
+    () => ["dashboard", "timesheets", "leave", "reports", ...(isManager ? ["approvals", "team"] : []), ...(isAdmin ? ["projects", "categories", "users", "holidays", "leave-policies", "work-policies"] : [])] as View[],
     [isAdmin, isManager]
   );
 
@@ -91,6 +93,7 @@ function AppRoutes() {
         <Route path="/reports"    element={<Reports />} />
         <Route path="/profile"    element={<Profile onBack={() => navigate(-1)} />} />
         {isManager && <Route path="/approvals"  element={<Approvals />} />}
+        {isManager && <Route path="/team"       element={<TeamStatus />} />}
         {isAdmin   && <Route path="/projects"   element={<Projects />} />}
         {isAdmin   && <Route path="/categories" element={<Categories />} />}
         {isAdmin   && <Route path="/users"      element={<Users />} />}

@@ -22,6 +22,7 @@ const NAV_ITEMS: NavItem[] = [
   { view: "leave",           label: "Leave",          icon: <CalendarIcon />,    group: "main" },
   { view: "reports",         label: "Reports",        icon: <ChartIcon />,       group: "main" },
   { view: "approvals",       label: "Approvals",      icon: <CheckIcon />,       group: "manager", badgeVariant: "danger" },
+  { view: "team",            label: "Team Status",    icon: <TeamIcon />,        group: "manager" },
   { view: "projects",        label: "Projects",       icon: <FolderIcon />,      group: "admin" },
   { view: "categories",      label: "Categories",     icon: <TagIcon />,         group: "admin" },
   { view: "users",           label: "Users",          icon: <UsersIcon />,       group: "admin" },
@@ -47,6 +48,7 @@ const VIEW_LABELS: Record<View, string> = {
   "leave-policies": "Leave Policies",
   "work-policies": "Work Policies",
   profile: "My Profile",
+  team: "Team Status",
 };
 
 export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, onLogout, children }: AppShellProps) {
@@ -309,6 +311,16 @@ function LeavePolicyIcon() {
       <line x1="3" y1="10" x2="21" y2="10"/>
       <line x1="9" y1="16" x2="15" y2="16"/>
       <line x1="12" y1="13" x2="12" y2="19"/>
+    </svg>
+  );
+}
+/** Team Status — group of people with activity pulse */
+function TeamIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+      <circle cx="9" cy="7" r="4"/>
+      <polyline points="16 11 18 13 22 9"/>
     </svg>
   );
 }

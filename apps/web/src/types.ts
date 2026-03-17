@@ -19,7 +19,21 @@ export type User = { id: string; username: string; email: string; employeeId: st
 export type Holiday = { id: string; name: string; date: string; isRecurring: boolean; createdAtUtc: string };
 export type Department = { id: string; name: string; isActive: boolean };
 export type WorkPolicy = { id: string; name: string; dailyExpectedMinutes: number; workDaysPerWeek: number; isActive: boolean };
-export type View = "dashboard" | "reports" | "timesheets" | "leave" | "approvals" | "projects" | "categories" | "users" | "holidays" | "leave-policies" | "work-policies" | "profile";
+export type View = "dashboard" | "reports" | "timesheets" | "leave" | "approvals" | "team" | "projects" | "categories" | "users" | "holidays" | "leave-policies" | "work-policies" | "profile";
+
+export type TeamMemberStatus = {
+  userId: string;
+  username: string;
+  displayName: string;
+  avatarDataUrl: string | null;
+  attendance: "checkedIn" | "checkedOut" | "onLeave" | "absent";
+  checkInAtUtc: string | null;
+  checkOutAtUtc: string | null;
+  weekLoggedMinutes: number;
+  weekExpectedMinutes: number;
+  todayTimesheetStatus: "draft" | "submitted" | "approved" | "rejected" | "missing";
+  pendingApprovalCount: number;
+};
 export type ReportKey = "attendance-summary" | "timesheet-summary" | "project-effort" | "leave-utilization" | "leave-balance" | "timesheet-approval-status" | "overtime-deficit";
 
 export type MyProfile = {

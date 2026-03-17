@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../api/client";
 import { AttendanceWidget } from "./AttendanceWidget";
+import { useConfirm } from "../hooks/useConfirm";
 import type { LeaveBalance, TeamLeaveEntry } from "../types";
 
 interface DashboardProps { role: string; username: string; onNavigate?: (view: string) => void; }
@@ -73,9 +74,16 @@ function fmtDateShort(iso: string | null | undefined): string {
     return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   } catch { return iso ?? "—"; }
 }
+/** H1 — Strip domain suffixes and capitalize for a friendly display name */
+function formatDisplayName(username: string): string {
+  // Remove common domain-style suffixes: .rs, .com, .local, etc.
+  const clean = username.replace(/\.[a-z]{1,6}$/i, "");
+  return clean.charAt(0).toUpperCase() + clean.slice(1);
+}
 function greeting(name: string): string {
   const h = new Date().getHours();
-  return `${h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening"}, ${name}`;
+  const displayName = formatDisplayName(name);
+  return `${h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening"}, ${displayName}`;
 }
 function todayStr(): string {
   return new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric", year: "numeric" });
@@ -788,77 +796,182 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
   const { teamAttendance, timesheetHealth, mismatches, utilization, contributions } = data;
   const maxContrib = Math.max(...contributions.map(r => r.minutes), 1);
   const totalContrib = contributions.reduce((a, r) => a + r.minutes, 0);
+  const totalTeam = teamAttendance.present + teamAttendance.onLeave + teamAttendance.notCheckedIn;
+
+  // H4 — only render donut when there are 2+ projects
   const donutSegs = contributions.slice(0, 4).map((r, i) => ({
     pct: totalContrib > 0 ? (r.minutes / totalContrib) * 100 : 0,
     color: PALETTE[i] ?? "var(--n-300)",
     label: r.project,
   }));
-  const totalTeam = teamAttendance.present + teamAttendance.onLeave + teamAttendance.notCheckedIn;
 
   const [pendingList, setPendingList] = useState<PendingApproval[]>([]);
   const [approvingId, setApprovingId] = useState<string | null>(null);
-  useEffect(() => {
-    apiFetch("/approvals/pending-timesheets").then(async r => {
-      if (r.ok) { const d = await r.json(); setPendingList((d as PendingApproval[]).slice(0, 5)); }
-    }).catch(() => {});
+  const [approveToast, setApproveToast] = useState<string | null>(null);
+  const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
+
+  // H5 — inline approval confirmation
+  const { confirming, payload: confirmPayload, request: requestConfirm, confirm: doConfirm, cancel: cancelConfirm } = useConfirm<PendingApproval>();
+
+  const fetchPending = useCallback(async () => {
+    const r = await apiFetch("/approvals/pending-timesheets").catch(() => null);
+    if (r?.ok) { const d = await r.json(); setPendingList((d as PendingApproval[]).slice(0, 5)); }
+    setLastRefreshed(new Date());
   }, []);
 
-  const quickApprove = async (id: string) => {
-    setApprovingId(id);
-    await apiFetch(`/approvals/${id}/approve`, {
+  useEffect(() => { void fetchPending(); }, [fetchPending]);
+
+  // M4 — auto-refresh every 60 seconds
+  useEffect(() => {
+    const id = setInterval(() => { void fetchPending(); }, 60_000);
+    return () => clearInterval(id);
+  }, [fetchPending]);
+
+  function showApproveToast(msg: string) {
+    setApproveToast(msg);
+    setTimeout(() => setApproveToast(null), 3000);
+  }
+
+  // H5 — confirmed approval handler
+  const executeApprove = async (item: PendingApproval) => {
+    setApprovingId(item.timesheetId);
+    const r = await apiFetch(`/approvals/${item.timesheetId}/approve`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ comment: "" }),
-    }).catch(() => {});
-    setPendingList(prev => prev.filter(a => a.timesheetId !== id));
+    }).catch(() => null);
+    if (r?.ok || r?.status === 204) {
+      setPendingList(prev => prev.filter(a => a.timesheetId !== item.timesheetId));
+      showApproveToast(`✓ Timesheet approved for ${formatDisplayName(item.username)}.`);
+    }
     setApprovingId(null);
   };
 
+  // C1 — "↑ All in" only on Present card when everyone is present
+  const allPresent = teamAttendance.notCheckedIn === 0 && teamAttendance.onLeave === 0;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+      {/* Approve toast */}
+      {approveToast && (
+        <div style={{
+          position: "fixed", bottom: 24, right: 24, zIndex: 9999,
+          background: "#111827", color: "#fff", borderRadius: 8,
+          padding: "10px 18px", fontSize: 14, fontWeight: 600,
+          boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
+        }}>{approveToast}</div>
+      )}
+
       <div className="page-header">
         <div>
           <h1 className="page-title">{greeting(username)}</h1>
           <div className="page-subtitle">Here's what's happening with your team today — {todayStr()}</div>
         </div>
+        {/* C2 — SVG icon instead of emoji; Reports accessible via sidebar nav too */}
         <div className="page-actions">
-          <button className="btn btn-outline btn-sm" onClick={() => onNavigate?.("reports")}>📊 Reports</button>
+          <button className="btn btn-outline btn-sm" style={{ display: "flex", alignItems: "center", gap: 6 }} onClick={() => onNavigate?.("reports")}>
+            <IconBarChart size={14} /> Reports
+          </button>
         </div>
       </div>
 
+      {/* M4 — Data freshness indicator */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, fontSize: "0.78rem", color: "var(--text-tertiary)", marginTop: -8 }}>
+        <time dateTime={lastRefreshed.toISOString()} style={{ fontWeight: 500 }}>{relativeTime(lastRefreshed)}</time>
+        <button
+          onClick={() => void fetchPending()}
+          style={{ background: "none", border: "1px solid var(--border-subtle)", cursor: "pointer", color: "var(--brand-600)", display: "flex", alignItems: "center", gap: 4, padding: "3px 8px", fontSize: "0.75rem", borderRadius: "var(--r-sm)", fontWeight: 600 }}
+          aria-label="Refresh dashboard"
+        >
+          <IconRefresh size={12} /> Refresh
+        </button>
+      </div>
+
+      {/* H2 — Stat cards clickable with navigation and min-height */}
       <div className="stat-grid-4">
-        <div className="stat-card">
+        {/* Present Today — C1: "↑ All in" only when allPresent */}
+        <div
+          className="stat-card"
+          style={{ cursor: "pointer", minHeight: 140, transition: "box-shadow 0.15s" }}
+          onClick={() => onNavigate?.("team")}
+          role="link"
+          aria-label={`View ${teamAttendance.present} member${teamAttendance.present !== 1 ? "s" : ""} present today`}
+          onMouseEnter={e => (e.currentTarget.style.boxShadow = "var(--shadow-md)")}
+          onMouseLeave={e => (e.currentTarget.style.boxShadow = "")}
+          tabIndex={0}
+          onKeyDown={e => { if (e.key === "Enter" || e.key === " ") onNavigate?.("team"); }}
+        >
           <div className="stat-card-top">
             <div className="stat-icon" style={{ background: "var(--success-light)" }}><IconPeople color="#10b981" /></div>
-            <span className="stat-trend trend-up">Today</span>
+            {/* C1 — "↑ All in" on Present card when all team is present */}
+            <span className={`stat-trend ${allPresent ? "trend-up" : "trend-flat"}`}>
+              {allPresent ? "↑ All in" : "Today"}
+            </span>
           </div>
           <div className="stat-value">{teamAttendance.present}</div>
           <h2 className="stat-label">Present today</h2>
           <div className="stat-footer">Of {totalTeam} total team</div>
         </div>
-        <div className="stat-card">
+
+        {/* On Leave Today */}
+        <div
+          className="stat-card"
+          style={{ cursor: "pointer", minHeight: 140, transition: "box-shadow 0.15s" }}
+          onClick={() => onNavigate?.("team")}
+          role="link"
+          aria-label={`View ${teamAttendance.onLeave} member${teamAttendance.onLeave !== 1 ? "s" : ""} on leave today`}
+          onMouseEnter={e => (e.currentTarget.style.boxShadow = "var(--shadow-md)")}
+          onMouseLeave={e => (e.currentTarget.style.boxShadow = "")}
+          tabIndex={0}
+          onKeyDown={e => { if (e.key === "Enter" || e.key === " ") onNavigate?.("team"); }}
+        >
           <div className="stat-card-top">
             <div className="stat-icon" style={{ background: "var(--info-light)" }}><IconLeaf color="#3b82f6" /></div>
-            <span className="stat-trend trend-flat">{teamAttendance.onLeave > 0 ? `${teamAttendance.onLeave} away` : "All in"}</span>
+            <span className="stat-trend trend-flat">{teamAttendance.onLeave > 0 ? `${teamAttendance.onLeave} away` : "None today"}</span>
           </div>
           <div className="stat-value">{teamAttendance.onLeave}</div>
           <h2 className="stat-label">On leave today</h2>
           <div className="stat-footer">Approved absences</div>
         </div>
-        <div className="stat-card">
+
+        {/* Not Checked In — C1: no "↑ All in" here; neutral when 0 */}
+        <div
+          className="stat-card"
+          style={{ cursor: "pointer", minHeight: 140, transition: "box-shadow 0.15s" }}
+          onClick={() => onNavigate?.("team")}
+          role="link"
+          aria-label={`View ${teamAttendance.notCheckedIn} member${teamAttendance.notCheckedIn !== 1 ? "s" : ""} not checked in`}
+          onMouseEnter={e => (e.currentTarget.style.boxShadow = "var(--shadow-md)")}
+          onMouseLeave={e => (e.currentTarget.style.boxShadow = "")}
+          tabIndex={0}
+          onKeyDown={e => { if (e.key === "Enter" || e.key === " ") onNavigate?.("team"); }}
+        >
           <div className="stat-card-top">
             <div className="stat-icon" style={{ background: teamAttendance.notCheckedIn > 0 ? "var(--warning-light)" : "var(--success-light)" }}>
               <IconClock color={teamAttendance.notCheckedIn > 0 ? "#f59e0b" : "#10b981"} />
             </div>
+            {/* C1 — not checked in: neutral when 0, warning when >0 */}
             <span className={`stat-trend ${teamAttendance.notCheckedIn > 0 ? "trend-down" : "trend-up"}`}>
-              {teamAttendance.notCheckedIn > 0 ? "↓ Attention" : "↑ All in"}
+              {teamAttendance.notCheckedIn > 0 ? "↓ Attention" : "✓ None missing"}
             </span>
           </div>
           <div className="stat-value">{teamAttendance.notCheckedIn}</div>
           <h2 className="stat-label">Not checked in</h2>
           <div className="stat-footer">Expected but missing</div>
         </div>
-        <div className="stat-card">
+
+        {/* Pending Approvals */}
+        <div
+          className="stat-card"
+          style={{ cursor: "pointer", minHeight: 140, transition: "box-shadow 0.15s" }}
+          onClick={() => onNavigate?.("approvals")}
+          role="link"
+          aria-label={`View ${timesheetHealth.pendingApprovals} pending approval${timesheetHealth.pendingApprovals !== 1 ? "s" : ""}`}
+          onMouseEnter={e => (e.currentTarget.style.boxShadow = "var(--shadow-md)")}
+          onMouseLeave={e => (e.currentTarget.style.boxShadow = "")}
+          tabIndex={0}
+          onKeyDown={e => { if (e.key === "Enter" || e.key === " ") onNavigate?.("approvals"); }}
+        >
           <div className="stat-card-top">
             <div className="stat-icon" style={{ background: timesheetHealth.pendingApprovals > 0 ? "var(--warning-light)" : "var(--success-light)" }}>
               <IconAlert color={timesheetHealth.pendingApprovals > 0 ? "#f59e0b" : "#10b981"} />
@@ -874,6 +987,7 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
       </div>
 
       <div className="dashboard-grid-2">
+        {/* H3 — Team Attendance chart with Y-axis, tooltips, and accessibility */}
         <div className="card">
           <div className="card-header">
             <div>
@@ -882,23 +996,65 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
             </div>
           </div>
           <div className="card-body">
-            <div style={{ display: "flex", gap: 8, alignItems: "flex-end", height: 100 }}>
-              {[
-                { label: "Present", value: teamAttendance.present, color: "var(--success)" },
-                { label: "Leave", value: teamAttendance.onLeave, color: "var(--info)" },
-                { label: "Absent", value: teamAttendance.notCheckedIn, color: "var(--warning)" },
-              ].map((b) => {
-                const pct = totalTeam > 0 ? Math.round((b.value / totalTeam) * 100) : 0;
-                const barH = Math.max(4, Math.round(pct * 0.7));
-                return (
-                  <div key={b.label} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center" }}>
-                    <div style={{ fontSize: "0.65rem", color: "var(--text-tertiary)", marginBottom: 3 }}>{b.value}</div>
-                    <div style={{ width: "100%", height: `${barH}px`, background: b.color, borderRadius: "4px 4px 0 0" }} title={`${b.label}: ${b.value}`} />
-                    <div style={{ fontSize: "0.7rem", color: "var(--text-tertiary)", marginTop: 4 }}>{b.label}</div>
+            {/* H3 — Small team (≤3): horizontal stat row instead of chart */}
+            {totalTeam <= 3 ? (
+              <div style={{ display: "flex", gap: "var(--space-4)", justifyContent: "space-around" }}>
+                {[
+                  { label: "Present", value: teamAttendance.present, color: "var(--success)" },
+                  { label: "On Leave", value: teamAttendance.onLeave, color: "var(--info)" },
+                  { label: "Absent", value: teamAttendance.notCheckedIn, color: "var(--warning)" },
+                ].map(b => (
+                  <div key={b.label} style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: "1.8rem", fontWeight: 700, color: b.color, lineHeight: 1 }}>{b.value}</div>
+                    <div style={{ fontSize: "0.72rem", color: "var(--text-tertiary)", marginTop: 4 }}>{b.label}</div>
                   </div>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            ) : (
+              /* H3 — Bar chart with Y-axis labels, tooltips, accessibility */
+              <div
+                role="img"
+                aria-label={`Team attendance: ${teamAttendance.present} present, ${teamAttendance.onLeave} on leave, ${teamAttendance.notCheckedIn} absent`}
+              >
+                <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+                  {/* Y-axis */}
+                  <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", height: 100, paddingBottom: 22, paddingTop: 4 }}>
+                    {Array.from({ length: Math.min(totalTeam + 1, 5) }, (_, i) => {
+                      const tick = Math.round((totalTeam / Math.min(totalTeam, 4)) * (Math.min(totalTeam, 4) - i));
+                      return (
+                        <div key={i} style={{ fontSize: "0.6rem", color: "var(--text-tertiary)", textAlign: "right", lineHeight: 1 }}>
+                          {tick}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{ flex: 1, display: "flex", gap: 8, alignItems: "flex-end", height: 100, position: "relative" }}>
+                    {/* Gridlines */}
+                    {[25, 50, 75].map(pct => (
+                      <div key={pct} style={{ position: "absolute", left: 0, right: 0, bottom: `${pct * 0.7}%`, height: 1, background: "var(--border-subtle)", pointerEvents: "none" }} />
+                    ))}
+                    {[
+                      { label: "Present", value: teamAttendance.present, color: "var(--success)" },
+                      { label: "On Leave", value: teamAttendance.onLeave, color: "var(--info)" },
+                      { label: "Absent", value: teamAttendance.notCheckedIn, color: "var(--warning)" },
+                    ].map(b => {
+                      const pct = totalTeam > 0 ? Math.round((b.value / totalTeam) * 100) : 0;
+                      const barH = Math.max(4, Math.round(pct * 0.7));
+                      return (
+                        <div key={b.label} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center" }}>
+                          <div style={{ fontSize: "0.65rem", color: "var(--text-tertiary)", marginBottom: 3 }}>{b.value}</div>
+                          <div
+                            style={{ width: "100%", height: `${barH}px`, background: b.color, borderRadius: "4px 4px 0 0", cursor: "default" }}
+                            title={`${b.label}: ${b.value} member${b.value !== 1 ? "s" : ""}`}
+                          />
+                          <div style={{ fontSize: "0.7rem", color: "var(--text-tertiary)", marginTop: 4 }}>{b.label}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="chart-legend" style={{ marginTop: "var(--space-3)" }}>
               <div className="chart-legend-item"><div className="chart-legend-dot" style={{ background: "var(--success)" }} />Present ({teamAttendance.present})</div>
               <div className="chart-legend-item"><div className="chart-legend-dot" style={{ background: "var(--info)" }} />On Leave ({teamAttendance.onLeave})</div>
@@ -907,6 +1063,7 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
           </div>
         </div>
 
+        {/* H4 — Project Contributions: single-project → stat display; 2+ → donut */}
         <div className="card">
           <div className="card-header">
             <div>
@@ -917,6 +1074,17 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
           <div className="card-body">
             {contributions.length === 0 ? (
               <div className="empty-state" style={{ padding: "var(--space-6) 0" }}><p className="empty-state__title">No data</p></div>
+            ) : contributions.length === 1 ? (
+              /* H4 — Single project: stat display instead of donut */
+              <div style={{ padding: "var(--space-4) 0" }}>
+                <div style={{ fontSize: "0.8rem", color: "var(--text-tertiary)", marginBottom: 4 }} title={contributions[0].project}>
+                  {contributions[0].project}
+                </div>
+                <div style={{ fontSize: "1.8rem", fontWeight: 700, color: "var(--text-primary)", lineHeight: 1 }}>
+                  {(contributions[0].minutes / 60).toFixed(1)}h
+                </div>
+                <div style={{ fontSize: "0.72rem", color: "var(--text-tertiary)", marginTop: 4 }}>this week</div>
+              </div>
             ) : (
               <div style={{ display: "flex", alignItems: "center", gap: "var(--space-5)" }}>
                 <DonutChart segments={donutSegs} centerLabel={`${(totalContrib / 60).toFixed(0)}h`} centerSub="Team" size={110} />
@@ -932,6 +1100,7 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
       </div>
 
       <div className="dashboard-grid">
+        {/* C3 — Sanitized activity feed */}
         <div className="card">
           <div className="card-header">
             <div><h2 className="card-title">Recent Activity</h2><div className="card-subtitle">Team attendance & timesheet flags</div></div>
@@ -945,21 +1114,43 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
               </div>
             ) : (
               <div className="activity-list">
-                {mismatches.slice(0, 5).map((r, i) => (
-                  <div key={i} className="activity-item" style={{ cursor: "pointer" }} onClick={() => onNavigate?.("approvals")}>
-                    <div className="activity-icon-wrap" style={{ background: "var(--danger-light)" }}>!</div>
-                    <div className="activity-body">
-                      <div className="activity-text"><strong>{r.username}</strong> — mismatch</div>
-                      <div className="activity-meta">{r.mismatchReason}</div>
+                {mismatches.slice(0, 5).map((r, i) => {
+                  const MAX_NOTE = 60;
+                  const note = r.mismatchReason ?? "";
+                  const truncated = note.length > MAX_NOTE ? note.slice(0, MAX_NOTE) + "…" : note;
+                  return (
+                    <div key={i} className="activity-item" style={{ cursor: "pointer", alignItems: "flex-start" }} onClick={() => onNavigate?.("approvals")}>
+                      <div className="activity-icon-wrap" style={{ background: "var(--danger-light)", marginTop: 2 }}>⚠</div>
+                      <div className="activity-body" style={{ flex: 1 }}>
+                        {/* C3 — structured sentence format */}
+                        <div className="activity-text">
+                          <strong>{formatDisplayName(r.username)}</strong> submitted a timesheet for{" "}
+                          {fmtDateShort(r.workDate)} — flagged as mismatch
+                        </div>
+                        {note && (
+                          <div style={{ fontSize: "0.7rem", color: "var(--text-tertiary)", marginTop: 2 }}>
+                            <span style={{ fontWeight: 600 }}>Note:</span> <span title={note}>{truncated}</span>
+                          </div>
+                        )}
+                        {/* C3 — review action link */}
+                        <button
+                          type="button"
+                          style={{ marginTop: 4, background: "none", border: "none", padding: 0, color: "var(--brand-600)", fontSize: "0.72rem", fontWeight: 600, cursor: "pointer" }}
+                          onClick={e => { e.stopPropagation(); onNavigate?.("approvals"); }}
+                        >
+                          Review →
+                        </button>
+                      </div>
+                      <div className="activity-ts">{fmtDateShort(r.workDate)}</div>
                     </div>
-                    <div className="activity-ts">{fmtDateShort(r.workDate)}</div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
         </div>
 
+        {/* H5 — Pending Approvals with inline confirmation */}
         <div className="card">
           <div className="card-header">
             <div><h2 className="card-title">Pending Approvals</h2><div className="card-subtitle">Requires your action</div></div>
@@ -973,6 +1164,31 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
               </div>
             ) : (
               <div>
+                {/* H5 — inline confirmation panel */}
+                {confirming && confirmPayload && (
+                  <div style={{
+                    background: "var(--warning-light)", border: "1px solid #fbbf24",
+                    borderRadius: "var(--r-md)", padding: "var(--space-3)",
+                    marginBottom: "var(--space-3)", fontSize: "0.8rem",
+                  }}>
+                    <div style={{ fontWeight: 600, marginBottom: 8 }}>
+                      Approve {formatDisplayName(confirmPayload.username)}'s timesheet for {fmtDateShort(confirmPayload.workDate)}?
+                    </div>
+                    <div style={{ display: "flex", gap: "var(--space-2)" }}>
+                      <button
+                        className="btn btn-primary btn-sm"
+                        style={{ fontSize: "0.75rem" }}
+                        onClick={() => { const item = doConfirm(); if (item) void executeApprove(item); }}
+                      >Confirm</button>
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        style={{ fontSize: "0.75rem" }}
+                        onClick={cancelConfirm}
+                      >Cancel</button>
+                    </div>
+                  </div>
+                )}
+
                 <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
                   {pendingList.map(a => (
                     <div key={a.timesheetId} style={{
@@ -984,23 +1200,31 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
                         {a.username.slice(0, 2).toUpperCase()}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.username}</div>
+                        <div style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={a.username}>
+                          {formatDisplayName(a.username)}
+                        </div>
                         <div style={{ fontSize: "0.7rem", color: "var(--text-tertiary)" }}>{fmtDateShort(a.workDate)} · {fmtMinutes(a.enteredMinutes)}</div>
                       </div>
+                      {/* H5 — requests confirmation instead of immediate approve */}
                       <button
                         className="btn btn-outline-success btn-sm"
                         style={{ padding: "3px 8px", height: 26, fontSize: "0.72rem", minWidth: 28 }}
-                        onClick={() => quickApprove(a.timesheetId)}
-                        disabled={approvingId === a.timesheetId}
-                        title="Approve"
+                        onClick={() => requestConfirm(a)}
+                        disabled={approvingId === a.timesheetId || (confirming && confirmPayload?.timesheetId !== a.timesheetId)}
+                        title={`Approve ${formatDisplayName(a.username)}'s timesheet`}
+                        aria-label={`Approve ${formatDisplayName(a.username)}'s timesheet for ${fmtDateShort(a.workDate)}`}
                       >✓</button>
                     </div>
                   ))}
                 </div>
+
+                {/* M1 — Fix grammatically awkward pending CTA */}
                 {timesheetHealth.pendingApprovals > 0 && (
                   <div style={{ marginTop: "var(--space-3)" }}>
                     <button className="btn btn-outline w-full btn-sm" onClick={() => onNavigate?.("approvals")}>
-                      View all {timesheetHealth.pendingApprovals} pending →
+                      {timesheetHealth.pendingApprovals === 1
+                        ? "View 1 pending approval →"
+                        : `View all ${timesheetHealth.pendingApprovals} pending approvals →`}
                     </button>
                   </div>
                 )}
@@ -1009,18 +1233,44 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
           </div>
         </div>
 
+        {/* H6 — Budget Health with thresholds and graceful no-budget state */}
         <div className="card">
           <div className="card-header">
-            <div><h2 className="card-title">Budget Health</h2><div className="card-subtitle">Project utilisation this week</div></div>
+            <div><h2 className="card-title">Budget Health</h2><div className="card-subtitle">Project effort this week</div></div>
           </div>
           <div className="card-body">
             {contributions.length === 0 ? (
               <div className="empty-state" style={{ padding: "var(--space-6) 0" }}><p className="empty-state__title">No data</p></div>
             ) : (
               <div className="kpi-list">
-                {contributions.slice(0, 5).map((r, i) => (
-                  <KpiItem key={r.project} name={r.project} color={PALETTE[i % PALETTE.length]} value={r.minutes} max={maxContrib} />
-                ))}
+                {contributions.slice(0, 5).map((r, i) => {
+                  // H6 — no budget cap available from this endpoint; show effort with neutral bar
+                  return (
+                    <div key={r.project} className="kpi-item">
+                      <div className="kpi-header">
+                        <div className="kpi-name" title={r.project}>
+                          <div className="kpi-dot" style={{ background: PALETTE[i % PALETTE.length] }} />
+                          {r.project}
+                        </div>
+                        <div className="kpi-val">{fmtMinutes(r.minutes)}</div>
+                      </div>
+                      <div
+                        className="progress-track"
+                        role="progressbar"
+                        aria-valuenow={maxContrib > 0 ? Math.round((r.minutes / maxContrib) * 100) : 0}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-label={`${r.project}: ${fmtMinutes(r.minutes)}`}
+                      >
+                        <div className="progress-fill" style={{ width: `${maxContrib > 0 ? Math.round((r.minutes / maxContrib) * 100) : 0}%`, background: PALETTE[i % PALETTE.length] }} />
+                      </div>
+                      {/* H6 — No budget cap indicator */}
+                      <div style={{ fontSize: "0.68rem", color: "var(--text-tertiary)", fontStyle: "italic", marginTop: 2 }}>
+                        No budget cap set
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

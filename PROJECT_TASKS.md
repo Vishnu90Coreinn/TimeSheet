@@ -643,53 +643,53 @@ All Phase 2 tasks address findings from the Phase 1 audit above.
 
 ---
 
-### Sprint 17 — Project Budget Burn 📊 🔴 NEXT
+### Sprint 17 — Project Budget Burn 📊 ✅ DONE
 **Branch:** `feature/sprint-17-project-budget`
 **Goal:** Expose `budgetedHours` data as actionable project health indicators.
 
 #### Backend
-- [ ] **TSK-BDG-001** `GET /projects/{id}/budget-summary` — returns `{ budgetedHours, loggedHours, remainingHours, burnRateHoursPerWeek, projectedWeeksRemaining, weeklyBreakdown: [{ weekStart, hours }] }` (last 8 weeks).
-- [ ] **TSK-BDG-002** `GET /projects/budget-health` — admin/manager list: all active projects with `{ id, name, budgetedHours, loggedHours, pctUsed, status: "on-track"|"warning"|"critical"|"over-budget" }`. Thresholds: warning ≥80%, critical ≥95%.
-- [ ] **TSK-BDG-003** `BudgetedHours` validation in `UpsertProjectRequest` — must be ≥ 0.
+- [x] **TSK-BDG-001** `GET /projects/{id}/budget-summary` — returns `{ budgetedHours, loggedHours, remainingHours, burnRateHoursPerWeek, projectedWeeksRemaining, weeklyBreakdown: [{ weekStart, hours }] }` (last 8 weeks).
+- [x] **TSK-BDG-002** `GET /projects/budget-health` — admin/manager list: all active projects with `{ id, name, budgetedHours, loggedHours, pctUsed, status: "on-track"|"warning"|"critical"|"over-budget" }`. Thresholds: warning ≥80%, critical ≥95%.
+- [x] **TSK-BDG-003** `BudgetedHours` validation in `UpsertProjectRequest` — must be ≥ 0.
 
 #### Frontend
-- [ ] **TSK-BDG-004** Budget burn panel in `Admin/Projects.tsx` edit drawer: burn bar, pct used, projected completion date.
-- [ ] **TSK-BDG-005** Budget column in Projects table: mini burn bar + pct label; color-coded by status.
-- [ ] **TSK-BDG-006** Admin dashboard: "Budget Health" card showing count of warning/critical projects with drill-down list.
+- [x] **TSK-BDG-004** Budget burn panel in `Admin/Projects.tsx` edit drawer: burn bar, pct used, projected completion date.
+- [x] **TSK-BDG-005** Budget column in Projects table: mini burn bar + pct label; color-coded by status.
+- [x] **TSK-BDG-006** Admin dashboard: "Budget Health" card showing count of warning/critical projects with drill-down list.
 
 ---
 
-### Sprint 18 — Recurring Entry Templates 📋
+### Sprint 18 — Recurring Entry Templates 📋 ✅ DONE
 **Branch:** `feature/sprint-18-entry-templates`
 **Goal:** One-click pre-fill for users who log the same entries daily.
 
 #### Backend
-- [ ] **TSK-TPL-001** New `TimesheetTemplates` table: `{ id, userId, name, createdAt, entries: JSON[] (projectId, categoryId, durationMinutes, note) }`.
-- [ ] **TSK-TPL-002** `GET /timesheets/templates` — user's saved templates.
-- [ ] **TSK-TPL-003** `POST /timesheets/templates` — save a named template.
-- [ ] **TSK-TPL-004** `PUT /timesheets/templates/{id}` — rename or update entries.
-- [ ] **TSK-TPL-005** `DELETE /timesheets/templates/{id}`.
-- [ ] **TSK-TPL-006** `POST /timesheets/templates/{id}/apply` — `{ date: "YYYY-MM-DD" }`; creates draft entries for that date from the template; skips if entries already exist; returns created entry IDs.
+- [x] **TSK-TPL-001** New `TimesheetTemplates` table: `{ id, userId, name, createdAt, entries: JSON[] (projectId, categoryId, durationMinutes, note) }`.
+- [x] **TSK-TPL-002** `GET /timesheets/templates` — user's saved templates.
+- [x] **TSK-TPL-003** `POST /timesheets/templates` — save a named template.
+- [x] **TSK-TPL-004** `PUT /timesheets/templates/{id}` — rename or update entries.
+- [x] **TSK-TPL-005** `DELETE /timesheets/templates/{id}`.
+- [x] **TSK-TPL-006** `POST /timesheets/templates/{id}/apply` — `{ date: "YYYY-MM-DD" }`; creates draft entries for that date from the template; skips if entries already exist; returns created entry IDs.
 
 #### Frontend
-- [ ] **TSK-TPL-007** "Use Template" button on Timesheets daily view — opens template picker modal.
-- [ ] **TSK-TPL-008** "Save as Template" option in entry form context menu or week-view actions.
-- [ ] **TSK-TPL-009** Template management section in `Profile.tsx` — list, rename, delete saved templates.
+- [x] **TSK-TPL-007** "Use Template" button on Timesheets daily view — opens template picker modal.
+- [x] **TSK-TPL-008** "Save as Template" option in entry form context menu or week-view actions.
+- [x] **TSK-TPL-009** Template management section in `Profile.tsx` — list, rename, delete saved templates.
 
 ---
 
-### Sprint 19 — Leave Team Calendar 🗓
+### Sprint 19 — Leave Team Calendar 🗓 ✅ DONE
 **Branch:** `feature/sprint-19-leave-team-calendar`
 **Goal:** Show who else is off when employees apply for leave; prevent understaffed days.
 
 #### Backend
-- [ ] **TSK-LTC-001** `GET /leave/team-calendar?year=&month=` — returns approved + pending leaves for all members of the calling user's department (employee) or direct reports (manager). DTO: `{ date, entries: [{ userId, username, leaveTypeName, status }] }`.
-- [ ] **TSK-LTC-002** `GET /leave/conflicts?fromDate=&toDate=&userId=` — returns count of team members on leave during the requested dates; used for conflict warning on apply form.
+- [x] **TSK-LTC-001** `GET /leave/team-calendar?year=&month=` — returns approved + pending leaves for all members of the calling user's department (employee) or direct reports (manager). DTO: `{ date, entries: [{ userId, username, leaveTypeName, status }] }`.
+- [x] **TSK-LTC-002** `GET /leave/conflicts?fromDate=&toDate=&userId=` — returns count of team members on leave during the requested dates; used for conflict warning on apply form.
 
 #### Frontend
-- [ ] **TSK-LTC-003** Enhance Leave page mini calendar: overlay team leave chips (small colored dots per user) on each date alongside personal leave dots.
-- [ ] **TSK-LTC-004** Conflict warning banner on leave apply form: "3 team members are already off during these dates: [names]."
-- [ ] **TSK-LTC-005** Tooltip on calendar date: hover shows list of who is off that day.
+- [x] **TSK-LTC-003** Enhance Leave page mini calendar: overlay team leave chips (small colored dots per user) on each date alongside personal leave dots.
+- [x] **TSK-LTC-004** Conflict warning banner on leave apply form: "3 team members are already off during these dates: [names]."
+- [x] **TSK-LTC-005** Tooltip on calendar date: hover shows list of who is off that day.
 
 ---
 
@@ -829,10 +829,10 @@ feature/sprint-25-dark-mode
 | 2 | ~~14 — Bulk Submit~~ ✅ | Highest daily-friction fix; pure backend extension, low risk |
 | 3 | ~~15 — Team Status~~ ✅ | Highest manager value; new endpoint, no schema change |
 | 4 | ~~16 — Task Timer~~ ✅ | New table + persistent widget; biggest engagement driver |
-| 5 | **17 — Budget Burn** 🔴 NEXT | Uses existing `budgetedHours` field; low backend effort |
-| 6 | 18 — Templates | Comfort feature; reduces daily friction |
-| 7 | 19 — Leave Team Cal | Extend existing leave endpoints |
-| 8 | 20 — Anomaly Alerts | Background service; builds on existing notification infra |
+| 5 | ~~17 — Budget Burn~~ ✅ | Uses existing `budgetedHours` field; low backend effort |
+| 6 | ~~18 — Templates~~ ✅ | Comfort feature; reduces daily friction |
+| 7 | ~~19 — Leave Team Cal~~ ✅ | Extend existing leave endpoints |
+| 8 | **20 — Anomaly Alerts** 🔴 NEXT | Background service; builds on existing notification infra |
 | 9 | 21 — Saved Reports | Persistence layer for reports; needs email service |
 | 10 | 22 — Approval Delegation | Schema change + routing logic; test thoroughly |
 | 11 | 23 — Command Palette | Pure frontend; do after all pages are stable |

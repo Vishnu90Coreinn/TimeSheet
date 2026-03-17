@@ -7,6 +7,12 @@ import { Eye, EyeOff, Lock, Camera } from "lucide-react";
 import { apiFetch } from "../api/client";
 import type { MyProfile, NotificationPreferences } from "../types";
 
+// ── Template types ─────────────────────────────────────────────────────────────
+interface TemplateEntryRow { projectId: string; categoryId: string; minutes: number; note: string; }
+interface TemplateItem { id: string; name: string; createdAtUtc: string; entries: { projectId: string; categoryId: string; minutes: number; note: string | null }[]; }
+interface EntryOption { id: string; name: string; }
+interface EntryOptions { projects: EntryOption[]; taskCategories: EntryOption[]; }
+
 // ── Toast system ─────────────────────────────────────────────────────────────
 
 type Toast = { id: number; ok: boolean; text: string };
@@ -142,6 +148,18 @@ export function Profile({ onBack }: { onBack: () => void }) {
   // Notification prefs
   const [savingPrefs, setSavingPrefs] = useState(false);
 
+  // Templates state
+  const [templates, setTemplates] = useState<TemplateItem[]>([]);
+  const [entryOptions, setEntryOptions] = useState<EntryOptions | null>(null);
+  const [showNewTemplateForm, setShowNewTemplateForm] = useState(false);
+  const [newTemplateName, setNewTemplateName] = useState("");
+  const [newTemplateRows, setNewTemplateRows] = useState<TemplateEntryRow[]>([
+    { projectId: "", categoryId: "", minutes: 60, note: "" },
+  ]);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null);
+  const [confirmDeleteTemplateId, setConfirmDeleteTemplateId] = useState<string | null>(null);
+
   useEffect(() => {
     apiFetch("/profile").then(async r => {
       if (r.ok) {
@@ -154,6 +172,12 @@ export function Profile({ onBack }: { onBack: () => void }) {
     });
     apiFetch("/profile/notification-preferences").then(async r => {
       if (r.ok) setPrefs(await r.json() as NotificationPreferences);
+    });
+    apiFetch("/timesheets/templates").then(async r => {
+      if (r.ok) setTemplates(await r.json() as TemplateItem[]);
+    });
+    apiFetch("/timesheets/entry-options").then(async r => {
+      if (r.ok) setEntryOptions(await r.json() as EntryOptions);
     });
   }, []);
 
@@ -239,6 +263,52 @@ export function Profile({ onBack }: { onBack: () => void }) {
     if (r.ok || r.status === 204) showToast(true, "Preferences saved.");
     else showToast(false, "Failed to save preferences.");
     setSavingPrefs(false);
+  }
+
+  // ── Template actions ─────────────────────────────────────────────────────────
+
+  async function saveNewTemplate() {
+    if (!newTemplateName.trim()) return;
+    const validRows = newTemplateRows.filter(r => r.projectId && r.categoryId && r.minutes > 0);
+    if (validRows.length === 0) return;
+    setSavingTemplate(true);
+    const r = await apiFetch("/timesheets/templates", {
+      method: "POST",
+      body: JSON.stringify({
+        name: newTemplateName.trim(),
+        entries: validRows.map(row => ({
+          projectId: row.projectId,
+          categoryId: row.categoryId,
+          minutes: row.minutes,
+          note: row.note.trim() || null,
+        })),
+      }),
+    });
+    setSavingTemplate(false);
+    if (r.ok) {
+      const created = await r.json() as TemplateItem;
+      setTemplates(prev => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+      setShowNewTemplateForm(false);
+      setNewTemplateName("");
+      setNewTemplateRows([{ projectId: "", categoryId: "", minutes: 60, note: "" }]);
+      showToast(true, "Template saved.");
+    } else {
+      const d = await r.json().catch(() => ({})) as { message?: string };
+      showToast(false, d.message ?? "Failed to save template.");
+    }
+  }
+
+  async function deleteTemplate(id: string) {
+    setDeletingTemplateId(id);
+    const r = await apiFetch(`/timesheets/templates/${id}`, { method: "DELETE" });
+    setDeletingTemplateId(null);
+    setConfirmDeleteTemplateId(null);
+    if (r.ok || r.status === 204) {
+      setTemplates(prev => prev.filter(t => t.id !== id));
+      showToast(true, "Template deleted.");
+    } else {
+      showToast(false, "Failed to delete template.");
+    }
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -550,6 +620,172 @@ export function Profile({ onBack }: { onBack: () => void }) {
             </div>
           </div>
         </div>
+
+        {/* ── Timesheet Templates section ── */}
+        <div className="card">
+          <div className="card-header">
+            <div>
+              <div className="card-title">Timesheet Templates</div>
+              <div className="card-subtitle">Save and reuse common sets of time entries</div>
+            </div>
+            <button
+              className="btn btn-outline btn-sm"
+              onClick={() => {
+                setNewTemplateName("");
+                setNewTemplateRows([{ projectId: entryOptions?.projects[0]?.id ?? "", categoryId: entryOptions?.taskCategories[0]?.id ?? "", minutes: 60, note: "" }]);
+                setShowNewTemplateForm(v => !v);
+              }}
+            >
+              {showNewTemplateForm ? "Cancel" : "+ New Template"}
+            </button>
+          </div>
+
+          {/* New template form */}
+          {showNewTemplateForm && (
+            <div style={{ padding: "0 var(--space-5) var(--space-5)", display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+              <div className="form-field">
+                <label className="form-label">Template name <span style={{ color: "var(--danger)" }}>*</span></label>
+                <input
+                  className="input-field"
+                  placeholder="e.g. Standard work day"
+                  maxLength={120}
+                  value={newTemplateName}
+                  onChange={e => setNewTemplateName(e.target.value)}
+                />
+              </div>
+
+              {/* Entry rows */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+                <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Entries</div>
+                {newTemplateRows.map((row, idx) => (
+                  <div key={idx} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 80px 1fr auto", gap: "var(--space-2)", alignItems: "center" }}>
+                    <select
+                      className="input-field"
+                      style={{ fontSize: "0.82rem" }}
+                      value={row.projectId}
+                      onChange={e => setNewTemplateRows(prev => prev.map((r, i) => i === idx ? { ...r, projectId: e.target.value } : r))}
+                    >
+                      <option value="">— Project —</option>
+                      {(entryOptions?.projects ?? []).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                    <select
+                      className="input-field"
+                      style={{ fontSize: "0.82rem" }}
+                      value={row.categoryId}
+                      onChange={e => setNewTemplateRows(prev => prev.map((r, i) => i === idx ? { ...r, categoryId: e.target.value } : r))}
+                    >
+                      <option value="">— Category —</option>
+                      {(entryOptions?.taskCategories ?? []).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                    <input
+                      className="input-field"
+                      type="number"
+                      min={1}
+                      max={1440}
+                      placeholder="min"
+                      style={{ fontSize: "0.82rem" }}
+                      value={row.minutes}
+                      onChange={e => setNewTemplateRows(prev => prev.map((r, i) => i === idx ? { ...r, minutes: parseInt(e.target.value) || 0 } : r))}
+                    />
+                    <input
+                      className="input-field"
+                      placeholder="Note (optional)"
+                      maxLength={500}
+                      style={{ fontSize: "0.82rem" }}
+                      value={row.note}
+                      onChange={e => setNewTemplateRows(prev => prev.map((r, i) => i === idx ? { ...r, note: e.target.value } : r))}
+                    />
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      style={{ padding: "4px 8px", color: "var(--danger)", fontSize: "0.8rem" }}
+                      onClick={() => setNewTemplateRows(prev => prev.filter((_, i) => i !== idx))}
+                      title="Remove row"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  style={{ alignSelf: "flex-start", fontSize: "0.82rem", color: "var(--brand-500)" }}
+                  onClick={() => setNewTemplateRows(prev => [
+                    ...prev,
+                    { projectId: entryOptions?.projects[0]?.id ?? "", categoryId: entryOptions?.taskCategories[0]?.id ?? "", minutes: 60, note: "" },
+                  ])}
+                >
+                  + Add Row
+                </button>
+              </div>
+
+              <button
+                className="btn btn-primary"
+                style={{ alignSelf: "flex-start" }}
+                disabled={savingTemplate || !newTemplateName.trim() || newTemplateRows.filter(r => r.projectId && r.categoryId && r.minutes > 0).length === 0}
+                onClick={() => void saveNewTemplate()}
+              >
+                {savingTemplate ? "Saving…" : "Save Template"}
+              </button>
+            </div>
+          )}
+
+          {/* Template list */}
+          <div style={{ padding: "0 var(--space-5) var(--space-5)" }}>
+            {templates.length === 0 ? (
+              <div style={{ textAlign: "center", color: "var(--text-tertiary)", fontSize: "0.85rem", padding: "var(--space-6) 0" }}>
+                No templates yet. Create one to speed up time logging.
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+                {templates.map(t => (
+                  <div key={t.id} style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    padding: "var(--space-3) var(--space-4)",
+                    border: "1px solid var(--border-subtle)",
+                    borderRadius: "var(--r-md)",
+                    background: "var(--n-50)",
+                  }}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: "0.85rem", color: "var(--text-primary)" }}>{t.name}</div>
+                      <div style={{ fontSize: "0.75rem", color: "var(--text-tertiary)", marginTop: 2 }}>
+                        {t.entries.length} entr{t.entries.length === 1 ? "y" : "ies"}
+                      </div>
+                    </div>
+                    {confirmDeleteTemplateId === t.id ? (
+                      <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
+                        <span style={{ fontSize: "0.75rem", color: "var(--text-tertiary)" }}>Delete?</span>
+                        <button
+                          className="btn btn-sm"
+                          style={{ background: "var(--danger)", color: "#fff", border: "none", padding: "3px 10px" }}
+                          disabled={deletingTemplateId === t.id}
+                          onClick={() => void deleteTemplate(t.id)}
+                        >
+                          {deletingTemplateId === t.id ? "…" : "Yes"}
+                        </button>
+                        <button
+                          className="btn btn-outline btn-sm"
+                          onClick={() => setConfirmDeleteTemplateId(null)}
+                        >
+                          No
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        style={{ color: "var(--danger)" }}
+                        onClick={() => setConfirmDeleteTemplateId(t.id)}
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
       </section>
     </>
   );

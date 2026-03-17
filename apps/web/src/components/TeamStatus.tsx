@@ -657,7 +657,7 @@ export function TeamStatus() {
                           {m.pendingApprovalCount > 0 && (
                             <button
                               type="button"
-                              className="btn btn-primary btn-sm"
+                              className="btn btn-outline-success btn-sm"
                               style={{ fontSize: "0.72rem", display: "inline-flex", alignItems: "center", gap: 4 }}
                               onClick={() => navigate("/approvals")}
                               title="Go to Approvals"

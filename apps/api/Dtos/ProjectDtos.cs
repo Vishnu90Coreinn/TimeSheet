@@ -6,7 +6,7 @@ public record UpsertProjectRequest(
     [Required][MaxLength(200)] string Name,
     [Required][MaxLength(50)] string Code,
     bool IsActive,
-    int BudgetedHours = 0
+    [Range(0, 100000)] int BudgetedHours = 0
 );
 
 public record ProjectResponse(Guid Id, string Name, string Code, bool IsActive, bool IsArchived, int BudgetedHours);

@@ -29,6 +29,7 @@ public class TimeSheetDbContext(DbContextOptions<TimeSheetDbContext> options) : 
     public DbSet<Holiday> Holidays => Set<Holiday>();
     public DbSet<UserNotificationPreferences> UserNotificationPreferences => Set<UserNotificationPreferences>();
     public DbSet<TimerSession> TimerSessions => Set<TimerSession>();
+    public DbSet<TimesheetTemplate> TimesheetTemplates => Set<TimesheetTemplate>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -357,6 +358,16 @@ public class TimeSheetDbContext(DbContextOptions<TimeSheetDbContext> options) : 
                 .WithMany()
                 .HasForeignKey(x => x.ConvertedToEntryId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<TimesheetTemplate>(entity =>
+        {
+            entity.ToTable("TimesheetTemplates");
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => x.UserId);
+            entity.Property(x => x.Name).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.EntriesJson).HasColumnType("nvarchar(max)").IsRequired();
+            entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

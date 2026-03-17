@@ -394,6 +394,86 @@ public class TimesheetsController(TimeSheetDbContext dbContext, IAttendanceCalcu
         return Ok(await BuildDayResponse(userId.Value, request.WorkDate));
     }
 
+    [HttpPost("submit-week")]
+    public async Task<ActionResult<SubmitWeekResponse>> SubmitWeek([FromBody] SubmitWeekRequest request)
+    {
+        var userId = GetUserId();
+        if (userId is null) return Unauthorized();
+
+        // Validate weekStart is a Monday
+        if (request.WeekStart.DayOfWeek != DayOfWeek.Monday)
+            return BadRequest(new { message = "WeekStart must be a Monday." });
+
+        var isActive = await dbContext.Users
+            .AsNoTracking()
+            .Where(u => u.Id == userId)
+            .Select(u => (bool?)u.IsActive)
+            .SingleOrDefaultAsync();
+
+        if (isActive is null) return Unauthorized();
+        if (isActive is false)
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "Inactive users cannot submit timesheets." });
+
+        var backdateLimit = await dbContext.Users
+            .AsNoTracking()
+            .Where(u => u.Id == userId.Value)
+            .Select(u => u.WorkPolicy != null ? u.WorkPolicy.TimesheetBackdateWindowDays : 7)
+            .SingleOrDefaultAsync();
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        // Load all timesheets for the week in one query
+        var weekEnd = request.WeekStart.AddDays(6);
+        var weekTimesheets = await dbContext.Timesheets
+            .Include(t => t.Entries)
+            .Where(t => t.UserId == userId.Value && t.WorkDate >= request.WeekStart && t.WorkDate <= weekEnd)
+            .ToListAsync();
+
+        var submitted = new List<string>();
+        var skipped   = new List<SubmitWeekSkipped>();
+        var errors    = new List<SubmitWeekError>();
+
+        // Process Mon–Sat (skip Sunday index 6)
+        for (var i = 0; i < 6; i++)
+        {
+            var day = request.WeekStart.AddDays(i);
+            var dateStr = day.ToString("yyyy-MM-dd");
+
+            // Future date guard
+            if (day > today) { skipped.Add(new(dateStr, "Future date")); continue; }
+
+            // Backdate window guard
+            if (day < today.AddDays(-backdateLimit)) { errors.Add(new(dateStr, $"Outside the {backdateLimit}-day editing window.")); continue; }
+
+            var timesheet = weekTimesheets.SingleOrDefault(t => t.WorkDate == day);
+
+            // No timesheet or no entries — skip silently
+            if (timesheet is null || timesheet.Entries.Count == 0)
+            { skipped.Add(new(dateStr, "No entries")); continue; }
+
+            // Already submitted / approved / rejected
+            if (timesheet.Status != TimesheetStatus.Draft)
+            { skipped.Add(new(dateStr, $"Already {timesheet.Status.ToString().ToLowerInvariant()}")); continue; }
+
+            // Calculate mismatch (informational only — bulk submit does not require a reason)
+            var attendanceNet = await GetAttendanceNetMinutes(userId.Value, day);
+            var entered = timesheet.Entries.Sum(e => e.Minutes);
+            var hasMismatch = attendanceNet != entered;
+
+            timesheet.Status = TimesheetStatus.Submitted;
+            timesheet.SubmittedAtUtc = DateTime.UtcNow;
+            timesheet.MismatchReason = hasMismatch ? "(bulk submit)" : null;
+
+            await auditService.WriteAsync("TimesheetSubmitted", "Timesheet", timesheet.Id.ToString(), $"Bulk submitted for {day}", User);
+            submitted.Add(dateStr);
+        }
+
+        if (submitted.Count > 0)
+            await dbContext.SaveChangesAsync();
+
+        return Ok(new SubmitWeekResponse(submitted, skipped, errors));
+    }
+
     private Guid? GetUserId()
     {
         var sub = User.FindFirstValue(ClaimTypes.NameIdentifier)

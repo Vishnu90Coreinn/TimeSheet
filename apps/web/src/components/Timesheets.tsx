@@ -168,6 +168,11 @@ export function Timesheets() {
   // Delete confirm modal
   const [deleteModal, setDeleteModal] = useState<string | null>(null); // entry id
 
+  // Bulk submit week modal
+  const [showSubmitWeekModal, setShowSubmitWeekModal] = useState(false);
+  const [submitWeekLoading, setSubmitWeekLoading] = useState(false);
+  const [submitWeekToast, setSubmitWeekToast] = useState<string | null>(null);
+
   /* ── Attendance ───────────────────────────────────────────────────────────── */
   const loadAttendance = useCallback(async () => {
     const r = await apiFetch("/attendance/summary/today");
@@ -386,6 +391,34 @@ export function Timesheets() {
     }
   }
 
+  /* ── Bulk week submit ─────────────────────────────────────────────────────── */
+  async function submitWeek() {
+    setSubmitWeekLoading(true);
+    const weekStart = getWeekDays(selectedDate)[0]; // Mon of current view
+    const r = await apiFetch("/timesheets/submit-week", {
+      method: "POST",
+      body: JSON.stringify({ weekStart }),
+    });
+    setSubmitWeekLoading(false);
+    setShowSubmitWeekModal(false);
+    if (r.ok) {
+      const result = await r.json() as { submitted: string[]; skipped: { date: string; reason: string }[]; errors: { date: string; message: string }[] };
+      const n = result.submitted.length;
+      const toast = n > 0
+        ? `${n} day${n > 1 ? "s" : ""} submitted${result.skipped.length > 0 ? `, ${result.skipped.length} skipped` : ""}.`
+        : `No days submitted — ${result.skipped.length} skipped.`;
+      setSubmitWeekToast(toast);
+      setTimeout(() => setSubmitWeekToast(null), 4000);
+      // Reload week + selected day
+      void loadWeek(selectedDate);
+      void loadDay(selectedDate);
+    } else {
+      const body = await r.json().catch(() => ({})) as { message?: string };
+      setSubmitWeekToast(body.message ?? "Week submission failed.");
+      setTimeout(() => setSubmitWeekToast(null), 4000);
+    }
+  }
+
   /* ── Derived values ───────────────────────────────────────────────────────── */
   const isDraft     = dayData?.status === "draft" || dayData === null;
   const isApproved  = dayData?.status === "approved";
@@ -406,6 +439,11 @@ export function Timesheets() {
   const weekDayMap = new Map<string, WeekDayMeta>(
     (weekData?.days ?? []).map((d) => [d.workDate, d])
   );
+
+  // Count days with draft status + entries for "Submit Week" button enablement
+  const submittableCount = (weekData?.days ?? []).filter(d =>
+    d.status === "draft" && d.enteredMinutes > 0
+  ).length;
 
   // Today by project (from dayData entries)
   const projectHoursMap = new Map<string, { name: string; minutes: number; color: string }>();
@@ -442,6 +480,15 @@ export function Timesheets() {
             </div>
             <div className="ts3-header-actions">
               <button className="btn btn-outline btn-sm">Export</button>
+              {submittableCount > 0 && (
+                <button
+                  className="btn btn-outline btn-sm"
+                  onClick={() => setShowSubmitWeekModal(true)}
+                  title={`Submit all ${submittableCount} draft day${submittableCount > 1 ? "s" : ""} this week`}
+                >
+                  Submit Week
+                </button>
+              )}
               {isDraft && dayEntries.length > 0 && (
                 <button
                   className="btn btn-outline btn-sm"
@@ -930,6 +977,85 @@ export function Timesheets() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ── Submit Week preview modal ──────────────────────────────────────── */}
+      {showSubmitWeekModal && (
+        <div className="ts3-modal-backdrop" onClick={() => setShowSubmitWeekModal(false)}>
+          <div className="ts3-modal ts3-modal--wide" onClick={(e) => e.stopPropagation()}>
+            <div className="ts3-modal-icon" style={{ background: "#eef2ff" }}>
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#6366f1" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M16 4H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1z"/>
+                <polyline points="9 11 11 13 15 9"/>
+              </svg>
+            </div>
+            <div className="ts3-modal-title">Submit week for approval</div>
+            <div className="ts3-modal-body" style={{ marginBottom: 12 }}>
+              The following days will be submitted. Days with no entries or already submitted will be skipped.
+            </div>
+            {/* Preview table */}
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, marginBottom: 16 }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid #e5e7eb" }}>
+                  <th style={{ textAlign: "left", padding: "4px 0", fontWeight: 600, color: "#6b7280", fontSize: 11, textTransform: "uppercase" }}>Day</th>
+                  <th style={{ textAlign: "right", padding: "4px 0", fontWeight: 600, color: "#6b7280", fontSize: 11, textTransform: "uppercase" }}>Logged</th>
+                  <th style={{ textAlign: "right", padding: "4px 0", fontWeight: 600, color: "#6b7280", fontSize: 11, textTransform: "uppercase" }}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {weekDays.slice(0, 6).map((date, i) => {
+                  const meta = weekDayMap.get(date);
+                  const mins = meta?.enteredMinutes ?? 0;
+                  const status = meta?.status ?? "draft";
+                  const willSubmit = status === "draft" && mins > 0;
+                  const isSkipped = status === "draft" && mins === 0;
+                  return (
+                    <tr key={date} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                      <td style={{ padding: "6px 0", color: "#111827" }}>
+                        {DAY_LABELS[i]} {new Date(date + "T00:00:00").getDate()}
+                      </td>
+                      <td style={{ textAlign: "right", padding: "6px 0", color: mins > 0 ? "#111827" : "#9ca3af" }}>
+                        {mins > 0 ? fmtHours(mins) : "—"}
+                      </td>
+                      <td style={{ textAlign: "right", padding: "6px 0" }}>
+                        {willSubmit ? (
+                          <span style={{ background: "#eef2ff", color: "#6366f1", borderRadius: 4, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>Will submit</span>
+                        ) : isSkipped ? (
+                          <span style={{ background: "#f9fafb", color: "#9ca3af", borderRadius: 4, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>No entries</span>
+                        ) : (
+                          <span style={{ background: "#f0fdf4", color: "#059669", borderRadius: 4, padding: "2px 8px", fontSize: 11, fontWeight: 600, textTransform: "capitalize" }}>{status}</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <div className="ts3-modal-actions">
+              <button className="btn btn-outline btn-sm" onClick={() => setShowSubmitWeekModal(false)}>Cancel</button>
+              <button
+                className="btn btn-primary btn-sm"
+                disabled={submitWeekLoading || submittableCount === 0}
+                onClick={() => void submitWeek()}
+              >
+                {submitWeekLoading ? "Submitting…" : `Submit ${submittableCount} day${submittableCount > 1 ? "s" : ""}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Submit week toast ──────────────────────────────────────────────── */}
+      {submitWeekToast && (
+        <div style={{
+          position: "fixed", bottom: "var(--space-6, 24px)", right: "var(--space-6, 24px)",
+          background: "#111827", color: "#fff", borderRadius: 8,
+          padding: "10px 18px", fontSize: 14, fontWeight: 600,
+          boxShadow: "0 4px 16px rgba(0,0,0,0.2)", zIndex: 9999,
+          animation: "page-enter 0.2s both",
+        }}>
+          {submitWeekToast}
         </div>
       )}
     </section>
@@ -1524,6 +1650,7 @@ const PAGE_STYLES = `
     max-width: 360px; width: calc(100% - 32px);
     box-shadow: 0 24px 64px rgba(0,0,0,0.22), 0 4px 16px rgba(0,0,0,0.10);
     display: flex; flex-direction: column; gap: 10px; }
+  .ts3-modal--wide { max-width: 480px; }
   .ts3-modal-icon { width: 42px; height: 42px; border-radius: 11px; background: #fef2f2;
     display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .ts3-modal-title { font-size: 15px; font-weight: 700; color: var(--n-900, #111827); }

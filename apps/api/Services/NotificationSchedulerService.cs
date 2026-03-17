@@ -34,6 +34,14 @@ public class NotificationSchedulerService(IServiceProvider serviceProvider, ILog
         var db = scope.ServiceProvider.GetRequiredService<TimeSheetDbContext>();
         var notifService = scope.ServiceProvider.GetRequiredService<INotificationService>();
 
+        // Load all preferences once — users with no record get defaults (all on)
+        var allPrefs = await db.UserNotificationPreferences.AsNoTracking().ToListAsync(ct);
+        bool WantsReminder(Guid userId)
+        {
+            var p = allPrefs.FirstOrDefault(x => x.UserId == userId);
+            return p is null || (p.OnReminder && p.InAppEnabled);
+        }
+
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
         // Missing checkout: active sessions from prior days
@@ -43,7 +51,7 @@ public class NotificationSchedulerService(IServiceProvider serviceProvider, ILog
             .Distinct()
             .ToListAsync(ct);
 
-        foreach (var userId in staleSessionUserIds)
+        foreach (var userId in staleSessionUserIds.Where(WantsReminder))
         {
             await notifService.CreateAsync(userId, "Missing Check-out",
                 "You have an active session from a previous day that was not checked out. Please review your attendance.", NotificationType.MissingCheckout);
@@ -63,7 +71,7 @@ public class NotificationSchedulerService(IServiceProvider serviceProvider, ILog
             .ToListAsync(ct);
 
         var missingTimesheetUserIds = attendedUserIds.Except(withTimesheetIds);
-        foreach (var userId in missingTimesheetUserIds)
+        foreach (var userId in missingTimesheetUserIds.Where(WantsReminder))
         {
             await notifService.CreateAsync(userId, "Missing Timesheet",
                 $"You have not submitted a timesheet for {yesterday:yyyy-MM-dd}. Please complete it.", NotificationType.MissingTimesheet);
@@ -80,6 +88,7 @@ public class NotificationSchedulerService(IServiceProvider serviceProvider, ILog
 
         foreach (var managerId in pendingManagerIds.Where(mid => mid.HasValue).Select(mid => mid!.Value))
         {
+            if (!WantsReminder(managerId)) continue;
             await notifService.CreateAsync(managerId, "Pending Timesheet Approvals",
                 "You have timesheet submissions waiting for your approval for more than 24 hours.", NotificationType.PendingApproval);
         }

@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Navigate, Route, Routes, useNavigate, useLocation } from "react-router-dom";
 import { AppShell } from "./components/AppShell";
 import { Approvals } from "./components/Approvals";
+import { Profile } from "./components/Profile";
 import { Categories } from "./components/Admin/Categories";
 import { Dashboard } from "./components/Dashboard";
 import { Holidays } from "./components/Admin/Holidays";
@@ -37,7 +38,8 @@ const VIEW_PATHS: Record<View, string> = {
   users:            "/users",
   holidays:         "/holidays",
   "leave-policies": "/leave-policies",
-  "work-policies": "/work-policies",
+  "work-policies":  "/work-policies",
+  profile:          "/profile",
 };
 
 const PATH_VIEWS: Record<string, View> = Object.fromEntries(
@@ -77,6 +79,7 @@ function AppRoutes() {
       view={currentView}
       nav={nav}
       onNavigate={(v) => navigate(VIEW_PATHS[v])}
+      onNavigateProfile={() => navigate("/profile")}
       onLogout={() => { logout(); navigate("/login"); }}
     >
       <Routes>
@@ -86,6 +89,7 @@ function AppRoutes() {
         <Route path="/timesheets" element={<Timesheets />} />
         <Route path="/leave"      element={<Leave isManager={isManager} isAdmin={isAdmin} />} />
         <Route path="/reports"    element={<Reports />} />
+        <Route path="/profile"    element={<Profile onBack={() => navigate(-1)} />} />
         {isManager && <Route path="/approvals"  element={<Approvals />} />}
         {isAdmin   && <Route path="/projects"   element={<Projects />} />}
         {isAdmin   && <Route path="/categories" element={<Categories />} />}

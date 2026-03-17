@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TimeSheet.Api.Data;
 
@@ -11,9 +12,11 @@ using TimeSheet.Api.Data;
 namespace TimeSheet.Api.Migrations
 {
     [DbContext(typeof(TimeSheetDbContext))]
-    partial class TimeSheetDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260317103122_Sprint13_UserProfile")]
+    partial class Sprint13_UserProfile
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -581,15 +584,8 @@ namespace TimeSheet.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("AvatarDataUrl")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<Guid?>("DepartmentId")
                         .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("DisplayName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Email")
                         .IsRequired()

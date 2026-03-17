@@ -35,6 +35,7 @@ interface AppShellProps {
   view: View;
   nav: View[];
   onNavigate: (v: View) => void;
+  onNavigateProfile: () => void;
   onLogout: () => void;
   children: ReactNode;
 }
@@ -45,9 +46,10 @@ const VIEW_LABELS: Record<View, string> = {
   categories: "Categories", users: "Users", holidays: "Holidays",
   "leave-policies": "Leave Policies",
   "work-policies": "Work Policies",
+  profile: "My Profile",
 };
 
-export function AppShell({ session, view, nav, onNavigate, onLogout, children }: AppShellProps) {
+export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, onLogout, children }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const initials = session.username.slice(0, 2).toUpperCase();
@@ -106,7 +108,7 @@ export function AppShell({ session, view, nav, onNavigate, onLogout, children }:
         <div className="shell-topnav__right">
           <NotificationBell />
           <div className="topbar-divider" />
-          <div className="topbar-user" title="Profile & settings" style={{ cursor: "pointer" }}>
+          <div className="topbar-user" title="My Profile" onClick={onNavigateProfile} style={{ cursor: "pointer" }}>
             <div style={{
               width: 28, height: 28, borderRadius: "var(--r-md)",
               background: "linear-gradient(135deg, var(--brand-500), var(--brand-700))",

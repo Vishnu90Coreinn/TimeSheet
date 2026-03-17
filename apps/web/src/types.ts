@@ -19,5 +19,15 @@ export type User = { id: string; username: string; email: string; employeeId: st
 export type Holiday = { id: string; name: string; date: string; isRecurring: boolean; createdAtUtc: string };
 export type Department = { id: string; name: string; isActive: boolean };
 export type WorkPolicy = { id: string; name: string; dailyExpectedMinutes: number; workDaysPerWeek: number; isActive: boolean };
-export type View = "dashboard" | "reports" | "timesheets" | "leave" | "approvals" | "projects" | "categories" | "users" | "holidays" | "leave-policies" | "work-policies";
+export type View = "dashboard" | "reports" | "timesheets" | "leave" | "approvals" | "projects" | "categories" | "users" | "holidays" | "leave-policies" | "work-policies" | "profile";
 export type ReportKey = "attendance-summary" | "timesheet-summary" | "project-effort" | "leave-utilization" | "leave-balance" | "timesheet-approval-status" | "overtime-deficit";
+
+export type MyProfile = {
+  id: string; username: string; displayName: string; email: string; employeeId: string; role: string;
+  departmentName: string | null; workPolicyName: string | null; leavePolicyName: string | null; managerUsername: string | null;
+  avatarDataUrl: string | null;
+};
+export type NotificationPreferences = {
+  onApproval: boolean; onRejection: boolean; onLeaveStatus: boolean; onReminder: boolean;
+  inAppEnabled: boolean; emailEnabled: boolean;
+};

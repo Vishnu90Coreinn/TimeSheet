@@ -165,7 +165,7 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 
 ### E6-F2 Approvals UI Enhancement *(added session 7)*
 - [x] **TSK-APR-008** Redesign Approvals page to PulseHQ v3.0 — KPI stat cards, tab filter (All/Timesheets/Leave), unified approval cards with colored left borders, inline reject form. *(DONE session 7)*
-- [ ] **TSK-APR-009** Implement `GET /approvals/stats` — return `approvedThisMonth`, `rejectedThisMonth`, `avgResponseHours` for KPI cards. *(Frontend ready, backend pending — folded into Sprint 13)*
+- [x] **TSK-APR-009** Implement `GET /approvals/stats` — return `approvedThisMonth`, `rejectedThisMonth`, `avgResponseHours` for KPI cards. *(Frontend ready, backend pending — folded into Sprint 13)*
 
 ---
 
@@ -559,23 +559,23 @@ All Phase 2 tasks address findings from the Phase 1 audit above.
 **Goal:** Users can manage their own account without admin intervention. Also clears two long-pending carry-overs: Approvals KPI stats (TSK-APR-009) and per-user notification preferences (TSK-NTF-008).
 
 #### Backend — Carry-overs from previous sprints
-- [ ] **TSK-APR-009** `GET /approvals/stats` — return `{ approvedThisMonth, rejectedThisMonth, avgResponseHours }`. Query: count `Approved`/`Rejected` status timesheets where `ApprovedAtUtc` is in current month; avg hours = mean of `(ApprovedAtUtc - SubmittedAtUtc)` in hours. *(Frontend KPI cards already show `—` placeholders waiting for this)*
+- [x] **TSK-APR-009** `GET /approvals/stats` — return `{ approvedThisMonth, rejectedThisMonth, avgResponseHours }`. Query: count `Approved`/`Rejected` status timesheets where `ApprovedAtUtc` is in current month; avg hours = mean of `(ApprovedAtUtc - SubmittedAtUtc)` in hours. *(Frontend KPI cards already show `—` placeholders waiting for this)*
 
 #### Backend — New
-- [ ] **TSK-PRF-001** `GET /users/me` — return full profile (username, email, employeeId, role, dept, workPolicy, leavePolicy, managerId, notificationPrefs).
-- [ ] **TSK-PRF-002** `PUT /users/me` — update own display name and email (no role/dept change — admin only).
-- [ ] **TSK-PRF-003** `PUT /users/me/password` — change password with `currentPassword` + `newPassword`; verify current before updating hash.
-- [ ] **TSK-PRF-004** New `UserNotificationPreferences` table: `{ userId, onApproval, onRejection, onLeaveStatus, onReminder, emailEnabled, inAppEnabled }`. *(Closes TSK-NTF-008)*
-- [ ] **TSK-PRF-005** `GET /users/me/notification-preferences` + `PUT /users/me/notification-preferences`.
-- [ ] **TSK-PRF-006** Integrate preferences into `NotificationSchedulerService` — skip notifications for types the user has disabled.
+- [x] **TSK-PRF-001** `GET /users/me` — return full profile (username, email, employeeId, role, dept, workPolicy, leavePolicy, managerId, notificationPrefs).
+- [x] **TSK-PRF-002** `PUT /users/me` — update own display name and email (no role/dept change — admin only).
+- [x] **TSK-PRF-003** `PUT /users/me/password` — change password with `currentPassword` + `newPassword`; verify current before updating hash.
+- [x] **TSK-PRF-004** New `UserNotificationPreferences` table: `{ userId, onApproval, onRejection, onLeaveStatus, onReminder, emailEnabled, inAppEnabled }`. *(Closes TSK-NTF-008)*
+- [x] **TSK-PRF-005** `GET /users/me/notification-preferences` + `PUT /users/me/notification-preferences`.
+- [x] **TSK-PRF-006** Integrate preferences into `NotificationSchedulerService` — skip notifications for types the user has disabled.
 
 #### Frontend
-- [ ] **TSK-PRF-007** `/profile` route + `Profile.tsx` page (admin + all roles).
-- [ ] **TSK-PRF-008** Profile card: read-only fields (role, dept, employee ID, policy) + editable name/email with inline save.
-- [ ] **TSK-PRF-009** Password change section: current password + new password with strength meter + confirm.
-- [ ] **TSK-PRF-010** Notification preferences: toggle grid (approval, rejection, leave status, reminders) × (in-app, email).
-- [ ] **TSK-PRF-011** Add "My Profile" link in topbar user avatar dropdown.
-- [ ] **TSK-PRF-012** Wire Approvals KPI cards to `GET /approvals/stats` — replace `—` placeholders with real values.
+- [x] **TSK-PRF-007** `/profile` route + `Profile.tsx` page (admin + all roles).
+- [x] **TSK-PRF-008** Profile card: read-only fields (role, dept, employee ID, policy) + editable name/email with inline save.
+- [x] **TSK-PRF-009** Password change section: current password + new password with strength meter + confirm.
+- [x] **TSK-PRF-010** Notification preferences: toggle grid (approval, rejection, leave status, reminders) × (in-app, email).
+- [x] **TSK-PRF-011** Add "My Profile" link in topbar user avatar dropdown.
+- [x] **TSK-PRF-012** Wire Approvals KPI cards to `GET /approvals/stats` — replace `—` placeholders with real values.
 
 ---
 

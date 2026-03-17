@@ -44,6 +44,57 @@ public record UserResponse(
     string? ManagerUsername
 );
 
+// ── Profile (self-service) ──────────────────────────────────────────────────
+
+public record MyProfileResponse(
+    Guid Id,
+    string Username,
+    string DisplayName,
+    string Email,
+    string EmployeeId,
+    string Role,
+    string? DepartmentName,
+    string? WorkPolicyName,
+    string? LeavePolicyName,
+    string? ManagerUsername,
+    string? AvatarDataUrl
+);
+
+public record UpdateMyProfileRequest(
+    [Required][MaxLength(100)] string Username,
+    [MaxLength(150)] string DisplayName,
+    [Required][EmailAddress][MaxLength(200)] string Email
+);
+
+public record UpdateAvatarRequest(
+    [MaxLength(500000)] string? AvatarDataUrl   // base64 data URL, null = remove
+);
+
+public record ChangePasswordRequest(
+    [Required] string CurrentPassword,
+    [Required][MinLength(8)] string NewPassword
+);
+
+public record NotificationPreferencesResponse(
+    bool OnApproval,
+    bool OnRejection,
+    bool OnLeaveStatus,
+    bool OnReminder,
+    bool InAppEnabled,
+    bool EmailEnabled
+);
+
+public record UpdateNotificationPreferencesRequest(
+    bool OnApproval,
+    bool OnRejection,
+    bool OnLeaveStatus,
+    bool OnReminder,
+    bool InAppEnabled,
+    bool EmailEnabled
+);
+
+// ── Admin ───────────────────────────────────────────────────────────────────
+
 public record SetManagerRequest(Guid ManagerId);
 public record AssignRoleRequest([Required] string RoleName);
 

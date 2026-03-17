@@ -27,6 +27,7 @@ public class TimeSheetDbContext(DbContextOptions<TimeSheetDbContext> options) : 
     public DbSet<ApprovalAction> ApprovalActions => Set<ApprovalAction>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<Holiday> Holidays => Set<Holiday>();
+    public DbSet<UserNotificationPreferences> UserNotificationPreferences => Set<UserNotificationPreferences>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -316,6 +317,16 @@ public class TimeSheetDbContext(DbContextOptions<TimeSheetDbContext> options) : 
             entity.HasKey(x => x.Id);
             entity.HasIndex(x => x.Date);
             entity.Property(x => x.Name).HasMaxLength(200).IsRequired();
+        });
+
+        modelBuilder.Entity<UserNotificationPreferences>(entity =>
+        {
+            entity.ToTable("UserNotificationPreferences");
+            entity.HasKey(x => x.UserId);
+            entity.HasOne(x => x.User)
+                .WithOne()
+                .HasForeignKey<UserNotificationPreferences>(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

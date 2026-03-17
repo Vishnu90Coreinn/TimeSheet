@@ -25,13 +25,16 @@ CREATE TABLE WorkPolicies (
 CREATE TABLE Users (
   Id UNIQUEIDENTIFIER PRIMARY KEY,
   Username NVARCHAR(100) NOT NULL UNIQUE,
+  DisplayName NVARCHAR(150) NOT NULL DEFAULT '',
   Email NVARCHAR(200) NOT NULL UNIQUE,
   EmployeeId NVARCHAR(50) NOT NULL UNIQUE,
   PasswordHash NVARCHAR(500) NOT NULL,
   Role NVARCHAR(30) NOT NULL,
   IsActive BIT NOT NULL,
+  AvatarDataUrl NVARCHAR(MAX) NULL,
   DepartmentId UNIQUEIDENTIFIER NULL REFERENCES Departments(Id),
   WorkPolicyId UNIQUEIDENTIFIER NULL REFERENCES WorkPolicies(Id),
+  LeavePolicyId UNIQUEIDENTIFIER NULL REFERENCES LeavePolicies(Id),
   ManagerId UNIQUEIDENTIFIER NULL REFERENCES Users(Id)
 );
 
@@ -233,3 +236,18 @@ CREATE TABLE AuditLogs (
 CREATE INDEX IX_AuditLogs_ActorUserId ON AuditLogs(ActorUserId);
 CREATE INDEX IX_AuditLogs_EntityType_EntityId ON AuditLogs(EntityType, EntityId);
 CREATE INDEX IX_AuditLogs_CreatedAtUtc ON AuditLogs(CreatedAtUtc DESC);
+
+-- Sprint 13: DisplayName and AvatarDataUrl on Users
+ALTER TABLE Users ADD DisplayName NVARCHAR(150) NOT NULL DEFAULT '';
+ALTER TABLE Users ADD AvatarDataUrl NVARCHAR(MAX) NULL;
+
+-- Sprint 13: User notification preferences
+CREATE TABLE UserNotificationPreferences (
+  UserId UNIQUEIDENTIFIER PRIMARY KEY REFERENCES Users(Id) ON DELETE CASCADE,
+  OnApproval BIT NOT NULL DEFAULT 1,
+  OnRejection BIT NOT NULL DEFAULT 1,
+  OnLeaveStatus BIT NOT NULL DEFAULT 1,
+  OnReminder BIT NOT NULL DEFAULT 1,
+  InAppEnabled BIT NOT NULL DEFAULT 1,
+  EmailEnabled BIT NOT NULL DEFAULT 0
+);

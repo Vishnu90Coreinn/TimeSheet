@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd:*)",
+      "Bash(dotnet build:*)",
+      "Bash(dotnet test:*)",
+      "Bash(npm run:*)",
+      "Bash(npm test:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git config:*)",
+      "Bash(git push:*)",
+      "Bash(which git:*)",
+      "Bash(git checkout:*)",
+      "Bash(git pull:*)",
+      "Bash(taskkill:*)",
+      "Bash(cmd /c \"taskkill /PID 16664 /F\" && sleep 3 && cd /d/GitHubRepository/TimeSheet && dotnet test apps/api.tests/ 2>&1 | tail -10)",
+      "Bash(git fetch:*)",
+      "Bash(git merge:*)",
+      "Bash(curl:*)",
+      "Bash(powershell -Command \"Get-Content 'C:/Users/User/Downloads/timesheet-app_1.html' -TotalCount 300\")",
+      "Bash(powershell -Command \"Get-Content 'C:/Users/User/Downloads/timesheet-app_1.html' -TotalCount 800 | Select-Object -Skip 300\")",
+      "Bash(python3 -c \":*)",
+      "Bash(grep:*)",
+      "Bash(ls:*)",
+      "Bash(npm ls:*)",
+      "Bash(npx:*)",
+      "Bash(gh pr:*)",
+      "Bash(winget list:*)",
+      "Bash(dotnet ef:*)",
+      "Bash(python3:*)",
+      "Bash(cat:*)",
+      "Bash(which jq:*)",
+      "Bash(split:*)"
+    ]
+  }
+}

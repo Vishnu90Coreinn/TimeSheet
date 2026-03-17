@@ -233,3 +233,14 @@ CREATE TABLE AuditLogs (
 CREATE INDEX IX_AuditLogs_ActorUserId ON AuditLogs(ActorUserId);
 CREATE INDEX IX_AuditLogs_EntityType_EntityId ON AuditLogs(EntityType, EntityId);
 CREATE INDEX IX_AuditLogs_CreatedAtUtc ON AuditLogs(CreatedAtUtc DESC);
+
+-- Sprint 13: User notification preferences
+CREATE TABLE UserNotificationPreferences (
+  UserId UNIQUEIDENTIFIER PRIMARY KEY REFERENCES Users(Id) ON DELETE CASCADE,
+  OnApproval BIT NOT NULL DEFAULT 1,
+  OnRejection BIT NOT NULL DEFAULT 1,
+  OnLeaveStatus BIT NOT NULL DEFAULT 1,
+  OnReminder BIT NOT NULL DEFAULT 1,
+  InAppEnabled BIT NOT NULL DEFAULT 1,
+  EmailEnabled BIT NOT NULL DEFAULT 0
+);

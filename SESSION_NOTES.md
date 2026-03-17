@@ -846,19 +846,57 @@ Each: `SortIcon` component, `sortCol/sortDir` state, `toggleSort()`, `sorted` co
 
 ---
 
+## Session 16 — Sprints 17 + 18 + 19 in parallel (2026-03-17)
+
+### What Was Done
+
+Three sprints implemented in parallel via subagents, merged as PR #39 (`8bca36e`).
+
+#### Sprint 17 — Project Budget Burn (TSK-BDG-001..006)
+- `ProjectBudgetDtos.cs`: `ProjectBudgetHealthItem`, `WeeklyBurnEntry`, `ProjectBudgetSummaryResponse`
+- `ProjectBudgetController.cs`: `GET /projects/budget-health` (manager/admin — all active projects with loggedHours, pctUsed, status: on-track/warning/critical/over-budget); `GET /projects/{id}/budget-summary` (any auth — total logged/remaining, 4-week burn rate, projected weeks, 8-week ISO sparkline)
+- `ProjectDtos.cs`: `[Range(0, 100000)]` on `BudgetedHours`
+- `Admin/Projects.tsx`: Budget Health summary card (filterable status pills above table), Budget column (mini BurnBar + % colour-coded), edit drawer burn panel (BurnBar, sparkline, burn rate, projected weeks)
+
+#### Sprint 18 — Recurring Entry Templates (TSK-TPL-001..009)
+- `TimesheetTemplate.cs`: entity with `EntriesJson` (JSON array, `nvarchar(max)`)
+- `TemplateDtos.cs`: `TemplateEntryData`, `CreateTemplateRequest`, `UpdateTemplateRequest`, `ApplyTemplateRequest`, `TemplateResponse`, `ApplyTemplateResult`
+- `TimeSheetDbContext.cs`: `TimesheetTemplates` DbSet + fluent config + index on UserId
+- Migration `20260317164716_Sprint18_TimesheetTemplates`: creates `TimesheetTemplates` table with FK → Users cascade
+- `TimesheetTemplatesController.cs`: full CRUD + `POST /{id}/apply` (finds/creates draft timesheet, skips exact duplicates)
+- `Timesheets.tsx`: "Use Template" button + picker modal, "Save as Template" button + modal
+- `Profile.tsx`: Timesheet Templates section (list, create with entry rows, delete with confirmation)
+
+#### Sprint 19 — Leave Team Calendar (TSK-LTC-001..005)
+- `LeaveDtos.cs`: `TeamLeaveEntry`, `TeamLeaveCalendarDay`, `LeaveConflictResponse`
+- `LeaveController.cs`: `GET /leave/team-calendar?year=&month=` (dept peers for employees, direct reports for managers); `GET /leave/conflicts?fromDate=&toDate=` (count + names of team members on leave)
+- `Leave.tsx`: 16×16px avatar chips on calendar dates (up to 3 + "+N" overflow, pending dimmed 0.6), conflict warning amber banner on apply form, native `title` tooltip per date
+
+**All 52 backend tests passing · 0 TypeScript errors**
+
+### Commits
+- `2473ab0` — feat: Sprints 17 + 18 + 19
+- `c29b87a` — docs: PROJECT_TASKS updates
+- `8bca36e` — Merge PR #39 → master
+
+---
+
 ## Pending For Next Session
 
-> Last updated: Session 15 (2026-03-17). Sprints 13–16 merged to master.
+> Last updated: Session 16 (2026-03-17). Sprints 13–19 merged to master.
 
 ### Priority 1 — Next Sprint
-Start **Sprint 17 — Project Budget Burn** on branch `feature/sprint-17-project-budget`
+Start **Sprint 20 — Anomaly Detection & Alerts** on branch `feature/sprint-20-anomaly-alerts`
 
 ### Phase 3 Roadmap Status
-1. **Sprint 13** ✅ — User Profile & Self-Service (merged)
-2. **Sprint 14** ✅ — Bulk Timesheet Submission (merged)
-3. **Sprint 15** ✅ — Manager Team Status Board + UX Audit (merged)
-4. **Sprint 16** ✅ — Task-Level Timer (merged)
-5. **Sprint 17** 🔜 — Project Budget Burn (`feature/sprint-17-project-budget`)
+1. **Sprint 13** ✅ — User Profile & Self-Service
+2. **Sprint 14** ✅ — Bulk Timesheet Submission
+3. **Sprint 15** ✅ — Manager Team Status Board + UX Audit
+4. **Sprint 16** ✅ — Task-Level Timer
+5. **Sprint 17** ✅ — Project Budget Burn
+6. **Sprint 18** ✅ — Recurring Entry Templates
+7. **Sprint 19** ✅ — Leave Team Calendar
+8. **Sprint 20** 🔜 — Anomaly Detection & Alerts (`feature/sprint-20-anomaly-alerts`)
 6. **Sprint 18** — Recurring Entry Templates (`feature/sprint-18-entry-templates`)
 7. **Sprint 19** — Leave Team Calendar (`feature/sprint-19-leave-team-calendar`)
 8. **Sprint 20** — Anomaly Detection & Alerts (`feature/sprint-20-anomaly-alerts`)

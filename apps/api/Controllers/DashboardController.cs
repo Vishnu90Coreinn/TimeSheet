@@ -22,7 +22,9 @@ public class DashboardController(TimeSheetDbContext dbContext) : ControllerBase
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var weekStart = StartOfWeek(today);
 
-        var todaySession = await dbContext.WorkSessions.AsNoTracking().Where(x => x.UserId == userId && x.WorkDate == today)
+        var todaySession = await dbContext.WorkSessions.AsNoTracking()
+            .Where(x => x.UserId == userId && x.WorkDate == today)
+            .OrderByDescending(x => x.CheckInAtUtc)  // most recent session if multiple
             .Select(x => new
             {
                 x.WorkDate,
@@ -33,7 +35,9 @@ public class DashboardController(TimeSheetDbContext dbContext) : ControllerBase
             })
             .FirstOrDefaultAsync();
 
-        var todayTimesheet = await dbContext.Timesheets.AsNoTracking().Where(x => x.UserId == userId && x.WorkDate == today)
+        var todayTimesheet = await dbContext.Timesheets.AsNoTracking()
+            .Where(x => x.UserId == userId && x.WorkDate == today)
+            .OrderBy(x => x.WorkDate)  // unique per user+date; OrderBy suppresses non-determinism warning
             .Select(x => new
             {
                 x.Status,
@@ -43,10 +47,13 @@ public class DashboardController(TimeSheetDbContext dbContext) : ControllerBase
             })
             .FirstOrDefaultAsync();
 
-        var weeklyHours = await dbContext.Timesheets.AsNoTracking().Where(x => x.UserId == userId && x.WorkDate >= weekStart && x.WorkDate <= weekStart.AddDays(6))
-            .GroupBy(_ => 1)
-            .Select(g => new { Entered = g.Sum(x => x.Entries.Sum(e => e.Minutes)), Breaks = dbContext.WorkSessions.Where(ws => ws.UserId == userId && ws.WorkDate >= weekStart && ws.WorkDate <= weekStart.AddDays(6)).Sum(ws => ws.Breaks.Sum(b => b.DurationMinutes)) })
-            .FirstOrDefaultAsync();
+        var weekEnteredMinutes = await dbContext.TimesheetEntries.AsNoTracking()
+            .Where(e => e.Timesheet.UserId == userId && e.Timesheet.WorkDate >= weekStart && e.Timesheet.WorkDate <= weekStart.AddDays(6))
+            .SumAsync(e => (int?)e.Minutes) ?? 0;
+        var weekBreakMinutes = await dbContext.WorkSessions.AsNoTracking()
+            .Where(ws => ws.UserId == userId && ws.WorkDate >= weekStart && ws.WorkDate <= weekStart.AddDays(6))
+            .SumAsync(ws => (int?)ws.Breaks.Sum(b => b.DurationMinutes)) ?? 0;
+        var weeklyHours = new { Entered = weekEnteredMinutes, Breaks = weekBreakMinutes };
 
         var projectEffortRows = await dbContext.TimesheetEntries.AsNoTracking().Where(x => x.Timesheet.UserId == userId && x.Timesheet.WorkDate >= weekStart && x.Timesheet.WorkDate <= weekStart.AddDays(6))
             .GroupBy(x => x.Project.Name)
@@ -95,10 +102,10 @@ public class DashboardController(TimeSheetDbContext dbContext) : ControllerBase
             .ToListAsync();
         var mismatches = mismatchRows.Select(x => (object)x).ToList();
 
-        var utilization = await dbContext.Timesheets.AsNoTracking().Where(x => teamIds.Contains(x.UserId) && x.WorkDate >= today.AddDays(-7))
-            .GroupBy(_ => 1)
-            .Select(g => new { AvgMinutes = g.Average(x => x.Entries.Sum(e => e.Minutes)) })
-            .FirstOrDefaultAsync();
+        var avgMinutes = await dbContext.Timesheets.AsNoTracking()
+            .Where(x => teamIds.Contains(x.UserId) && x.WorkDate >= today.AddDays(-7))
+            .AverageAsync(x => (double?)x.Entries.Sum(e => e.Minutes)) ?? 0d;
+        var utilization = new { AvgMinutes = avgMinutes };
 
         var contributionRows = await dbContext.TimesheetEntries.AsNoTracking().Where(x => teamIds.Contains(x.Timesheet.UserId) && x.Timesheet.WorkDate >= today.AddDays(-7))
             .GroupBy(x => x.Project.Name)
@@ -112,7 +119,7 @@ public class DashboardController(TimeSheetDbContext dbContext) : ControllerBase
             new { Present = present, OnLeave = onLeave, NotCheckedIn = notCheckedIn },
             new { Missing = missing, PendingApprovals = pendingApprovals },
             mismatches,
-            utilization ?? new { AvgMinutes = 0d },
+            utilization,
             contributions));
     }
 

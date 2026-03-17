@@ -4,11 +4,13 @@ public class User
 {
     public Guid Id { get; set; }
     public string Username { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string EmployeeId { get; set; } = string.Empty;
     public string PasswordHash { get; set; } = string.Empty;
     public string Role { get; set; } = "employee";
     public bool IsActive { get; set; } = true;
+    public string? AvatarDataUrl { get; set; }
 
     public Guid? DepartmentId { get; set; }
     public Department? Department { get; set; }

@@ -46,6 +46,7 @@ const VIEW_LABELS: Record<View, string> = {
   categories: "Categories", users: "Users", holidays: "Holidays",
   "leave-policies": "Leave Policies",
   "work-policies": "Work Policies",
+  profile: "My Profile",
 };
 
 export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, onLogout, children }: AppShellProps) {

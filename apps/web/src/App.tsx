@@ -38,7 +38,8 @@ const VIEW_PATHS: Record<View, string> = {
   users:            "/users",
   holidays:         "/holidays",
   "leave-policies": "/leave-policies",
-  "work-policies": "/work-policies",
+  "work-policies":  "/work-policies",
+  profile:          "/profile",
 };
 
 const PATH_VIEWS: Record<string, View> = Object.fromEntries(

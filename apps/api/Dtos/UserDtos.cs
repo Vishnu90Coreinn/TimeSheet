@@ -49,18 +49,25 @@ public record UserResponse(
 public record MyProfileResponse(
     Guid Id,
     string Username,
+    string DisplayName,
     string Email,
     string EmployeeId,
     string Role,
     string? DepartmentName,
     string? WorkPolicyName,
     string? LeavePolicyName,
-    string? ManagerUsername
+    string? ManagerUsername,
+    string? AvatarDataUrl
 );
 
 public record UpdateMyProfileRequest(
     [Required][MaxLength(100)] string Username,
+    [MaxLength(150)] string DisplayName,
     [Required][EmailAddress][MaxLength(200)] string Email
+);
+
+public record UpdateAvatarRequest(
+    [MaxLength(500000)] string? AvatarDataUrl   // base64 data URL, null = remove
 );
 
 public record ChangePasswordRequest(

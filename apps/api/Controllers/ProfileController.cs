@@ -40,13 +40,15 @@ public class ProfileController(TimeSheetDbContext dbContext, IPasswordHasher pas
         return Ok(new MyProfileResponse(
             user.Id,
             user.Username,
+            user.DisplayName,
             user.Email,
             user.EmployeeId,
             user.Role,
             user.Department?.Name,
             user.WorkPolicy?.Name,
             user.LeavePolicy?.Name,
-            user.Manager?.Username
+            user.Manager?.Username,
+            user.AvatarDataUrl
         ));
     }
 
@@ -61,7 +63,6 @@ public class ProfileController(TimeSheetDbContext dbContext, IPasswordHasher pas
         var user = await dbContext.Users.SingleOrDefaultAsync(u => u.Id == userId.Value);
         if (user is null) return NotFound();
 
-        // Unique check (exclude self)
         var duplicate = await dbContext.Users.AnyAsync(u =>
             u.Id != userId.Value &&
             (u.Username == request.Username.Trim() || u.Email == request.Email.Trim()));
@@ -69,8 +70,30 @@ public class ProfileController(TimeSheetDbContext dbContext, IPasswordHasher pas
             return Conflict(new { message = "Username or email already in use by another account." });
 
         user.Username = request.Username.Trim();
+        user.DisplayName = request.DisplayName?.Trim() ?? string.Empty;
         user.Email = request.Email.Trim();
 
+        await dbContext.SaveChangesAsync();
+        return NoContent();
+    }
+
+    // ── PUT /profile/avatar ──────────────────────────────────────────────────
+
+    [HttpPut("avatar")]
+    public async Task<IActionResult> UpdateAvatar([FromBody] UpdateAvatarRequest request)
+    {
+        var userId = GetUserId();
+        if (userId is null) return Unauthorized();
+
+        var user = await dbContext.Users.SingleOrDefaultAsync(u => u.Id == userId.Value);
+        if (user is null) return NotFound();
+
+        // Validate it's a valid image data URL when provided
+        if (request.AvatarDataUrl is not null &&
+            !request.AvatarDataUrl.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new { message = "Invalid image format." });
+
+        user.AvatarDataUrl = request.AvatarDataUrl;
         await dbContext.SaveChangesAsync();
         return NoContent();
     }
@@ -106,7 +129,6 @@ public class ProfileController(TimeSheetDbContext dbContext, IPasswordHasher pas
             .AsNoTracking()
             .SingleOrDefaultAsync(p => p.UserId == userId.Value);
 
-        // Return defaults if the user has never saved preferences
         if (prefs is null)
             return Ok(new NotificationPreferencesResponse(true, true, true, true, true, false));
 

@@ -438,6 +438,137 @@ public class LeaveController(TimeSheetDbContext dbContext, IAuditService auditSe
         return Ok(result);
     }
 
+    // ── Team Leave Calendar ───────────────────────────────────────
+
+    [HttpGet("team-calendar")]
+    public async Task<IActionResult> GetTeamCalendar([FromQuery] int? year, [FromQuery] int? month)
+    {
+        var userId = GetUserId();
+        if (userId is null) return Unauthorized();
+
+        var now = DateTime.UtcNow;
+        var y = year ?? now.Year;
+        var m = month ?? now.Month;
+
+        var role = User.FindFirstValue(ClaimTypes.Role) ?? "employee";
+        var currentUser = await dbContext.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId.Value);
+        if (currentUser is null) return Ok(Array.Empty<TeamLeaveCalendarDay>());
+
+        List<Guid> teamUserIds;
+        if (string.Equals(role, "manager", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase))
+        {
+            // manager/admin: direct reports + themselves
+            teamUserIds = await dbContext.Users
+                .AsNoTracking()
+                .Where(u => u.IsActive && (u.ManagerId == userId.Value || u.Id == userId.Value))
+                .Select(u => u.Id)
+                .ToListAsync();
+        }
+        else
+        {
+            // employee: same department (including themselves)
+            if (currentUser.DepartmentId is null)
+                return Ok(Array.Empty<TeamLeaveCalendarDay>());
+
+            teamUserIds = await dbContext.Users
+                .AsNoTracking()
+                .Where(u => u.IsActive && u.DepartmentId == currentUser.DepartmentId)
+                .Select(u => u.Id)
+                .ToListAsync();
+        }
+
+        if (teamUserIds.Count == 0)
+            return Ok(Array.Empty<TeamLeaveCalendarDay>());
+
+        var requests = await dbContext.LeaveRequests
+            .AsNoTracking()
+            .Include(lr => lr.User)
+            .Include(lr => lr.LeaveType)
+            .Where(lr => teamUserIds.Contains(lr.UserId)
+                && lr.LeaveDate.Year == y
+                && lr.LeaveDate.Month == m
+                && lr.Status != LeaveRequestStatus.Rejected)
+            .OrderBy(lr => lr.LeaveDate)
+            .ToListAsync();
+
+        var grouped = requests
+            .GroupBy(lr => lr.LeaveDate)
+            .Select(g => new TeamLeaveCalendarDay(
+                g.Key,
+                g.Select(lr => new TeamLeaveEntry(
+                    lr.UserId,
+                    lr.User.Username,
+                    lr.User.DisplayName,
+                    lr.LeaveType.Name,
+                    lr.Status.ToString().ToLowerInvariant()
+                )).ToList()
+            ))
+            .OrderBy(d => d.Date)
+            .ToList();
+
+        return Ok(grouped);
+    }
+
+    [HttpGet("conflicts")]
+    public async Task<IActionResult> GetConflicts([FromQuery] DateOnly fromDate, [FromQuery] DateOnly toDate, [FromQuery] Guid? userId)
+    {
+        var currentUserId = GetUserId();
+        if (currentUserId is null) return Unauthorized();
+
+        var targetUserId = userId ?? currentUserId.Value;
+
+        var role = User.FindFirstValue(ClaimTypes.Role) ?? "employee";
+        var currentUser = await dbContext.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == currentUserId.Value);
+        if (currentUser is null) return Ok(new LeaveConflictResponse(0, Array.Empty<string>()));
+
+        List<Guid> teamUserIds;
+        if (string.Equals(role, "manager", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase))
+        {
+            teamUserIds = await dbContext.Users
+                .AsNoTracking()
+                .Where(u => u.IsActive && (u.ManagerId == currentUserId.Value || u.Id == currentUserId.Value))
+                .Select(u => u.Id)
+                .ToListAsync();
+        }
+        else
+        {
+            if (currentUser.DepartmentId is null)
+                return Ok(new LeaveConflictResponse(0, Array.Empty<string>()));
+
+            teamUserIds = await dbContext.Users
+                .AsNoTracking()
+                .Where(u => u.IsActive && u.DepartmentId == currentUser.DepartmentId)
+                .Select(u => u.Id)
+                .ToListAsync();
+        }
+
+        // Exclude the target user themselves
+        teamUserIds = teamUserIds.Where(id => id != targetUserId).ToList();
+
+        if (teamUserIds.Count == 0)
+            return Ok(new LeaveConflictResponse(0, Array.Empty<string>()));
+
+        var conflictingUsers = await dbContext.LeaveRequests
+            .AsNoTracking()
+            .Include(lr => lr.User)
+            .Where(lr => teamUserIds.Contains(lr.UserId)
+                && lr.LeaveDate >= fromDate
+                && lr.LeaveDate <= toDate
+                && lr.Status != LeaveRequestStatus.Rejected)
+            .Select(lr => new { lr.UserId, lr.User.Username })
+            .Distinct()
+            .ToListAsync();
+
+        var distinct = conflictingUsers
+            .GroupBy(x => x.UserId)
+            .Select(g => g.First().Username)
+            .ToList();
+
+        return Ok(new LeaveConflictResponse(distinct.Count, distinct.Take(5).ToList()));
+    }
+
     // ── Team on Leave ─────────────────────────────────────────────
 
     [HttpGet("team-on-leave")]

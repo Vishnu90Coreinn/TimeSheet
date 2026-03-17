@@ -82,3 +82,8 @@ public record TeamLeaveEntryResponse(
     DateOnly ToDate,
     string LeaveTypeName,
     string Status);
+
+// ── Team Leave Calendar ───────────────────────────────────────
+public record TeamLeaveEntry(Guid UserId, string Username, string DisplayName, string LeaveTypeName, string Status);
+public record TeamLeaveCalendarDay(DateOnly Date, IReadOnlyList<TeamLeaveEntry> Entries);
+public record LeaveConflictResponse(int ConflictingCount, IReadOnlyList<string> ConflictingUsernames);

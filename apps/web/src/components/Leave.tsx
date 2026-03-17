@@ -7,6 +7,8 @@ import type { LeaveBalance, LeaveRequest, LeaveRequestGroup, LeaveType, TeamLeav
 
 // ─── Types ─────────────────────────────────────────────────────
 interface CalendarEntry { date: string; type: "pending" | "approved" | "rejected" }
+interface TeamCalEntry { userId: string; username: string; displayName: string; leaveTypeName: string; status: string; }
+interface TeamCalDay { date: string; entries: TeamCalEntry[]; }
 
 interface LeaveProps {
   isManager: boolean;
@@ -203,10 +205,14 @@ function MiniCalendar() {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
   const [calEntries, setCalEntries] = useState<CalendarEntry[]>([]);
+  const [teamCalendar, setTeamCalendar] = useState<TeamCalDay[]>([]);
 
   function loadCalendar(y: number, m: number) {
     apiFetch(`/leave/calendar?year=${y}&month=${m + 1}`)
       .then(async (r) => { if (r.ok) setCalEntries(await r.json()); })
+      .catch(() => {});
+    apiFetch(`/leave/team-calendar?year=${y}&month=${m + 1}`)
+      .then(async (r) => { if (r.ok) setTeamCalendar(await r.json()); })
       .catch(() => {});
   }
 
@@ -228,6 +234,9 @@ function MiniCalendar() {
 
   const entryMap = new Map<string, CalendarEntry["type"]>();
   for (const e of calEntries) entryMap.set(e.date, e.type);
+
+  const teamCalMap = new Map<string, TeamCalEntry[]>();
+  for (const d of teamCalendar) teamCalMap.set(d.date, d.entries);
 
   const cells: { day: number; monthOffset: number; dateStr: string }[] = [];
   for (let i = 0; i < firstDay; i++) {
@@ -257,14 +266,49 @@ function MiniCalendar() {
         {cells.map((cell) => {
           const isToday = cell.dateStr === todayStr && cell.monthOffset === 0;
           const entry = cell.monthOffset === 0 ? entryMap.get(cell.dateStr) : undefined;
+          const teamEntries = cell.monthOffset === 0 ? (teamCalMap.get(cell.dateStr) ?? []) : [];
+          const visibleChips = teamEntries.slice(0, 3);
+          const overflow = teamEntries.length - visibleChips.length;
+          const tooltipLines = teamEntries.map((e) => `${e.displayName} — ${e.leaveTypeName}`).join("\n");
           return (
-            <div key={cell.dateStr + cell.monthOffset} className="lv3-cal-cell">
+            <div key={cell.dateStr + cell.monthOffset} className="lv3-cal-cell" title={teamEntries.length > 0 ? tooltipLines : undefined}>
               <span className={`lv3-cal-num${isToday ? " today" : ""}${cell.monthOffset !== 0 ? " other-month" : ""}`}>
                 {cell.day}
               </span>
               {entry === "pending"  && <div className="lv3-cal-dot" style={{ background: "#f59e0b" }} />}
               {entry === "approved" && <div className="lv3-cal-dot" style={{ background: "#10b981" }} />}
               {entry === "rejected" && <div className="lv3-cal-dot" style={{ background: "#ef4444" }} />}
+              {teamEntries.length > 0 && (
+                <div style={{ display: "flex", gap: 1, flexWrap: "nowrap", marginTop: 1 }}>
+                  {visibleChips.map((te) => (
+                    <div
+                      key={te.userId}
+                      title={`${te.displayName} — ${te.leaveTypeName} (${te.status})`}
+                      style={{
+                        width: 16, height: 16, borderRadius: "50%",
+                        background: avatarColor(te.displayName),
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: "0.5rem", fontWeight: 700, color: "#fff", flexShrink: 0,
+                        opacity: te.status === "pending" ? 0.6 : 1,
+                        cursor: "default",
+                      }}
+                    >
+                      {initials(te.displayName)}
+                    </div>
+                  ))}
+                  {overflow > 0 && (
+                    <div style={{
+                      width: 16, height: 16, borderRadius: "50%",
+                      background: "#9ca3af",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: "0.45rem", fontWeight: 700, color: "#fff", flexShrink: 0,
+                      cursor: "default",
+                    }}>
+                      +{overflow}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
@@ -285,6 +329,10 @@ function MiniCalendar() {
         <div className="lv3-cal-leg-item">
           <div className="lv3-cal-leg-dot" style={{ background: "#ef4444" }} />
           <span>Rejected</span>
+        </div>
+        <div className="lv3-cal-leg-item">
+          <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#818cf8", flexShrink: 0 }} />
+          <span>Team off</span>
         </div>
       </div>
     </div>
@@ -320,6 +368,9 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
   // Apply form error
   const [applyError, setApplyError] = useState("");
   const [applySuccess, setApplySuccess] = useState("");
+
+  // Conflict warning
+  const [conflicts, setConflicts] = useState<{ count: number; names: string[] } | null>(null);
 
   // Manager state
   const [pendingLeaves, setPendingLeaves]   = useState<LeaveRequest[]>([]);
@@ -389,6 +440,25 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
       .then(async (r) => { if (r.ok) setAllUsers(await r.json()); })
       .catch(() => {});
   }
+
+  // Fetch conflict warning when both dates are set
+  useEffect(() => {
+    setConflicts(null);
+    if (!leaveForm.fromDate || !leaveForm.toDate) return;
+    apiFetch(`/leave/conflicts?fromDate=${leaveForm.fromDate}&toDate=${leaveForm.toDate}`)
+      .then(async (r) => {
+        if (r.ok) {
+          const data = await r.json() as { conflictingCount: number; conflictingUsernames: string[] };
+          if (data.conflictingCount > 0) {
+            setConflicts({ count: data.conflictingCount, names: data.conflictingUsernames });
+          } else {
+            setConflicts(null);
+          }
+        }
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leaveForm.fromDate, leaveForm.toDate]);
 
   useEffect(() => {
     loadTypes();
@@ -655,6 +725,21 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
                       required
                     />
                   </div>
+
+                  {/* Conflict warning banner */}
+                  {conflicts && (
+                    <div className="lv3-form-full" style={{
+                      display: "flex", alignItems: "flex-start", gap: 10,
+                      background: "#fffbeb", border: "1px solid #fbbf24", borderRadius: 8,
+                      padding: "10px 14px", fontSize: "0.825rem", color: "#92400e",
+                    }}>
+                      <span style={{ flexShrink: 0 }}>⚠</span>
+                      <span>
+                        {conflicts.count} team member{conflicts.count !== 1 ? "s" : ""} already {conflicts.count !== 1 ? "have" : "has"} leave during these dates:{" "}
+                        {conflicts.names.join(", ")}
+                      </span>
+                    </div>
+                  )}
 
                   {/* Reason — full width */}
                   <div className="form-field lv3-form-full">

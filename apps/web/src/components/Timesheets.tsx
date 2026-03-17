@@ -36,6 +36,12 @@ interface TimerSessionData {
   convertedToEntryId: string | null;
 }
 
+interface TemplateItem {
+  id: string;
+  name: string;
+  entries: { projectId: string; categoryId: string; minutes: number; note: string | null }[];
+}
+
 /* ─── Helpers ───────────────────────────────────────────────────────────────── */
 function todayIso(): string {
   const d = new Date();
@@ -199,6 +205,15 @@ export function Timesheets() {
   const [convertLoading, setConvertLoading] = useState(false);
   const [timerHistory, setTimerHistory] = useState<TimerSessionData[]>([]);
   const [timerToast, setTimerToast] = useState<string | null>(null);
+
+  // Template modal state
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [templates, setTemplates] = useState<TemplateItem[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [templateApplyingId, setTemplateApplyingId] = useState<string | null>(null);
+  const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
+  const [saveTemplateName, setSaveTemplateName] = useState("");
+  const [saveTemplateLoading, setSaveTemplateLoading] = useState(false);
 
   /* ── Attendance ───────────────────────────────────────────────────────────── */
   const loadAttendance = useCallback(async () => {
@@ -541,6 +556,67 @@ export function Timesheets() {
     }
   }
 
+  /* ── Template actions ────────────────────────────────────────────────────── */
+  async function openTemplateModal() {
+    setShowTemplateModal(true);
+    setTemplatesLoading(true);
+    const r = await apiFetch("/timesheets/templates");
+    setTemplatesLoading(false);
+    if (r.ok) setTemplates(await r.json() as TemplateItem[]);
+  }
+
+  async function applyTemplate(templateId: string) {
+    setTemplateApplyingId(templateId);
+    const r = await apiFetch(`/timesheets/templates/${templateId}/apply`, {
+      method: "POST",
+      body: JSON.stringify({ workDate: selectedDate }),
+    });
+    setTemplateApplyingId(null);
+    if (r.ok) {
+      const result = await r.json() as { entriesCreated: number; entriesSkipped: number };
+      setShowTemplateModal(false);
+      void loadDay(selectedDate);
+      void loadWeek(selectedDate);
+      const msg = result.entriesCreated > 0
+        ? `${result.entriesCreated} entr${result.entriesCreated === 1 ? "y" : "ies"} added from template${result.entriesSkipped > 0 ? ` (${result.entriesSkipped} skipped)` : ""}.`
+        : `No new entries added (${result.entriesSkipped} already existed).`;
+      setSubmitWeekToast(msg);
+      setTimeout(() => setSubmitWeekToast(null), 4000);
+    } else {
+      const body = await r.json().catch(() => ({})) as { message?: string };
+      setTimerToast(body.message ?? "Failed to apply template.");
+      setTimeout(() => setTimerToast(null), 4000);
+    }
+  }
+
+  async function saveAsTemplate() {
+    if (!saveTemplateName.trim()) return;
+    setSaveTemplateLoading(true);
+    const r = await apiFetch("/timesheets/templates", {
+      method: "POST",
+      body: JSON.stringify({
+        name: saveTemplateName.trim(),
+        entries: (dayData?.entries ?? []).map(e => ({
+          projectId: e.projectId,
+          categoryId: e.taskCategoryId,
+          minutes: e.minutes,
+          note: e.notes ?? null,
+        })),
+      }),
+    });
+    setSaveTemplateLoading(false);
+    if (r.ok) {
+      setShowSaveTemplateModal(false);
+      setSaveTemplateName("");
+      setSubmitWeekToast("Template saved.");
+      setTimeout(() => setSubmitWeekToast(null), 3000);
+    } else {
+      const body = await r.json().catch(() => ({})) as { message?: string };
+      setTimerToast(body.message ?? "Failed to save template.");
+      setTimeout(() => setTimerToast(null), 4000);
+    }
+  }
+
   /* ── Derived values ───────────────────────────────────────────────────────── */
   const isDraft     = dayData?.status === "draft" || dayData === null;
   const isApproved  = dayData?.status === "approved";
@@ -602,6 +678,22 @@ export function Timesheets() {
             </div>
             <div className="ts3-header-actions">
               <button className="btn btn-outline btn-sm">Export</button>
+              {isDraft && !isLocked && (
+                <button
+                  className="btn btn-outline btn-sm"
+                  onClick={() => void openTemplateModal()}
+                >
+                  Use Template
+                </button>
+              )}
+              {isDraft && dayEntries.length > 0 && (
+                <button
+                  className="btn btn-outline btn-sm"
+                  onClick={() => { setSaveTemplateName(""); setShowSaveTemplateModal(true); }}
+                >
+                  Save as Template
+                </button>
+              )}
               {submittableCount > 0 && (
                 <button
                   className="btn btn-outline btn-sm"
@@ -1317,6 +1409,106 @@ export function Timesheets() {
           animation: "page-enter 0.2s both",
         }}>
           {timerToast}
+        </div>
+      )}
+
+      {/* ── Use Template modal ──────────────────────────────────────────────── */}
+      {showTemplateModal && (
+        <div className="ts3-modal-backdrop" onClick={() => setShowTemplateModal(false)}>
+          <div className="ts3-modal ts3-modal--wide" onClick={(e) => e.stopPropagation()}>
+            <div className="ts3-modal-icon" style={{ background: "#eef2ff" }}>
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#6366f1" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="14" height="14" rx="2"/>
+                <path d="M7 7h6M7 10h6M7 13h3"/>
+              </svg>
+            </div>
+            <div className="ts3-modal-title">Use Template</div>
+            <div className="ts3-modal-body" style={{ marginBottom: 12 }}>
+              Apply a saved template to <strong>{fmtDateLabel(selectedDate)}</strong>. Duplicate entries will be skipped.
+            </div>
+            {templatesLoading ? (
+              <div style={{ textAlign: "center", color: "#9ca3af", fontSize: 13, padding: "16px 0" }}>Loading templates…</div>
+            ) : templates.length === 0 ? (
+              <div style={{ textAlign: "center", color: "#9ca3af", fontSize: 13, padding: "16px 0" }}>No templates saved yet.</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+                {templates.map(t => (
+                  <div key={t.id} style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    padding: "10px 14px", border: "1px solid #e5e7eb", borderRadius: 8,
+                    background: "#f9fafb",
+                  }}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 14, color: "#111827" }}>{t.name}</div>
+                      <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>
+                        {t.entries.length} entr{t.entries.length === 1 ? "y" : "ies"} &middot;&nbsp;
+                        {t.entries.reduce((sum, e) => sum + e.minutes, 0) > 0
+                          ? fmtHours(t.entries.reduce((sum, e) => sum + e.minutes, 0))
+                          : "—"}
+                      </div>
+                    </div>
+                    <button
+                      className="btn btn-primary btn-sm"
+                      disabled={templateApplyingId === t.id}
+                      onClick={() => void applyTemplate(t.id)}
+                    >
+                      {templateApplyingId === t.id ? "Applying…" : "Apply"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="ts3-modal-actions" style={{ justifyContent: "space-between" }}>
+              <span style={{ fontSize: 12, color: "#9ca3af" }}>
+                Manage templates in your Profile page.
+              </span>
+              <button className="btn btn-outline btn-sm" onClick={() => setShowTemplateModal(false)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Save as Template modal ───────────────────────────────────────────── */}
+      {showSaveTemplateModal && (
+        <div className="ts3-modal-backdrop" onClick={() => setShowSaveTemplateModal(false)}>
+          <div className="ts3-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="ts3-modal-icon" style={{ background: "#f0fdf4" }}>
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#10b981" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17 3H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"/>
+                <path d="M13 3v6H7V3"/>
+                <path d="M7 13h6"/>
+              </svg>
+            </div>
+            <div className="ts3-modal-title">Save as Template</div>
+            <div className="ts3-modal-body">
+              Save today&rsquo;s {dayEntries.length} entr{dayEntries.length === 1 ? "y" : "ies"} as a reusable template.
+            </div>
+            <div style={{ padding: "0 0 16px" }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: "#6b7280", display: "block", marginBottom: 6 }}>
+                Template name
+              </label>
+              <input
+                className="ts3-input"
+                style={{ width: "100%", boxSizing: "border-box" }}
+                placeholder="e.g. Standard work day"
+                value={saveTemplateName}
+                autoFocus
+                maxLength={120}
+                onChange={(e) => setSaveTemplateName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") void saveAsTemplate(); }}
+              />
+            </div>
+            <div className="ts3-modal-actions">
+              <button className="btn btn-outline btn-sm" onClick={() => setShowSaveTemplateModal(false)}>Cancel</button>
+              <button
+                className="btn btn-primary btn-sm"
+                disabled={saveTemplateLoading || !saveTemplateName.trim()}
+                onClick={() => void saveAsTemplate()}
+              >
+                {saveTemplateLoading ? "Saving…" : "Save Template"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </section>

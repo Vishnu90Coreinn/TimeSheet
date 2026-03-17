@@ -4,6 +4,16 @@ namespace TimeSheet.Api.Dtos;
 
 public record SubmitTimesheetRequest(DateOnly WorkDate, [MaxLength(2000)] string? Notes, [MaxLength(1000)] string? MismatchReason);
 
+public record SubmitWeekRequest([Required] DateOnly WeekStart);
+
+public record SubmitWeekSkipped(string Date, string Reason);
+public record SubmitWeekError(string Date, string Message);
+public record SubmitWeekResponse(
+    IReadOnlyList<string> Submitted,
+    IReadOnlyList<SubmitWeekSkipped> Skipped,
+    IReadOnlyList<SubmitWeekError> Errors
+);
+
 public record UpsertTimesheetEntryRequest(
     DateOnly WorkDate,
     Guid? EntryId,

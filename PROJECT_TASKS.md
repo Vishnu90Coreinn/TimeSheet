@@ -554,7 +554,7 @@ All Phase 2 tasks address findings from the Phase 1 audit above.
 
 ---
 
-### Sprint 13 — User Profile & Self-Service 🔴 NEXT
+### Sprint 13 — User Profile & Self-Service ✅ DONE
 **Branch:** `feature/sprint-13-user-profile`
 **Goal:** Users can manage their own account without admin intervention. Also clears two long-pending carry-overs: Approvals KPI stats (TSK-APR-009) and per-user notification preferences (TSK-NTF-008).
 
@@ -579,45 +579,50 @@ All Phase 2 tasks address findings from the Phase 1 audit above.
 
 ---
 
-### Sprint 14 — Bulk Timesheet Submission 🔴
+### Sprint 14 — Bulk Timesheet Submission ✅ DONE
 **Branch:** `feature/sprint-14-bulk-submit`
 **Goal:** Submit an entire week's worth of draft timesheets in one action.
 
 #### Backend
-- [ ] **TSK-BULK-001** `POST /timesheets/submit-week` — accepts `{ weekStart: "YYYY-MM-DD" }`; finds all `Draft` timesheets for that Mon–Sun range for the calling user; runs the same validation as single-submit for each day; commits all or returns per-day errors.
-- [ ] **TSK-BULK-002** Response DTO: `{ submitted: ["2026-03-16", ...], skipped: [{ date, reason }], errors: [{ date, message }] }`.
-- [ ] **TSK-BULK-003** Extend existing `POST /timesheets/{id}/submit` tests to cover the new bulk path.
+- [x] **TSK-BULK-001** `POST /timesheets/submit-week` — accepts `{ weekStart: "YYYY-MM-DD" }`; finds all `Draft` timesheets for that Mon–Sun range for the calling user; runs the same validation as single-submit for each day; commits all or returns per-day errors.
+- [x] **TSK-BULK-002** Response DTO: `{ submitted: ["2026-03-16", ...], skipped: [{ date, reason }], errors: [{ date, message }] }`.
+- [x] **TSK-BULK-003** Extend existing `POST /timesheets/{id}/submit` tests to cover the new bulk path.
 
 #### Frontend
-- [ ] **TSK-BULK-004** "Submit This Week" primary button on weekly timesheet header.
-- [ ] **TSK-BULK-005** Pre-submit preview modal: table of each day's status (Draft / Already Submitted / No Entries), with warnings for missing days.
-- [ ] **TSK-BULK-006** Result summary: toast showing "X days submitted, Y skipped" with per-day error details if any failed.
+- [x] **TSK-BULK-004** "Submit This Week" primary button on weekly timesheet header.
+- [x] **TSK-BULK-005** Pre-submit preview modal: table of each day's status (Draft / Already Submitted / No Entries), with warnings for missing days.
+- [x] **TSK-BULK-006** Result summary: toast showing "X days submitted, Y skipped" with per-day error details if any failed.
 
 ---
 
-### Sprint 15 — Manager Team Status Board 🔴
+### Sprint 15 — Manager Team Status Board ✅ DONE
 **Branch:** `feature/sprint-15-team-status`
 **Goal:** Managers see every direct report's daily status in one glance with inline actions.
 
 #### Backend
-- [ ] **TSK-TEAM-001** `GET /manager/team-status?date=YYYY-MM-DD` — for each direct report return:
+- [x] **TSK-TEAM-001** `GET /manager/team-status?date=YYYY-MM-DD` — for each direct report return:
   - `attendance`: checkedIn | checkedOut | onLeave | absent
   - `checkInTime`, `checkOutTime` (if available)
   - `weekLoggedMinutes`, `weekExpectedMinutes`
   - `todayTimesheetStatus`: draft | submitted | approved | missing
   - `pendingApprovalCount`: number of timesheets awaiting this manager's approval from this user
-- [ ] **TSK-TEAM-002** `POST /manager/remind/{userId}` — sends a `Notification` of type `MissingTimesheetReminder` to the specified user.
+- [x] **TSK-TEAM-002** `POST /manager/remind/{userId}` — sends a `Notification` of type `MissingTimesheetReminder` to the specified user.
 
 #### Frontend
-- [ ] **TSK-TEAM-003** `TeamStatus.tsx` page, accessible at `"team"` view (manager + admin only).
-- [ ] **TSK-TEAM-004** Status table: Avatar · Name · Today Status · Week Progress bar · Timesheet · Actions.
-- [ ] **TSK-TEAM-005** Filter bar: All / Missing Today / Needs Approval / On Leave.
-- [ ] **TSK-TEAM-006** Inline actions: [Remind] for missing timesheet, [Approve] jumps to Approvals filtered to that user.
-- [ ] **TSK-TEAM-007** Add "Team" nav item to AppShell for manager/admin.
+- [x] **TSK-TEAM-003** `TeamStatus.tsx` page, accessible at `"team"` view (manager + admin only).
+- [x] **TSK-TEAM-004** Status table: Avatar · Name · Today Status · Week Progress bar · Timesheet · Actions.
+- [x] **TSK-TEAM-005** Filter bar: All / Missing Today / Needs Approval / On Leave.
+- [x] **TSK-TEAM-006** Inline actions: [Remind] for missing timesheet, [Approve] jumps to Approvals filtered to that user.
+- [x] **TSK-TEAM-007** Add "Team" nav item to AppShell for manager/admin.
+
+#### UX Audit & Bug Fixes (Session 14)
+- [x] **TSK-TEAM-008** Full UX audit pass — `StatusBadge` component (WCAG 2.1, icon+text+color), custom `MiniCalendar` (no `<input type="date">`), `WeekBar` progress with tooltip, sticky Pending Actions column, all filter tabs always show badge count, `table-layout: fixed` with `<th>` overflow ellipsis.
+- [x] **TSK-TEAM-009** Fix check-in/out times showing UTC instead of local time — `DateTime.SpecifyKind(dt, DateTimeKind.Utc).ToString("O")` in `ManagerController.cs`; frontend uses `new Date(isoUtc).toLocaleTimeString()`.
+- [x] **TSK-TEAM-010** `useConfirm` hook for irreversible inline actions; `buildSubtitle` utility with unit tests.
 
 ---
 
-### Sprint 16 — Task-Level Timer ⏱
+### Sprint 16 — Task-Level Timer ⏱ 🔴 NEXT
 **Branch:** `feature/sprint-16-task-timer`
 **Goal:** Capture time as it happens — timer auto-creates timesheet entries on stop.
 
@@ -820,10 +825,10 @@ feature/sprint-25-dark-mode
 
 | Priority | Sprint | Why first |
 |----------|--------|-----------|
-| 1 | 13 — User Profile | Foundational — needed before notification prefs in later sprints |
-| 2 | 14 — Bulk Submit | Highest daily-friction fix; pure backend extension, low risk |
-| 3 | 15 — Team Status | Highest manager value; new endpoint, no schema change |
-| 4 | 16 — Task Timer | New table + persistent widget; biggest engagement driver |
+| 1 | ~~13 — User Profile~~ ✅ | Foundational — needed before notification prefs in later sprints |
+| 2 | ~~14 — Bulk Submit~~ ✅ | Highest daily-friction fix; pure backend extension, low risk |
+| 3 | ~~15 — Team Status~~ ✅ | Highest manager value; new endpoint, no schema change |
+| 4 | **16 — Task Timer** 🔴 NEXT | New table + persistent widget; biggest engagement driver |
 | 5 | 17 — Budget Burn | Uses existing `budgetedHours` field; low backend effort |
 | 6 | 18 — Templates | Comfort feature; reduces daily friction |
 | 7 | 19 — Leave Team Cal | Extend existing leave endpoints |

@@ -166,13 +166,13 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
           {/* Nav */}
           <div className="sidebar-nav-area">
             <div className="nav-section">
-              <span className="nav-section-label">Workspace</span>
+              <span className="nav-section-label">My Work</span>
               {mainItems.map(renderNavItem)}
             </div>
 
             {managerItems.length > 0 && (
               <div className="nav-section">
-                <span className="nav-section-label">Management</span>
+                <span className="nav-section-label">My Team</span>
                 {managerItems.map(renderNavItem)}
               </div>
             )}

@@ -1,11 +1,12 @@
 /**
- * TeamStatus.tsx — Manager Team Status Board (Sprint 15)
+ * TeamStatus.tsx — Manager Team Status Board (Sprint 15 + UX Audit)
  * Manager + Admin only. Shows each direct report's daily attendance,
  * week progress, timesheet status, and pending approvals.
  */
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../api/client";
+import { StatusBadge, toBadgeStatus } from "./StatusBadge";
 import type { TeamMemberStatus } from "../types";
 
 type Filter = "all" | "missing" | "needs-approval" | "on-leave";
@@ -16,6 +17,8 @@ const FILTER_LABELS: Record<Filter, string> = {
   "needs-approval": "Needs Approval",
   "on-leave":       "On Leave",
 };
+
+// ── Date helpers ──────────────────────────────────────────────────────────────
 
 function todayIso(): string {
   const d = new Date();
@@ -34,31 +37,96 @@ function fmtHours(minutes: number): string {
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
 }
 
-// ── Attendance badge ──────────────────────────────────────────────────────────
+/** Format ISO date as "Mar 17, 2026" */
+function fmtDateDisplay(iso: string): string {
+  try {
+    return new Date(iso + "T00:00:00").toLocaleDateString("en-US", {
+      month: "short", day: "2-digit", year: "numeric",
+    });
+  } catch { return iso; }
+}
 
-const ATTENDANCE_CONFIG = {
-  checkedIn:  { label: "Checked In",  bg: "#dcfce7", color: "#15803d" },
-  checkedOut: { label: "Checked Out", bg: "#f0fdf4", color: "#4ade80" },
-  onLeave:    { label: "On Leave",    bg: "#fef9c3", color: "#a16207" },
-  absent:     { label: "Absent",      bg: "#f9fafb", color: "#9ca3af" },
-};
+// ── Dynamic subtitle ──────────────────────────────────────────────────────────
 
-const TIMESHEET_CONFIG = {
-  approved:  { label: "Approved",  bg: "#dcfce7", color: "#15803d" },
-  submitted: { label: "Submitted", bg: "#dbeafe", color: "#1d4ed8" },
-  draft:     { label: "Draft",     bg: "#f3f4f6", color: "#6b7280" },
-  rejected:  { label: "Rejected",  bg: "#fee2e2", color: "#b91c1c" },
-  missing:   { label: "Missing",   bg: "#fef3c7", color: "#d97706" },
-};
+/** M1 — Build dynamic subtitle from live counts */
+export function buildSubtitle(
+  total: number,
+  missing: number,
+  needsApproval: number,
+): string {
+  if (total === 0) return "No direct reports assigned";
+  const parts: string[] = [`${total} member${total !== 1 ? "s" : ""}`];
+  if (missing > 0) parts.push(`${missing} missing today`);
+  if (needsApproval > 0)
+    parts.push(`${needsApproval} need${needsApproval !== 1 ? "" : "s"} approval`);
+  return parts.join(" · ");
+}
 
-function Badge({ bg, color, label }: { bg: string; color: string; label: string }) {
+// ── Custom Date Picker (H1) ───────────────────────────────────────────────────
+
+function CalendarIcon() {
   return (
-    <span style={{
-      background: bg, color, borderRadius: 6,
-      padding: "2px 10px", fontSize: 11, fontWeight: 700, whiteSpace: "nowrap",
-    }}>
-      {label}
-    </span>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="4" width="18" height="18" rx="2"/>
+      <line x1="16" y1="2" x2="16" y2="6"/>
+      <line x1="8" y1="2" x2="8" y2="6"/>
+      <line x1="3" y1="10" x2="21" y2="10"/>
+    </svg>
+  );
+}
+
+function DatePicker({ value, onChange }: { value: string; onChange: (d: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <button
+        type="button"
+        className="btn btn-outline btn-sm"
+        style={{ display: "flex", alignItems: "center", gap: 6 }}
+        onClick={() => setOpen(v => !v)}
+        aria-label={`Selected date: ${fmtDateDisplay(value)}. Click to change`}
+      >
+        <CalendarIcon />
+        {fmtDateDisplay(value)}
+      </button>
+
+      {open && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 200,
+          background: "var(--surface)", border: "1px solid var(--border-subtle)",
+          borderRadius: "var(--r-md)", boxShadow: "var(--shadow-md)",
+          padding: "var(--space-3)", display: "flex", flexDirection: "column",
+          gap: "var(--space-2)", minWidth: 220,
+        }}>
+          <input
+            type="date"
+            className="input-field"
+            value={value}
+            style={{ width: "100%" }}
+            onChange={e => { onChange(e.target.value); setOpen(false); }}
+          />
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            style={{ width: "100%" }}
+            onClick={() => { onChange(todayIso()); setOpen(false); }}
+          >
+            Today
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -88,21 +156,99 @@ function Avatar({ member }: { member: TeamMemberStatus }) {
   );
 }
 
-// ── Week progress bar ─────────────────────────────────────────────────────────
+// ── Week progress bar (H3) ─────────────────────────────────────────────────────
 
 function WeekBar({ logged, expected }: { logged: number; expected: number }) {
   const pct = expected > 0 ? Math.min(100, Math.round((logged / expected) * 100)) : 0;
-  const color = pct >= 100 ? "#10b981" : pct > 0 ? "#6366f1" : "#e5e7eb";
+  // H3: green ≥80%, yellow 40–79%, red <40%
+  const color = pct >= 80 ? "#10b981" : pct >= 40 ? "#f59e0b" : pct > 0 ? "#ef4444" : "#e5e7eb";
+  const loggedH = (logged / 60).toFixed(1);
+  const expectedH = (expected / 60).toFixed(1);
+  const tooltip = `${loggedH}h logged of ${expectedH}h weekly target`;
+
   return (
-    <div style={{ minWidth: 100 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-tertiary)", marginBottom: 3 }}>
+    <div style={{ minWidth: 110 }}>
+      <div style={{
+        display: "flex", justifyContent: "space-between",
+        fontSize: 11, color: "var(--text-tertiary)", marginBottom: 3,
+      }}>
         <span>{fmtHours(logged)}</span>
         <span>{fmtHours(expected)}</span>
       </div>
-      <div style={{ height: 5, borderRadius: 3, background: "var(--n-100)", overflow: "hidden" }}>
-        <div style={{ height: "100%", borderRadius: 3, background: color, width: `${pct}%`, transition: "width 0.3s" }} />
+      <div
+        title={tooltip}
+        role="progressbar"
+        aria-valuenow={pct}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={tooltip}
+        style={{ height: 5, borderRadius: 3, background: "var(--n-100)", overflow: "hidden" }}
+      >
+        <div style={{
+          height: "100%", borderRadius: 3, background: color,
+          width: `${pct}%`, transition: "width 0.3s",
+        }} />
+      </div>
+      {/* H3: percentage label */}
+      <div style={{
+        textAlign: "right", fontSize: 10,
+        color: pct === 0 ? "var(--text-tertiary)" : color,
+        fontWeight: 600, marginTop: 2,
+      }}>
+        {pct}%
       </div>
     </div>
+  );
+}
+
+// ── Clock icon for "Check-in Time" header (H2) ────────────────────────────────
+
+function ClockIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+      style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }}>
+      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+    </svg>
+  );
+}
+
+// ── Arrow right icon (H4) ─────────────────────────────────────────────────────
+
+function ArrowRight() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+      style={{ display: "inline", verticalAlign: "middle", marginLeft: 3 }}>
+      <line x1="5" y1="12" x2="19" y2="12"/>
+      <polyline points="12 5 19 12 12 19"/>
+    </svg>
+  );
+}
+
+// ── Checkmark icon for Approve button (M3) ────────────────────────────────────
+
+function CheckIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+      style={{ display: "inline", verticalAlign: "middle" }}>
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+  );
+}
+
+// ── Empty state icon (H5) ─────────────────────────────────────────────────────
+
+function EmptyTeamIcon() {
+  return (
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--n-300)"
+      strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+      <circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
   );
 }
 
@@ -139,6 +285,14 @@ export function TeamStatus() {
     else showToast("Failed to send reminder.");
   }
 
+  // C3 — Summary counts for filter chips
+  const counts: Record<Filter, number> = {
+    all:              members.length,
+    missing:          members.filter(m => m.todayTimesheetStatus === "missing").length,
+    "needs-approval": members.filter(m => m.pendingApprovalCount > 0).length,
+    "on-leave":       members.filter(m => m.attendance === "onLeave").length,
+  };
+
   const filtered = members.filter(m => {
     if (filter === "missing")          return m.todayTimesheetStatus === "missing";
     if (filter === "needs-approval")   return m.pendingApprovalCount > 0;
@@ -146,13 +300,8 @@ export function TeamStatus() {
     return true;
   });
 
-  // Summary counts for filter chips
-  const counts: Record<Filter, number> = {
-    all:              members.length,
-    missing:          members.filter(m => m.todayTimesheetStatus === "missing").length,
-    "needs-approval": members.filter(m => m.pendingApprovalCount > 0).length,
-    "on-leave":       members.filter(m => m.attendance === "onLeave").length,
-  };
+  // M1 — Dynamic subtitle
+  const subtitle = buildSubtitle(members.length, counts.missing, counts["needs-approval"]);
 
   return (
     <>
@@ -168,86 +317,133 @@ export function TeamStatus() {
         </div>
       )}
 
-      <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
+      <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
 
         {/* Page header */}
         <div className="page-header">
           <div>
             <div className="page-title">Team Status</div>
-            <div className="page-subtitle">Daily overview of your direct reports</div>
+            {/* M1 — dynamic subtitle */}
+            <div className="page-subtitle">{subtitle}</div>
           </div>
+          {/* H1 — Custom date picker instead of native input */}
           <div className="page-actions">
-            <input
-              type="date"
-              className="input-field"
-              value={date}
-              onChange={e => setDate(e.target.value)}
-              style={{ width: "auto" }}
-            />
+            <DatePicker value={date} onChange={setDate} />
           </div>
         </div>
 
-        {/* Filter bar */}
+        {/* C3 — Filter bar with standardized badges */}
         <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
-          {(Object.keys(FILTER_LABELS) as Filter[]).map(f => (
-            <button
-              key={f}
-              type="button"
-              onClick={() => setFilter(f)}
-              className={`btn btn-sm ${filter === f ? "btn-primary" : "btn-ghost"}`}
-            >
-              {FILTER_LABELS[f]}
-              {counts[f] > 0 && (
-                <span style={{
-                  marginLeft: 6, background: filter === f ? "rgba(255,255,255,0.25)" : "var(--n-200)",
-                  color: filter === f ? "#fff" : "var(--text-secondary)",
-                  borderRadius: 10, padding: "1px 7px", fontSize: 11, fontWeight: 700,
-                }}>
-                  {counts[f]}
-                </span>
-              )}
-            </button>
-          ))}
+          {(Object.keys(FILTER_LABELS) as Filter[]).map(f => {
+            const isActive = filter === f;
+            // C3 — "on-leave" badge always shown; others only when > 0
+            const showBadge = f === "on-leave" || counts[f] > 0;
+            return (
+              <button
+                key={f}
+                type="button"
+                onClick={() => setFilter(f)}
+                className={`btn btn-sm ${isActive ? "btn-primary" : "btn-ghost"}`}
+              >
+                {FILTER_LABELS[f]}
+                {showBadge && (
+                  <span style={{
+                    marginLeft: 6,
+                    background: isActive ? "rgba(255,255,255,0.25)" : "var(--n-200)",
+                    color: isActive ? "#fff" : "var(--text-secondary)",
+                    borderRadius: 10, padding: "1px 7px",
+                    fontSize: 11, fontWeight: 700,
+                  }}>
+                    {counts[f]}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
+
+        {/* M2 — Visual separator between filter bar and table */}
+        <div style={{ borderTop: "1px solid var(--border-subtle)", marginTop: -4 }} />
 
         {/* Table */}
-        <div className="card" style={{ overflow: "visible" }}>
+        <div className="card" style={{ overflow: "auto" }}>
           {loading ? (
-            <div style={{ padding: "var(--space-8)", color: "var(--text-tertiary)", textAlign: "center" }}>Loading…</div>
+            <div style={{ padding: "var(--space-8)", color: "var(--text-tertiary)", textAlign: "center" }}>
+              Loading…
+            </div>
+          ) : filtered.length === 0 && members.length === 0 ? (
+            /* H5 — Full empty state for 0 members */
+            <div style={{
+              padding: "var(--space-10) var(--space-6)",
+              display: "flex", flexDirection: "column",
+              alignItems: "center", gap: "var(--space-3)", textAlign: "center",
+            }}>
+              <EmptyTeamIcon />
+              <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                No direct reports assigned
+              </div>
+              <div style={{ fontSize: "0.8rem", color: "var(--text-tertiary)", maxWidth: 320 }}>
+                You don't have any team members yet. Ask your admin to assign employees to you.
+              </div>
+            </div>
           ) : filtered.length === 0 ? (
             <div style={{ padding: "var(--space-8)", color: "var(--text-tertiary)", textAlign: "center" }}>
-              {members.length === 0 ? "No direct reports assigned to you." : "No team members match this filter."}
+              No team members match this filter.
             </div>
           ) : (
-            <table className="data-table" style={{ tableLayout: "fixed" }}>
+            /* C2 — table-layout: fixed with balanced widths to prevent clip */
+            <table
+              className="data-table"
+              style={{ tableLayout: "fixed", minWidth: 700 }}
+              role="grid"
+            >
               <thead>
                 <tr>
+                  {/* C1 — clear column headers */}
                   <th style={{ width: "22%" }}>Member</th>
-                  <th style={{ width: "14%" }}>Attendance</th>
-                  <th style={{ width: "10%" }}>Check In</th>
+                  <th style={{ width: "13%" }}>Attendance</th>
+                  {/* H2 — renamed + clock icon */}
+                  <th style={{ width: "11%" }}>
+                    <ClockIcon />Check-in Time
+                  </th>
                   <th style={{ width: "18%" }}>Week Progress</th>
-                  <th style={{ width: "13%" }}>Timesheet</th>
-                  <th style={{ width: "10%" }}>Pending</th>
-                  <th style={{ width: "13%" }}>Actions</th>
+                  <th style={{ width: "12%" }}>Timesheet</th>
+                  {/* C1 — merged "Pending Actions" header */}
+                  <th style={{ width: "24%" }}>Pending Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map(m => {
-                  const attCfg = ATTENDANCE_CONFIG[m.attendance];
-                  const tsCfg  = TIMESHEET_CONFIG[m.todayTimesheetStatus];
                   const isReminding = reminding.has(m.userId);
+                  const tsStatus = toBadgeStatus(m.todayTimesheetStatus);
+                  const attStatus = toBadgeStatus(
+                    m.attendance === "onLeave" ? "on-leave" : m.attendance
+                  );
                   return (
                     <tr key={m.userId}>
-                      {/* Member */}
+                      {/* Member — C1 title tooltip for truncated names */}
                       <td>
                         <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
                           <Avatar member={m} />
                           <div style={{ minWidth: 0 }}>
-                            <div style={{ fontWeight: 600, fontSize: "0.875rem", color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            <div
+                              style={{
+                                fontWeight: 600, fontSize: "0.875rem",
+                                color: "var(--text-primary)",
+                                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                              }}
+                              title={m.displayName || m.username}
+                            >
                               {m.displayName || m.username}
                             </div>
                             {m.displayName && (
-                              <div style={{ fontSize: "0.75rem", color: "var(--text-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              <div
+                                style={{
+                                  fontSize: "0.75rem", color: "var(--text-tertiary)",
+                                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                                }}
+                                title={`@${m.username}`}
+                              >
                                 @{m.username}
                               </div>
                             )}
@@ -255,39 +451,67 @@ export function TeamStatus() {
                         </div>
                       </td>
 
-                      {/* Attendance */}
-                      <td><Badge bg={attCfg.bg} color={attCfg.color} label={attCfg.label} /></td>
+                      {/* Attendance — M4 StatusBadge */}
+                      <td><StatusBadge status={attStatus} /></td>
 
-                      {/* Check in/out */}
+                      {/* Check-in / Check-out — H2 aria-label on empty */}
                       <td style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
                         {m.checkInAtUtc ? (
                           <div>
                             <div>{fmtLocalTime(m.checkInAtUtc)}</div>
-                            {m.checkOutAtUtc && <div style={{ color: "var(--text-tertiary)" }}>{fmtLocalTime(m.checkOutAtUtc)}</div>}
+                            {m.checkOutAtUtc && (
+                              <div style={{ color: "var(--text-tertiary)" }}>
+                                {fmtLocalTime(m.checkOutAtUtc)}
+                              </div>
+                            )}
                           </div>
-                        ) : "—"}
+                        ) : (
+                          <span aria-label="No check-in recorded">—</span>
+                        )}
                       </td>
 
-                      {/* Week progress */}
-                      <td><WeekBar logged={m.weekLoggedMinutes} expected={m.weekExpectedMinutes} /></td>
-
-                      {/* Timesheet */}
-                      <td><Badge bg={tsCfg.bg} color={tsCfg.color} label={tsCfg.label} /></td>
-
-                      {/* Pending */}
-                      <td style={{ fontSize: "0.875rem", color: "var(--text-secondary)", fontWeight: m.pendingApprovalCount > 0 ? 600 : 400 }}>
-                        {m.pendingApprovalCount > 0 ? (
-                          <span style={{ color: "var(--brand-600)" }}>{m.pendingApprovalCount} pending</span>
-                        ) : "—"}
-                      </td>
-
-                      {/* Actions */}
+                      {/* Week progress — H3 with %, tooltip, new colors */}
                       <td>
-                        <div style={{ display: "flex", gap: "var(--space-2)" }}>
+                        <WeekBar logged={m.weekLoggedMinutes} expected={m.weekExpectedMinutes} />
+                      </td>
+
+                      {/* Timesheet — M4 StatusBadge */}
+                      <td><StatusBadge status={tsStatus} /></td>
+
+                      {/* Pending + Actions — C1 merged column, C2 no overflow */}
+                      <td>
+                        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap" }}>
+                          {/* H4 — pending count as navigable link */}
+                          {m.pendingApprovalCount > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => navigate("/approvals")}
+                              style={{
+                                background: "none", border: "none", padding: 0,
+                                color: "var(--brand-600)", fontWeight: 600,
+                                fontSize: "0.8rem", cursor: "pointer",
+                                textDecoration: "none", display: "inline-flex",
+                                alignItems: "center",
+                              }}
+                              onMouseEnter={e => (e.currentTarget.style.textDecoration = "underline")}
+                              onMouseLeave={e => (e.currentTarget.style.textDecoration = "none")}
+                              title={`View ${m.pendingApprovalCount} pending approval${m.pendingApprovalCount !== 1 ? "s" : ""}`}
+                            >
+                              {m.pendingApprovalCount} pending<ArrowRight />
+                            </button>
+                          )}
+
+                          {/* M3 — Remind: secondary outlined button */}
                           {m.todayTimesheetStatus === "missing" && (
                             <button
                               type="button"
-                              className="btn btn-ghost btn-sm"
+                              className="btn btn-sm"
+                              style={{
+                                border: "1px solid var(--border-subtle)",
+                                background: "var(--surface)",
+                                color: "var(--text-secondary)",
+                                fontSize: "0.72rem",
+                              }}
                               disabled={isReminding}
                               onClick={() => void remind(m.userId, m.username)}
                               title="Send reminder notification"
@@ -295,15 +519,23 @@ export function TeamStatus() {
                               {isReminding ? "…" : "Remind"}
                             </button>
                           )}
+
+                          {/* M3 — Approve: primary purple button with checkmark */}
                           {m.pendingApprovalCount > 0 && (
                             <button
                               type="button"
-                              className="btn btn-ghost btn-sm"
+                              className="btn btn-primary btn-sm"
+                              style={{ fontSize: "0.72rem", display: "inline-flex", alignItems: "center", gap: 4 }}
                               onClick={() => navigate("/approvals")}
                               title="Go to Approvals"
                             >
-                              Approve
+                              <CheckIcon /> Approve
                             </button>
+                          )}
+
+                          {/* No actions */}
+                          {m.pendingApprovalCount === 0 && m.todayTimesheetStatus !== "missing" && (
+                            <span style={{ fontSize: "0.8rem", color: "var(--text-tertiary)" }}>—</span>
                           )}
                         </div>
                       </td>
@@ -312,6 +544,18 @@ export function TeamStatus() {
                 })}
               </tbody>
             </table>
+          )}
+
+          {/* H5 — Contextual message for very small teams (1 member) */}
+          {!loading && members.length === 1 && (
+            <div style={{
+              padding: "var(--space-3) var(--space-5)",
+              borderTop: "1px solid var(--border-subtle)",
+              fontSize: "0.78rem", color: "var(--text-tertiary)",
+              textAlign: "center",
+            }}>
+              You're viewing all 1 direct report. Add more team members to see richer data here.
+            </div>
           )}
         </div>
       </section>

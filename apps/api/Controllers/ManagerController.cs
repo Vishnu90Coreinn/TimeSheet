@@ -76,6 +76,7 @@ public class ManagerController(TimeSheetDbContext dbContext, INotificationServic
             .AsNoTracking()
             .Select(wp => new { wp.Id, wp.DailyExpectedMinutes, wp.WorkDaysPerWeek })
             .ToListAsync()).ToDictionary(wp => wp.Id);
+        // WorkDaysPerWeek is used below to calculate the correct weekly target.
 
         var result = directReports.Select(u =>
         {
@@ -113,10 +114,14 @@ public class ManagerController(TimeSheetDbContext dbContext, INotificationServic
             var weekLogged = userWeekTimesheets.Sum(t => t.EntriesMinutes);
 
             int dailyExpected = 480;
+            int workDaysPerWeek = 5;
             if (u.WorkPolicyId.HasValue && workPolicies.TryGetValue(u.WorkPolicyId.Value, out var wp))
+            {
                 dailyExpected = wp.DailyExpectedMinutes;
-            // Mon–Fri = 5 days (Sun has 0 expected)
-            var weekExpected = dailyExpected * 5;
+                workDaysPerWeek = wp.WorkDaysPerWeek > 0 ? wp.WorkDaysPerWeek : 5;
+            }
+            // Use policy's workDaysPerWeek so 48h/6-day workers show the correct target
+            var weekExpected = dailyExpected * workDaysPerWeek;
 
             // Today timesheet status
             var todayTs = userWeekTimesheets.FirstOrDefault(t => t.WorkDate == effectiveDate);

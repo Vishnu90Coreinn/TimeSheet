@@ -912,10 +912,10 @@ Sprint 20 implemented via two parallel subagents (backend + frontend), committed
 
 ## Pending For Next Session
 
-> Last updated: Session 17 (2026-03-17). Sprints 13–20 built; Sprint 20 on branch `feature/sprint-20-anomaly-alerts` awaiting PR/merge.
+> Last updated: Session 17 (2026-03-17). Sprints 13–20 fully merged to master.
 
 ### Priority 1 — Next Sprint
-After merging Sprint 20 PR, start **Sprint 21 — Saved & Scheduled Reports + True Export** on branch `feature/sprint-21-saved-reports`
+Start **Sprint 21 — Saved & Scheduled Reports + True Export** on branch `feature/sprint-21-saved-reports`
 
 ### Phase 3 Roadmap Status
 1. **Sprint 13** ✅ — User Profile & Self-Service
@@ -925,7 +925,7 @@ After merging Sprint 20 PR, start **Sprint 21 — Saved & Scheduled Reports + Tr
 5. **Sprint 17** ✅ — Project Budget Burn
 6. **Sprint 18** ✅ — Recurring Entry Templates
 7. **Sprint 19** ✅ — Leave Team Calendar
-8. **Sprint 20** 🔜 — Anomaly Detection & Alerts (PR pending — `feature/sprint-20-anomaly-alerts`)
+8. **Sprint 20** ✅ — Anomaly Detection & Alerts (merged PR #40 → `7ce1d02`)
 9. **Sprint 21** — Saved & Scheduled Reports (`feature/sprint-21-saved-reports`)
 10. **Sprint 22** — Approval Delegation (`feature/sprint-22-approval-delegation`)
 11. **Sprint 23** — Command Palette (`feature/sprint-23-command-palette`)

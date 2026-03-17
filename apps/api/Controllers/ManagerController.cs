@@ -96,13 +96,19 @@ public class ManagerController(TimeSheetDbContext dbContext, INotificationServic
             else if (activeSession is not null)
             {
                 attendance   = "checkedIn";
-                checkInAtUtc = activeSession.CheckInAtUtc.ToString("O"); // ISO 8601 UTC
+                // SpecifyKind ensures ToString("O") appends the Z suffix.
+                // EF Core returns DateTime columns as DateTimeKind.Unspecified,
+                // so without this the Z is omitted and JS parses the string as
+                // local time instead of UTC, causing wrong display in other timezones.
+                checkInAtUtc = DateTime.SpecifyKind(activeSession.CheckInAtUtc, DateTimeKind.Utc).ToString("O");
             }
             else if (completedSession is not null)
             {
                 attendance    = "checkedOut";
-                checkInAtUtc  = completedSession.CheckInAtUtc.ToString("O");
-                checkOutAtUtc = completedSession.CheckOutAtUtc?.ToString("O");
+                checkInAtUtc  = DateTime.SpecifyKind(completedSession.CheckInAtUtc, DateTimeKind.Utc).ToString("O");
+                checkOutAtUtc = completedSession.CheckOutAtUtc.HasValue
+                    ? DateTime.SpecifyKind(completedSession.CheckOutAtUtc.Value, DateTimeKind.Utc).ToString("O")
+                    : null;
             }
             else
             {

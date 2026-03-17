@@ -23,6 +23,19 @@ interface EntryForm {
   editingId: string | null;
 }
 
+interface TimerSessionData {
+  id: string;
+  projectId: string;
+  projectName: string;
+  categoryId: string;
+  categoryName: string;
+  note: string | null;
+  startedAtUtc: string;
+  stoppedAtUtc: string | null;
+  durationMinutes: number | null;
+  convertedToEntryId: string | null;
+}
+
 /* ─── Helpers ───────────────────────────────────────────────────────────────── */
 function todayIso(): string {
   const d = new Date();
@@ -173,6 +186,20 @@ export function Timesheets() {
   const [submitWeekLoading, setSubmitWeekLoading] = useState(false);
   const [submitWeekToast, setSubmitWeekToast] = useState<string | null>(null);
 
+  // Task-level timer state
+  const [activeTimer, setActiveTimer] = useState<TimerSessionData | null>(null);
+  const [taskElapsed, setTaskElapsed] = useState(0);
+  const taskTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [timerProjectId, setTimerProjectId] = useState("");
+  const [timerCategoryId, setTimerCategoryId] = useState("");
+  const [timerNote, setTimerNote] = useState("");
+  const [timerLoading, setTimerLoading] = useState(false);
+  const [stoppedTimer, setStoppedTimer] = useState<TimerSessionData | null>(null);
+  const [convertDate, setConvertDate] = useState(todayIso());
+  const [convertLoading, setConvertLoading] = useState(false);
+  const [timerHistory, setTimerHistory] = useState<TimerSessionData[]>([]);
+  const [timerToast, setTimerToast] = useState<string | null>(null);
+
   /* ── Attendance ───────────────────────────────────────────────────────────── */
   const loadAttendance = useCallback(async () => {
     const r = await apiFetch("/attendance/summary/today");
@@ -208,20 +235,55 @@ export function Timesheets() {
     else setDayData(null);
   }, []);
 
+  const loadActiveTimer = useCallback(async () => {
+    const r = await apiFetch("/timers/active");
+    if (r.ok) setActiveTimer(await r.json() as TimerSessionData);
+    else setActiveTimer(null);
+  }, []);
+
+  const loadTimerHistory = useCallback(async () => {
+    const r = await apiFetch(`/timers/history?date=${todayIso()}`);
+    if (r.ok) setTimerHistory(await r.json() as TimerSessionData[]);
+  }, []);
+
   // Init
   useEffect(() => {
     void loadAttendance();
     void loadWeek(selectedDate);
     void loadDay(selectedDate);
+    void loadActiveTimer();
+    void loadTimerHistory();
     apiFetch("/timesheets/entry-options").then(async (r) => {
       if (!r.ok) return;
       const d = await r.json() as { projects: Project[]; taskCategories: TaskCategory[] };
       setProjects(d.projects);
       setCategories(d.taskCategories);
       setForm(blankForm(d.projects, d.taskCategories));
+      setTimerProjectId((prev) => prev || d.projects[0]?.id || "");
+      setTimerCategoryId((prev) => prev || d.taskCategories[0]?.id || "");
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Task timer live counter
+  useEffect(() => {
+    if (taskTimerRef.current) clearInterval(taskTimerRef.current);
+    if (activeTimer) {
+      const start = parseUtcLocal(activeTimer.startedAtUtc).getTime();
+      const tick = () => setTaskElapsed(Math.floor((Date.now() - start) / 1000));
+      tick();
+      taskTimerRef.current = setInterval(tick, 1000);
+    } else {
+      setTaskElapsed(0);
+    }
+    return () => { if (taskTimerRef.current) clearInterval(taskTimerRef.current); };
+  }, [activeTimer?.id, activeTimer?.startedAtUtc]);
+
+  // Poll active timer every 30s to survive page refresh
+  useEffect(() => {
+    const poll = setInterval(() => { void loadActiveTimer(); }, 30_000);
+    return () => clearInterval(poll);
+  }, [loadActiveTimer]);
 
   /* ── Week navigation ─────────────────────────────────────────────────────── */
   function shiftWeek(days: number) {
@@ -416,6 +478,66 @@ export function Timesheets() {
       const body = await r.json().catch(() => ({})) as { message?: string };
       setSubmitWeekToast(body.message ?? "Week submission failed.");
       setTimeout(() => setSubmitWeekToast(null), 4000);
+    }
+  }
+
+  /* ── Task timer actions ───────────────────────────────────────────────────── */
+  async function startTaskTimer() {
+    if (!timerProjectId || !timerCategoryId) return;
+    setTimerLoading(true);
+    const r = await apiFetch("/timers/start", {
+      method: "POST",
+      body: JSON.stringify({ projectId: timerProjectId, categoryId: timerCategoryId, note: timerNote || null }),
+    });
+    setTimerLoading(false);
+    if (r.ok) {
+      const timer = await r.json() as TimerSessionData;
+      setActiveTimer(timer);
+      localStorage.setItem("activeTimerId", timer.id);
+      localStorage.setItem("activeTimerStart", timer.startedAtUtc);
+    } else {
+      const body = await r.json().catch(() => ({})) as { message?: string };
+      setTimerToast(body.message ?? "Failed to start timer.");
+      setTimeout(() => setTimerToast(null), 4000);
+    }
+  }
+
+  async function stopTaskTimer() {
+    setTimerLoading(true);
+    const r = await apiFetch("/timers/stop", { method: "POST" });
+    setTimerLoading(false);
+    if (r.ok) {
+      const stopped = await r.json() as TimerSessionData;
+      setActiveTimer(null);
+      setStoppedTimer(stopped);
+      setConvertDate(todayIso());
+      localStorage.removeItem("activeTimerId");
+      localStorage.removeItem("activeTimerStart");
+      void loadTimerHistory();
+    }
+  }
+
+  async function convertTimer() {
+    if (!stoppedTimer) return;
+    setConvertLoading(true);
+    const r = await apiFetch(`/timers/${stoppedTimer.id}/convert`, {
+      method: "POST",
+      body: JSON.stringify({ workDate: convertDate }),
+    });
+    setConvertLoading(false);
+    if (r.ok) {
+      setStoppedTimer(null);
+      setTimerToast("Entry added to timesheet.");
+      setTimeout(() => setTimerToast(null), 3000);
+      void loadTimerHistory();
+      if (convertDate === selectedDate) {
+        void loadDay(selectedDate);
+        void loadWeek(selectedDate);
+      }
+    } else {
+      const body = await r.json().catch(() => ({})) as { message?: string };
+      setTimerToast(body.message ?? "Failed to add entry.");
+      setTimeout(() => setTimerToast(null), 4000);
     }
   }
 
@@ -841,45 +963,171 @@ export function Timesheets() {
         {/* ── Sidebar ──────────────────────────────────────────────────────── */}
         <aside className="ts3-sidebar">
 
-          {/* Active Timer card — only show for current week or when checked in */}
-          {(isCurrentWeek || isCheckedIn) && <div className="ts3-sidebar-card">
-            <div className="ts3-sidebar-section-label">
-              {isCheckedIn && <span className="ts3-green-dot" />}
-              ACTIVE TIMER
-            </div>
-            {isCheckedIn ? (
-              <>
-                <div className="ts3-elapsed-clock">{fmtElapsed(elapsed)}</div>
-                <div className="ts3-elapsed-sub">
-                  since {attendance?.lastCheckInAtUtc ? fmtTime(attendance.lastCheckInAtUtc) : "—"}
-                  &nbsp;&middot;&nbsp;{fmtMins(attendance?.netMinutes ?? 0)} today
-                </div>
-                <div className="ts3-timer-actions">
+          {/* Attendance card */}
+          {(isCurrentWeek || isCheckedIn) && (
+            <div className="ts3-sidebar-card">
+              <div className="ts3-sidebar-section-label">
+                {isCheckedIn && <span className="ts3-green-dot" />}
+                ATTENDANCE
+              </div>
+              {isCheckedIn ? (
+                <>
+                  <div className="ts3-elapsed-clock">{fmtElapsed(elapsed)}</div>
+                  <div className="ts3-elapsed-sub">
+                    since {attendance?.lastCheckInAtUtc ? fmtTime(attendance.lastCheckInAtUtc) : "—"}
+                    &nbsp;&middot;&nbsp;{fmtMins(attendance?.netMinutes ?? 0)} today
+                  </div>
+                  <div className="ts3-timer-actions">
+                    <button
+                      className="btn ts3-btn-stop btn-sm"
+                      onClick={() => void handleCheck()}
+                      disabled={checkLoading}
+                    >
+                      Check Out
+                    </button>
+                    <button className="btn btn-primary btn-sm" onClick={openNew}>
+                      + Entry
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="ts3-not-checked-in">Not checked in</div>
                   <button
-                    className="btn ts3-btn-stop btn-sm"
+                    className="btn btn-primary btn-sm ts3-checkin-btn"
                     onClick={() => void handleCheck()}
                     disabled={checkLoading}
                   >
-                    Stop
+                    Check In
                   </button>
-                  <button className="btn btn-primary btn-sm" onClick={openNew}>
-                    + New
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Task Timer card */}
+          <div className="ts3-sidebar-card">
+            <div className="ts3-sidebar-section-label">
+              {activeTimer && <span className="ts3-green-dot ts3-green-dot--pulse" />}
+              TASK TIMER
+            </div>
+
+            {/* Stopped timer — confirm "Add to Timesheet?" */}
+            {stoppedTimer && !activeTimer && (
+              <div className="ts3-timer-convert">
+                <div className="ts3-timer-convert-badge">
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#059669" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 8 6 11 13 4"/></svg>
+                  &nbsp;{fmtMins(stoppedTimer.durationMinutes ?? 0)} recorded
+                </div>
+                <div className="ts3-timer-convert-detail">
+                  <strong>{stoppedTimer.projectName}</strong> · {stoppedTimer.categoryName}
+                  {stoppedTimer.note && <div style={{ color: "#6b7280", fontSize: 11, marginTop: 2 }}>{stoppedTimer.note}</div>}
+                </div>
+                <div className="ts3-timer-convert-row">
+                  <label style={{ fontSize: 11, color: "#6b7280", fontWeight: 600 }}>Add to date</label>
+                  <input
+                    type="date"
+                    value={convertDate}
+                    max={todayIso()}
+                    onChange={(e) => setConvertDate(e.target.value)}
+                    className="ts3-timer-date-input"
+                  />
+                </div>
+                <div className="ts3-timer-actions" style={{ marginTop: 10 }}>
+                  <button
+                    className="btn btn-primary btn-sm"
+                    disabled={convertLoading}
+                    onClick={() => void convertTimer()}
+                  >
+                    {convertLoading ? "Adding…" : "Add to Timesheet"}
+                  </button>
+                  <button
+                    className="btn btn-outline btn-sm"
+                    onClick={() => setStoppedTimer(null)}
+                  >
+                    Discard
                   </button>
                 </div>
-              </>
-            ) : (
+              </div>
+            )}
+
+            {/* Running timer */}
+            {activeTimer && (
               <>
-                <div className="ts3-not-checked-in">Not checked in</div>
+                <div className="ts3-elapsed-clock ts3-elapsed-clock--task">{fmtElapsed(taskElapsed)}</div>
+                <div className="ts3-elapsed-sub">
+                  <strong>{activeTimer.projectName}</strong> · {activeTimer.categoryName}
+                </div>
+                {activeTimer.note && (
+                  <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2, marginBottom: 6 }}>{activeTimer.note}</div>
+                )}
                 <button
-                  className="btn btn-primary btn-sm ts3-checkin-btn"
-                  onClick={() => void handleCheck()}
-                  disabled={checkLoading}
+                  className="btn ts3-btn-stop btn-sm"
+                  style={{ width: "100%", marginTop: 8 }}
+                  onClick={() => void stopTaskTimer()}
+                  disabled={timerLoading}
                 >
-                  Check In
+                  <svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor" style={{ marginRight: 5 }}><rect x="2" y="2" width="8" height="8" rx="1.5"/></svg>
+                  Stop
                 </button>
               </>
             )}
-          </div>}
+
+            {/* Start new timer */}
+            {!activeTimer && !stoppedTimer && (
+              <>
+                <select
+                  className="ts3-timer-select"
+                  value={timerProjectId}
+                  onChange={(e) => setTimerProjectId(e.target.value)}
+                >
+                  {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+                <select
+                  className="ts3-timer-select"
+                  value={timerCategoryId}
+                  onChange={(e) => setTimerCategoryId(e.target.value)}
+                >
+                  {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+                <input
+                  type="text"
+                  className="ts3-timer-note"
+                  placeholder="Note (optional)"
+                  value={timerNote}
+                  onChange={(e) => setTimerNote(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") void startTaskTimer(); }}
+                />
+                <button
+                  className="btn btn-primary btn-sm"
+                  style={{ width: "100%", marginTop: 8 }}
+                  onClick={() => void startTaskTimer()}
+                  disabled={timerLoading || !timerProjectId || !timerCategoryId}
+                >
+                  <svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor" style={{ marginRight: 5 }}><polygon points="3,1 11,6 3,11"/></svg>
+                  Start Timer
+                </button>
+              </>
+            )}
+
+            {/* Timer history for today */}
+            {timerHistory.filter(t => t.stoppedAtUtc !== null).length > 0 && (
+              <div className="ts3-timer-history">
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#9ca3af", letterSpacing: "0.06em", marginBottom: 6, marginTop: 12 }}>TODAY'S SESSIONS</div>
+                {timerHistory.filter(t => t.stoppedAtUtc !== null).slice(0, 5).map((t) => (
+                  <div key={t.id} className="ts3-timer-history-row">
+                    <span className="ts3-timer-history-proj">{t.projectName}</span>
+                    <span className="ts3-timer-history-dur">
+                      {t.convertedToEntryId
+                        ? <span title="Added to timesheet" style={{ color: "#059669" }}>✓ </span>
+                        : null}
+                      {fmtMins(t.durationMinutes ?? 0)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Week Summary card */}
           <div className="ts3-sidebar-card">
@@ -1056,6 +1304,19 @@ export function Timesheets() {
           animation: "page-enter 0.2s both",
         }}>
           {submitWeekToast}
+        </div>
+      )}
+
+      {/* ── Timer toast ────────────────────────────────────────────────────── */}
+      {timerToast && (
+        <div style={{
+          position: "fixed", bottom: "var(--space-6, 24px)", left: "50%", transform: "translateX(-50%)",
+          background: "#111827", color: "#fff", borderRadius: 8,
+          padding: "10px 18px", fontSize: 14, fontWeight: 600,
+          boxShadow: "0 4px 16px rgba(0,0,0,0.2)", zIndex: 9999,
+          animation: "page-enter 0.2s both",
+        }}>
+          {timerToast}
         </div>
       )}
     </section>
@@ -1584,6 +1845,113 @@ const PAGE_STYLES = `
   }
   .ts3-btn-stop:hover {
     background: #fef2f2 !important;
+  }
+  .ts3-elapsed-clock--task {
+    font-size: 24px;
+    color: #6366f1;
+  }
+  .ts3-green-dot--pulse {
+    animation: ts3-pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes ts3-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* Task timer — start form */
+  .ts3-timer-select {
+    width: 100%;
+    border: 1.5px solid var(--border-subtle, #e5e7eb);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 13px;
+    color: var(--n-900, #111827);
+    background: var(--surface, #fff);
+    margin-bottom: 6px;
+    outline: none;
+  }
+  .ts3-timer-select:focus {
+    border-color: #6366f1;
+  }
+  .ts3-timer-note {
+    width: 100%;
+    border: 1.5px solid var(--border-subtle, #e5e7eb);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 13px;
+    color: var(--n-900, #111827);
+    background: var(--surface, #fff);
+    outline: none;
+    box-sizing: border-box;
+  }
+  .ts3-timer-note:focus {
+    border-color: #6366f1;
+  }
+
+  /* Stopped timer — convert panel */
+  .ts3-timer-convert {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .ts3-timer-convert-badge {
+    display: inline-flex;
+    align-items: center;
+    background: #f0fdf4;
+    color: #059669;
+    border-radius: 6px;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    width: fit-content;
+  }
+  .ts3-timer-convert-detail {
+    font-size: 12px;
+    color: var(--n-900, #111827);
+    line-height: 1.4;
+  }
+  .ts3-timer-convert-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 4px;
+  }
+  .ts3-timer-date-input {
+    border: 1.5px solid var(--border-subtle, #e5e7eb);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 12px;
+    color: var(--n-900, #111827);
+    background: var(--surface, #fff);
+    outline: none;
+  }
+  .ts3-timer-date-input:focus {
+    border-color: #6366f1;
+  }
+
+  /* Timer history */
+  .ts3-timer-history-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    padding: 3px 0;
+    border-bottom: 1px solid var(--border-subtle, #f3f4f6);
+  }
+  .ts3-timer-history-proj {
+    color: var(--n-700, #374151);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    margin-right: 6px;
+  }
+  .ts3-timer-history-dur {
+    color: var(--n-500, #6b7280);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 
   /* Week summary rows */

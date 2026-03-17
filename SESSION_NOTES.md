@@ -881,12 +881,41 @@ Three sprints implemented in parallel via subagents, merged as PR #39 (`8bca36e`
 
 ---
 
+## Session 17 — Sprint 20: Anomaly Detection & Alerts (2026-03-17)
+
+### What Was Done
+
+Sprint 20 implemented via two parallel subagents (backend + frontend), committed as `91671ee` on `feature/sprint-20-anomaly-alerts`.
+
+#### Backend
+- `Notification.cs`: Added `Anomaly = 5` to `NotificationType` enum
+- `AnomalyDtos.cs`: `record AnomalyNotificationResponse(Guid Id, string Title, string Message, string Severity, string CreatedAtUtc)`
+- `AnomalyDetectionService.cs`: BackgroundService at 07:00 UTC daily
+  - Rule A: ExcessiveDailyHours (>720 min/day in last 7 days)
+  - Rule B: ExtendedMissingTimesheet (5+ consecutive working days)
+  - Rule C/D: ProjectBudgetWarning (≥80%) / ProjectBudgetCritical (≥95%)
+  - Rule E: ComplianceDropped (≥15pp drop vs prior month)
+  - 7-day deduplication per title; notifies all admin users via `INotificationService`
+- `AnomalyController.cs`: `[Authorize(Roles="admin")]`; `GET /admin/anomalies?severity=` + `POST /admin/anomalies/{id}/dismiss`; severity inferred from title string
+- `Program.cs`: `builder.Services.AddHostedService<AnomalyDetectionService>()`
+
+#### Frontend
+- `Dashboard.tsx`: `AnomalyNotification` interface, anomaly alerts panel in AdminDashboard; severity filter pills (all/warning/critical); per-row dismiss button; relative timestamp; panel hidden when 0 alerts
+- `Notifications.tsx`: `notifIcon(type)` helper, red pulsing dot for anomaly type (5), distinct icon per notification type
+
+**All 52 backend tests passing · 0 TypeScript errors**
+
+### Commits
+- `91671ee` — feat: Sprint 20 — Anomaly Detection & Alerts
+
+---
+
 ## Pending For Next Session
 
-> Last updated: Session 16 (2026-03-17). Sprints 13–19 merged to master.
+> Last updated: Session 17 (2026-03-17). Sprints 13–20 built; Sprint 20 on branch `feature/sprint-20-anomaly-alerts` awaiting PR/merge.
 
 ### Priority 1 — Next Sprint
-Start **Sprint 20 — Anomaly Detection & Alerts** on branch `feature/sprint-20-anomaly-alerts`
+After merging Sprint 20 PR, start **Sprint 21 — Saved & Scheduled Reports + True Export** on branch `feature/sprint-21-saved-reports`
 
 ### Phase 3 Roadmap Status
 1. **Sprint 13** ✅ — User Profile & Self-Service
@@ -896,10 +925,7 @@ Start **Sprint 20 — Anomaly Detection & Alerts** on branch `feature/sprint-20-
 5. **Sprint 17** ✅ — Project Budget Burn
 6. **Sprint 18** ✅ — Recurring Entry Templates
 7. **Sprint 19** ✅ — Leave Team Calendar
-8. **Sprint 20** 🔜 — Anomaly Detection & Alerts (`feature/sprint-20-anomaly-alerts`)
-6. **Sprint 18** — Recurring Entry Templates (`feature/sprint-18-entry-templates`)
-7. **Sprint 19** — Leave Team Calendar (`feature/sprint-19-leave-team-calendar`)
-8. **Sprint 20** — Anomaly Detection & Alerts (`feature/sprint-20-anomaly-alerts`)
+8. **Sprint 20** 🔜 — Anomaly Detection & Alerts (PR pending — `feature/sprint-20-anomaly-alerts`)
 9. **Sprint 21** — Saved & Scheduled Reports (`feature/sprint-21-saved-reports`)
 10. **Sprint 22** — Approval Delegation (`feature/sprint-22-approval-delegation`)
 11. **Sprint 23** — Command Palette (`feature/sprint-23-command-palette`)

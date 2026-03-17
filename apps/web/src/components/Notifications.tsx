@@ -5,6 +5,17 @@ import { useEffect, useRef, useState } from "react";
 import { apiFetch } from "../api/client";
 import type { Notification } from "../types";
 
+function notifIcon(type: number): string {
+  switch (type) {
+    case 0: return "🕐";
+    case 1: return "📋";
+    case 2: return "✅";
+    case 3: return "🔄";
+    case 5: return "🚨";
+    default: return "🔔";
+  }
+}
+
 export function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [open, setOpen] = useState(false);
@@ -40,6 +51,7 @@ export function NotificationBell() {
   }, []);
 
   const unreadCount = notifications.length;
+  const hasAnomalies = notifications.some((n) => Number(n.type) === 5);
 
   return (
     <div ref={ref} style={{ position: "relative", display: "inline-block" }}>
@@ -47,11 +59,33 @@ export function NotificationBell() {
       <button
         className="icon-btn"
         onClick={() => setOpen((o) => !o)}
-        aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
+        aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}${hasAnomalies ? " — anomaly alerts" : ""}`}
+        style={{ position: "relative" }}
       >
         <BellIcon />
         {unreadCount > 0 && <span className="notif-badge" aria-hidden="true">{unreadCount > 9 ? "9+" : unreadCount}</span>}
+        {hasAnomalies && (
+          <span
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              top: 2,
+              right: 2,
+              width: 6,
+              height: 6,
+              background: "#ef4444",
+              borderRadius: "50%",
+              animation: "anomaly-pulse 1.5s ease-in-out infinite",
+            }}
+          />
+        )}
       </button>
+      <style>{`
+        @keyframes anomaly-pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.6; transform: scale(1.3); }
+        }
+      `}</style>
 
       {/* Dropdown panel */}
       {open && (
@@ -95,27 +129,37 @@ export function NotificationBell() {
                 <p style={{ fontSize: "0.825rem", color: "var(--text-tertiary)", margin: 0 }}>No unread notifications</p>
               </div>
             ) : (
-              notifications.map((n) => (
-                <div key={n.id} style={{
-                  padding: "var(--space-3) var(--space-4)",
-                  borderBottom: "1px solid var(--border-subtle)",
-                }}>
-                  <div style={{ fontSize: "0.825rem", fontWeight: 600, color: "var(--text-primary)", marginBottom: 2 }}>
-                    {n.title}
+              notifications.map((n) => {
+                const nType = Number(n.type);
+                const isAnomaly = nType === 5;
+                return (
+                  <div key={n.id} style={{
+                    padding: "var(--space-3) var(--space-4)",
+                    borderBottom: "1px solid var(--border-subtle)",
+                    background: isAnomaly ? "#fff5f5" : undefined,
+                  }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 2 }}>
+                      <span style={{ fontSize: "1rem", lineHeight: 1, flexShrink: 0, marginTop: 1, width: 20, textAlign: "center" }} aria-hidden="true">
+                        {notifIcon(nType)}
+                      </span>
+                      <div style={{ fontSize: "0.825rem", fontWeight: isAnomaly ? 700 : 600, color: isAnomaly ? "#ef4444" : "var(--text-primary)" }}>
+                        {n.title}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: "0.775rem", color: "var(--text-secondary)", marginBottom: "var(--space-2)", paddingLeft: 28 }}>
+                      {n.message}
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingLeft: 28 }}>
+                      <span style={{ fontSize: "0.72rem", color: "var(--text-tertiary)" }}>
+                        {new Date(n.createdAtUtc).toLocaleString()}
+                      </span>
+                      <button className="btn btn-ghost btn-sm" onClick={() => void markRead(n.id)}>
+                        Dismiss
+                      </button>
+                    </div>
                   </div>
-                  <div style={{ fontSize: "0.775rem", color: "var(--text-secondary)", marginBottom: "var(--space-2)" }}>
-                    {n.message}
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: "0.72rem", color: "var(--text-tertiary)" }}>
-                      {new Date(n.createdAtUtc).toLocaleString()}
-                    </span>
-                    <button className="btn btn-ghost btn-sm" onClick={() => void markRead(n.id)}>
-                      Dismiss
-                    </button>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>

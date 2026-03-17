@@ -693,19 +693,19 @@ All Phase 2 tasks address findings from the Phase 1 audit above.
 
 ---
 
-### Sprint 20 — Anomaly Detection & Alerts 🔔
+### Sprint 20 — Anomaly Detection & Alerts 🔔 ✅ DONE
 **Branch:** `feature/sprint-20-anomaly-alerts`
 **Goal:** Surface unusual patterns automatically so admins don't need to hunt in reports.
 
 #### Backend
-- [ ] **TSK-ANM-001** New `AnomalyRules` enum: `ExcessiveDailyHours` (>12h), `ExtendedMissingTimesheet` (>5 consecutive working days), `ProjectBudgetWarning` (≥80%), `ProjectBudgetCritical` (≥95%), `ComplianceDropped` (team compliance down ≥15% vs prior month).
-- [ ] **TSK-ANM-002** `AnomalyDetectionService` — background service, runs daily at 07:00 UTC; evaluates all rules; creates `Notification` records with `Type = Anomaly`, deduplicates (don't re-alert same anomaly within 7 days).
-- [ ] **TSK-ANM-003** `GET /admin/anomalies` — active unresolved anomaly notifications; supports `?severity=warning|critical` filter.
-- [ ] **TSK-ANM-004** `POST /admin/anomalies/{id}/dismiss` — marks anomaly notification as dismissed.
+- [x] **TSK-ANM-001** New `AnomalyRules` enum: `ExcessiveDailyHours` (>12h), `ExtendedMissingTimesheet` (>5 consecutive working days), `ProjectBudgetWarning` (≥80%), `ProjectBudgetCritical` (≥95%), `ComplianceDropped` (team compliance down ≥15% vs prior month).
+- [x] **TSK-ANM-002** `AnomalyDetectionService` — background service, runs daily at 07:00 UTC; evaluates all rules; creates `Notification` records with `Type = Anomaly`, deduplicates (don't re-alert same anomaly within 7 days).
+- [x] **TSK-ANM-003** `GET /admin/anomalies` — active unresolved anomaly notifications; supports `?severity=warning|critical` filter.
+- [x] **TSK-ANM-004** `POST /admin/anomalies/{id}/dismiss` — marks anomaly notification as dismissed.
 
 #### Frontend
-- [ ] **TSK-ANM-005** "Anomaly Alerts" panel on admin dashboard — shows active alerts grouped by severity (critical first). Each: icon, description, affected entity, [Dismiss] button, [Investigate →] link to relevant page.
-- [ ] **TSK-ANM-006** Anomaly notifications appear in the notification bell with a distinct icon.
+- [x] **TSK-ANM-005** "Anomaly Alerts" panel on admin dashboard — shows active alerts grouped by severity (critical first). Each: icon, description, affected entity, [Dismiss] button, [Investigate →] link to relevant page.
+- [x] **TSK-ANM-006** Anomaly notifications appear in the notification bell with a distinct icon.
 
 ---
 
@@ -832,8 +832,8 @@ feature/sprint-25-dark-mode
 | 5 | ~~17 — Budget Burn~~ ✅ | Uses existing `budgetedHours` field; low backend effort |
 | 6 | ~~18 — Templates~~ ✅ | Comfort feature; reduces daily friction |
 | 7 | ~~19 — Leave Team Cal~~ ✅ | Extend existing leave endpoints |
-| 8 | **20 — Anomaly Alerts** 🔴 NEXT | Background service; builds on existing notification infra |
-| 9 | 21 — Saved Reports | Persistence layer for reports; needs email service |
+| 8 | ~~20 — Anomaly Alerts~~ ✅ DONE | Background service; builds on existing notification infra |
+| 9 | **21 — Saved Reports** 🔴 NEXT | Persistence layer for reports; needs email service |
 | 10 | 22 — Approval Delegation | Schema change + routing logic; test thoroughly |
 | 11 | 23 — Command Palette | Pure frontend; do after all pages are stable |
 | 12 | 24 — Mobile PWA | Layout overhaul; needs all features settled first |

@@ -37,6 +37,7 @@ try
     builder.Services.AddScoped<INotificationService, NotificationService>();
     builder.Services.AddHostedService<RefreshTokenCleanupService>();
     builder.Services.AddHostedService<NotificationSchedulerService>();
+    builder.Services.AddHostedService<AnomalyDetectionService>();
 
     var jwt = builder.Configuration.GetSection("Jwt");
     var jwtKey = jwt["Key"] ?? throw new InvalidOperationException("JWT Key is not configured.");

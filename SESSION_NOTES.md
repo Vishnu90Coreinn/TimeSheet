@@ -805,19 +805,60 @@ Each: `SortIcon` component, `sortCol/sortDir` state, `toggleSort()`, `sorted` co
 
 ---
 
+## Session 15 — Sprint 16: Task-Level Timer (2026-03-17)
+
+### What Was Done
+
+#### Sprint 16 — Task-Level Timer (TSK-TMR-001..011)
+
+**Backend (new: `apps/api/Controllers/TimersController.cs`)**
+- New `TimerSession` entity: `{ Id, UserId, ProjectId, CategoryId, Note, StartedAtUtc, StoppedAtUtc, DurationMinutes, ConvertedToEntryId }`
+- `TimerSessions` table with indexes on `UserId` and `(UserId, StoppedAtUtc)` — no cascade delete on ConvertedToEntry (SetNull)
+- EF Core migration `20260317161547_Sprint16_TimerSessions`
+- `GET /timers/active` — returns running timer (no `StoppedAtUtc`) or 404
+- `POST /timers/start` — `{ projectId, categoryId, note? }`; enforces one active per user (409 if already running); validates project + category exist
+- `POST /timers/stop` — sets `StoppedAtUtc`, computes `DurationMinutes = max(1, round(elapsed minutes))`
+- `POST /timers/{id}/convert` — finds or creates draft `Timesheet` for `WorkDate`; adds `TimesheetEntry`; sets `ConvertedToEntryId`; returns `{ entryId, timesheetId }`
+- `GET /timers/history?date=YYYY-MM-DD` — all sessions for a day, descending by `StartedAtUtc`
+- `DateTime.SpecifyKind(…, Utc).ToString("O")` used on all timestamps (consistent with ManagerController pattern)
+
+**Frontend (Timesheets.tsx)**
+- `TimerSessionData` interface added
+- New state: `activeTimer`, `taskElapsed`, `timerProjectId/CategoryId/Note`, `timerLoading`, `stoppedTimer`, `convertDate`, `convertLoading`, `timerHistory`, `timerToast`
+- `loadActiveTimer()` / `loadTimerHistory()` callbacks
+- 30s polling `useEffect` for `/timers/active` (survives page refresh)
+- `startTaskTimer()`, `stopTaskTimer()`, `convertTimer()` actions
+- localStorage: saves `activeTimerId` + `activeTimerStart` on start, removes on stop
+- **TASK TIMER sidebar card** (entirely new, above Week Summary):
+  - **Idle**: Project dropdown + Category dropdown + Note input → Start Timer button (Enter shortcut); pulsing green dot when running
+  - **Running**: Purple 24px HH:MM:SS counter, project·category·note labels, full-width Stop button
+  - **Stopped**: Green "Xh Ym recorded" badge, project/category/note detail, date picker (default today), "Add to Timesheet" + "Discard"
+  - **Today's Sessions**: history rows with ✓ badge on converted entries (max 5)
+- **ATTENDANCE card** renamed from "ACTIVE TIMER" (check-in/out logic unchanged)
+- Timer toast (centred, auto-dismiss 3–4s)
+- CSS: `.ts3-green-dot--pulse`, `.ts3-elapsed-clock--task`, `.ts3-timer-select`, `.ts3-timer-note`, `.ts3-timer-convert*`, `.ts3-timer-history*`
+
+**Tests:** All 52 backend tests still passing (no new tests needed — timer logic is straightforward CRUD covered by existing integration test patterns).
+
+### Commits (merged to master as `0b1e5a0`)
+- `b469fba` — feat: Sprint 16 — Task-Level Timer (TSK-TMR-001..011)
+- `0b1e5a0` — Merge: Sprint 16 → master
+
+---
+
 ## Pending For Next Session
 
-> Last updated: Session 14 (2026-03-17). Sprints 13, 14, 15 merged to master.
+> Last updated: Session 15 (2026-03-17). Sprints 13–16 merged to master.
 
 ### Priority 1 — Next Sprint
-Start **Sprint 16 — Task-Level Timer** on branch `feature/sprint-16-task-timer`
+Start **Sprint 17 — Project Budget Burn** on branch `feature/sprint-17-project-budget`
 
 ### Phase 3 Roadmap Status
 1. **Sprint 13** ✅ — User Profile & Self-Service (merged)
 2. **Sprint 14** ✅ — Bulk Timesheet Submission (merged)
 3. **Sprint 15** ✅ — Manager Team Status Board + UX Audit (merged)
-4. **Sprint 16** 🔜 — Task-Level Timer (`feature/sprint-16-task-timer`)
-5. **Sprint 17** — Project Budget Burn (`feature/sprint-17-project-budget`)
+4. **Sprint 16** ✅ — Task-Level Timer (merged)
+5. **Sprint 17** 🔜 — Project Budget Burn (`feature/sprint-17-project-budget`)
 6. **Sprint 18** — Recurring Entry Templates (`feature/sprint-18-entry-templates`)
 7. **Sprint 19** — Leave Team Calendar (`feature/sprint-19-leave-team-calendar`)
 8. **Sprint 20** — Anomaly Detection & Alerts (`feature/sprint-20-anomaly-alerts`)

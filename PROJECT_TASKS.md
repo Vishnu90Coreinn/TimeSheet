@@ -622,28 +622,28 @@ All Phase 2 tasks address findings from the Phase 1 audit above.
 
 ---
 
-### Sprint 16 — Task-Level Timer ⏱ 🔴 NEXT
+### Sprint 16 — Task-Level Timer ⏱ ✅ DONE
 **Branch:** `feature/sprint-16-task-timer`
 **Goal:** Capture time as it happens — timer auto-creates timesheet entries on stop.
 
 #### Backend
-- [ ] **TSK-TMR-001** New `TimerSessions` table: `{ id, userId, projectId, categoryId, note, startedAtUtc, stoppedAtUtc, durationMinutes, convertedToEntryId }`.
-- [ ] **TSK-TMR-002** `GET /timers/active` — returns the currently running timer for the calling user, or 404.
-- [ ] **TSK-TMR-003** `POST /timers/start` — `{ projectId, categoryId, note? }`; enforces one active timer per user.
-- [ ] **TSK-TMR-004** `POST /timers/stop` — stops active timer, calculates `durationMinutes`, returns the record. Does NOT auto-create entry (user confirms).
-- [ ] **TSK-TMR-005** `POST /timers/{id}/convert` — creates a draft timesheet entry from the timer record; sets `convertedToEntryId`.
-- [ ] **TSK-TMR-006** `GET /timers/history?date=YYYY-MM-DD` — recent timer sessions for the day.
+- [x] **TSK-TMR-001** New `TimerSessions` table: `{ id, userId, projectId, categoryId, note, startedAtUtc, stoppedAtUtc, durationMinutes, convertedToEntryId }`.
+- [x] **TSK-TMR-002** `GET /timers/active` — returns the currently running timer for the calling user, or 404.
+- [x] **TSK-TMR-003** `POST /timers/start` — `{ projectId, categoryId, note? }`; enforces one active timer per user.
+- [x] **TSK-TMR-004** `POST /timers/stop` — stops active timer, calculates `durationMinutes`, returns the record. Does NOT auto-create entry (user confirms).
+- [x] **TSK-TMR-005** `POST /timers/{id}/convert` — creates a draft timesheet entry from the timer record; sets `convertedToEntryId`.
+- [x] **TSK-TMR-006** `GET /timers/history?date=YYYY-MM-DD` — recent timer sessions for the day.
 
 #### Frontend
-- [ ] **TSK-TMR-007** Persistent timer widget in Timesheets sidebar (replaces/extends current Active Timer section).
-- [ ] **TSK-TMR-008** Project + Category selector dropdowns on timer start.
-- [ ] **TSK-TMR-009** Live HH:MM:SS counter when timer running (polling `/timers/active` every 30s to survive page refresh).
-- [ ] **TSK-TMR-010** Stop → "Add to Timesheet?" confirmation with pre-filled entry form showing computed duration.
-- [ ] **TSK-TMR-011** Timer persists across page navigation (stored in localStorage with startedAt; reconciled with server on load).
+- [x] **TSK-TMR-007** Persistent timer widget in Timesheets sidebar (replaces/extends current Active Timer section).
+- [x] **TSK-TMR-008** Project + Category selector dropdowns on timer start.
+- [x] **TSK-TMR-009** Live HH:MM:SS counter when timer running (polling `/timers/active` every 30s to survive page refresh).
+- [x] **TSK-TMR-010** Stop → "Add to Timesheet?" confirmation with pre-filled entry form showing computed duration.
+- [x] **TSK-TMR-011** Timer persists across page navigation (stored in localStorage with startedAt; reconciled with server on load).
 
 ---
 
-### Sprint 17 — Project Budget Burn 📊
+### Sprint 17 — Project Budget Burn 📊 🔴 NEXT
 **Branch:** `feature/sprint-17-project-budget`
 **Goal:** Expose `budgetedHours` data as actionable project health indicators.
 
@@ -828,8 +828,8 @@ feature/sprint-25-dark-mode
 | 1 | ~~13 — User Profile~~ ✅ | Foundational — needed before notification prefs in later sprints |
 | 2 | ~~14 — Bulk Submit~~ ✅ | Highest daily-friction fix; pure backend extension, low risk |
 | 3 | ~~15 — Team Status~~ ✅ | Highest manager value; new endpoint, no schema change |
-| 4 | **16 — Task Timer** 🔴 NEXT | New table + persistent widget; biggest engagement driver |
-| 5 | 17 — Budget Burn | Uses existing `budgetedHours` field; low backend effort |
+| 4 | ~~16 — Task Timer~~ ✅ | New table + persistent widget; biggest engagement driver |
+| 5 | **17 — Budget Burn** 🔴 NEXT | Uses existing `budgetedHours` field; low backend effort |
 | 6 | 18 — Templates | Comfort feature; reduces daily friction |
 | 7 | 19 — Leave Team Cal | Extend existing leave endpoints |
 | 8 | 20 — Anomaly Alerts | Background service; builds on existing notification infra |

@@ -28,6 +28,7 @@ public class TimeSheetDbContext(DbContextOptions<TimeSheetDbContext> options) : 
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<Holiday> Holidays => Set<Holiday>();
     public DbSet<UserNotificationPreferences> UserNotificationPreferences => Set<UserNotificationPreferences>();
+    public DbSet<TimerSession> TimerSessions => Set<TimerSession>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -327,6 +328,35 @@ public class TimeSheetDbContext(DbContextOptions<TimeSheetDbContext> options) : 
                 .WithOne()
                 .HasForeignKey<UserNotificationPreferences>(x => x.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TimerSession>(entity =>
+        {
+            entity.ToTable("TimerSessions");
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => x.UserId);
+            entity.HasIndex(x => new { x.UserId, x.StoppedAtUtc });
+            entity.Property(x => x.Note).HasMaxLength(500);
+
+            entity.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(x => x.Project)
+                .WithMany()
+                .HasForeignKey(x => x.ProjectId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(x => x.Category)
+                .WithMany()
+                .HasForeignKey(x => x.CategoryId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(x => x.ConvertedToEntry)
+                .WithMany()
+                .HasForeignKey(x => x.ConvertedToEntryId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
     }
 }

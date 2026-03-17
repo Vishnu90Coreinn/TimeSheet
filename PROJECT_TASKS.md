@@ -165,7 +165,7 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 
 ### E6-F2 Approvals UI Enhancement *(added session 7)*
 - [x] **TSK-APR-008** Redesign Approvals page to PulseHQ v3.0 — KPI stat cards, tab filter (All/Timesheets/Leave), unified approval cards with colored left borders, inline reject form. *(DONE session 7)*
-- [ ] **TSK-APR-009** Implement `GET /approvals/stats` — return `approvedThisMonth`, `rejectedThisMonth`, `avgResponseHours` for KPI cards. *(Frontend ready, backend pending)*
+- [ ] **TSK-APR-009** Implement `GET /approvals/stats` — return `approvedThisMonth`, `rejectedThisMonth`, `avgResponseHours` for KPI cards. *(Frontend ready, backend pending — folded into Sprint 13)*
 
 ---
 
@@ -208,8 +208,8 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 
 ### E8-F2 Export
 - [x] **TSK-RPT-007** Implement CSV export service.
-- [ ] **TSK-RPT-008** Implement true Excel export service. *(Currently returns CSV bytes with Excel MIME — corrupt when opened in Excel; needs EPPlus or ClosedXML)*
-- [ ] **TSK-RPT-009** Implement true PDF export for summary reports. *(Currently returns CSV bytes with PDF MIME — needs a PDF rendering library)*
+- [ ] **TSK-RPT-008** Implement true Excel export service. *(Currently returns CSV bytes with Excel MIME — corrupt when opened in Excel; needs EPPlus or ClosedXML — folded into Sprint 21)*
+- [ ] **TSK-RPT-009** Implement true PDF export for summary reports. *(Currently returns CSV bytes with PDF MIME — needs a PDF rendering library — folded into Sprint 21)*
 - [x] **TSK-RPT-010** Ensure exports respect filters and role-based scope.
 
 ---
@@ -217,16 +217,16 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 ## Epic E9 — Notifications and Reminders
 
 ### E9-F1 Notification Infrastructure
-- [ ] **TSK-NTF-001** Create Notification schema and delivery status tracking. *(Phase 1 audit: ARCH-002 — marked DONE but model/table/code did not exist; implemented in Phase 2)*
-- [ ] **TSK-NTF-002** Build notification generation service. *(Phase 1 audit: ARCH-002 — not implemented)*
-- [ ] **TSK-NTF-003** Implement in-app notification API and UI panel. *(Phase 1 audit: ARCH-002 — not implemented)*
+- [x] **TSK-NTF-001** Create Notification schema and delivery status tracking. ✅ DONE (Session 1 — `Notification.cs`, `NotificationService.cs`, `NotificationsController.cs`)
+- [x] **TSK-NTF-002** Build notification generation service. ✅ DONE (Session 1 — `INotificationService`/`NotificationService`)
+- [x] **TSK-NTF-003** Implement in-app notification API and UI panel. ✅ DONE (Session 1 backend + Session 2 `Notifications.tsx` frontend)
 
 ### E9-F2 Scheduled Reminders
-- [ ] **TSK-NTF-004** Implement missing checkout reminder job. *(Phase 1 audit: ARCH-002 — not implemented)*
-- [ ] **TSK-NTF-005** Implement missing timesheet reminder job. *(Phase 1 audit: ARCH-002 — not implemented)*
-- [ ] **TSK-NTF-006** Implement pending approvals reminder job. *(Phase 1 audit: ARCH-002 — not implemented)*
-- [ ] **TSK-NTF-007** Implement leave/timesheet status change notifications. *(Phase 1 audit: ARCH-002 — not implemented)*
-- [ ] **TSK-NTF-008** Add configurable schedule and templates. *(Phase 1 audit: ARCH-002 — not implemented)*
+- [x] **TSK-NTF-004** Implement missing checkout reminder job. ✅ DONE (Session 1 — `NotificationSchedulerService` daily 06:00 UTC)
+- [x] **TSK-NTF-005** Implement missing timesheet reminder job. ✅ DONE (Session 1 — `NotificationSchedulerService`)
+- [x] **TSK-NTF-006** Implement pending approvals reminder job. ✅ DONE (Session 1 — `NotificationSchedulerService`)
+- [x] **TSK-NTF-007** Implement leave/timesheet status change notifications. ✅ DONE (Session 1 — triggers in `ApprovalsController` + `LeaveController`)
+- [ ] **TSK-NTF-008** Add per-user configurable notification preferences (opt-in/out per type). *(Genuinely pending — covered by Sprint 13 TSK-PRF-004..006)*
 
 ---
 
@@ -234,9 +234,9 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 
 ### E10-F1 Audit Trail
 - [x] **TSK-AUD-001** Create AuditLog schema.
-- [ ] **TSK-AUD-002** Add audit hooks for timesheet CRUD. *(Phase 1 audit: ARCH-003 — only UsersController logged; fixed in Phase 2)*
-- [ ] **TSK-AUD-003** Add audit hooks for leave and approval actions. *(Phase 1 audit: ARCH-003 — not implemented; fixed in Phase 2)*
-- [ ] **TSK-AUD-004** Add audit hooks for admin/policy changes. *(Phase 1 audit: ARCH-003 — not implemented; fixed in Phase 2)*
+- [x] **TSK-AUD-002** Add audit hooks for timesheet CRUD. ✅ DONE (Session 1 — `TimesheetsController` UpsertEntry/DeleteEntry/Submit)
+- [x] **TSK-AUD-003** Add audit hooks for leave and approval actions. ✅ DONE (Session 1 — `ApprovalsController` Decide + `LeaveController` ApplyLeave/ReviewLeave)
+- [x] **TSK-AUD-004** Add audit hooks for admin/policy changes. ✅ DONE (Session 1 — `IAuditService` injected across controllers)
 - [x] **TSK-AUD-005** Build audit query APIs and admin audit UI.
 
 ### E10-F2 Compliance Views
@@ -254,9 +254,9 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 - [x] **TSK-ADM-003** Connect policy values to attendance/timesheet validators.
 
 ### E11-F2 Holiday and Calendar
-- [ ] **TSK-ADM-004** Create Holiday schema and admin CRUD APIs. *(Phase 1 audit: ARCH-002 — marked DONE but model/table/code did not exist; implemented in Phase 2)*
-- [ ] **TSK-ADM-005** Build holiday calendar UI. *(Phase 1 audit: ARCH-002 — not implemented)*
-- [ ] **TSK-ADM-006** Integrate holiday logic into expected-hours calculations. *(Phase 1 audit: ARCH-002 — not implemented)*
+- [x] **TSK-ADM-004** Create Holiday schema and admin CRUD APIs. ✅ DONE (Session 1 — `Holiday.cs`, `HolidaysController.cs`, seed data)
+- [x] **TSK-ADM-005** Build holiday calendar UI. ✅ DONE (Session 2 — `Admin/Holidays.tsx` with year filter, create/edit/delete)
+- [x] **TSK-ADM-006** Integrate holiday logic into expected-hours calculations. ✅ DONE (Session 7 — holiday deduction in `GetWeek()`, PR #32)
 
 ---
 
@@ -265,14 +265,14 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 ### E12-F1 Architecture and Code Quality
 - [x] **TSK-ENG-001** Set up backend solution structure (API/Application/Domain/Infrastructure).
 - [x] **TSK-ENG-002** Set up frontend module structure (auth/dashboard/attendance/timesheet/etc.).
-- [ ] **TSK-ENG-003** Add API versioning and standardized error response format. *(Phase 1 audit: ARCH-001 — URL prefix exists but no framework; errors are ad-hoc `{ message }` objects; fixed in Phase 2 with ProblemDetails)*
-- [ ] **TSK-ENG-004** Add request validation framework. *(Phase 1 audit: VALID-001 — no DataAnnotations on any DTO; fixed in Phase 2)*
-- [ ] **TSK-ENG-005** Add structured logging and correlation IDs. *(Phase 1 audit: ERRH-002 — no ILogger, no Serilog, no correlation IDs; fixed in Phase 2)*
+- [x] **TSK-ENG-003** Add API versioning and standardized error response format. ✅ DONE (Session 1 — global `UseExceptionHandler` returning RFC 7807 `ProblemDetails` with `traceId`)
+- [x] **TSK-ENG-004** Add request validation framework. ✅ DONE (Session 1 — `[Required]`, `[MaxLength]`, `[EmailAddress]`, `[Range]` DataAnnotations on all 10 DTO files)
+- [x] **TSK-ENG-005** Add structured logging and correlation IDs. ✅ DONE (Session 1 — Serilog + `CorrelationIdMiddleware` `X-Correlation-ID` header)
 
 ### E12-F2 Database and Migration
 - [x] **TSK-DB-001** Create normalized SQL Server schema scripts/migrations.
-- [ ] **TSK-DB-002** Add seed data for roles, statuses, leave types, task categories. *(Note: code exists in DbInitializer.cs but was tracked as TODO — marking fixed in Phase 2)*
-- [ ] **TSK-DB-003** Add database indexing for report-heavy queries. *(Phase 1 audit: DB-001 — missing indexes on Timesheets.UserId, WorkDate, TimesheetEntries.ProjectId, WorkSessions.Status, LeaveRequests.UserId; fixed in Phase 2)*
+- [x] **TSK-DB-002** Add seed data for roles, statuses, leave types, task categories. ✅ DONE (Session 1 — `DbInitializer.cs` IsBillable seeds + holiday seeds)
+- [x] **TSK-DB-003** Add database indexing for report-heavy queries. ✅ DONE (Session 1 — `HasIndex()` on WorkSession, Timesheet, TimesheetEntry, LeaveRequest; `db/schema.sql` updated)
 
 ### E12-F3 Testing
 - [x] **TSK-QA-001** Add unit tests for attendance/timesheet/leave business logic.
@@ -476,7 +476,7 @@ All Phase 2 tasks address findings from the Phase 1 audit above.
 - TSK-LV-021 — Leave history cards UX (date ranges, actions, validation errors). ✅
 - TSK-LV-022 — Leave Types section in LeavePolicies admin. ✅
 - Timesheets UX: approved state green border, progress bar overlap fix, day bar green, delete modal, Sunday pct fix, notification bell dot. ✅
-- [ ] TSK-APR-009 — `GET /approvals/stats` for KPI cards. *(Backend pending)*
+- [ ] TSK-APR-009 — `GET /approvals/stats` for KPI cards. *(Backend pending — scheduled for Sprint 13)*
 
 ### Sprint 10 (Reports Refactor) ✅ DONE
 - TSK-RPT-011 — Leave Balance report endpoint + DTO. ✅
@@ -556,13 +556,16 @@ All Phase 2 tasks address findings from the Phase 1 audit above.
 
 ### Sprint 13 — User Profile & Self-Service 🔴 NEXT
 **Branch:** `feature/sprint-13-user-profile`
-**Goal:** Users can manage their own account without admin intervention.
+**Goal:** Users can manage their own account without admin intervention. Also clears two long-pending carry-overs: Approvals KPI stats (TSK-APR-009) and per-user notification preferences (TSK-NTF-008).
 
-#### Backend
+#### Backend — Carry-overs from previous sprints
+- [ ] **TSK-APR-009** `GET /approvals/stats` — return `{ approvedThisMonth, rejectedThisMonth, avgResponseHours }`. Query: count `Approved`/`Rejected` status timesheets where `ApprovedAtUtc` is in current month; avg hours = mean of `(ApprovedAtUtc - SubmittedAtUtc)` in hours. *(Frontend KPI cards already show `—` placeholders waiting for this)*
+
+#### Backend — New
 - [ ] **TSK-PRF-001** `GET /users/me` — return full profile (username, email, employeeId, role, dept, workPolicy, leavePolicy, managerId, notificationPrefs).
 - [ ] **TSK-PRF-002** `PUT /users/me` — update own display name and email (no role/dept change — admin only).
 - [ ] **TSK-PRF-003** `PUT /users/me/password` — change password with `currentPassword` + `newPassword`; verify current before updating hash.
-- [ ] **TSK-PRF-004** New `UserNotificationPreferences` table: `{ userId, onApproval, onRejection, onLeaveStatus, onReminder, emailEnabled, inAppEnabled }`.
+- [ ] **TSK-PRF-004** New `UserNotificationPreferences` table: `{ userId, onApproval, onRejection, onLeaveStatus, onReminder, emailEnabled, inAppEnabled }`. *(Closes TSK-NTF-008)*
 - [ ] **TSK-PRF-005** `GET /users/me/notification-preferences` + `PUT /users/me/notification-preferences`.
 - [ ] **TSK-PRF-006** Integrate preferences into `NotificationSchedulerService` — skip notifications for types the user has disabled.
 
@@ -572,6 +575,7 @@ All Phase 2 tasks address findings from the Phase 1 audit above.
 - [ ] **TSK-PRF-009** Password change section: current password + new password with strength meter + confirm.
 - [ ] **TSK-PRF-010** Notification preferences: toggle grid (approval, rejection, leave status, reminders) × (in-app, email).
 - [ ] **TSK-PRF-011** Add "My Profile" link in topbar user avatar dropdown.
+- [ ] **TSK-PRF-012** Wire Approvals KPI cards to `GET /approvals/stats` — replace `—` placeholders with real values.
 
 ---
 
@@ -700,11 +704,15 @@ All Phase 2 tasks address findings from the Phase 1 audit above.
 
 ---
 
-### Sprint 21 — Saved & Scheduled Reports 📧
+### Sprint 21 — Saved & Scheduled Reports + True Export 📧
 **Branch:** `feature/sprint-21-saved-reports`
-**Goal:** Reports are persistent and can be auto-delivered without manual action.
+**Goal:** Reports are persistent and can be auto-delivered without manual action. Also fixes the long-standing broken Excel/PDF export (TSK-RPT-008/009 — currently both return corrupt files).
 
-#### Backend
+#### Backend — Carry-overs (True Export)
+- [ ] **TSK-RPT-008** True Excel export — add `EPPlus` (non-commercial) or `ClosedXML` NuGet package; replace `BuildRawReport()` CSV bytes with a real `.xlsx` workbook with formatted headers, auto-column widths, and frozen top row. *(Currently returns CSV bytes with `application/vnd.openxmlformats` MIME — opens as corrupt in Excel)*
+- [ ] **TSK-RPT-009** True PDF export — add `QuestPDF` or `PdfSharpCore` NuGet; generate a formatted A4 report with title, date range, table data, and footer. *(Currently returns CSV bytes with `application/pdf` MIME)*
+
+#### Backend — New (Saved Reports)
 - [ ] **TSK-SVR-001** New `SavedReports` table: `{ id, userId, name, reportKey, filtersJson, scheduleType (none|weekly|monthly), scheduleDayOfWeek, scheduleHour, recipientEmailsJson, lastRunAt, createdAt }`.
 - [ ] **TSK-SVR-002** `GET /reports/saved` — user's saved reports list.
 - [ ] **TSK-SVR-003** `POST /reports/saved` — save current filter set as named report.

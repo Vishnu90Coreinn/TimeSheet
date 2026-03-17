@@ -5,7 +5,9 @@ public enum NotificationType
     MissingCheckout,
     MissingTimesheet,
     PendingApproval,
-    StatusChange
+    StatusChange,
+    MissingTimesheetReminder,
+    Anomaly
 }
 
 public class Notification

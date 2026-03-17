@@ -34,6 +34,7 @@ interface ContributionRow { project: string; minutes: number; }
 interface ManagerData { teamAttendance: TeamAttendance; timesheetHealth: TimesheetHealth; mismatches: MismatchRow[]; utilization: Utilization; contributions: ContributionRow[]; }
 
 // ── Admin interfaces ──────────────────────────────────────────────────────────
+interface AnomalyNotification { id: string; title: string; message: string; severity: "warning" | "critical"; createdAtUtc: string; }
 interface DeptRow { department: string; minutes: number; }
 interface ProjectRow { project: string; minutes: number; }
 interface Billable { billableMinutes: number; nonBillableMinutes: number; }
@@ -119,6 +120,15 @@ function relativeTime(date: Date): string {
   const diffHr = Math.floor(diffMin / 60);
   if (diffHr < 24) return `Updated ${diffHr}h ago`;
   return `Updated ${date.toLocaleDateString()}`;
+}
+
+function anomalyRelativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
 }
 
 // ── SVG icons (20×20 stroke) ──────────────────────────────────────────────────
@@ -1305,13 +1315,18 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
   const [period, setPeriod] = useState<"today" | "week" | "30d" | "quarter">("30d");
   const exportRef = useRef<HTMLDivElement>(null);
 
+  // Anomaly alerts state
+  const [anomalies, setAnomalies] = useState<AnomalyNotification[]>([]);
+  const [anomalyFilter, setAnomalyFilter] = useState<"all" | "warning" | "critical">("all");
+
   useEffect(() => {
     const fetchExtra = async () => {
       try {
-        const [leaveRes, pendingRes, usersRes] = await Promise.all([
+        const [leaveRes, pendingRes, usersRes, anomalyRes] = await Promise.all([
           apiFetch("/leave/team-on-leave"),
           apiFetch("/approvals/pending-timesheets"),
           apiFetch("/users"),
+          apiFetch("/admin/anomalies"),
         ]);
         if (leaveRes.ok) setLeaveToday(await leaveRes.json() as TeamLeaveEntry[]);
         if (pendingRes.ok) {
@@ -1324,6 +1339,7 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
           setTotalStaff(active);
           setSubmittedCount(Math.round(active * 0.7)); // placeholder — no dedicated endpoint
         }
+        if (anomalyRes.ok) setAnomalies(await anomalyRes.json() as AnomalyNotification[]);
       } catch { /* non-critical */ }
       setLastRefreshed(new Date());
     };
@@ -1486,6 +1502,144 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
           </div>
         </div>
       </div>
+
+      {/* Anomaly Alerts panel — only shown when there are alerts */}
+      {anomalies.length > 0 && (() => {
+        const filtered = anomalyFilter === "all" ? anomalies : anomalies.filter(a => a.severity === anomalyFilter);
+        const visible = filtered.slice(0, 10);
+        const hiddenCount = filtered.length - visible.length;
+
+        async function dismissAnomaly(id: string) {
+          const r = await apiFetch(`/admin/anomalies/${id}/dismiss`, { method: "POST" }).catch(() => null);
+          if (r?.ok || r?.status === 204) {
+            setAnomalies(prev => prev.filter(a => a.id !== id));
+          }
+        }
+
+        return (
+          <div style={{
+            background: "#fff",
+            border: "1px solid var(--border-subtle)",
+            borderRadius: 12,
+            padding: 20,
+          }}>
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
+              <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 6 }}>
+                🔔 Anomaly Alerts
+                {anomalies.some(a => a.severity === "critical") && (
+                  <span style={{ background: "#fee2e2", color: "#ef4444", borderRadius: 8, padding: "2px 8px", fontSize: "0.72rem", fontWeight: 700 }}>
+                    {anomalies.filter(a => a.severity === "critical").length} critical
+                  </span>
+                )}
+              </span>
+              <div style={{ display: "flex", gap: 4 }}>
+                {(["all", "warning", "critical"] as const).map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setAnomalyFilter(f)}
+                    style={{
+                      padding: "3px 10px",
+                      fontSize: "0.72rem",
+                      fontWeight: anomalyFilter === f ? 700 : 400,
+                      borderRadius: 20,
+                      border: anomalyFilter === f
+                        ? (f === "critical" ? "1px solid #ef4444" : f === "warning" ? "1px solid #f59e0b" : "1px solid var(--brand-500)")
+                        : "1px solid var(--border-subtle)",
+                      background: anomalyFilter === f
+                        ? (f === "critical" ? "#fee2e2" : f === "warning" ? "#fef3c7" : "var(--brand-50)")
+                        : "transparent",
+                      color: anomalyFilter === f
+                        ? (f === "critical" ? "#ef4444" : f === "warning" ? "#b45309" : "var(--brand-600)")
+                        : "var(--text-tertiary)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {f.charAt(0).toUpperCase() + f.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Alert rows */}
+            {visible.length === 0 ? (
+              <div style={{ fontSize: "0.8rem", color: "var(--text-tertiary)", padding: "12px 0", textAlign: "center" }}>
+                No {anomalyFilter === "all" ? "" : anomalyFilter + " "}alerts.
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                {visible.map((a, idx) => (
+                  <div
+                    key={a.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 10,
+                      padding: "10px 0",
+                      borderTop: idx === 0 ? "1px solid var(--border-subtle)" : "1px solid var(--border-subtle)",
+                    }}
+                  >
+                    {/* Severity icon */}
+                    <div style={{ flexShrink: 0, marginTop: 1, fontSize: "1rem", lineHeight: 1 }}>
+                      {a.severity === "critical"
+                        ? <span style={{ color: "#ef4444" }}>🔴</span>
+                        : <span style={{ color: "#f59e0b" }}>⚠️</span>
+                      }
+                    </div>
+                    {/* Content */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: a.severity === "critical" ? "#ef4444" : "#b45309", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {a.title}
+                      </div>
+                      <div style={{
+                        fontSize: 12,
+                        color: "var(--text-secondary)",
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                        marginBottom: 4,
+                      }}>
+                        {a.message}
+                      </div>
+                      <div style={{ fontSize: "0.68rem", color: "var(--text-tertiary)" }}>
+                        {anomalyRelativeTime(a.createdAtUtc)}
+                      </div>
+                    </div>
+                    {/* Dismiss button */}
+                    <button
+                      onClick={() => void dismissAnomaly(a.id)}
+                      style={{
+                        flexShrink: 0,
+                        padding: "3px 10px",
+                        fontSize: "0.72rem",
+                        fontWeight: 500,
+                        borderRadius: "var(--r-sm)",
+                        border: "1px solid var(--border-subtle)",
+                        background: "transparent",
+                        color: "var(--text-secondary)",
+                        cursor: "pointer",
+                        marginTop: 2,
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--brand-400)"; e.currentTarget.style.color = "var(--brand-600)"; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border-subtle)"; e.currentTarget.style.color = "var(--text-secondary)"; }}
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                ))}
+                {hiddenCount > 0 && (
+                  <div style={{ fontSize: "0.75rem", color: "var(--brand-600)", fontWeight: 600, paddingTop: 8, textAlign: "center", cursor: "pointer" }}
+                    onClick={() => setAnomalyFilter("all")}
+                  >
+                    Show {hiddenCount} more
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Row 2: Dept Effort + Billable vs Non-Billable */}
       <div className="dashboard-grid-2">

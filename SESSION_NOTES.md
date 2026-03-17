@@ -733,24 +733,90 @@ Each: `SortIcon` component, `sortCol/sortDir` state, `toggleSort()`, `sorted` co
 
 ---
 
+---
+
+## Session 14 — Sprint 14 + Sprint 15 + UX Audit (2026-03-17)
+
+### What Was Done
+
+#### Sprint 14 — Bulk Timesheet Week Submission
+**Backend**
+- `POST /timesheets/submit-week` — validates weekStart is Monday; batch-processes Mon–Sat; skips future/no-entry/already-submitted days; records mismatch as "(bulk submit)"
+- New DTOs: `SubmitWeekRequest`, `SubmitWeekResponse`, `SubmitWeekSkipped`, `SubmitWeekError`
+
+**Frontend**
+- `Timesheets.tsx`: "Submit Week" button (visible when `submittableCount > 0`), preview modal (day-by-day table), result toast (4s auto-dismiss)
+- `.ts3-modal--wide { max-width: 480px }` CSS rule added
+
+#### Sprint 15 — Manager Team Status Board
+**Backend (`apps/api/Controllers/ManagerController.cs` — new)**
+- `GET /manager/team-status?date=` — loads direct reports; sequential EF queries for sessions, week timesheets, leave, pending approvals, work policies; returns `TeamMemberStatusResponse` per member
+- `POST /manager/remind/{userId}` — validates direct-report ownership; fires `MissingTimesheet` notification
+- `weekExpected` uses `wp.WorkDaysPerWeek` (not hardcoded 5) — fixes 40h vs 48h display bug
+
+**Backend bug fixes during Sprint 15**
+- `DashboardController.cs`: eliminated all `FirstOrDefaultAsync` without `OrderBy` warnings (Employee + Manager actions)
+- `ManagerController.cs`: all 5 DB queries made sequential (fixes DbContext concurrency 500 error)
+- `ManagerController.cs`: `DateTime.SpecifyKind(dt, DateTimeKind.Utc).ToString("O")` — ensures `Z` suffix on check-in/out strings so JS converts UTC → correct local time (fixes 11:50 UTC showing as 11:50 instead of 05:20 PM IST)
+
+**Frontend (`apps/web/src/components/TeamStatus.tsx` — new)**
+- Filter bar: All / Missing Today / Needs Approval / On Leave with live counts; all 4 tabs always show badge
+- Status table: Avatar · Member (truncation + title tooltip) · Attendance badge · Check-in Time (clock icon, UTC→local) · Week Progress bar · Timesheet badge · Pending Actions
+- Custom `DatePicker`: trigger button (MMM DD YYYY + calendar icon) + fully custom `MiniCalendar` (6×7 grid, month nav, today highlight, Today shortcut — no `<input type="date">`)
+- `WeekBar`: %, tooltip "Xh of Yh target", green ≥80% / yellow 40% / red <40%
+- "Pending Actions" column: `position: sticky; right: 0` — always visible, no horizontal clip
+- All `<th>` cells: `overflow: hidden; text-overflow: ellipsis; white-space: nowrap`
+- Remind = secondary outlined button; Approve = primary filled + checkmark icon
+- Dynamic subtitle built from live counts ("N members · X missing · Y need approval")
+- Empty state (0 members) + contextual note (1 member)
+- `types.ts`: `TeamMemberStatus` type; `View` union adds `"team"`
+- `AppShell.tsx`: Team Status nav item; sidebar groups renamed "My Work" / "My Team"
+- `App.tsx`: `/team` route (manager/admin only)
+
+#### UX Audit Fixes — Dashboard (Manager)
+- Stat cards: clickable (role="link", hover shadow, aria-label, keyboard nav); min-height: 140px
+- "↑ All in" moved to Present card only; Not Checked In shows "✓ None missing" at 0
+- Reports button: SVG `IconBarChart` (no emoji)
+- Activity feed: structured sentences "[Name] submitted for [Date] — flagged as mismatch", Note: truncated 60 chars, "Review →" link
+- `formatDisplayName()`: strips `.rs`/`.com` suffixes, capitalises
+- Inline approval confirmation panel (H5) before executing approve
+- Budget Health: "No budget cap set" in grey italic per project
+- "View 1 pending approval" / "View all N pending approvals" grammar fix
+- Data freshness timestamp + manual Refresh button + 60s auto-refresh
+
+#### Cross-Cutting Shared Components (new files)
+- `src/components/StatusBadge.tsx` — icon+text+color, role="status", aria-label (WCAG 2.1 SC 1.4.1)
+- `src/hooks/useConfirm.ts` — request/confirm/cancel hook for irreversible actions
+- `toBadgeStatus()` helper maps raw API strings to typed `BadgeStatus`
+
+#### Tests
+- 22 new unit tests: `StatusBadge.test.tsx` (10), `useConfirm.test.ts` (5), `TeamStatus.test.tsx` (7)
+- 63 tests total, all passing
+
+### Commits (merged to master as `8a7e323`)
+- `791a2aa` — feat(sprint-15): Manager Team Status Board
+- `6bbac98` — fix: sequential EF queries (DbContext concurrency 500)
+- `2ba6de3` — fix: check-in/out as UTC ISO strings, format to local in browser
+- `0ea80a3` — fix: EF Core FirstOrDefault-without-OrderBy warnings in DashboardController
+- `e7510ef` — feat: UX audit fixes — Team Status + Dashboard
+- `6572f8b` — fix: 4 layout/UX follow-up fixes (sticky column, badges, MiniCalendar, th ellipsis)
+- `2cd3677` — fix: check-in/out UTC timezone (SpecifyKind + Z suffix)
+- `8a7e323` — Merge: Sprint 14 + Sprint 15 + UX Audit → master
+
+---
+
 ## Pending For Next Session
 
-> Last updated: Session 13 (2026-03-17). Sprint 13 merged to master.
+> Last updated: Session 14 (2026-03-17). Sprints 13, 14, 15 merged to master.
 
-### Priority 1 — Manual Smoke Test (Sprint 13)
-- [ ] Run `dotnet ef database update` → migrations apply cleanly
-- [ ] Navigate to My Profile from topbar avatar — breadcrumb shows "My Profile"
-- [ ] Upload photo → avatar updates; Remove photo clears it
-- [ ] Edit Display Name → saved; avatar initials reflect display name
-- [ ] Change password with eye-icon toggles; strength bar; confirm mismatch on blur
-- [ ] Notification toggles save immediately; toast auto-dismisses in 3s
-- [ ] Employment Info card is fully read-only
+### Priority 1 — Next Sprint
+Start **Sprint 16 — Task-Level Timer** on branch `feature/sprint-16-task-timer`
 
-### Priority 2 — Phase 3 Roadmap (next sprint)
-1. **Sprint 13** ✅ — User Profile & Self-Service (merged PR #36)
-2. **Sprint 14** — Bulk Timesheet Submission (`feature/sprint-14-bulk-submit`)
-3. **Sprint 15** — Manager Team Status Board (`feature/sprint-15-team-status`)
-4. **Sprint 16** — Task-Level Timer (`feature/sprint-16-task-timer`)
+### Phase 3 Roadmap Status
+1. **Sprint 13** ✅ — User Profile & Self-Service (merged)
+2. **Sprint 14** ✅ — Bulk Timesheet Submission (merged)
+3. **Sprint 15** ✅ — Manager Team Status Board + UX Audit (merged)
+4. **Sprint 16** 🔜 — Task-Level Timer (`feature/sprint-16-task-timer`)
 5. **Sprint 17** — Project Budget Burn (`feature/sprint-17-project-budget`)
 6. **Sprint 18** — Recurring Entry Templates (`feature/sprint-18-entry-templates`)
 7. **Sprint 19** — Leave Team Calendar (`feature/sprint-19-leave-team-calendar`)

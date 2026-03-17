@@ -47,43 +47,35 @@ public class ManagerController(TimeSheetDbContext dbContext, INotificationServic
 
         var reportIds = directReports.Select(u => u.Id).ToList();
 
-        // Batch load all needed data in parallel
-        var sessionsTask = dbContext.WorkSessions
+        // Sequential queries — EF Core DbContext is not thread-safe
+        var sessions = await dbContext.WorkSessions
             .AsNoTracking()
             .Where(ws => reportIds.Contains(ws.UserId) && ws.WorkDate == effectiveDate)
             .ToListAsync();
 
-        var weekTimesheetsTask = dbContext.Timesheets
+        var weekTimesheets = await dbContext.Timesheets
             .AsNoTracking()
             .Where(t => reportIds.Contains(t.UserId) && t.WorkDate >= weekStart && t.WorkDate <= weekEnd)
             .Select(t => new { t.UserId, t.WorkDate, t.Status, EntriesMinutes = t.Entries.Sum(e => e.Minutes) })
             .ToListAsync();
 
-        var leavesTask = dbContext.LeaveRequests
+        var onLeaveUserIds = (await dbContext.LeaveRequests
             .AsNoTracking()
             .Where(l => reportIds.Contains(l.UserId) && l.LeaveDate == effectiveDate && l.Status == LeaveRequestStatus.Approved)
             .Select(l => l.UserId)
-            .ToListAsync();
+            .ToListAsync()).ToHashSet();
 
-        var pendingApprovalsTask = dbContext.Timesheets
+        var pendingByUser = (await dbContext.Timesheets
             .AsNoTracking()
             .Where(t => reportIds.Contains(t.UserId) && t.Status == TimesheetStatus.Submitted)
             .GroupBy(t => t.UserId)
             .Select(g => new { UserId = g.Key, Count = g.Count() })
-            .ToListAsync();
+            .ToListAsync()).ToDictionary(x => x.UserId, x => x.Count);
 
-        var workPoliciesTask = dbContext.WorkPolicies
+        var workPolicies = (await dbContext.WorkPolicies
             .AsNoTracking()
             .Select(wp => new { wp.Id, wp.DailyExpectedMinutes, wp.WorkDaysPerWeek })
-            .ToListAsync();
-
-        await Task.WhenAll(sessionsTask, weekTimesheetsTask, leavesTask, pendingApprovalsTask, workPoliciesTask);
-
-        var sessions         = sessionsTask.Result;
-        var weekTimesheets   = weekTimesheetsTask.Result;
-        var onLeaveUserIds   = leavesTask.Result.ToHashSet();
-        var pendingByUser    = pendingApprovalsTask.Result.ToDictionary(x => x.UserId, x => x.Count);
-        var workPolicies     = workPoliciesTask.Result.ToDictionary(wp => wp.Id);
+            .ToListAsync()).ToDictionary(wp => wp.Id);
 
         var result = directReports.Select(u =>
         {

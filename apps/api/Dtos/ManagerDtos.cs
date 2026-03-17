@@ -6,9 +6,9 @@ public record TeamMemberStatusResponse(
     string DisplayName,
     string? AvatarDataUrl,
     // Attendance
-    string Attendance,          // checkedIn | checkedOut | onLeave | absent
-    string? CheckInTime,        // HH:mm UTC
-    string? CheckOutTime,       // HH:mm UTC
+    string Attendance,           // checkedIn | checkedOut | onLeave | absent
+    string? CheckInAtUtc,        // ISO 8601 UTC — client converts to local time
+    string? CheckOutAtUtc,       // ISO 8601 UTC — client converts to local time
     // Week progress
     int WeekLoggedMinutes,
     int WeekExpectedMinutes,

@@ -22,6 +22,11 @@ function todayIso(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+function fmtLocalTime(isoUtc: string | null): string | null {
+  if (!isoUtc) return null;
+  return new Date(isoUtc).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
 function fmtHours(minutes: number): string {
   if (minutes === 0) return "0h";
   const h = Math.floor(minutes / 60);
@@ -255,10 +260,10 @@ export function TeamStatus() {
 
                       {/* Check in/out */}
                       <td style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
-                        {m.checkInTime ? (
+                        {m.checkInAtUtc ? (
                           <div>
-                            <div>{m.checkInTime}</div>
-                            {m.checkOutTime && <div style={{ color: "var(--text-tertiary)" }}>{m.checkOutTime}</div>}
+                            <div>{fmtLocalTime(m.checkInAtUtc)}</div>
+                            {m.checkOutAtUtc && <div style={{ color: "var(--text-tertiary)" }}>{fmtLocalTime(m.checkOutAtUtc)}</div>}
                           </div>
                         ) : "—"}
                       </td>

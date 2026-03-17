@@ -85,8 +85,8 @@ public class ManagerController(TimeSheetDbContext dbContext, INotificationServic
             var completedSession = todaySessions.OrderByDescending(ws => ws.CheckOutAtUtc).FirstOrDefault(ws => ws.Status == WorkSessionStatus.Completed);
 
             string attendance;
-            string? checkInTime  = null;
-            string? checkOutTime = null;
+            string? checkInAtUtc  = null;
+            string? checkOutAtUtc = null;
 
             if (onLeaveUserIds.Contains(u.Id))
             {
@@ -94,14 +94,14 @@ public class ManagerController(TimeSheetDbContext dbContext, INotificationServic
             }
             else if (activeSession is not null)
             {
-                attendance  = "checkedIn";
-                checkInTime = activeSession.CheckInAtUtc.ToString("HH:mm");
+                attendance   = "checkedIn";
+                checkInAtUtc = activeSession.CheckInAtUtc.ToString("O"); // ISO 8601 UTC
             }
             else if (completedSession is not null)
             {
-                attendance   = "checkedOut";
-                checkInTime  = completedSession.CheckInAtUtc.ToString("HH:mm");
-                checkOutTime = completedSession.CheckOutAtUtc?.ToString("HH:mm");
+                attendance    = "checkedOut";
+                checkInAtUtc  = completedSession.CheckInAtUtc.ToString("O");
+                checkOutAtUtc = completedSession.CheckOutAtUtc?.ToString("O");
             }
             else
             {
@@ -132,8 +132,8 @@ public class ManagerController(TimeSheetDbContext dbContext, INotificationServic
                 u.DisplayName,
                 u.AvatarDataUrl,
                 attendance,
-                checkInTime,
-                checkOutTime,
+                checkInAtUtc,
+                checkOutAtUtc,
                 weekLogged,
                 weekExpected,
                 tsStatus,

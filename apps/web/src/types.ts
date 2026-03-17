@@ -27,8 +27,8 @@ export type TeamMemberStatus = {
   displayName: string;
   avatarDataUrl: string | null;
   attendance: "checkedIn" | "checkedOut" | "onLeave" | "absent";
-  checkInTime: string | null;
-  checkOutTime: string | null;
+  checkInAtUtc: string | null;
+  checkOutAtUtc: string | null;
   weekLoggedMinutes: number;
   weekExpectedMinutes: number;
   todayTimesheetStatus: "draft" | "submitted" | "approved" | "rejected" | "missing";

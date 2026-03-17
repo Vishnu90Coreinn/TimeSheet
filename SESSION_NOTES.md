@@ -691,24 +691,63 @@ Each: `SortIcon` component, `sortCol/sortDir` state, `toggleSort()`, `sorted` co
 
 ---
 
+## Session 13 — Sprint 13: User Profile & Self-Service (2026-03-17)
+
+### What Was Done
+
+#### Sprint 13 — User Profile & Self-Service (PR #36, merged to master `314b75f`)
+
+**Backend**
+- `User.cs`: added `DisplayName` (NVARCHAR 150) and `AvatarDataUrl` (NVARCHAR MAX) fields
+- `ProfileController.cs` (new): full self-service profile API
+  - `GET /profile` — returns full profile including display name + avatar
+  - `PUT /profile` — updates username, display name, email
+  - `PUT /profile/avatar` — uploads/removes base64 data URL avatar (validates `data:image/` prefix)
+  - `PUT /profile/password` — current-password verified before hash update
+  - `GET/PUT /profile/notification-preferences` — upsert pattern per user
+- `UserNotificationPreferences` model + EF config (ON DELETE CASCADE, one-to-one keyed by UserId)
+- `NotificationSchedulerService`: all three jobs filter through `WantsReminder()` helper respecting user preferences
+- EF Migrations: `Sprint13_UserProfile` + `Sprint13_ProfileUX` (DisplayName + AvatarDataUrl columns)
+- `lucide-react ^0.577.0` installed
+
+**Frontend**
+- `Profile.tsx` (new, UX v2): full self-service profile page
+  - Avatar: 72px circle with camera-overlay upload, 400 KB guard, image-type guard, "Remove photo" link
+  - Display Name field (separate from username)
+  - Three independent `Eye`/`EyeOff` toggles per password field
+  - Password strength bar (weak/medium/strong)
+  - Inline validation with touched-state guards (username, email, confirm password)
+  - Toast system: bottom-right fixed, 3-second auto-dismiss, replaces all inline alerts
+  - Employment Info card: read-only with lock icon + grey background
+  - Notification preferences: toggle cards with disabled state during save
+- `types.ts`: `MyProfile` gains `displayName` + `avatarDataUrl`; `View` union adds `"profile"`
+- `AppShell.tsx`: `VIEW_LABELS["profile"] = "My Profile"` — breadcrumb fix
+- `App.tsx`: `VIEW_PATHS["profile"] = "/profile"`
+- `db/schema.sql`: Users table updated; ALTER statements added for new columns
+
+### Commits
+- `365924f` — feat: Sprint 13 — User Profile & Self-Service
+- `b701fdc` — fix: regenerate Sprint13_UserProfile migration with proper build
+- `83406ed` — feat(sprint-13): Profile UX v2 — avatar, display name, eye-icon passwords, toasts
+- `314b75f` — Merge pull request #36 (merged to master)
+
+---
+
 ## Pending For Next Session
 
-> Last updated: Session 12 (2026-03-17). Admin table sort on all master pages, sidebar overhaul, dashboard UX polish all committed.
+> Last updated: Session 13 (2026-03-17). Sprint 13 merged to master.
 
-### Priority 1 — Manual Smoke Test
-- [ ] Run API → confirm DB auto-migrates (`Sprint9` migration runs)
-- [ ] Admin: create Leave Policy → assign to user → employee sees correct balance on Leave page
-- [ ] Admin: navigate to Reports → **Leave Balance** tab → verify allocations + used days shown
-- [ ] Admin: Reports → **Overtime / Deficit** tab → verify weekly grouping and delta coloring
-- [ ] Admin: Reports → **Approvals** tab → verify status chips, two-line Approved At, approver name
-- [ ] Employee: apply leave → cancel it → re-apply → confirm no 500 error
-- [ ] Timesheets: submit day → verify delete entry modal (themed, not browser confirm)
-- [ ] Sidebar: collapse → hover nav items → confirm tooltips appear; expand → confirm works
-- [ ] Admin pages: verify all table column headers show sort icons and sort correctly
+### Priority 1 — Manual Smoke Test (Sprint 13)
+- [ ] Run `dotnet ef database update` → migrations apply cleanly
+- [ ] Navigate to My Profile from topbar avatar — breadcrumb shows "My Profile"
+- [ ] Upload photo → avatar updates; Remove photo clears it
+- [ ] Edit Display Name → saved; avatar initials reflect display name
+- [ ] Change password with eye-icon toggles; strength bar; confirm mismatch on blur
+- [ ] Notification toggles save immediately; toast auto-dismisses in 3s
+- [ ] Employment Info card is fully read-only
 
-### Priority 2 — Phase 3 Roadmap (Planned 2026-03-17)
-Full 13-sprint product roadmap added to `PROJECT_TASKS.md`. Delivery order:
-1. **Sprint 13** — User Profile & Self-Service (`feature/sprint-13-user-profile`)
+### Priority 2 — Phase 3 Roadmap (next sprint)
+1. **Sprint 13** ✅ — User Profile & Self-Service (merged PR #36)
 2. **Sprint 14** — Bulk Timesheet Submission (`feature/sprint-14-bulk-submit`)
 3. **Sprint 15** — Manager Team Status Board (`feature/sprint-15-team-status`)
 4. **Sprint 16** — Task-Level Timer (`feature/sprint-16-task-timer`)

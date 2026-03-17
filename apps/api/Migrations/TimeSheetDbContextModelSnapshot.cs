@@ -643,6 +643,34 @@ namespace TimeSheet.Api.Migrations
                     b.ToTable("Users", (string)null);
                 });
 
+            modelBuilder.Entity("TimeSheet.Api.Models.UserNotificationPreferences", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("EmailEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("InAppEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("OnApproval")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("OnLeaveStatus")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("OnRejection")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("OnReminder")
+                        .HasColumnType("bit");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("UserNotificationPreferences", (string)null);
+                });
+
             modelBuilder.Entity("TimeSheet.Api.Models.UserRole", b =>
                 {
                     b.Property<Guid>("UserId")
@@ -948,6 +976,17 @@ namespace TimeSheet.Api.Migrations
                     b.Navigation("Manager");
 
                     b.Navigation("WorkPolicy");
+                });
+
+            modelBuilder.Entity("TimeSheet.Api.Models.UserNotificationPreferences", b =>
+                {
+                    b.HasOne("TimeSheet.Api.Models.User", "User")
+                        .WithOne()
+                        .HasForeignKey("TimeSheet.Api.Models.UserNotificationPreferences", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("TimeSheet.Api.Models.UserRole", b =>

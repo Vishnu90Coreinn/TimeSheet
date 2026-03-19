@@ -74,51 +74,6 @@ const IconClock = () => (
   </svg>
 );
 
-// ─── Scoped styles ────────────────────────────────────────────
-const PAGE_STYLES = `
-.apr3-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-4); }
-@media (max-width: 900px) { .apr3-stats { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 560px)  { .apr3-stats { grid-template-columns: 1fr 1fr; } }
-.apr3-stat { background: var(--n-0); border: 1px solid var(--border-subtle); border-radius: var(--r-xl);
-  padding: var(--space-5); display: flex; align-items: center; gap: var(--space-4); box-shadow: var(--shadow-xs); }
-.apr3-stat-icon { width: 40px; height: 40px; border-radius: var(--r-lg); display: flex; align-items: center;
-  justify-content: center; flex-shrink: 0; }
-.apr3-stat-num { font-size: 1.75rem; font-weight: 700; line-height: 1; font-family: var(--font-display); }
-.apr3-stat-label { font-size: 0.78rem; color: var(--text-secondary); margin-top: 3px; }
-.apr3-tabs { display: flex; align-items: center; gap: var(--space-1); background: var(--n-100);
-  border-radius: var(--r-lg); padding: 4px; width: fit-content; }
-.apr3-tab { padding: 6px 16px; border-radius: var(--r-md); font-size: 0.825rem; font-weight: 600;
-  cursor: pointer; background: none; border: none; color: var(--text-secondary); transition: all 0.15s;
-  display: flex; align-items: center; gap: 6px; font-family: var(--font-sans); }
-.apr3-tab.active { background: var(--n-0); color: var(--text-primary); box-shadow: var(--shadow-xs); }
-.apr3-tab-count { background: var(--n-200); color: var(--text-secondary); border-radius: var(--r-full);
-  padding: 0 7px; font-size: 0.72rem; font-weight: 700; }
-.apr3-tab.active .apr3-tab-count { background: var(--brand-100); color: var(--brand-700); }
-.apr3-list { display: flex; flex-direction: column; gap: var(--space-3); }
-.apr3-card { background: var(--n-0); border: 1px solid var(--border-subtle); border-radius: var(--r-xl);
-  overflow: hidden; box-shadow: var(--shadow-xs); transition: box-shadow 0.15s; }
-.apr3-card:hover { box-shadow: var(--shadow-sm); }
-.apr3-card-inner { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-4) var(--space-5); }
-.apr3-avatar { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center;
-  justify-content: center; font-weight: 700; font-size: 14px; color: #fff; flex-shrink: 0; }
-.apr3-meta { flex: 1; min-width: 0; }
-.apr3-meta-title { font-size: 0.9rem; font-weight: 600; color: var(--text-primary);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.apr3-meta-sub { font-size: 0.8rem; color: var(--text-secondary); margin-top: 3px; }
-.apr3-meta-sub strong { color: var(--text-primary); font-weight: 600; }
-.apr3-right { display: flex; align-items: center; gap: var(--space-4); flex-shrink: 0; }
-.apr3-type-metric { text-align: right; }
-.apr3-type-label { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.08em;
-  color: var(--text-tertiary); text-transform: uppercase; }
-.apr3-type-value { font-size: 1.4rem; font-weight: 700; color: var(--text-primary); line-height: 1.15; }
-.apr3-actions { display: flex; gap: var(--space-2); }
-.apr3-reject-row { background: var(--n-50); border-top: 1px solid var(--border-subtle);
-  padding: var(--space-4) var(--space-5); display: flex; gap: var(--space-3); align-items: center; flex-wrap: wrap; }
-.apr3-empty { display: flex; flex-direction: column; align-items: center; gap: var(--space-3);
-  padding: 60px var(--space-6); color: var(--text-secondary); text-align: center; }
-.apr3-empty-icon { font-size: 2.5rem; opacity: 0.35; }
-.apr3-select-bar { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) 0; margin-bottom: var(--space-2); }
-`;
 
 // ─── Component ────────────────────────────────────────────────
 export function Approvals() {
@@ -208,9 +163,7 @@ export function Approvals() {
   ];
 
   return (
-    <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
-      <style>{PAGE_STYLES}</style>
-
+    <section className="flex flex-col gap-6">
       {/* Page header */}
       <div className="page-header">
         <div>
@@ -231,28 +184,28 @@ export function Approvals() {
       {/* KPI stats */}
       <div className="apr3-stats">
         <div className="apr3-stat">
-          <div className="apr3-stat-icon" style={{ background: "#fff7ed", color: "#ea580c" }}><IconPending /></div>
+          <div className="apr3-stat-icon bg-[#fff7ed] text-[#ea580c]"><IconPending /></div>
           <div>
-            <div className="apr3-stat-num" style={{ color: "#ea580c" }}>{pendingCount}</div>
+            <div className="apr3-stat-num text-[#ea580c]">{pendingCount}</div>
             <div className="apr3-stat-label">Pending action</div>
           </div>
         </div>
         <div className="apr3-stat">
-          <div className="apr3-stat-icon" style={{ background: "#f0fdf4", color: "#16a34a" }}><IconApproved /></div>
+          <div className="apr3-stat-icon bg-[#f0fdf4] text-[#16a34a]"><IconApproved /></div>
           <div>
-            <div className="apr3-stat-num" style={{ color: "#16a34a" }}>{stats.approvedThisMonth ?? "—"}</div>
+            <div className="apr3-stat-num text-[#16a34a]">{stats.approvedThisMonth ?? "—"}</div>
             <div className="apr3-stat-label">Approved this month</div>
           </div>
         </div>
         <div className="apr3-stat">
-          <div className="apr3-stat-icon" style={{ background: "#fef2f2", color: "#dc2626" }}><IconRejected /></div>
+          <div className="apr3-stat-icon bg-[#fef2f2] text-[#dc2626]"><IconRejected /></div>
           <div>
-            <div className="apr3-stat-num" style={{ color: "#dc2626" }}>{stats.rejectedThisMonth ?? "—"}</div>
+            <div className="apr3-stat-num text-[#dc2626]">{stats.rejectedThisMonth ?? "—"}</div>
             <div className="apr3-stat-label">Rejected this month</div>
           </div>
         </div>
         <div className="apr3-stat">
-          <div className="apr3-stat-icon" style={{ background: "#f8fafc", color: "var(--text-secondary)" }}><IconClock /></div>
+          <div className="apr3-stat-icon bg-[#f8fafc] text-text-secondary"><IconClock /></div>
           <div>
             <div className="apr3-stat-num">{fmtResponseTime(stats.avgResponseHours)}</div>
             <div className="apr3-stat-label">Avg. response time</div>
@@ -279,8 +232,8 @@ export function Approvals() {
         {pendingCount === 0 && (
           <div className="apr3-empty">
             <div className="apr3-empty-icon">✓</div>
-            <div style={{ fontWeight: 600 }}>All clear</div>
-            <div style={{ fontSize: "0.85rem" }}>No pending approvals at this time.</div>
+            <div className="font-semibold">All clear</div>
+            <div className="text-[0.85rem]">No pending approvals at this time.</div>
           </div>
         )}
 
@@ -291,15 +244,15 @@ export function Approvals() {
               type="checkbox"
               checked={selectedIds.size === tsPending.length && tsPending.length > 0}
               onChange={toggleSelectAll}
-              style={{ width: 16, height: 16, accentColor: "var(--brand-600)", cursor: "pointer" }}
+              className="w-4 h-4 [accent-color:var(--brand-600)] cursor-pointer"
             />
-            <span style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
+            <span className="text-[0.8rem] text-text-secondary">
               {selectedIds.size === tsPending.length && tsPending.length > 0
                 ? "Deselect all"
                 : `Select all ${tsPending.length} timesheet${tsPending.length === 1 ? "" : "s"}`}
             </span>
             {selectedIds.size > 0 && (
-              <span style={{ fontSize: "0.78rem", color: "var(--brand-600)", fontWeight: 600 }}>
+              <span className="text-[0.78rem] text-brand-600 font-semibold">
                 {selectedIds.size} selected
               </span>
             )}
@@ -310,13 +263,13 @@ export function Approvals() {
         {showTs && tsPending.map((a) => {
           const mismatch = sanitizeMismatch(a.mismatchReason);
           return (
-            <div key={a.timesheetId} className="apr3-card" style={{ borderLeft: "3px solid var(--brand-500)" }}>
+            <div key={a.timesheetId} className="apr3-card [border-left:3px_solid_var(--brand-500)]">
               <div className="apr3-card-inner">
                 <input
                   type="checkbox"
                   checked={selectedIds.has(a.timesheetId)}
                   onChange={() => toggleSelect(a.timesheetId)}
-                  style={{ width: 16, height: 16, accentColor: "var(--brand-600)", flexShrink: 0, cursor: "pointer" }}
+                  className="w-4 h-4 [accent-color:var(--brand-600)] shrink-0 cursor-pointer"
                 />
                 <div className="apr3-avatar" style={{ background: avatarColor(a.username) }}>
                   {initials(a.username)}
@@ -325,7 +278,7 @@ export function Approvals() {
                   <div className="apr3-meta-title">{a.username} — Timesheet {a.workDate}</div>
                   <div className="apr3-meta-sub">
                     {a.workDate} — <strong>{fmtHours(a.enteredMinutes)} logged</strong>
-                    {mismatch && <> — <span style={{ color: "#d97706" }}>⚠ {mismatch}</span></>}
+                    {mismatch && <> — <span className="text-[#d97706]">⚠ {mismatch}</span></>}
                   </div>
                 </div>
                 <div className="apr3-right">
@@ -349,8 +302,7 @@ export function Approvals() {
               {rejectFor?.id === a.timesheetId && rejectFor.kind === "ts" && (
                 <div className="apr3-reject-row">
                   <input
-                    className="input-field"
-                    style={{ flex: 1, maxWidth: 420 }}
+                    className="input-field flex-1 max-w-[420px]"
                     placeholder="Rejection comment (required)"
                     value={rejectComment}
                     onChange={(e) => setRejectComment(e.target.value)}
@@ -368,7 +320,7 @@ export function Approvals() {
 
         {/* Leave approval cards */}
         {showLeave && leavePending.map((l) => (
-          <div key={l.id} className="apr3-card" style={{ borderLeft: "3px solid #f59e0b" }}>
+          <div key={l.id} className="apr3-card [border-left:3px_solid_#f59e0b]">
             <div className="apr3-card-inner">
               <div className="apr3-avatar" style={{ background: avatarColor(l.username) }}>
                 {initials(l.username)}
@@ -401,8 +353,7 @@ export function Approvals() {
             {rejectFor?.id === l.id && rejectFor.kind === "leave" && (
               <div className="apr3-reject-row">
                 <input
-                  className="input-field"
-                  style={{ flex: 1, maxWidth: 420 }}
+                  className="input-field flex-1 max-w-[420px]"
                   placeholder="Rejection comment (required)"
                   value={rejectComment}
                   onChange={(e) => setRejectComment(e.target.value)}

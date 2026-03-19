@@ -1,40 +1,37 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using TimeSheet.Api.Data;
+using TimeSheet.Api.Application.Roles.Handlers;
+using TimeSheet.Api.Application.Roles.Models;
 using TimeSheet.Api.Dtos;
-using TimeSheet.Api.Models;
 
 namespace TimeSheet.Api.Controllers;
 
 [ApiController]
 [Authorize(Roles = "admin")]
 [Route("api/v1/roles")]
-public class RolesController(TimeSheetDbContext dbContext) : ControllerBase
+public class RolesController(IGetRolesHandler getRolesHandler, ICreateRoleHandler createRoleHandler) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<RoleResponse>>> GetAll()
+    public async Task<ActionResult> GetAll([FromQuery] RoleListQuery query, CancellationToken cancellationToken)
     {
-        var roles = await dbContext.Roles.AsNoTracking()
-            .OrderBy(r => r.Name)
-            .Select(r => new RoleResponse(r.Id, r.Name))
-            .ToListAsync();
+        var (data, error) = await getRolesHandler.HandleAsync(query, cancellationToken);
+        if (error is not null)
+        {
+            return StatusCode(error.StatusCode, new { message = error.Message, code = error.Code });
+        }
 
-        return Ok(roles);
+        return Ok(data);
     }
 
     [HttpPost]
-    public async Task<ActionResult<RoleResponse>> Create([FromBody] AssignRoleRequest request)
+    public async Task<ActionResult> Create([FromBody] AssignRoleRequest request, CancellationToken cancellationToken)
     {
-        if (await dbContext.Roles.AnyAsync(r => r.Name == request.RoleName))
+        var (data, error) = await createRoleHandler.HandleAsync(request, cancellationToken);
+        if (error is not null)
         {
-            return Conflict(new { message = "Role already exists." });
+            return StatusCode(error.StatusCode, new { message = error.Message, code = error.Code });
         }
 
-        var role = new Role { Id = Guid.NewGuid(), Name = request.RoleName.Trim() };
-        dbContext.Roles.Add(role);
-        await dbContext.SaveChangesAsync();
-
-        return Ok(new RoleResponse(role.Id, role.Name));
+        return Ok(data);
     }
 }

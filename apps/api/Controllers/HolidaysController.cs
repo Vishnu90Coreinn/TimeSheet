@@ -1,79 +1,82 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using TimeSheet.Api.Data;
+using TimeSheet.Api.Application.Holidays.Handlers;
+using TimeSheet.Api.Application.Holidays.Models;
+using TimeSheet.Api.Application.Common.Constants;
 using TimeSheet.Api.Dtos;
-using TimeSheet.Api.Models;
 
 namespace TimeSheet.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/holidays")]
-public class HolidaysController(TimeSheetDbContext dbContext, ILogger<HolidaysController> logger) : ControllerBase
+public class HolidaysController(
+    IGetHolidaysHandler getHolidaysHandler,
+    ICreateHolidayHandler createHolidayHandler,
+    IUpdateHolidayHandler updateHolidayHandler,
+    IDeleteHolidayHandler deleteHolidayHandler,
+    ILogger<HolidaysController> logger) : ControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] int? year = null)
+    public async Task<IActionResult> GetAll([FromQuery] HolidayListQuery query, CancellationToken cancellationToken)
     {
-        var effectiveYear = year ?? DateTime.UtcNow.Year;
-        var from = new DateOnly(effectiveYear, 1, 1);
-        var to = new DateOnly(effectiveYear, 12, 31);
+        var (data, error) = await getHolidaysHandler.HandleAsync(query, cancellationToken);
+        if (error is not null)
+        {
+            return StatusCode(error.StatusCode, new { message = error.Message, code = error.Code });
+        }
 
-        var holidays = await dbContext.Holidays.AsNoTracking()
-            .Where(h => h.Date >= from && h.Date <= to)
-            .OrderBy(h => h.Date)
-            .Select(h => new HolidayResponse(h.Id, h.Name, h.Date, h.IsRecurring, h.CreatedAtUtc))
-            .ToListAsync();
-
-        return Ok(holidays);
+        return Ok(data);
     }
 
     [HttpPost]
     [Authorize(Roles = "admin")]
-    public async Task<IActionResult> Create([FromBody] UpsertHolidayRequest request)
+    public async Task<IActionResult> Create([FromBody] UpsertHolidayRequest request, CancellationToken cancellationToken)
     {
-        var holiday = new Holiday
+        var (data, error) = await createHolidayHandler.HandleAsync(request, cancellationToken);
+        if (error is not null)
         {
-            Id = Guid.NewGuid(),
-            Name = request.Name.Trim(),
-            Date = request.Date,
-            IsRecurring = request.IsRecurring,
-            CreatedAtUtc = DateTime.UtcNow
-        };
+            return StatusCode(error.StatusCode, new { message = error.Message, code = error.Code });
+        }
 
-        dbContext.Holidays.Add(holiday);
-        await dbContext.SaveChangesAsync();
-        logger.LogInformation("Holiday created: {Name} on {Date}", holiday.Name, holiday.Date);
-
-        return CreatedAtAction(nameof(GetAll), new { year = holiday.Date.Year },
-            new HolidayResponse(holiday.Id, holiday.Name, holiday.Date, holiday.IsRecurring, holiday.CreatedAtUtc));
+        logger.LogInformation(ApiMessages.HolidayCreatedLog, data!.Name, data.Date);
+        return CreatedAtAction(nameof(GetAll), new { year = data.Date.Year }, data);
     }
 
     [HttpPut("{id:guid}")]
     [Authorize(Roles = "admin")]
-    public async Task<IActionResult> Update(Guid id, [FromBody] UpsertHolidayRequest request)
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpsertHolidayRequest request, CancellationToken cancellationToken)
     {
-        var holiday = await dbContext.Holidays.SingleOrDefaultAsync(h => h.Id == id);
-        if (holiday is null) return NotFound();
+        var (data, error) = await updateHolidayHandler.HandleAsync(id, request, cancellationToken);
+        if (error is not null)
+        {
+            if (error.Code == ErrorCodes.HolidayNotFound)
+            {
+                return NotFound(new { message = error.Message, code = error.Code });
+            }
 
-        holiday.Name = request.Name.Trim();
-        holiday.Date = request.Date;
-        holiday.IsRecurring = request.IsRecurring;
+            return StatusCode(error.StatusCode, new { message = error.Message, code = error.Code });
+        }
 
-        await dbContext.SaveChangesAsync();
-        logger.LogInformation("Holiday updated: {Id}", id);
-        return Ok(new HolidayResponse(holiday.Id, holiday.Name, holiday.Date, holiday.IsRecurring, holiday.CreatedAtUtc));
+        logger.LogInformation(ApiMessages.HolidayUpdatedLog, id);
+        return Ok(data);
     }
 
     [HttpDelete("{id:guid}")]
     [Authorize(Roles = "admin")]
-    public async Task<IActionResult> Delete(Guid id)
+    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
-        var holiday = await dbContext.Holidays.SingleOrDefaultAsync(h => h.Id == id);
-        if (holiday is null) return NotFound();
+        var error = await deleteHolidayHandler.HandleAsync(id, cancellationToken);
+        if (error is not null)
+        {
+            if (error.Code == ErrorCodes.HolidayNotFound)
+            {
+                return NotFound(new { message = error.Message, code = error.Code });
+            }
 
-        dbContext.Holidays.Remove(holiday);
-        await dbContext.SaveChangesAsync();
-        logger.LogInformation("Holiday deleted: {Id}", id);
+            return StatusCode(error.StatusCode, new { message = error.Message, code = error.Code });
+        }
+
+        logger.LogInformation(ApiMessages.HolidayDeletedLog, id);
         return NoContent();
     }
 }

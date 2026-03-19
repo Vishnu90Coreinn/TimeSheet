@@ -2,6 +2,8 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using TimeSheet.Api.Application.Leave.Handlers;
+using TimeSheet.Api.Application.Leave.Models;
 using TimeSheet.Api.Data;
 using TimeSheet.Api.Dtos;
 using TimeSheet.Api.Models;
@@ -12,7 +14,15 @@ namespace TimeSheet.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/v1/leave")]
-public class LeaveController(TimeSheetDbContext dbContext, IAuditService auditService, INotificationService notificationService) : ControllerBase
+public class LeaveController(
+    TimeSheetDbContext dbContext,
+    IAuditService auditService,
+    INotificationService notificationService,
+    IApplyLeaveHandler applyLeaveHandler,
+    IGetMyLeaveRequestsHandler getMyLeaveRequestsHandler,
+    ICancelLeaveHandler cancelLeaveHandler,
+    IGetPendingLeaveRequestsHandler getPendingLeaveRequestsHandler,
+    IReviewLeaveHandler reviewLeaveHandler) : ControllerBase
 {
     [HttpGet("types")]
     public async Task<IActionResult> GetLeaveTypes()
@@ -57,7 +67,7 @@ public class LeaveController(TimeSheetDbContext dbContext, IAuditService auditSe
     }
 
     [HttpPost("requests")]
-    public async Task<IActionResult> ApplyLeave([FromBody] ApplyLeaveRequest request)
+    public async Task<IActionResult> ApplyLeave([FromBody] ApplyLeaveRequest request, CancellationToken cancellationToken)
     {
         var userId = GetUserId();
         if (userId is null)
@@ -65,82 +75,32 @@ public class LeaveController(TimeSheetDbContext dbContext, IAuditService auditSe
             return Unauthorized();
         }
 
-        if (request.ToDate < request.FromDate)
-            return BadRequest(new { message = "ToDate must be on or after FromDate." });
-
-        // Expand date range into individual working days (exclude Sat/Sun)
-        var days = new List<DateOnly>();
-        for (var d = request.FromDate; d <= request.ToDate; d = d.AddDays(1))
+        var result = await applyLeaveHandler.HandleAsync(userId.Value, request, cancellationToken);
+        if (!result.IsSuccess)
         {
-            if (d.DayOfWeek != DayOfWeek.Saturday && d.DayOfWeek != DayOfWeek.Sunday)
-                days.Add(d);
+            return StatusCode(result.Error!.StatusCode, new { message = result.Error.Message, code = result.Error.Code });
         }
 
-        if (days.Count == 0)
-            return BadRequest(new { message = "The selected date range contains no working days." });
-
-        // Check for existing pending/approved requests on any of these days
-        var existingDates = await dbContext.LeaveRequests
-            .Where(lr => lr.UserId == userId.Value &&
-                         lr.Status != LeaveRequestStatus.Rejected &&
-                         days.Contains(lr.LeaveDate))
-            .Select(lr => lr.LeaveDate)
-            .ToListAsync();
-
-        if (existingDates.Count > 0)
-            return Conflict(new { message = $"You already have a leave request on {string.Join(", ", existingDates.Select(d => d.ToString("MMM d")))}. Cancel it first before re-applying." });
-
-        // Remove any rejected requests for these dates so the unique key constraint is not violated on re-apply
-        var rejectedToReplace = await dbContext.LeaveRequests
-            .Where(lr => lr.UserId == userId.Value &&
-                         lr.Status == LeaveRequestStatus.Rejected &&
-                         days.Contains(lr.LeaveDate))
-            .ToListAsync();
-        if (rejectedToReplace.Count > 0)
-            dbContext.LeaveRequests.RemoveRange(rejectedToReplace);
-
-        var leaveGroupId = Guid.NewGuid();
-        var requests = days.Select(day => new LeaveRequest
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId.Value,
-            LeaveTypeId = request.LeaveTypeId,
-            LeaveDate = day,
-            IsHalfDay = request.IsHalfDay,
-            Comment = request.Comment,
-            Status = LeaveRequestStatus.Pending,
-            LeaveGroupId = leaveGroupId,
-            CreatedAtUtc = DateTime.UtcNow
-        }).ToList();
-
-        dbContext.LeaveRequests.AddRange(requests);
-        await dbContext.SaveChangesAsync();
-
-        return Ok(new { leaveGroupId, count = requests.Count });
+        return Ok(new { leaveGroupId = result.Data!.LeaveGroupId, count = result.Data.Count });
     }
 
     [HttpDelete("requests/{id:guid}")]
-    public async Task<IActionResult> CancelLeave(Guid id)
+    public async Task<IActionResult> CancelLeave(Guid id, CancellationToken cancellationToken)
     {
         var userId = GetUserId();
         if (userId is null) return Unauthorized();
 
-        // Match by group ID first (multi-day), then by individual request ID (legacy)
-        var requests = await dbContext.LeaveRequests
-            .Where(lr => lr.UserId == userId.Value && (lr.LeaveGroupId == id || lr.Id == id))
-            .ToListAsync();
+        var result = await cancelLeaveHandler.HandleAsync(userId.Value, id, cancellationToken);
+        if (!result.Success)
+        {
+            return StatusCode(result.Error!.StatusCode, new { message = result.Error.Message, code = result.Error.Code });
+        }
 
-        if (requests.Count == 0) return NotFound(new { message = "Leave request not found." });
-        if (requests.Any(lr => lr.Status != LeaveRequestStatus.Pending))
-            return Conflict(new { message = "Only pending leave requests can be cancelled." });
-
-        dbContext.LeaveRequests.RemoveRange(requests);
-        await dbContext.SaveChangesAsync();
         return NoContent();
     }
 
     [HttpGet("requests/my")]
-    public async Task<IActionResult> GetMyLeaveRequests()
+    public async Task<IActionResult> GetMyLeaveRequests([FromQuery] MyLeaveListQuery query, CancellationToken cancellationToken)
     {
         var userId = GetUserId();
         if (userId is null)
@@ -148,33 +108,18 @@ public class LeaveController(TimeSheetDbContext dbContext, IAuditService auditSe
             return Unauthorized();
         }
 
-        var items = await dbContext.LeaveRequests
-            .AsNoTracking()
-            .Where(x => x.UserId == userId.Value)
-            .OrderByDescending(x => x.LeaveDate)
-            .Select(x => new LeaveRequestResponse(
-                x.Id,
-                x.UserId,
-                x.User.Username,
-                x.LeaveDate,
-                x.LeaveTypeId,
-                x.LeaveType.Name,
-                x.IsHalfDay,
-                x.Status.ToString().ToLowerInvariant(),
-                x.Comment,
-                x.ReviewedByUserId,
-                x.ReviewedByUser != null ? x.ReviewedByUser.Username : null,
-                x.ReviewerComment,
-                x.CreatedAtUtc,
-                x.ReviewedAtUtc))
-            .ToListAsync();
+        var (data, error) = await getMyLeaveRequestsHandler.HandleAsync(userId.Value, query, cancellationToken);
+        if (error is not null)
+        {
+            return StatusCode(error.StatusCode, new { message = error.Message, code = error.Code });
+        }
 
-        return Ok(items);
+        return Ok(data);
     }
 
     [HttpGet("requests/pending")]
     [Authorize(Roles = "manager,admin")]
-    public async Task<IActionResult> GetPendingLeaveRequests()
+    public async Task<IActionResult> GetPendingLeaveRequests([FromQuery] MyLeaveListQuery query, CancellationToken cancellationToken)
     {
         var managerId = GetUserId();
         if (managerId is null)
@@ -183,38 +128,18 @@ public class LeaveController(TimeSheetDbContext dbContext, IAuditService auditSe
         }
 
         var role = User.FindFirstValue(ClaimTypes.Role) ?? "employee";
-        var query = dbContext.LeaveRequests.AsNoTracking().Where(x => x.Status == LeaveRequestStatus.Pending);
-
-        if (!string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase))
+        var (data, error) = await getPendingLeaveRequestsHandler.HandleAsync(managerId.Value, role, query, cancellationToken);
+        if (error is not null)
         {
-            query = query.Where(x => x.User.ManagerId == managerId.Value);
+            return StatusCode(error.StatusCode, new { message = error.Message, code = error.Code });
         }
 
-        var items = await query
-            .OrderBy(x => x.LeaveDate)
-            .Select(x => new LeaveRequestResponse(
-                x.Id,
-                x.UserId,
-                x.User.Username,
-                x.LeaveDate,
-                x.LeaveTypeId,
-                x.LeaveType.Name,
-                x.IsHalfDay,
-                x.Status.ToString().ToLowerInvariant(),
-                x.Comment,
-                x.ReviewedByUserId,
-                x.ReviewedByUser != null ? x.ReviewedByUser.Username : null,
-                x.ReviewerComment,
-                x.CreatedAtUtc,
-                x.ReviewedAtUtc))
-            .ToListAsync();
-
-        return Ok(items);
+        return Ok(data);
     }
 
     [HttpPost("requests/{leaveRequestId:guid}/review")]
     [Authorize(Roles = "manager,admin")]
-    public async Task<IActionResult> ReviewLeave(Guid leaveRequestId, [FromBody] ReviewLeaveRequest request)
+    public async Task<IActionResult> ReviewLeave(Guid leaveRequestId, [FromBody] ReviewLeaveRequest request, CancellationToken cancellationToken)
     {
         var managerId = GetUserId();
         if (managerId is null)
@@ -223,44 +148,23 @@ public class LeaveController(TimeSheetDbContext dbContext, IAuditService auditSe
         }
 
         var role = User.FindFirstValue(ClaimTypes.Role) ?? "employee";
-
-        var leave = await dbContext.LeaveRequests
-            .Include(x => x.User)
-            .SingleOrDefaultAsync(x => x.Id == leaveRequestId);
-
-        if (leave is null)
+        var (data, error) = await reviewLeaveHandler.HandleAsync(managerId.Value, role, leaveRequestId, request, User, cancellationToken);
+        if (error is not null)
         {
-            return NotFound();
+            if (error.StatusCode == StatusCodes.Status403Forbidden)
+            {
+                return Forbid();
+            }
+
+            if (error.StatusCode == StatusCodes.Status404NotFound)
+            {
+                return NotFound(new { message = error.Message, code = error.Code });
+            }
+
+            return StatusCode(error.StatusCode, new { message = error.Message, code = error.Code });
         }
 
-        if (leave.Status != LeaveRequestStatus.Pending)
-        {
-            return Conflict(new { message = "Only pending leaves can be reviewed." });
-        }
-
-        if (!string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase) && leave.User.ManagerId != managerId.Value)
-        {
-            return Forbid();
-        }
-
-        if (!request.Approve && string.IsNullOrWhiteSpace(request.Comment))
-        {
-            return BadRequest(new { message = "Comment is required when rejecting leave." });
-        }
-
-        leave.Status = request.Approve ? LeaveRequestStatus.Approved : LeaveRequestStatus.Rejected;
-        leave.ReviewedByUserId = managerId.Value;
-        leave.ReviewerComment = request.Comment?.Trim();
-        leave.ReviewedAtUtc = DateTime.UtcNow;
-
-        await dbContext.SaveChangesAsync();
-
-        await auditService.WriteAsync(request.Approve ? "LeaveApproved" : "LeaveRejected", "LeaveRequest", leave.Id.ToString(), $"Manager reviewed leave for {leave.LeaveDate}", User);
-        await notificationService.CreateAsync(leave.UserId, "Leave Request Updated",
-            $"Your leave request for {leave.LeaveDate:yyyy-MM-dd} has been {(request.Approve ? "approved" : "rejected")}.", NotificationType.StatusChange);
-        await dbContext.SaveChangesAsync();
-
-        return Ok(await MapLeaveResponse(leave.Id));
+        return Ok(data);
     }
 
     // ── Leave Policies (admin only) ───────────────────────────────

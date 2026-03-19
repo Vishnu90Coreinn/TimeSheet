@@ -500,7 +500,6 @@ public class TimesheetsController(TimeSheetDbContext dbContext, IAttendanceCalcu
 
         timesheet = new Timesheet
         {
-            Id = Guid.NewGuid(),
             UserId = userId,
             WorkDate = workDate,
             Status = TimesheetStatus.Draft

@@ -141,7 +141,6 @@ public class TimesheetTemplatesController(TimeSheetDbContext dbContext) : Contro
         {
             timesheet = new Timesheet
             {
-                Id = Guid.NewGuid(),
                 UserId = userId.Value,
                 WorkDate = request.WorkDate,
                 Status = TimesheetStatus.Draft,

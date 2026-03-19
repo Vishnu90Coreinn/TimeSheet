@@ -108,7 +108,6 @@ public class TimersController(TimeSheetDbContext dbContext) : ControllerBase
         {
             timesheet = new Timesheet
             {
-                Id = Guid.NewGuid(),
                 UserId = CurrentUserId,
                 WorkDate = request.WorkDate,
                 Status = TimesheetStatus.Draft,

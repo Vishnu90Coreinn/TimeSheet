@@ -30,7 +30,6 @@ public class AttendanceController(TimeSheetDbContext dbContext, IAttendanceCalcu
 
         var session = new WorkSession
         {
-            Id = Guid.NewGuid(),
             UserId = userId.Value,
             WorkDate = DateOnly.FromDateTime(checkInAtUtc),
             CheckInAtUtc = checkInAtUtc,

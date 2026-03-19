@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using TimeSheet.Api.Data;
-using TimeSheet.Api.Models;
 
 namespace TimeSheet.Api.Services;
 

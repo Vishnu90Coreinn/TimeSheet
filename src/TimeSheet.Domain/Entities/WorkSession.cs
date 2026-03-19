@@ -1,11 +1,6 @@
-namespace TimeSheet.Api.Models;
+using TimeSheet.Domain.Enums;
 
-public enum WorkSessionStatus
-{
-    Active = 1,
-    Completed = 2,
-    MissingCheckout = 3
-}
+namespace TimeSheet.Domain.Entities;
 
 public class WorkSession
 {

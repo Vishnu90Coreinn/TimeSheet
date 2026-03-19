@@ -1,4 +1,4 @@
-namespace TimeSheet.Api.Models;
+namespace TimeSheet.Domain.Entities;
 
 public class TaskCategory
 {

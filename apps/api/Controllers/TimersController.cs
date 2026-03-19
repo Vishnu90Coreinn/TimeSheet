@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using TimeSheet.Api.Data;
 using TimeSheet.Api.Dtos;
-using TimeSheet.Api.Models;
 
 namespace TimeSheet.Api.Controllers;
 

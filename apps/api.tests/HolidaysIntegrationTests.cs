@@ -6,7 +6,6 @@ using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using TimeSheet.Api.Data;
 using TimeSheet.Api.Dtos;
-using TimeSheet.Api.Models;
 using TimeSheet.Api.Services;
 using Xunit;
 

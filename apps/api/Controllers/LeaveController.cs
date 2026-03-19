@@ -101,7 +101,6 @@ public class LeaveController(TimeSheetDbContext dbContext, IAuditService auditSe
         var leaveGroupId = Guid.NewGuid();
         var requests = days.Select(day => new LeaveRequest
         {
-            Id = Guid.NewGuid(),
             UserId = userId.Value,
             LeaveTypeId = request.LeaveTypeId,
             LeaveDate = day,

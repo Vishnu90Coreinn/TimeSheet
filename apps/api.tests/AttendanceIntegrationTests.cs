@@ -47,7 +47,6 @@ public class AttendanceIntegrationTests : IClassFixture<CustomWebApplicationFact
 
             db.WorkSessions.Add(new WorkSession
             {
-                Id = Guid.NewGuid(),
                 UserId = user.Id,
                 WorkDate = DateOnly.FromDateTime(priorDayCheckIn),
                 CheckInAtUtc = priorDayCheckIn,

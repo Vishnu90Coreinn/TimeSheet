@@ -1017,3 +1017,106 @@ New features built on the clean architecture will be far easier to implement and
 - **RefreshTokenCleanupService uses `ExecuteDeleteAsync`:** InMemory provider swallows the error via try/catch — intentional.
 - **`AuditService.WriteAsync` does NOT call `SaveChangesAsync`:** Caller is responsible — intentional (same transaction).
 - **Tailwind v4 CSS layers:** All custom CSS resets must stay inside `@layer base`. Unlayered CSS beats `@layer utilities` — never add unlayered `padding` or `margin` rules to design-system.css.
+
+---
+
+## Session 19 — Clean Architecture Phase 1: Solution Scaffold (2026-03-20)
+
+### What Was Done
+
+#### Branch
+All work on `feature/clean-architecture`. **Do NOT merge to master until all 6 phases are complete and user has manually tested and approved.** User will raise the PR manually.
+
+#### CA-001–006: Project creation & solution wiring
+- Created 5 new projects via `dotnet new`:
+  - `src/TimeSheet.Domain/` (classlib, net10.0, zero NuGet deps)
+  - `src/TimeSheet.Application/` (classlib, net10.0)
+  - `src/TimeSheet.Infrastructure/` (classlib, net10.0)
+  - `tests/TimeSheet.Domain.Tests/` (xunit, net10.0)
+  - `tests/TimeSheet.Application.Tests/` (xunit, net10.0)
+- Added all 5 to `TimeSheet.sln`
+- Project references set per dependency rule:
+  - Application → Domain
+  - Infrastructure → Domain + Application
+  - Api → Application + Infrastructure
+  - Domain.Tests → Domain
+  - Application.Tests → Application
+- NuGet packages added:
+  - Application: MediatR 12.4.1, FluentValidation.DependencyInjectionExtensions 11.11.0, Mapster 7.4.0, Microsoft.Extensions.Logging.Abstractions 9.0.0, Microsoft.Extensions.DependencyInjection.Abstractions 9.0.0
+  - Infrastructure: EF Core 9.0.0, EF Core SqlServer 9.0.0, MediatR 12.4.1, Microsoft.Extensions.* 9.0.0
+  - Application.Tests: Moq 4.20.72, FluentAssertions 7.2.0
+
+#### CA-007, CA-009: Domain base types (parallel agent)
+- `src/TimeSheet.Domain/Common/IDomainEvent.cs` — plain marker interface (no MediatR dep in Domain)
+- `src/TimeSheet.Domain/Common/Entity.cs` — `Guid Id` + domain events list + `AddDomainEvent` / `ClearDomainEvents`
+- `src/TimeSheet.Domain/Common/AuditableEntity.cs` — extends Entity with `CreatedAtUtc` / `UpdatedAtUtc`
+- `src/TimeSheet.Domain/Interfaces/IUnitOfWork.cs` — `SaveChangesAsync` contract
+- `src/TimeSheet.Domain/Exceptions/` — `DomainException` (base), `InvalidStateTransitionException`, `InsufficientLeaveBalanceException`
+
+#### CA-008, CA-010–013: Application layer (parallel agent)
+- `Common/Models/Result.cs` — `Result` + `Result<T>` with `ResultStatus` enum (Success, NotFound, Forbidden, Validation, Conflict, Error)
+- `Common/Interfaces/ICurrentUserService.cs` — `UserId`, `Username`, `Role`, `IsAdmin`, `IsManager`, `IsManagerOf(Guid)`
+- `Common/Interfaces/IDateTimeProvider.cs` — `UtcNow`, `TodayUtc`
+- `Common/Exceptions/` — `ValidationException`, `NotFoundException`, `ForbiddenException`
+- `Common/Behaviors/` — `LoggingBehavior`, `PerformanceBehavior`, `ValidationBehavior` (MediatR 12.x signature: `next()` not `next(ct)`)
+- `DependencyInjection.cs` — `AddApplication()` registers MediatR + all 3 behaviors + FluentValidation validators
+
+#### CA-014, CA-015: Infrastructure stub + API wiring (parallel agent)
+- `src/TimeSheet.Infrastructure/Services/DateTimeProvider.cs` — implements `IDateTimeProvider`
+- `src/TimeSheet.Infrastructure/DependencyInjection.cs` — `AddInfrastructure()` stub (registers `IDateTimeProvider`; repositories added in Phase 3)
+- `apps/api/Extensions/ResultExtensions.cs` — `ToActionResult()` overloads for `Result` and `Result<T>`
+- `apps/api/Program.cs` — added `builder.Services.AddApplication()` + `builder.Services.AddInfrastructure(builder.Configuration)`
+
+### Result
+- **52/52 tests passing**
+- **0 build errors** (file-lock warnings are harmless — dev server was running)
+- All existing API behaviour unchanged
+
+### Commits on `feature/clean-architecture`
+- `d43d3a9` — feat(domain): Entity, IDomainEvent, IUnitOfWork, exceptions (CA-007, CA-009)
+- `24b176a` — feat(application): Result<T>, interfaces, exceptions, behaviors, DI (CA-008, CA-010–013)
+- `78817ea` — feat(infra+api): DateTimeProvider, Infrastructure DI, ResultExtensions, Program.cs wiring (CA-013–015)
+
+---
+
+## Pending For Next Session
+
+> Last updated: Session 19 (2026-03-20).
+
+### 🔴 Priority — Clean Architecture Phase 2: Domain Enrichment
+Branch: `feature/clean-architecture` (all CA work stays here until user manually tests & raises PR to master)
+
+**Tasks (CA-020–030):**
+- CA-020: Move 25 entity models → `src/TimeSheet.Domain/Entities/`
+- CA-021: Move enums → `src/TimeSheet.Domain/Enums/`
+- CA-022: Add behavior to `Timesheet` entity (Submit, Approve, Reject, PushBack)
+- CA-023: Add behavior to `LeaveRequest` entity (Approve, Reject, Cancel)
+- CA-024: Add behavior to `WorkSession` entity (CheckOut, AddBreak, EndBreak)
+- CA-025: Create Value Objects (DateRange, Duration, WorkHours)
+- CA-026: Create Domain Exceptions (TimesheetLockedException etc.)
+- CA-027: Create Domain Events (TimesheetSubmitted/Approved/Rejected, LeaveApproved/Rejected)
+- CA-028: Define repository interfaces in Domain
+- CA-029: Write unit tests for all entity behavior methods
+- CA-030: Verify 52 integration tests still pass
+
+### Merge Policy
+- All phases (1–6) must be complete on `feature/clean-architecture`
+- User will manually test the running app
+- User will manually raise PR and merge to master
+- **Never auto-merge CA work to master**
+
+### Sprint Roadmap (still on hold)
+Sprints 21–25 remain deferred until CA migration is complete.
+
+---
+
+## Known Issues / Gotchas
+
+- **EF Core 9 dual-provider in tests:** Fix in `CustomWebApplicationFactory.cs` — do not revert.
+- **net10.0 only:** Both `.csproj` files target `net10.0`. Do not downgrade.
+- **`gh` CLI not installed:** GitHub operations via browser only.
+- **RefreshTokenCleanupService uses `ExecuteDeleteAsync`:** InMemory provider swallows the error via try/catch — intentional.
+- **`AuditService.WriteAsync` does NOT call `SaveChangesAsync`:** Caller is responsible — intentional (same transaction).
+- **Tailwind v4 CSS layers:** All custom CSS resets must stay inside `@layer base`.
+- **MediatR 12.x pipeline behavior signature:** `RequestHandlerDelegate<TResponse>` is a zero-arg delegate — call `next()` not `next(cancellationToken)`.
+- **CA branch policy:** All Clean Architecture work (Phases 1–6) stays on `feature/clean-architecture`. User tests manually and raises PR to master themselves.

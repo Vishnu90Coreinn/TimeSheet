@@ -34,21 +34,21 @@ TimeSheet.Integration.Tests   ← Existing 52 tests moved here
 
 ### Phase 1 — Solution Scaffold
 
-- [ ] **CA-001** Create `TimeSheet.Domain` class library project (net10.0, zero NuGet deps)
-- [ ] **CA-002** Create `TimeSheet.Application` class library (depends on Domain; add MediatR, FluentValidation, Mapster)
-- [ ] **CA-003** Create `TimeSheet.Infrastructure` class library (depends on Application + Domain; EF Core, SQL Server move here)
-- [ ] **CA-004** Update `TimeSheet.Api` project references: remove direct EF Core, add Application + Infrastructure
-- [ ] **CA-005** Update `TimeSheet.sln` to include all 4 src projects + rename test project to `TimeSheet.Integration.Tests`
-- [ ] **CA-006** Create `src/TimeSheet.Domain.Tests` and `src/TimeSheet.Application.Tests` xUnit projects
-- [ ] **CA-007** Add `Entity.cs` base class (Id, `List<IDomainEvent>`, `AddDomainEvent`, `ClearDomainEvents`)
-- [ ] **CA-008** Add `Result<T>` / `Result` (Success, NotFound, Forbidden, Validation, Conflict) + `.ToActionResult()` extension
-- [ ] **CA-009** Add `IUnitOfWork` interface in Domain (`SaveChangesAsync`)
-- [ ] **CA-010** Add `ICurrentUserService` interface in Application (`UserId`, `Username`, `Role`, `IsAdmin`, `IsManagerOf`)
-- [ ] **CA-011** Add `IDateTimeProvider` interface in Application (`UtcNow`)
-- [ ] **CA-012** Add MediatR pipeline behaviors: `ValidationBehavior`, `LoggingBehavior`, `PerformanceBehavior`
-- [ ] **CA-013** Add `DependencyInjection.cs` in Application (`services.AddApplication()`)
-- [ ] **CA-014** Add `DependencyInjection.cs` in Infrastructure (`services.AddInfrastructure(config)`)
-- [ ] **CA-015** Wire `AddApplication()` + `AddInfrastructure()` in `Program.cs` — verify app still starts + 52 tests pass
+- [x] **CA-001** Create `TimeSheet.Domain` class library project (net10.0, zero NuGet deps)
+- [x] **CA-002** Create `TimeSheet.Application` class library (depends on Domain; add MediatR, FluentValidation, Mapster)
+- [x] **CA-003** Create `TimeSheet.Infrastructure` class library (depends on Application + Domain; EF Core, SQL Server move here)
+- [x] **CA-004** Update `TimeSheet.Api` project references: remove direct EF Core, add Application + Infrastructure
+- [x] **CA-005** Update `TimeSheet.sln` to include all 4 src projects + rename test project to `TimeSheet.Integration.Tests`
+- [x] **CA-006** Create `src/TimeSheet.Domain.Tests` and `src/TimeSheet.Application.Tests` xUnit projects
+- [x] **CA-007** Add `Entity.cs` base class (Id, `List<IDomainEvent>`, `AddDomainEvent`, `ClearDomainEvents`)
+- [x] **CA-008** Add `Result<T>` / `Result` (Success, NotFound, Forbidden, Validation, Conflict) + `.ToActionResult()` extension
+- [x] **CA-009** Add `IUnitOfWork` interface in Domain (`SaveChangesAsync`)
+- [x] **CA-010** Add `ICurrentUserService` interface in Application (`UserId`, `Username`, `Role`, `IsAdmin`, `IsManagerOf`)
+- [x] **CA-011** Add `IDateTimeProvider` interface in Application (`UtcNow`)
+- [x] **CA-012** Add MediatR pipeline behaviors: `ValidationBehavior`, `LoggingBehavior`, `PerformanceBehavior`
+- [x] **CA-013** Add `DependencyInjection.cs` in Application (`services.AddApplication()`)
+- [x] **CA-014** Add `DependencyInjection.cs` in Infrastructure (`services.AddInfrastructure(config)`)
+- [x] **CA-015** Wire `AddApplication()` + `AddInfrastructure()` in `Program.cs` — verify app still starts + 52 tests pass
 
 ### Phase 2 — Domain Enrichment
 

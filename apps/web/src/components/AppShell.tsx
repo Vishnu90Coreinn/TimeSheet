@@ -53,8 +53,18 @@ const VIEW_LABELS: Record<View, string> = {
 
 export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, onLogout, children }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const initials = session.username.slice(0, 2).toUpperCase();
+
+  // Close mobile sidebar when resizing to tablet/desktop
+  useEffect(() => {
+    function handleResize() {
+      if (window.innerWidth >= 768) setMobileOpen(false);
+    }
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // Load pending approvals count for the Approvals badge
   useEffect(() => {
@@ -79,11 +89,11 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
         key={item.view}
         type="button"
         className={`nav-item${view === item.view ? " active" : ""}`}
-        onClick={() => onNavigate(item.view)}
+        onClick={() => { onNavigate(item.view); setMobileOpen(false); }}
         data-tooltip={item.label}
       >
         {item.icon}
-        <span style={{ flex: 1 }}>{item.label}</span>
+        <span className="flex-1">{item.label}</span>
         {(item.badge ?? 0) > 0 && (
           <span
             className={`nav-badge nav-badge-${item.badgeVariant ?? "brand"}`}
@@ -101,6 +111,14 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
       {/* ── Topbar ── */}
       <header className="shell-topnav">
         <div className="shell-topnav__left">
+          <button
+            type="button"
+            className="shell-topnav-hamburger icon-btn mr-1"
+            onClick={() => setMobileOpen(o => !o)}
+            aria-label="Toggle navigation"
+          >
+            <HamburgerIcon />
+          </button>
           <nav className="breadcrumb">
             <span>TimeSheet</span>
             <span className="breadcrumb-sep">/</span>
@@ -110,16 +128,16 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
         <div className="shell-topnav__right">
           <NotificationBell />
           <div className="topbar-divider" />
-          <div className="topbar-user" title="My Profile" onClick={onNavigateProfile} style={{ cursor: "pointer" }}>
-            <div style={{
-              width: 28, height: 28, borderRadius: "var(--r-md)",
-              background: "linear-gradient(135deg, var(--brand-500), var(--brand-700))",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: "0.65rem", fontWeight: 700, color: "#fff", flexShrink: 0,
-            }}>{initials}</div>
+          <div className="topbar-user" title="My Profile" onClick={onNavigateProfile}>
+            <div
+              className="w-7 h-7 rounded-md flex items-center justify-center text-[0.65rem] font-bold text-white shrink-0"
+              style={{ background: "linear-gradient(135deg, var(--brand-500), var(--brand-700))" }}
+            >
+              {initials}
+            </div>
             <div>
-              <div style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.2 }}>{session.username}</div>
-              <div style={{ fontSize: "0.68rem", color: "var(--text-tertiary)", textTransform: "capitalize" }}>{session.role}</div>
+              <div className="text-[0.8rem] font-semibold text-text-primary leading-[1.2]">{session.username}</div>
+              <div className="text-[0.68rem] text-text-tertiary capitalize">{session.role}</div>
             </div>
           </div>
         </div>
@@ -127,13 +145,20 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
 
       {/* ── Shell body ── */}
       <div className="shell-layout">
+        {/* Mobile backdrop */}
+        <div
+          className={`shell-sidebar-backdrop${mobileOpen ? " mobile-open" : ""}`}
+          onClick={() => setMobileOpen(false)}
+          aria-hidden="true"
+        />
+
         {/* Sidebar */}
-        <aside className={`shell-sidebar${collapsed ? " collapsed" : ""}`}>
+        <aside className={`shell-sidebar${collapsed ? " collapsed" : ""}${mobileOpen ? " mobile-open" : ""}`}>
 
           {/* Brand header */}
           <div className="sidebar-header">
             <div className="sidebar-brand">
-              <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+              <div className="flex items-center gap-3">
                 <div className="sidebar-brand-icon" aria-hidden="true">T</div>
                 <span className="sidebar-brand-name">TimeSheet</span>
               </div>
@@ -149,16 +174,16 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
             </div>
           </div>
 
-          {/* User profile section (FIX 1) */}
+          {/* User profile section */}
           <div className="sidebar-user-section">
             <div className="sidebar-user-row">
-              <div style={{ position: "relative" }}>
+              <div className="relative">
                 <div className="sidebar-user-avatar">{initials}</div>
                 <span className="sidebar-user-online" aria-hidden="true" />
               </div>
               <div className="sidebar-user-info">
                 <div className="sidebar-user-name">{session.username}</div>
-                <div className="sidebar-user-role" style={{ textTransform: "capitalize" }}>{session.role}</div>
+                <div className="sidebar-user-role capitalize">{session.role}</div>
               </div>
             </div>
           </div>
@@ -211,6 +236,15 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
 }
 
 /* ─── Inline SVG icons (18×18) ────────────────────────────── */
+function HamburgerIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <line x1="3" y1="6" x2="21" y2="6"/>
+      <line x1="3" y1="12" x2="21" y2="12"/>
+      <line x1="3" y1="18" x2="21" y2="18"/>
+    </svg>
+  );
+}
 function CollapseIcon({ collapsed }: { collapsed: boolean }) {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

@@ -662,21 +662,21 @@ export function Timesheets() {
   /* ── Render ───────────────────────────────────────────────────────────────── */
   return (
     <section>
-      <style>{PAGE_STYLES}</style>
-      <div className="ts3-page">
+      {/* ts-page: two-column layout */}
+      <div className="flex gap-6 items-start">
 
         {/* ── Main column ─────────────────────────────────────────────────── */}
-        <div className="ts3-main">
+        <div className="flex-1 min-w-0 flex flex-col gap-4">
 
           {/* Page header */}
-          <div className="page-header ts3-page-header">
+          <div className="page-header flex items-start justify-between flex-wrap gap-3 mb-0">
             <div>
               <div className="page-title">My Timesheet</div>
               <div className="page-subtitle">
                 Week of {weekRange}&nbsp;&mdash;&nbsp;{fmtHours(weekTotalMins)} logged
               </div>
             </div>
-            <div className="ts3-header-actions">
+            <div className="flex gap-2 flex-wrap items-center">
               <button className="btn btn-outline btn-sm">Export</button>
               {isDraft && !isLocked && (
                 <button
@@ -724,16 +724,16 @@ export function Timesheets() {
           </div>
 
           {/* Week strip with prev/next navigation */}
-          <div className="ts3-week-nav">
+          <div className="flex items-stretch gap-[6px]">
             <button
-              className="ts3-week-nav-btn"
+              className="ts-week-nav-btn"
               onClick={() => shiftWeek(-7)}
               title="Previous week"
               aria-label="Previous week"
             >
               &#8249;
             </button>
-            <div className="ts3-week-strip">
+            <div className="flex-1 grid grid-cols-7 gap-[6px]">
             {weekDays.map((date, i) => {
               const meta = weekDayMap.get(date);
               const mins = meta?.enteredMinutes ?? 0;
@@ -753,26 +753,33 @@ export function Timesheets() {
               return (
                 <button
                   key={date}
-                  className={`ts3-day-card${isSelected ? " ts3-day-card--selected" : ""}${isToday ? " ts3-day-card--today" : ""}${dayApproved ? " ts3-day-card--approved" : ""}`}
+                  className={[
+                    "ts-day-card",
+                    isSelected ? "ts-day-card--selected" : "",
+                    isToday ? "ts-day-card--today" : "",
+                    dayApproved ? "ts-day-card--approved" : "",
+                  ].filter(Boolean).join(" ")}
                   onClick={() => selectDay(date)}
                 >
-                  <div className="ts3-day-label">{DAY_LABELS[i]}</div>
-                  <div className="ts3-day-num">
+                  <div className="text-[10px] font-semibold tracking-[0.06em] text-text-secondary uppercase">
+                    {DAY_LABELS[i]}
+                  </div>
+                  <div className="relative inline-flex items-center gap-[3px] text-[18px] font-semibold text-[var(--n-900,#111827)] leading-none">
                     {new Date(date + "T00:00:00").getDate()}
                     {dayApproved && (
-                      <svg className="ts3-day-approved-icon" width="8" height="8" viewBox="0 0 12 12" fill="none">
+                      <svg className="shrink-0 align-middle" width="8" height="8" viewBox="0 0 12 12" fill="none">
                         <circle cx="6" cy="6" r="6" fill="#10b981"/>
                         <path d="M3 6l2 2 4-4" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                     )}
                   </div>
-                  <div className={`ts3-day-hours${mins > 0 ? " ts3-day-hours--logged" : ""}`}>
+                  <div className={`text-[11px] ${mins > 0 ? "text-brand-500 font-semibold" : "text-[var(--n-400,#9ca3af)]"}`}>
                     {mins > 0 ? fmtHours(mins) : "—"}
                   </div>
-                  <div className="ts3-day-bar-wrap">
-                    <div className="ts3-day-bar-track">
+                  <div className="w-full px-[2px]">
+                    <div className="h-[3px] bg-[var(--n-100,#f3f4f6)] rounded-full overflow-hidden">
                       <div
-                        className="ts3-day-bar-fill"
+                        className="h-full rounded-full transition-[width] duration-300"
                         style={{ width: `${pct}%`, backgroundColor: fillColor }}
                       />
                     </div>
@@ -780,29 +787,29 @@ export function Timesheets() {
                 </button>
               );
             })}
-            </div>{/* /ts3-week-strip */}
+            </div>
             <button
-              className="ts3-week-nav-btn"
+              className="ts-week-nav-btn"
               onClick={() => shiftWeek(7)}
               title="Next week"
               aria-label="Next week"
             >
               &#8250;
             </button>
-          </div>{/* /ts3-week-nav */}
+          </div>
 
           {/* Entry form */}
           {showForm && (
-            <div className="ts3-entry-form-card">
-              <div className="ts3-entry-form-header">
-                <span>+ {form.editingId ? "Edit" : "New"} time entry &mdash; {fmtDateLabel(selectedDate)}</span>
+            <div className="border-2 border-dashed border-[#a5b4fc] rounded-xl bg-[#eef2ff] p-5 flex flex-col gap-[14px]">
+              <div className="text-[13px] font-semibold text-[#4338ca]">
+                + {form.editingId ? "Edit" : "New"} time entry &mdash; {fmtDateLabel(selectedDate)}
               </div>
 
               {/* Description */}
-              <div className="ts3-field">
-                <label className="ts3-label">Task / Description</label>
+              <div className="flex flex-col gap-1">
+                <label className="text-[12px] font-semibold text-[var(--n-600,#4b5563)]">Task / Description</label>
                 <textarea
-                  className="ts3-textarea"
+                  className="ts-form-input resize-y"
                   rows={2}
                   placeholder="What did you work on?"
                   value={form.description}
@@ -811,11 +818,11 @@ export function Timesheets() {
               </div>
 
               {/* Project + Category + Duration */}
-              <div className="ts3-form-row">
-                <div className="ts3-field ts3-field--grow">
-                  <label className="ts3-label">Project</label>
+              <div className="flex gap-[10px] items-start flex-wrap">
+                <div className="flex flex-col gap-1 flex-1">
+                  <label className="text-[12px] font-semibold text-[var(--n-600,#4b5563)]">Project</label>
                   <select
-                    className="ts3-select"
+                    className="ts-form-input"
                     value={form.projectId}
                     onChange={(e) => setFormField({ projectId: e.target.value })}
                   >
@@ -825,10 +832,10 @@ export function Timesheets() {
                     ))}
                   </select>
                 </div>
-                <div className="ts3-field ts3-field--grow">
-                  <label className="ts3-label">Category</label>
+                <div className="flex flex-col gap-1 flex-1">
+                  <label className="text-[12px] font-semibold text-[var(--n-600,#4b5563)]">Category</label>
                   <select
-                    className="ts3-select"
+                    className="ts-form-input"
                     value={form.taskCategoryId}
                     onChange={(e) => setFormField({ taskCategoryId: e.target.value })}
                   >
@@ -837,10 +844,10 @@ export function Timesheets() {
                     ))}
                   </select>
                 </div>
-                <div className="ts3-field ts3-field--narrow">
-                  <label className="ts3-label">Duration (h)</label>
+                <div className="flex flex-col gap-1 w-[110px] shrink-0">
+                  <label className="text-[12px] font-semibold text-[var(--n-600,#4b5563)]">Duration (h)</label>
                   <input
-                    className="ts3-input"
+                    className="ts-form-input"
                     placeholder="e.g. 1.5"
                     value={form.durationHours}
                     disabled={!!(form.startTime && form.endTime)}
@@ -851,31 +858,31 @@ export function Timesheets() {
               </div>
 
               {/* Start + End time */}
-              <div className="ts3-form-row">
-                <div className="ts3-field ts3-field--narrow">
-                  <label className="ts3-label">Start time</label>
+              <div className="flex gap-[10px] items-start flex-wrap">
+                <div className="flex flex-col gap-1 w-[110px] shrink-0">
+                  <label className="text-[12px] font-semibold text-[var(--n-600,#4b5563)]">Start time</label>
                   <input
                     type="time"
-                    className="ts3-input"
+                    className="ts-form-input"
                     value={form.startTime}
                     onChange={(e) => setFormField({ startTime: e.target.value })}
                   />
                 </div>
-                <div className="ts3-field ts3-field--narrow">
-                  <label className="ts3-label">End time</label>
+                <div className="flex flex-col gap-1 w-[110px] shrink-0">
+                  <label className="text-[12px] font-semibold text-[var(--n-600,#4b5563)]">End time</label>
                   <input
                     type="time"
-                    className="ts3-input"
+                    className="ts-form-input"
                     value={form.endTime}
                     onChange={(e) => setFormField({ endTime: e.target.value })}
                   />
                 </div>
-                <div className="ts3-field ts3-field--grow" />
+                <div className="flex flex-col gap-1 flex-1" />
               </div>
 
-              {formError && <p className="ts3-form-error">{formError}</p>}
+              {formError && <p className="text-[12px] text-danger m-0">{formError}</p>}
 
-              <div className="ts3-form-actions">
+              <div className="flex gap-2 justify-end">
                 <button
                   className="btn btn-outline btn-sm"
                   onClick={() => { setShowForm(false); setFormError(""); }}
@@ -895,12 +902,12 @@ export function Timesheets() {
 
           {/* Submit form */}
           {showSubmitForm && isDraft && (
-            <div className="ts3-submit-card">
-              <div className="ts3-submit-title">Submit for Review</div>
-              <div className="ts3-field">
-                <label className="ts3-label">Notes (optional)</label>
+            <div className="border-[1.5px] border-border-subtle rounded-xl bg-white p-5 flex flex-col gap-[14px]">
+              <div className="text-[14px] font-semibold text-[var(--n-900,#111827)]">Submit for Review</div>
+              <div className="flex flex-col gap-1">
+                <label className="text-[12px] font-semibold text-[var(--n-600,#4b5563)]">Notes (optional)</label>
                 <textarea
-                  className="ts3-textarea"
+                  className="ts-form-input resize-y"
                   rows={3}
                   placeholder="Optional notes to your manager…"
                   value={submitNotes}
@@ -908,22 +915,22 @@ export function Timesheets() {
                 />
               </div>
               {dayData?.hasMismatch && (
-                <div className="ts3-field">
-                  <label className="ts3-label">
-                    Mismatch reason <span className="ts3-required">*</span>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[12px] font-semibold text-[var(--n-600,#4b5563)]">
+                    Mismatch reason <span className="text-danger">*</span>
                   </label>
                   <textarea
-                    className="ts3-textarea ts3-textarea--warn"
+                    className="ts-form-input resize-y border-warning"
                     rows={3}
                     placeholder="Explain why logged hours differ from attendance hours…"
                     value={mismatchReason}
                     onChange={(e) => setMismatchReason(e.target.value)}
                   />
-                  <span className="ts3-hint ts3-hint--warn">Your logged hours don't match attendance. A reason is required.</span>
+                  <span className="text-[11px] text-[#b45309]">Your logged hours don&apos;t match attendance. A reason is required.</span>
                 </div>
               )}
-              {submitError && <p className="ts3-form-error">{submitError}</p>}
-              <div className="ts3-form-actions">
+              {submitError && <p className="text-[12px] text-danger m-0">{submitError}</p>}
+              <div className="flex gap-2 justify-end">
                 <button className="btn btn-outline btn-sm" onClick={() => setShowSubmitForm(false)}>Cancel</button>
                 <button className="btn btn-primary btn-sm" onClick={() => void submitTimesheet()}>Submit Timesheet</button>
               </div>
@@ -931,56 +938,58 @@ export function Timesheets() {
           )}
 
           {submitSuccess && (
-            <div className="ts3-success-banner">{submitSuccess}</div>
+            <div className="bg-[#f0fdf4] border-[1.5px] border-[#86efac] rounded-lg px-[14px] py-[10px] text-[13px] text-[#166534]">
+              {submitSuccess}
+            </div>
           )}
 
           {/* Semantic status banners */}
           {isApproved && (
-            <div className="ts3-banner ts3-banner--approved">
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" style={{ flexShrink: 0 }}>
+            <div className="flex items-center gap-[10px] rounded-[10px] px-4 py-3 text-[13px] bg-[#f0fdf4] border-[1.5px] border-[#6ee7b7] text-[#065f46]">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" className="shrink-0">
                 <circle cx="10" cy="10" r="10" fill="#10b981"/>
                 <path d="M5.5 10l3 3 6-6" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
               <div>
                 <strong>Timesheet approved</strong>
-                <span className="ts3-banner-sub"> — Entries are locked and cannot be edited.</span>
+                <span className="font-normal opacity-85"> — Entries are locked and cannot be edited.</span>
               </div>
             </div>
           )}
           {isSubmitted && (
-            <div className="ts3-banner ts3-banner--submitted">
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" style={{ flexShrink: 0 }}>
+            <div className="flex items-center gap-[10px] rounded-[10px] px-4 py-3 text-[13px] bg-[#eff6ff] border-[1.5px] border-[#93c5fd] text-[#1e40af]">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" className="shrink-0">
                 <circle cx="10" cy="10" r="9" stroke="#3b82f6" strokeWidth="1.8"/>
                 <path d="M10 6v4l2.5 2.5" stroke="#3b82f6" strokeWidth="1.8" strokeLinecap="round"/>
               </svg>
               <div>
                 <strong>Awaiting approval</strong>
-                <span className="ts3-banner-sub"> — Submitted for manager review.</span>
+                <span className="font-normal opacity-85"> — Submitted for manager review.</span>
               </div>
             </div>
           )}
           {isRejected && (
-            <div className="ts3-banner ts3-banner--rejected">
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" style={{ flexShrink: 0 }}>
+            <div className="flex items-center gap-[10px] rounded-[10px] px-4 py-3 text-[13px] bg-[#fef2f2] border-[1.5px] border-[#fca5a5] text-[#991b1b]">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" className="shrink-0">
                 <circle cx="10" cy="10" r="9" stroke="#ef4444" strokeWidth="1.8"/>
                 <path d="M7 7l6 6M13 7l-6 6" stroke="#ef4444" strokeWidth="1.8" strokeLinecap="round"/>
               </svg>
               <div>
                 <strong>Timesheet rejected</strong>
-                <span className="ts3-banner-sub"> — Please review and resubmit.</span>
+                <span className="font-normal opacity-85"> — Please review and resubmit.</span>
               </div>
             </div>
           )}
 
           {/* Entries list */}
-          <div className="ts3-entries">
+          <div className="flex flex-col gap-2">
             {dayEntries.length === 0 ? (
-              <div className="ts3-empty-state">
-                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" style={{ color: "var(--n-300, #d1d5db)", marginBottom: 8 }}>
+              <div className="flex flex-col items-center justify-center text-[13px] text-text-secondary text-center py-9 gap-[2px]">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" className="text-[var(--n-300,#d1d5db)] mb-2">
                   <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
                 </svg>
                 <div>No entries for this day.</div>
-                <div style={{ fontSize: "12px", color: "var(--n-400, #9ca3af)", marginTop: 4 }}>Click &ldquo;+ Add Entry&rdquo; to log your time.</div>
+                <div className="text-[12px] text-[var(--n-400,#9ca3af)] mt-1">Click &ldquo;+ Add Entry&rdquo; to log your time.</div>
               </div>
             ) : (
               dayEntries.map((entry) => {
@@ -989,35 +998,48 @@ export function Timesheets() {
                 return (
                   <div
                     key={entry.id}
-                    className={`ts3-entry-card${!isDraft ? " ts3-entry-card--locked" : ""}${isApproved ? " ts3-entry-card--approved" : ""}`}
+                    className={[
+                      "ts-entry-card",
+                      !isDraft ? "ts-entry-card--locked" : "",
+                      isApproved ? "ts-entry-card--approved" : "",
+                    ].filter(Boolean).join(" ")}
                     style={{ borderLeftColor: isApproved ? "rgb(5, 150, 105)" : color }}
                   >
-                    <div className="ts3-entry-body">
-                      <div className="ts3-entry-title">
+                    <div className="flex-1 min-w-0 flex flex-col gap-1">
+                      <div className="text-[13px] font-semibold text-[var(--n-900,#111827)] flex items-center gap-[6px] whitespace-nowrap overflow-hidden text-ellipsis">
                         {parsed.description || entry.taskCategoryName}
-                        {parsed.isLive && <span className="ts3-live-badge">LIVE</span>}
+                        {parsed.isLive && (
+                          <span className="text-[10px] font-bold bg-[#dcfce7] text-[#166534] px-[6px] py-[1px] rounded-full tracking-[0.05em]">
+                            LIVE
+                          </span>
+                        )}
                       </div>
-                      <div className="ts3-entry-meta">
-                        <span className="ts3-project-badge" style={{ backgroundColor: color + "22", color }}>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span
+                          className="text-[11px] font-semibold px-2 py-[2px] rounded-full whitespace-nowrap"
+                          style={{ backgroundColor: color + "22", color }}
+                        >
                           {entry.projectName}
                         </span>
                         {parsed.timeRange && (
-                          <span className="ts3-entry-time">{parsed.timeRange.replace("-", " – ")}</span>
+                          <span className="text-[11px] text-text-secondary">{parsed.timeRange.replace("-", " – ")}</span>
                         )}
                       </div>
                     </div>
-                    <div className="ts3-entry-hours">{fmtHours(entry.minutes)}</div>
+                    <div className="text-[14px] font-bold text-[var(--n-900,#111827)] whitespace-nowrap min-w-[40px] text-right">
+                      {fmtHours(entry.minutes)}
+                    </div>
                     {isDraft ? (
-                      <div className="ts3-entry-actions">
-                        <button className="ts3-icon-btn" title="Edit" onClick={() => openEdit(entry)}>
+                      <div className="flex gap-1">
+                        <button className="ts-icon-btn" title="Edit" onClick={() => openEdit(entry)}>
                           <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M14.7 3.3a1 1 0 0 1 1.4 1.4L5.5 15.3l-3 .7.7-3L14.7 3.3z"/></svg>
                         </button>
-                        <button className="ts3-icon-btn ts3-icon-btn--danger" title="Delete" onClick={() => void deleteEntry(entry.id)}>
+                        <button className="ts-icon-btn ts-icon-btn--danger" title="Delete" onClick={() => void deleteEntry(entry.id)}>
                           <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 6h14M8 6V4h4v2M6 6l1 11h6l1-11"/></svg>
                         </button>
                       </div>
                     ) : (
-                      <div className="ts3-lock-icon" title={`Locked — ${dayData?.status}`}>
+                      <div className="w-[28px] h-[28px] flex items-center justify-center text-[var(--n-400,#9ca3af)] shrink-0" title={`Locked — ${dayData?.status}`}>
                         <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6">
                           <rect x="3" y="7" width="10" height="8" rx="1.5"/>
                           <path d="M5 7V5a3 3 0 0 1 6 0v2"/>
@@ -1031,47 +1053,49 @@ export function Timesheets() {
           </div>
 
           {/* Day summary bar */}
-          <div className={`ts3-day-bar${isApproved ? " ts3-day-bar--approved" : ""}`}>
+          <div className={`ts-day-bar${isApproved ? " ts-day-bar--approved" : ""}`}>
             <span>{fmtDayBarLabel(selectedDate)}</span>
-            <div className="ts3-day-bar-right">
+            <div className="flex items-center gap-[10px]">
               {todayExpectedMins > 0 ? (
                 <>
-                  <div className="ts3-day-mini-prog">
+                  <div className="w-[60px] h-[4px] bg-white/25 rounded-full overflow-hidden">
                     <div
-                      className="ts3-day-mini-prog-fill"
+                      className="h-full bg-white/90 rounded-full transition-[width] duration-300"
                       style={{ width: `${Math.min(100, todayExpectedMins > 0 ? Math.round((todayTotalMins / todayExpectedMins) * 100) : 0)}%` }}
                     />
                   </div>
                   <span>{fmtHours(todayTotalMins)} / {fmtHours(todayExpectedMins)}</span>
                 </>
               ) : (
-                <span style={{ color: "rgba(255,255,255,0.5)", fontSize: "12px" }}>Rest day — no target</span>
+                <span className="text-white/50 text-[12px]">Rest day — no target</span>
               )}
             </div>
           </div>
 
-        </div>{/* /ts3-main */}
+        </div>{/* /main column */}
 
         {/* ── Sidebar ──────────────────────────────────────────────────────── */}
-        <aside className="ts3-sidebar">
+        <aside className="w-[280px] shrink-0 flex flex-col gap-4 sticky top-[calc(60px+24px)]">
 
           {/* Attendance card */}
           {(isCurrentWeek || isCheckedIn) && (
-            <div className="ts3-sidebar-card">
-              <div className="ts3-sidebar-section-label">
-                {isCheckedIn && <span className="ts3-green-dot" />}
+            <div className="ts-sidebar-card">
+              <div className="ts-sidebar-section-label">
+                {isCheckedIn && <span className="ts-green-dot" />}
                 ATTENDANCE
               </div>
               {isCheckedIn ? (
                 <>
-                  <div className="ts3-elapsed-clock">{fmtElapsed(elapsed)}</div>
-                  <div className="ts3-elapsed-sub">
+                  <div className="text-[28px] font-bold [font-variant-numeric:tabular-nums] text-[var(--n-900,#111827)] tracking-[0.02em] leading-none">
+                    {fmtElapsed(elapsed)}
+                  </div>
+                  <div className="text-[12px] text-text-secondary -mt-[6px]">
                     since {attendance?.lastCheckInAtUtc ? fmtTime(attendance.lastCheckInAtUtc) : "—"}
                     &nbsp;&middot;&nbsp;{fmtMins(attendance?.netMinutes ?? 0)} today
                   </div>
-                  <div className="ts3-timer-actions">
+                  <div className="flex gap-2">
                     <button
-                      className="btn ts3-btn-stop btn-sm"
+                      className="btn ts-btn-stop btn-sm"
                       onClick={() => void handleCheck()}
                       disabled={checkLoading}
                     >
@@ -1084,9 +1108,9 @@ export function Timesheets() {
                 </>
               ) : (
                 <>
-                  <div className="ts3-not-checked-in">Not checked in</div>
+                  <div className="text-[15px] text-[var(--n-400,#9ca3af)] italic">Not checked in</div>
                   <button
-                    className="btn btn-primary btn-sm ts3-checkin-btn"
+                    className="btn btn-primary btn-sm self-start"
                     onClick={() => void handleCheck()}
                     disabled={checkLoading}
                   >
@@ -1098,34 +1122,36 @@ export function Timesheets() {
           )}
 
           {/* Task Timer card */}
-          <div className="ts3-sidebar-card">
-            <div className="ts3-sidebar-section-label">
-              {activeTimer && <span className="ts3-green-dot ts3-green-dot--pulse" />}
+          <div className="ts-sidebar-card">
+            <div className="ts-sidebar-section-label">
+              {activeTimer && <span className="ts-green-dot ts-green-dot--pulse" />}
               TASK TIMER
             </div>
 
             {/* Stopped timer — confirm "Add to Timesheet?" */}
             {stoppedTimer && !activeTimer && (
-              <div className="ts3-timer-convert">
-                <div className="ts3-timer-convert-badge">
-                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#059669" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 8 6 11 13 4"/></svg>
+              <div className="flex flex-col gap-[6px]">
+                <div className="inline-flex items-center bg-[#f0fdf4] text-[#059669] rounded-[6px] px-[10px] py-[3px] text-[12px] font-bold w-fit">
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="#059669" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1"><polyline points="3 8 6 11 13 4"/></svg>
                   &nbsp;{fmtMins(stoppedTimer.durationMinutes ?? 0)} recorded
                 </div>
-                <div className="ts3-timer-convert-detail">
+                <div className="text-[12px] text-[var(--n-900,#111827)] leading-[1.4]">
                   <strong>{stoppedTimer.projectName}</strong> · {stoppedTimer.categoryName}
-                  {stoppedTimer.note && <div style={{ color: "#6b7280", fontSize: 11, marginTop: 2 }}>{stoppedTimer.note}</div>}
+                  {stoppedTimer.note && (
+                    <div className="text-[11px] text-text-secondary mt-[2px]">{stoppedTimer.note}</div>
+                  )}
                 </div>
-                <div className="ts3-timer-convert-row">
-                  <label style={{ fontSize: 11, color: "#6b7280", fontWeight: 600 }}>Add to date</label>
+                <div className="flex items-center justify-between gap-2 mt-1">
+                  <label className="text-[11px] text-text-secondary font-semibold">Add to date</label>
                   <input
                     type="date"
                     value={convertDate}
                     max={todayIso()}
                     onChange={(e) => setConvertDate(e.target.value)}
-                    className="ts3-timer-date-input"
+                    className="ts-timer-date-input"
                   />
                 </div>
-                <div className="ts3-timer-actions" style={{ marginTop: 10 }}>
+                <div className="flex gap-2 mt-[10px]">
                   <button
                     className="btn btn-primary btn-sm"
                     disabled={convertLoading}
@@ -1146,20 +1172,21 @@ export function Timesheets() {
             {/* Running timer */}
             {activeTimer && (
               <>
-                <div className="ts3-elapsed-clock ts3-elapsed-clock--task">{fmtElapsed(taskElapsed)}</div>
-                <div className="ts3-elapsed-sub">
+                <div className="text-[24px] font-bold [font-variant-numeric:tabular-nums] text-brand-500 tracking-[0.02em] leading-none">
+                  {fmtElapsed(taskElapsed)}
+                </div>
+                <div className="text-[12px] text-text-secondary -mt-[6px]">
                   <strong>{activeTimer.projectName}</strong> · {activeTimer.categoryName}
                 </div>
                 {activeTimer.note && (
-                  <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2, marginBottom: 6 }}>{activeTimer.note}</div>
+                  <div className="text-[11px] text-text-secondary mt-[2px] mb-[6px]">{activeTimer.note}</div>
                 )}
                 <button
-                  className="btn ts3-btn-stop btn-sm"
-                  style={{ width: "100%", marginTop: 8 }}
+                  className="btn ts-btn-stop btn-sm w-full mt-2"
                   onClick={() => void stopTaskTimer()}
                   disabled={timerLoading}
                 >
-                  <svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor" style={{ marginRight: 5 }}><rect x="2" y="2" width="8" height="8" rx="1.5"/></svg>
+                  <svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor" className="mr-[5px]"><rect x="2" y="2" width="8" height="8" rx="1.5"/></svg>
                   Stop
                 </button>
               </>
@@ -1169,14 +1196,14 @@ export function Timesheets() {
             {!activeTimer && !stoppedTimer && (
               <>
                 <select
-                  className="ts3-timer-select"
+                  className="ts-timer-select"
                   value={timerProjectId}
                   onChange={(e) => setTimerProjectId(e.target.value)}
                 >
                   {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
                 <select
-                  className="ts3-timer-select"
+                  className="ts-timer-select"
                   value={timerCategoryId}
                   onChange={(e) => setTimerCategoryId(e.target.value)}
                 >
@@ -1184,19 +1211,18 @@ export function Timesheets() {
                 </select>
                 <input
                   type="text"
-                  className="ts3-timer-note"
+                  className="ts-timer-note"
                   placeholder="Note (optional)"
                   value={timerNote}
                   onChange={(e) => setTimerNote(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") void startTaskTimer(); }}
                 />
                 <button
-                  className="btn btn-primary btn-sm"
-                  style={{ width: "100%", marginTop: 8 }}
+                  className="btn btn-primary btn-sm w-full mt-2"
                   onClick={() => void startTaskTimer()}
                   disabled={timerLoading || !timerProjectId || !timerCategoryId}
                 >
-                  <svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor" style={{ marginRight: 5 }}><polygon points="3,1 11,6 3,11"/></svg>
+                  <svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor" className="mr-[5px]"><polygon points="3,1 11,6 3,11"/></svg>
                   Start Timer
                 </button>
               </>
@@ -1204,14 +1230,16 @@ export function Timesheets() {
 
             {/* Timer history for today */}
             {timerHistory.filter(t => t.stoppedAtUtc !== null).length > 0 && (
-              <div className="ts3-timer-history">
-                <div style={{ fontSize: 10, fontWeight: 700, color: "#9ca3af", letterSpacing: "0.06em", marginBottom: 6, marginTop: 12 }}>TODAY'S SESSIONS</div>
+              <div className="mt-3">
+                <div className="text-[10px] font-bold text-[#9ca3af] tracking-[0.06em] mb-[6px] uppercase">TODAY&apos;S SESSIONS</div>
                 {timerHistory.filter(t => t.stoppedAtUtc !== null).slice(0, 5).map((t) => (
-                  <div key={t.id} className="ts3-timer-history-row">
-                    <span className="ts3-timer-history-proj">{t.projectName}</span>
-                    <span className="ts3-timer-history-dur">
+                  <div key={t.id} className="flex justify-between items-center text-[12px] py-[3px] border-b border-border-subtle">
+                    <span className="text-[var(--n-700,#374151)] overflow-hidden text-ellipsis whitespace-nowrap flex-1 mr-[6px]">
+                      {t.projectName}
+                    </span>
+                    <span className="text-text-secondary [font-variant-numeric:tabular-nums] whitespace-nowrap shrink-0">
                       {t.convertedToEntryId
-                        ? <span title="Added to timesheet" style={{ color: "#059669" }}>✓ </span>
+                        ? <span title="Added to timesheet" className="text-[#059669]">✓ </span>
                         : null}
                       {fmtMins(t.durationMinutes ?? 0)}
                     </span>
@@ -1222,43 +1250,46 @@ export function Timesheets() {
           </div>
 
           {/* Week Summary card */}
-          <div className="ts3-sidebar-card">
-            <div className="ts3-sidebar-section-label">WEEK SUMMARY</div>
-            <div className="ts3-summary-rows">
-              <div className="ts3-summary-row">
-                <span className="ts3-summary-key">Total logged</span>
-                <span className="ts3-summary-val">{fmtMins(weekTotalMins)}</span>
+          <div className="ts-sidebar-card">
+            <div className="ts-sidebar-section-label">WEEK SUMMARY</div>
+            <div className="flex flex-col gap-[6px]">
+              <div className="flex justify-between items-center text-[13px]">
+                <span className="text-text-secondary">Total logged</span>
+                <span className="font-semibold text-[var(--n-900,#111827)]">{fmtMins(weekTotalMins)}</span>
               </div>
-              <div className="ts3-week-prog-wrap">
-                <div className="ts3-week-prog-bar">
+              <div className="flex items-center gap-[6px]">
+                <div className="flex-1 h-[6px] bg-[var(--n-100,#f3f4f6)] rounded-full overflow-hidden relative">
                   <div
-                    className="ts3-week-prog-fill"
+                    className="ts-week-prog-fill"
                     style={{ width: `${weekExpectedMins > 0 ? Math.min(100, Math.round((weekTotalMins / weekExpectedMins) * 100)) : 0}%` }}
                   />
                 </div>
-                <span className="ts3-week-prog-pct">
+                <span className="text-[10px] font-bold text-brand-600 whitespace-nowrap shrink-0">
                   {weekExpectedMins > 0 ? `${Math.min(100, Math.round((weekTotalMins / weekExpectedMins) * 100))}%` : "0%"}
                 </span>
               </div>
-              <div className="ts3-summary-row">
-                <span className="ts3-summary-key">Weekly target</span>
-                <span className="ts3-summary-val">{fmtMins(weekExpectedMins)}</span>
+              <div className="flex justify-between items-center text-[13px]">
+                <span className="text-text-secondary">Weekly target</span>
+                <span className="font-semibold text-[var(--n-900,#111827)]">{fmtMins(weekExpectedMins)}</span>
               </div>
-              <div className="ts3-summary-row">
-                <span className="ts3-summary-key">Attendance</span>
-                <span className="ts3-summary-val">{fmtMins(weekAttendanceMins)}</span>
+              <div className="flex justify-between items-center text-[13px]">
+                <span className="text-text-secondary">Attendance</span>
+                <span className="font-semibold text-[var(--n-900,#111827)]">{fmtMins(weekAttendanceMins)}</span>
               </div>
-              <div className="ts3-summary-row">
-                <span className="ts3-summary-key">
+              <div className="flex justify-between items-center text-[13px]">
+                <span className="text-text-secondary">
                   {weekOvertime >= 0 ? "Overtime" : "Deficit"}
-                  <span className="ts3-info-tip" title={weekOvertime >= 0 ? "Hours logged above weekly target" : "Hours logged below weekly target"}> ℹ</span>
+                  <span
+                    className="text-[10px] text-[var(--n-400,#9ca3af)] cursor-default ml-[2px] not-italic"
+                    title={weekOvertime >= 0 ? "Hours logged above weekly target" : "Hours logged below weekly target"}
+                  > ℹ</span>
                 </span>
-                <span className={`ts3-summary-val${weekOvertime > 0 ? " ts3-overtime-pos" : weekOvertime < 0 ? " ts3-overtime-deficit" : ""}`}>
+                <span className={`font-semibold ${weekOvertime > 0 ? "text-[#16a34a]" : weekOvertime < 0 ? "text-[#b45309]" : "text-[var(--n-900,#111827)]"}`}>
                   {weekOvertime > 0 ? "+" : weekOvertime < 0 ? "−" : ""}{fmtMins(Math.abs(weekOvertime))}
                 </span>
               </div>
-              <div className="ts3-summary-row">
-                <span className="ts3-summary-key">Status</span>
+              <div className="flex justify-between items-center text-[13px]">
+                <span className="text-text-secondary">Status</span>
                 <span>
                   <span className={`badge ${isApproved ? "badge-success" : isSubmitted ? "badge-brand" : isRejected ? "badge-error" : "badge-warning"}`}>
                     {dayData?.status ?? "draft"}
@@ -1270,20 +1301,26 @@ export function Timesheets() {
 
           {/* Today By Project card */}
           {projectHours.length > 0 && (
-            <div className="ts3-sidebar-card">
-              <div className="ts3-sidebar-section-label">TODAY BY PROJECT</div>
-              <div className="ts3-proj-rows">
+            <div className="ts-sidebar-card">
+              <div className="ts-sidebar-section-label">TODAY BY PROJECT</div>
+              <div className="flex flex-col gap-[10px]">
                 {projectHours.map((ph) => {
                   const pct = todayTotalMins > 0 ? Math.min(100, Math.round((ph.minutes / todayTotalMins) * 100)) : 0;
                   return (
-                    <div key={ph.name} className="ts3-proj-row">
-                      <div className="ts3-proj-row-top">
-                        <span className="ts3-proj-dot" style={{ backgroundColor: ph.color }} />
-                        <span className="ts3-proj-name">{ph.name}</span>
-                        <span className="ts3-proj-hours">{fmtHours(ph.minutes)}</span>
+                    <div key={ph.name} className="flex flex-col gap-1">
+                      <div className="flex items-center gap-[6px]">
+                        <span
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{ backgroundColor: ph.color }}
+                        />
+                        <span className="flex-1 text-[12px] text-[var(--n-700,#374151)] whitespace-nowrap overflow-hidden text-ellipsis">{ph.name}</span>
+                        <span className="text-[12px] font-semibold text-[var(--n-900,#111827)] whitespace-nowrap">{fmtHours(ph.minutes)}</span>
                       </div>
-                      <div className="ts3-proj-track">
-                        <div className="ts3-proj-fill" style={{ width: `${pct}%`, backgroundColor: ph.color }} />
+                      <div className="h-[4px] bg-[var(--n-100,#f3f4f6)] rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-[width] duration-300"
+                          style={{ width: `${pct}%`, backgroundColor: ph.color }}
+                        />
                       </div>
                     </div>
                   );
@@ -1293,24 +1330,23 @@ export function Timesheets() {
           )}
 
         </aside>
-      </div>{/* /ts3-page */}
+      </div>{/* /two-column */}
 
       {/* ── Delete entry confirmation modal ─────────────────── */}
       {deleteModal && (
-        <div className="ts3-modal-backdrop" onClick={() => setDeleteModal(null)}>
-          <div className="ts3-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="ts3-modal-icon">
+        <div className="fixed inset-0 bg-[rgba(17,24,39,0.45)] z-[1000] flex items-center justify-center backdrop-blur-[2px]" onClick={() => setDeleteModal(null)}>
+          <div className="bg-white rounded-2xl px-6 pb-5 pt-6 max-w-[360px] w-[calc(100%-32px)] shadow-[0_24px_64px_rgba(0,0,0,0.22),0_4px_16px_rgba(0,0,0,0.10)] flex flex-col gap-[10px]" onClick={(e) => e.stopPropagation()}>
+            <div className="w-[42px] h-[42px] rounded-[11px] bg-danger-light flex items-center justify-center shrink-0">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#ef4444" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 6h14M8 6V4h4v2M6 6l1 11h6l1-11"/>
               </svg>
             </div>
-            <div className="ts3-modal-title">Delete time entry?</div>
-            <div className="ts3-modal-body">This entry will be permanently removed. You can&rsquo;t undo this action.</div>
-            <div className="ts3-modal-actions">
+            <div className="text-[15px] font-bold text-[var(--n-900,#111827)]">Delete time entry?</div>
+            <div className="text-[13px] text-[var(--n-600,#4b5563)] leading-[1.55]">This entry will be permanently removed. You can&rsquo;t undo this action.</div>
+            <div className="flex gap-2 justify-end mt-[6px]">
               <button className="btn btn-outline btn-sm" onClick={() => setDeleteModal(null)}>Keep it</button>
               <button
-                className="btn btn-sm"
-                style={{ background: "#ef4444", color: "#fff", border: "none" }}
+                className="btn btn-sm bg-danger text-white border-none"
                 onClick={() => void confirmDeleteEntry()}
               >
                 Delete entry
@@ -1322,25 +1358,25 @@ export function Timesheets() {
 
       {/* ── Submit Week preview modal ──────────────────────────────────────── */}
       {showSubmitWeekModal && (
-        <div className="ts3-modal-backdrop" onClick={() => setShowSubmitWeekModal(false)}>
-          <div className="ts3-modal ts3-modal--wide" onClick={(e) => e.stopPropagation()}>
-            <div className="ts3-modal-icon" style={{ background: "#eef2ff" }}>
+        <div className="fixed inset-0 bg-[rgba(17,24,39,0.45)] z-[1000] flex items-center justify-center backdrop-blur-[2px]" onClick={() => setShowSubmitWeekModal(false)}>
+          <div className="bg-white rounded-2xl px-6 pb-5 pt-6 max-w-[480px] w-[calc(100%-32px)] shadow-[0_24px_64px_rgba(0,0,0,0.22),0_4px_16px_rgba(0,0,0,0.10)] flex flex-col gap-[10px]" onClick={(e) => e.stopPropagation()}>
+            <div className="w-[42px] h-[42px] rounded-[11px] bg-[#eef2ff] flex items-center justify-center shrink-0">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#6366f1" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M16 4H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1z"/>
                 <polyline points="9 11 11 13 15 9"/>
               </svg>
             </div>
-            <div className="ts3-modal-title">Submit week for approval</div>
-            <div className="ts3-modal-body" style={{ marginBottom: 12 }}>
+            <div className="text-[15px] font-bold text-[var(--n-900,#111827)]">Submit week for approval</div>
+            <div className="text-[13px] text-[var(--n-600,#4b5563)] leading-[1.55] mb-3">
               The following days will be submitted. Days with no entries or already submitted will be skipped.
             </div>
             {/* Preview table */}
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, marginBottom: 16 }}>
+            <table className="w-full [border-collapse:collapse] text-[13px] mb-4">
               <thead>
-                <tr style={{ borderBottom: "1px solid #e5e7eb" }}>
-                  <th style={{ textAlign: "left", padding: "4px 0", fontWeight: 600, color: "#6b7280", fontSize: 11, textTransform: "uppercase" }}>Day</th>
-                  <th style={{ textAlign: "right", padding: "4px 0", fontWeight: 600, color: "#6b7280", fontSize: 11, textTransform: "uppercase" }}>Logged</th>
-                  <th style={{ textAlign: "right", padding: "4px 0", fontWeight: 600, color: "#6b7280", fontSize: 11, textTransform: "uppercase" }}>Status</th>
+                <tr className="border-b border-[#e5e7eb]">
+                  <th className="text-left py-1 font-semibold text-[#6b7280] text-[11px] uppercase">Day</th>
+                  <th className="text-right py-1 font-semibold text-[#6b7280] text-[11px] uppercase">Logged</th>
+                  <th className="text-right py-1 font-semibold text-[#6b7280] text-[11px] uppercase">Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -1351,20 +1387,20 @@ export function Timesheets() {
                   const willSubmit = status === "draft" && mins > 0;
                   const isSkipped = status === "draft" && mins === 0;
                   return (
-                    <tr key={date} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                      <td style={{ padding: "6px 0", color: "#111827" }}>
+                    <tr key={date} className="border-b border-[#f3f4f6]">
+                      <td className="py-[6px] text-[#111827]">
                         {DAY_LABELS[i]} {new Date(date + "T00:00:00").getDate()}
                       </td>
-                      <td style={{ textAlign: "right", padding: "6px 0", color: mins > 0 ? "#111827" : "#9ca3af" }}>
+                      <td className={`text-right py-[6px] ${mins > 0 ? "text-[#111827]" : "text-[#9ca3af]"}`}>
                         {mins > 0 ? fmtHours(mins) : "—"}
                       </td>
-                      <td style={{ textAlign: "right", padding: "6px 0" }}>
+                      <td className="text-right py-[6px]">
                         {willSubmit ? (
-                          <span style={{ background: "#eef2ff", color: "#6366f1", borderRadius: 4, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>Will submit</span>
+                          <span className="bg-[#eef2ff] text-[#6366f1] rounded px-2 py-[2px] text-[11px] font-semibold">Will submit</span>
                         ) : isSkipped ? (
-                          <span style={{ background: "#f9fafb", color: "#9ca3af", borderRadius: 4, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>No entries</span>
+                          <span className="bg-[#f9fafb] text-[#9ca3af] rounded px-2 py-[2px] text-[11px] font-semibold">No entries</span>
                         ) : (
-                          <span style={{ background: "#f0fdf4", color: "#059669", borderRadius: 4, padding: "2px 8px", fontSize: 11, fontWeight: 600, textTransform: "capitalize" }}>{status}</span>
+                          <span className="bg-[#f0fdf4] text-[#059669] rounded px-2 py-[2px] text-[11px] font-semibold capitalize">{status}</span>
                         )}
                       </td>
                     </tr>
@@ -1372,7 +1408,7 @@ export function Timesheets() {
                 })}
               </tbody>
             </table>
-            <div className="ts3-modal-actions">
+            <div className="flex gap-2 justify-end mt-[6px]">
               <button className="btn btn-outline btn-sm" onClick={() => setShowSubmitWeekModal(false)}>Cancel</button>
               <button
                 className="btn btn-primary btn-sm"
@@ -1388,59 +1424,43 @@ export function Timesheets() {
 
       {/* ── Submit week toast ──────────────────────────────────────────────── */}
       {submitWeekToast && (
-        <div style={{
-          position: "fixed", bottom: "var(--space-6, 24px)", right: "var(--space-6, 24px)",
-          background: "#111827", color: "#fff", borderRadius: 8,
-          padding: "10px 18px", fontSize: 14, fontWeight: 600,
-          boxShadow: "0 4px 16px rgba(0,0,0,0.2)", zIndex: 9999,
-          animation: "page-enter 0.2s both",
-        }}>
+        <div className="fixed bottom-6 right-6 bg-[#111827] text-white rounded-lg px-[18px] py-[10px] text-[14px] font-semibold shadow-[0_4px_16px_rgba(0,0,0,0.2)] z-[9999] [animation:page-enter_0.2s_both]">
           {submitWeekToast}
         </div>
       )}
 
       {/* ── Timer toast ────────────────────────────────────────────────────── */}
       {timerToast && (
-        <div style={{
-          position: "fixed", bottom: "var(--space-6, 24px)", left: "50%", transform: "translateX(-50%)",
-          background: "#111827", color: "#fff", borderRadius: 8,
-          padding: "10px 18px", fontSize: 14, fontWeight: 600,
-          boxShadow: "0 4px 16px rgba(0,0,0,0.2)", zIndex: 9999,
-          animation: "page-enter 0.2s both",
-        }}>
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[#111827] text-white rounded-lg px-[18px] py-[10px] text-[14px] font-semibold shadow-[0_4px_16px_rgba(0,0,0,0.2)] z-[9999] [animation:page-enter_0.2s_both]">
           {timerToast}
         </div>
       )}
 
       {/* ── Use Template modal ──────────────────────────────────────────────── */}
       {showTemplateModal && (
-        <div className="ts3-modal-backdrop" onClick={() => setShowTemplateModal(false)}>
-          <div className="ts3-modal ts3-modal--wide" onClick={(e) => e.stopPropagation()}>
-            <div className="ts3-modal-icon" style={{ background: "#eef2ff" }}>
+        <div className="fixed inset-0 bg-[rgba(17,24,39,0.45)] z-[1000] flex items-center justify-center backdrop-blur-[2px]" onClick={() => setShowTemplateModal(false)}>
+          <div className="bg-white rounded-2xl px-6 pb-5 pt-6 max-w-[480px] w-[calc(100%-32px)] shadow-[0_24px_64px_rgba(0,0,0,0.22),0_4px_16px_rgba(0,0,0,0.10)] flex flex-col gap-[10px]" onClick={(e) => e.stopPropagation()}>
+            <div className="w-[42px] h-[42px] rounded-[11px] bg-[#eef2ff] flex items-center justify-center shrink-0">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#6366f1" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="3" width="14" height="14" rx="2"/>
                 <path d="M7 7h6M7 10h6M7 13h3"/>
               </svg>
             </div>
-            <div className="ts3-modal-title">Use Template</div>
-            <div className="ts3-modal-body" style={{ marginBottom: 12 }}>
+            <div className="text-[15px] font-bold text-[var(--n-900,#111827)]">Use Template</div>
+            <div className="text-[13px] text-[var(--n-600,#4b5563)] leading-[1.55] mb-3">
               Apply a saved template to <strong>{fmtDateLabel(selectedDate)}</strong>. Duplicate entries will be skipped.
             </div>
             {templatesLoading ? (
-              <div style={{ textAlign: "center", color: "#9ca3af", fontSize: 13, padding: "16px 0" }}>Loading templates…</div>
+              <div className="text-center text-[#9ca3af] text-[13px] py-4">Loading templates…</div>
             ) : templates.length === 0 ? (
-              <div style={{ textAlign: "center", color: "#9ca3af", fontSize: 13, padding: "16px 0" }}>No templates saved yet.</div>
+              <div className="text-center text-[#9ca3af] text-[13px] py-4">No templates saved yet.</div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+              <div className="flex flex-col gap-2 mb-4">
                 {templates.map(t => (
-                  <div key={t.id} style={{
-                    display: "flex", alignItems: "center", justifyContent: "space-between",
-                    padding: "10px 14px", border: "1px solid #e5e7eb", borderRadius: 8,
-                    background: "#f9fafb",
-                  }}>
+                  <div key={t.id} className="flex items-center justify-between px-[14px] py-[10px] border border-[#e5e7eb] rounded-lg bg-[#f9fafb]">
                     <div>
-                      <div style={{ fontWeight: 600, fontSize: 14, color: "#111827" }}>{t.name}</div>
-                      <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>
+                      <div className="font-semibold text-[14px] text-[#111827]">{t.name}</div>
+                      <div className="text-[12px] text-[#6b7280] mt-[2px]">
                         {t.entries.length} entr{t.entries.length === 1 ? "y" : "ies"} &middot;&nbsp;
                         {t.entries.reduce((sum, e) => sum + e.minutes, 0) > 0
                           ? fmtHours(t.entries.reduce((sum, e) => sum + e.minutes, 0))
@@ -1458,8 +1478,8 @@ export function Timesheets() {
                 ))}
               </div>
             )}
-            <div className="ts3-modal-actions" style={{ justifyContent: "space-between" }}>
-              <span style={{ fontSize: 12, color: "#9ca3af" }}>
+            <div className="flex gap-2 justify-between mt-[6px]">
+              <span className="text-[12px] text-[#9ca3af]">
                 Manage templates in your Profile page.
               </span>
               <button className="btn btn-outline btn-sm" onClick={() => setShowTemplateModal(false)}>Close</button>
@@ -1470,26 +1490,25 @@ export function Timesheets() {
 
       {/* ── Save as Template modal ───────────────────────────────────────────── */}
       {showSaveTemplateModal && (
-        <div className="ts3-modal-backdrop" onClick={() => setShowSaveTemplateModal(false)}>
-          <div className="ts3-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="ts3-modal-icon" style={{ background: "#f0fdf4" }}>
+        <div className="fixed inset-0 bg-[rgba(17,24,39,0.45)] z-[1000] flex items-center justify-center backdrop-blur-[2px]" onClick={() => setShowSaveTemplateModal(false)}>
+          <div className="bg-white rounded-2xl px-6 pb-5 pt-6 max-w-[360px] w-[calc(100%-32px)] shadow-[0_24px_64px_rgba(0,0,0,0.22),0_4px_16px_rgba(0,0,0,0.10)] flex flex-col gap-[10px]" onClick={(e) => e.stopPropagation()}>
+            <div className="w-[42px] h-[42px] rounded-[11px] bg-[#f0fdf4] flex items-center justify-center shrink-0">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#10b981" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M17 3H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"/>
                 <path d="M13 3v6H7V3"/>
                 <path d="M7 13h6"/>
               </svg>
             </div>
-            <div className="ts3-modal-title">Save as Template</div>
-            <div className="ts3-modal-body">
+            <div className="text-[15px] font-bold text-[var(--n-900,#111827)]">Save as Template</div>
+            <div className="text-[13px] text-[var(--n-600,#4b5563)] leading-[1.55]">
               Save today&rsquo;s {dayEntries.length} entr{dayEntries.length === 1 ? "y" : "ies"} as a reusable template.
             </div>
-            <div style={{ padding: "0 0 16px" }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "#6b7280", display: "block", marginBottom: 6 }}>
+            <div className="pb-4">
+              <label className="text-[12px] font-semibold text-[#6b7280] block mb-[6px]">
                 Template name
               </label>
               <input
-                className="ts3-input"
-                style={{ width: "100%", boxSizing: "border-box" }}
+                className="ts-form-input w-full box-border"
                 placeholder="e.g. Standard work day"
                 value={saveTemplateName}
                 autoFocus
@@ -1498,7 +1517,7 @@ export function Timesheets() {
                 onKeyDown={(e) => { if (e.key === "Enter") void saveAsTemplate(); }}
               />
             </div>
-            <div className="ts3-modal-actions">
+            <div className="flex gap-2 justify-end mt-[6px]">
               <button className="btn btn-outline btn-sm" onClick={() => setShowSaveTemplateModal(false)}>Cancel</button>
               <button
                 className="btn btn-primary btn-sm"
@@ -1514,763 +1533,3 @@ export function Timesheets() {
     </section>
   );
 }
-
-/* ─── Scoped styles ─────────────────────────────────────────────────────────── */
-const PAGE_STYLES = `
-  .ts3-page {
-    display: flex;
-    gap: 24px;
-    align-items: flex-start;
-  }
-  .ts3-main {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-  .ts3-sidebar {
-    width: 280px;
-    flex-shrink: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    position: sticky;
-    top: calc(60px + 24px);
-  }
-
-  /* Page header */
-  .ts3-page-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 12px;
-    margin-bottom: 0;
-  }
-  .ts3-header-actions {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-
-  /* Week navigation wrapper */
-  .ts3-week-nav {
-    display: flex;
-    align-items: stretch;
-    gap: 6px;
-  }
-  .ts3-week-nav-btn {
-    flex-shrink: 0;
-    width: 32px;
-    background: var(--surface, #fff);
-    border: 1.5px solid var(--border-subtle, #e5e7eb);
-    border-radius: 10px;
-    font-size: 22px;
-    color: var(--n-500, #6b7280);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: border-color 0.15s, color 0.15s, background 0.15s;
-    padding: 0;
-    line-height: 1;
-  }
-  .ts3-week-nav-btn:hover {
-    border-color: #6366f1;
-    color: #6366f1;
-    background: #eef2ff;
-  }
-
-  /* Week strip */
-  .ts3-week-strip {
-    flex: 1;
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 6px;
-  }
-  .ts3-day-card {
-    background: var(--surface, #fff);
-    border: 1.5px solid var(--border-subtle, #e5e7eb);
-    border-radius: 10px;
-    padding: 10px 6px 8px;
-    cursor: pointer;
-    text-align: center;
-    transition: border-color 0.15s, background 0.15s;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    align-items: center;
-  }
-  .ts3-day-card:hover {
-    border-color: #6366f1;
-  }
-  .ts3-day-card--selected {
-    border-color: #6366f1;
-    background: #eef2ff;
-  }
-  .ts3-day-card--today .ts3-day-num {
-    color: #6366f1;
-    font-weight: 700;
-  }
-  .ts3-day-card--approved {
-    border-color: #6ee7b7;
-    background: #f0fdf4;
-  }
-  .ts3-day-card--approved .ts3-day-num {
-    color: #059669;
-  }
-  .ts3-day-num {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-  }
-  .ts3-day-approved-icon {
-    flex-shrink: 0;
-    vertical-align: middle;
-  }
-  .ts3-day-label {
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    color: var(--n-500, #6b7280);
-    text-transform: uppercase;
-  }
-  .ts3-day-num {
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--n-900, #111827);
-    line-height: 1;
-  }
-  .ts3-day-hours {
-    font-size: 11px;
-    color: var(--n-400, #9ca3af);
-  }
-  .ts3-day-hours--logged {
-    color: #6366f1;
-    font-weight: 600;
-  }
-  .ts3-day-card--approved .ts3-day-hours--logged {
-    color: rgb(5, 150, 105);
-  }
-  .ts3-day-bar-wrap {
-    width: 100%;
-    padding: 0 2px;
-  }
-  .ts3-day-bar-track {
-    height: 3px;
-    background: var(--n-100, #f3f4f6);
-    border-radius: 99px;
-    overflow: hidden;
-  }
-  .ts3-day-bar-fill {
-    height: 100%;
-    border-radius: 99px;
-    transition: width 0.3s;
-  }
-
-  /* Entry form */
-  .ts3-entry-form-card {
-    border: 2px dashed #a5b4fc;
-    border-radius: 12px;
-    background: #eef2ff;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-  }
-  .ts3-entry-form-header {
-    font-size: 13px;
-    font-weight: 600;
-    color: #4338ca;
-  }
-  .ts3-field {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  .ts3-field--grow {
-    flex: 1;
-  }
-  .ts3-field--narrow {
-    width: 110px;
-    flex-shrink: 0;
-  }
-  .ts3-label {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--n-600, #4b5563);
-  }
-  .ts3-required {
-    color: #ef4444;
-  }
-  .ts3-input, .ts3-select {
-    border: 1.5px solid var(--border-subtle, #e5e7eb);
-    border-radius: 7px;
-    padding: 7px 10px;
-    font-size: 13px;
-    background: #fff;
-    color: var(--n-900, #111827);
-    outline: none;
-    transition: border-color 0.15s;
-    width: 100%;
-    box-sizing: border-box;
-  }
-  .ts3-input:focus, .ts3-select:focus {
-    border-color: #6366f1;
-  }
-  .ts3-textarea {
-    border: 1.5px solid var(--border-subtle, #e5e7eb);
-    border-radius: 7px;
-    padding: 8px 10px;
-    font-size: 13px;
-    background: #fff;
-    color: var(--n-900, #111827);
-    outline: none;
-    resize: vertical;
-    font-family: inherit;
-    transition: border-color 0.15s;
-    width: 100%;
-    box-sizing: border-box;
-  }
-  .ts3-textarea:focus {
-    border-color: #6366f1;
-  }
-  .ts3-textarea--warn {
-    border-color: #f59e0b;
-  }
-  .ts3-form-row {
-    display: flex;
-    gap: 10px;
-    align-items: flex-start;
-    flex-wrap: wrap;
-  }
-  .ts3-form-actions {
-    display: flex;
-    gap: 8px;
-    justify-content: flex-end;
-  }
-  .ts3-form-error {
-    font-size: 12px;
-    color: #ef4444;
-    margin: 0;
-  }
-  .ts3-hint {
-    font-size: 11px;
-    color: var(--n-400, #9ca3af);
-  }
-  .ts3-hint--warn {
-    color: #b45309;
-  }
-
-  /* Submit card */
-  .ts3-submit-card {
-    border: 1.5px solid var(--border-subtle, #e5e7eb);
-    border-radius: 12px;
-    background: #fff;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-  }
-  .ts3-submit-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--n-900, #111827);
-  }
-
-  /* Entries */
-  .ts3-entries {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .ts3-empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: 13px;
-    color: var(--n-500, #6b7280);
-    text-align: center;
-    padding: 36px 0;
-    gap: 2px;
-  }
-  .ts3-entry-card {
-    border: 1.5px solid var(--border-subtle, #e5e7eb);
-    border-left: 3px solid #6366f1;
-    border-radius: 10px;
-    background: #fff;
-    padding: 12px 14px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .ts3-entry-body {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  .ts3-entry-title {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--n-900, #111827);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .ts3-entry-meta {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-  .ts3-project-badge {
-    font-size: 11px;
-    font-weight: 600;
-    padding: 2px 8px;
-    border-radius: 99px;
-    white-space: nowrap;
-  }
-  .ts3-entry-time {
-    font-size: 11px;
-    color: var(--n-500, #6b7280);
-  }
-  .ts3-live-badge {
-    font-size: 10px;
-    font-weight: 700;
-    background: #dcfce7;
-    color: #166534;
-    padding: 1px 6px;
-    border-radius: 99px;
-    letter-spacing: 0.05em;
-  }
-  .ts3-entry-hours {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--n-900, #111827);
-    white-space: nowrap;
-    min-width: 40px;
-    text-align: right;
-  }
-  .ts3-entry-actions {
-    display: flex;
-    gap: 4px;
-  }
-  .ts3-icon-btn {
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 6px;
-    border: 1.5px solid var(--border-subtle, #e5e7eb);
-    background: #fff;
-    color: var(--n-500, #6b7280);
-    cursor: pointer;
-    transition: background 0.12s, border-color 0.12s, color 0.12s;
-  }
-  .ts3-icon-btn:hover {
-    background: #f3f4f6;
-    border-color: #6366f1;
-    color: #6366f1;
-  }
-  .ts3-icon-btn--danger:hover {
-    background: #fef2f2;
-    border-color: #ef4444;
-    color: #ef4444;
-  }
-  .ts3-entry-card--locked {
-    background: #fafafa;
-    opacity: 0.85;
-  }
-  .ts3-entry-card--approved {
-    border-left-color: rgb(5, 150, 105) !important;
-    background: #f0fdf4;
-  }
-  .ts3-lock-icon {
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--n-400, #9ca3af);
-    flex-shrink: 0;
-  }
-
-  /* Day summary bar */
-  .ts3-day-bar {
-    background: linear-gradient(135deg, #4338ca, #6366f1);
-    border-radius: 12px;
-    padding: 10px 18px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 13px;
-    font-weight: 500;
-    color: #fff;
-    margin-top: 4px;
-  }
-  .ts3-day-bar--approved {
-    background: linear-gradient(135deg, rgb(5, 150, 105), rgb(16, 185, 129));
-  }
-  .ts3-day-bar-right {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .ts3-day-mini-prog {
-    width: 60px;
-    height: 4px;
-    background: rgba(255,255,255,0.25);
-    border-radius: 99px;
-    overflow: hidden;
-  }
-  .ts3-day-mini-prog-fill {
-    height: 100%;
-    background: rgba(255,255,255,0.9);
-    border-radius: 99px;
-    transition: width 0.3s;
-  }
-
-  /* Semantic status banners */
-  .ts3-banner {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    border-radius: 10px;
-    padding: 12px 16px;
-    font-size: 13px;
-  }
-  .ts3-banner--approved {
-    background: #f0fdf4;
-    border: 1.5px solid #6ee7b7;
-    color: #065f46;
-  }
-  .ts3-banner--submitted {
-    background: #eff6ff;
-    border: 1.5px solid #93c5fd;
-    color: #1e40af;
-  }
-  .ts3-banner--rejected {
-    background: #fef2f2;
-    border: 1.5px solid #fca5a5;
-    color: #991b1b;
-  }
-  .ts3-banner-sub {
-    font-weight: 400;
-    opacity: 0.85;
-  }
-  .ts3-success-banner {
-    background: #f0fdf4;
-    border: 1.5px solid #86efac;
-    border-radius: 8px;
-    padding: 10px 14px;
-    font-size: 13px;
-    color: #166534;
-  }
-
-  /* Sidebar cards */
-  .ts3-sidebar-card {
-    background: #fff;
-    border: 1.5px solid var(--border-subtle, #e5e7eb);
-    border-radius: 14px;
-    padding: 18px 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-  .ts3-sidebar-section-label {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--n-400, #9ca3af);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .ts3-green-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #22c55e;
-    display: inline-block;
-    flex-shrink: 0;
-  }
-  .ts3-elapsed-clock {
-    font-size: 28px;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-    color: var(--n-900, #111827);
-    letter-spacing: 0.02em;
-    line-height: 1;
-  }
-  .ts3-elapsed-sub {
-    font-size: 12px;
-    color: var(--n-500, #6b7280);
-    margin-top: -6px;
-  }
-  .ts3-not-checked-in {
-    font-size: 15px;
-    color: var(--n-400, #9ca3af);
-    font-style: italic;
-  }
-  .ts3-timer-actions {
-    display: flex;
-    gap: 8px;
-  }
-  .ts3-checkin-btn {
-    align-self: flex-start;
-  }
-  .ts3-btn-stop {
-    border: 1.5px solid #ef4444 !important;
-    color: #ef4444 !important;
-    background: #fff !important;
-  }
-  .ts3-btn-stop:hover {
-    background: #fef2f2 !important;
-  }
-  .ts3-elapsed-clock--task {
-    font-size: 24px;
-    color: #6366f1;
-  }
-  .ts3-green-dot--pulse {
-    animation: ts3-pulse 1.5s ease-in-out infinite;
-  }
-  @keyframes ts3-pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
-  }
-
-  /* Task timer — start form */
-  .ts3-timer-select {
-    width: 100%;
-    border: 1.5px solid var(--border-subtle, #e5e7eb);
-    border-radius: 8px;
-    padding: 6px 10px;
-    font-size: 13px;
-    color: var(--n-900, #111827);
-    background: var(--surface, #fff);
-    margin-bottom: 6px;
-    outline: none;
-  }
-  .ts3-timer-select:focus {
-    border-color: #6366f1;
-  }
-  .ts3-timer-note {
-    width: 100%;
-    border: 1.5px solid var(--border-subtle, #e5e7eb);
-    border-radius: 8px;
-    padding: 6px 10px;
-    font-size: 13px;
-    color: var(--n-900, #111827);
-    background: var(--surface, #fff);
-    outline: none;
-    box-sizing: border-box;
-  }
-  .ts3-timer-note:focus {
-    border-color: #6366f1;
-  }
-
-  /* Stopped timer — convert panel */
-  .ts3-timer-convert {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-  .ts3-timer-convert-badge {
-    display: inline-flex;
-    align-items: center;
-    background: #f0fdf4;
-    color: #059669;
-    border-radius: 6px;
-    padding: 3px 10px;
-    font-size: 12px;
-    font-weight: 700;
-    width: fit-content;
-  }
-  .ts3-timer-convert-detail {
-    font-size: 12px;
-    color: var(--n-900, #111827);
-    line-height: 1.4;
-  }
-  .ts3-timer-convert-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    margin-top: 4px;
-  }
-  .ts3-timer-date-input {
-    border: 1.5px solid var(--border-subtle, #e5e7eb);
-    border-radius: 6px;
-    padding: 4px 8px;
-    font-size: 12px;
-    color: var(--n-900, #111827);
-    background: var(--surface, #fff);
-    outline: none;
-  }
-  .ts3-timer-date-input:focus {
-    border-color: #6366f1;
-  }
-
-  /* Timer history */
-  .ts3-timer-history-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 12px;
-    padding: 3px 0;
-    border-bottom: 1px solid var(--border-subtle, #f3f4f6);
-  }
-  .ts3-timer-history-proj {
-    color: var(--n-700, #374151);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    flex: 1;
-    margin-right: 6px;
-  }
-  .ts3-timer-history-dur {
-    color: var(--n-500, #6b7280);
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-
-  /* Week summary rows */
-  .ts3-summary-rows {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-  .ts3-summary-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 13px;
-  }
-  .ts3-summary-key {
-    color: var(--n-500, #6b7280);
-  }
-  .ts3-summary-val {
-    font-weight: 600;
-    color: var(--n-900, #111827);
-  }
-  .ts3-overtime-pos {
-    color: #16a34a;
-  }
-  .ts3-overtime-neg {
-    color: #ef4444;
-  }
-  .ts3-overtime-deficit {
-    color: #b45309;
-  }
-
-  /* Week progress bar */
-  .ts3-week-prog-wrap {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .ts3-week-prog-bar {
-    flex: 1;
-    height: 6px;
-    background: var(--n-100, #f3f4f6);
-    border-radius: 99px;
-    overflow: hidden;
-    position: relative;
-  }
-  .ts3-week-prog-fill {
-    height: 100%;
-    border-radius: 99px;
-    background: linear-gradient(90deg, #6366f1, #818cf8);
-    transition: width 0.4s cubic-bezier(0.16,1,0.3,1);
-  }
-  .ts3-week-prog-pct {
-    font-size: 10px;
-    font-weight: 700;
-    color: var(--brand-600, #4f46e5);
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-
-  /* Confirmation modal */
-  .ts3-modal-backdrop { position: fixed; inset: 0; background: rgba(17,24,39,0.45); z-index: 1000;
-    display: flex; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
-  .ts3-modal { background: #fff; border-radius: 16px; padding: 24px 24px 20px;
-    max-width: 360px; width: calc(100% - 32px);
-    box-shadow: 0 24px 64px rgba(0,0,0,0.22), 0 4px 16px rgba(0,0,0,0.10);
-    display: flex; flex-direction: column; gap: 10px; }
-  .ts3-modal--wide { max-width: 480px; }
-  .ts3-modal-icon { width: 42px; height: 42px; border-radius: 11px; background: #fef2f2;
-    display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-  .ts3-modal-title { font-size: 15px; font-weight: 700; color: var(--n-900, #111827); }
-  .ts3-modal-body { font-size: 13px; color: var(--n-600, #4b5563); line-height: 1.55; }
-  .ts3-modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
-
-  /* Overtime info icon */
-  .ts3-info-tip {
-    font-size: 10px;
-    color: var(--n-400, #9ca3af);
-    cursor: default;
-    margin-left: 2px;
-    font-style: normal;
-  }
-
-  /* Today by project */
-  .ts3-proj-rows {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .ts3-proj-row {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  .ts3-proj-row-top {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .ts3-proj-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-  .ts3-proj-name {
-    flex: 1;
-    font-size: 12px;
-    color: var(--n-700, #374151);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .ts3-proj-hours {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--n-900, #111827);
-    white-space: nowrap;
-  }
-  .ts3-proj-track {
-    height: 4px;
-    background: var(--n-100, #f3f4f6);
-    border-radius: 99px;
-    overflow: hidden;
-  }
-  .ts3-proj-fill {
-    height: 100%;
-    border-radius: 99px;
-    transition: width 0.3s;
-  }
-`;

@@ -134,34 +134,32 @@ function MiniCalendar({
     else setViewMonth(m => m + 1);
   }
 
-  const navBtn: React.CSSProperties = {
-    background: "none", border: "none", cursor: "pointer", padding: "2px 8px",
-    borderRadius: "var(--r-sm)", fontSize: "1rem", lineHeight: 1,
-    color: "var(--text-secondary)", display: "flex", alignItems: "center",
-  };
-
   return (
-    <div style={{ userSelect: "none", width: 224 }}>
+    <div className="select-none w-[224px]">
       {/* Month / year navigation */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-        <button type="button" style={navBtn} onClick={prevMonth} aria-label="Previous month">‹</button>
-        <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--text-primary)" }}>
+      <div className="flex items-center justify-between mb-2">
+        <button type="button"
+          className="bg-transparent border-0 cursor-pointer px-2 py-[2px] rounded-sm text-base leading-none text-text-secondary flex items-center"
+          onClick={prevMonth} aria-label="Previous month">‹</button>
+        <span className="text-[0.82rem] font-bold text-text-primary">
           {MONTH_NAMES[viewMonth]} {viewYear}
         </span>
-        <button type="button" style={navBtn} onClick={nextMonth} aria-label="Next month">›</button>
+        <button type="button"
+          className="bg-transparent border-0 cursor-pointer px-2 py-[2px] rounded-sm text-base leading-none text-text-secondary flex items-center"
+          onClick={nextMonth} aria-label="Next month">›</button>
       </div>
 
       {/* Day-of-week labels */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 4 }}>
+      <div className="grid grid-cols-7 mb-1">
         {CAL_DAY_LABELS.map(d => (
-          <div key={d} style={{ textAlign: "center", fontSize: "0.62rem", color: "var(--text-tertiary)", fontWeight: 600, padding: "2px 0" }}>
+          <div key={d} className="text-center text-[0.62rem] text-text-tertiary font-semibold py-[2px]">
             {d}
           </div>
         ))}
       </div>
 
       {/* Day grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2 }}>
+      <div className="grid grid-cols-7 gap-[2px]">
         {cells.map(cell => {
           const isSelected = cell.iso === value;
           const isToday    = cell.iso === todayStr;
@@ -170,10 +168,9 @@ function MiniCalendar({
               key={cell.iso}
               type="button"
               onClick={() => { onChange(cell.iso); onClose(); }}
+              className="rounded cursor-pointer text-[0.72rem] leading-[28px] h-7 p-0"
               style={{
                 border: isToday && !isSelected ? "1px solid var(--brand-400)" : "1px solid transparent",
-                borderRadius: 4, cursor: "pointer",
-                fontSize: "0.72rem", lineHeight: "28px", height: 28, padding: 0,
                 fontWeight: isSelected || isToday ? 700 : 400,
                 background: isSelected ? "var(--brand-500)" : "transparent",
                 color: isSelected ? "#fff"
@@ -192,11 +189,10 @@ function MiniCalendar({
       </div>
 
       {/* Today shortcut */}
-      <div style={{ marginTop: 8, borderTop: "1px solid var(--border-subtle)", paddingTop: 8 }}>
+      <div className="mt-2 border-t border-border-subtle pt-2">
         <button
           type="button"
-          className="btn btn-ghost btn-sm"
-          style={{ width: "100%", fontSize: "0.75rem" }}
+          className="btn btn-ghost btn-sm w-full text-[0.75rem]"
           onClick={() => { onChange(todayIso()); onClose(); }}
         >
           Today
@@ -219,11 +215,10 @@ function DatePicker({ value, onChange }: { value: string; onChange: (d: string) 
   }, []);
 
   return (
-    <div ref={ref} style={{ position: "relative" }}>
+    <div ref={ref} className="relative">
       <button
         type="button"
-        className="btn btn-outline btn-sm"
-        style={{ display: "flex", alignItems: "center", gap: 6 }}
+        className="btn btn-outline btn-sm flex items-center gap-[6px]"
         onClick={() => setOpen(v => !v)}
         aria-label={`Selected date: ${fmtDateDisplay(value)}. Click to change`}
         aria-expanded={open}
@@ -237,12 +232,7 @@ function DatePicker({ value, onChange }: { value: string; onChange: (d: string) 
         <div
           role="dialog"
           aria-label="Date picker"
-          style={{
-            position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 200,
-            background: "var(--surface)", border: "1px solid var(--border-subtle)",
-            borderRadius: "var(--r-md)", boxShadow: "var(--shadow-md)",
-            padding: "var(--space-3)",
-          }}
+          className="absolute top-[calc(100%+6px)] right-0 z-[200] bg-[var(--surface)] border border-border-subtle rounded-md shadow-md p-3"
         >
           <MiniCalendar value={value} onChange={onChange} onClose={() => setOpen(false)} />
         </div>
@@ -257,21 +247,20 @@ function Avatar({ member }: { member: TeamMemberStatus }) {
   const initials = (member.displayName || member.username).slice(0, 2).toUpperCase();
   if (member.avatarDataUrl) {
     return (
-      <div style={{
-        width: 36, height: 36, borderRadius: "var(--r-md)",
-        backgroundImage: `url(${member.avatarDataUrl})`,
-        backgroundSize: "cover", backgroundPosition: "center",
-        border: "1px solid var(--border-subtle)", flexShrink: 0,
-      }} />
+      <div
+        className="w-9 h-9 rounded-md shrink-0 border border-border-subtle"
+        style={{
+          backgroundImage: `url(${member.avatarDataUrl})`,
+          backgroundSize: "cover", backgroundPosition: "center",
+        }}
+      />
     );
   }
   return (
-    <div style={{
-      width: 36, height: 36, borderRadius: "var(--r-md)", flexShrink: 0,
-      background: "linear-gradient(135deg, var(--brand-500), var(--brand-700))",
-      display: "flex", alignItems: "center", justifyContent: "center",
-      fontSize: "0.75rem", fontWeight: 700, color: "#fff",
-    }}>
+    <div
+      className="w-9 h-9 rounded-md shrink-0 flex items-center justify-center text-[0.75rem] font-bold text-white"
+      style={{ background: "linear-gradient(135deg, var(--brand-500), var(--brand-700))" }}
+    >
       {initials}
     </div>
   );
@@ -288,11 +277,8 @@ function WeekBar({ logged, expected }: { logged: number; expected: number }) {
   const tooltip = `${loggedH}h logged of ${expectedH}h weekly target`;
 
   return (
-    <div style={{ minWidth: 110 }}>
-      <div style={{
-        display: "flex", justifyContent: "space-between",
-        fontSize: 11, color: "var(--text-tertiary)", marginBottom: 3,
-      }}>
+    <div className="min-w-[110px]">
+      <div className="flex justify-between text-[11px] text-text-tertiary mb-[3px]">
         <span>{fmtHours(logged)}</span>
         <span>{fmtHours(expected)}</span>
       </div>
@@ -303,19 +289,18 @@ function WeekBar({ logged, expected }: { logged: number; expected: number }) {
         aria-valuemin={0}
         aria-valuemax={100}
         aria-label={tooltip}
-        style={{ height: 5, borderRadius: 3, background: "var(--n-100)", overflow: "hidden" }}
+        className="h-[5px] rounded-[3px] bg-n-100 overflow-hidden"
       >
-        <div style={{
-          height: "100%", borderRadius: 3, background: color,
-          width: `${pct}%`, transition: "width 0.3s",
-        }} />
+        <div
+          className="h-full rounded-[3px] transition-[width] duration-300"
+          style={{ width: `${pct}%`, background: color }}
+        />
       </div>
       {/* H3: percentage label */}
-      <div style={{
-        textAlign: "right", fontSize: 10,
-        color: pct === 0 ? "var(--text-tertiary)" : color,
-        fontWeight: 600, marginTop: 2,
-      }}>
+      <div
+        className="text-right text-[10px] font-semibold mt-[2px]"
+        style={{ color: pct === 0 ? "var(--text-tertiary)" : color }}
+      >
         {pct}%
       </div>
     </div>
@@ -328,7 +313,7 @@ function ClockIcon() {
   return (
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
-      style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }}>
+      className="inline align-middle mr-1">
       <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
     </svg>
   );
@@ -340,7 +325,7 @@ function ArrowRight() {
   return (
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
       strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
-      style={{ display: "inline", verticalAlign: "middle", marginLeft: 3 }}>
+      className="inline align-middle ml-[3px]">
       <line x1="5" y1="12" x2="19" y2="12"/>
       <polyline points="12 5 19 12 12 19"/>
     </svg>
@@ -353,7 +338,7 @@ function CheckIcon() {
   return (
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
       strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
-      style={{ display: "inline", verticalAlign: "middle" }}>
+      className="inline align-middle">
       <polyline points="20 6 9 17 4 12"/>
     </svg>
   );
@@ -424,21 +409,19 @@ export function TeamStatus() {
   // M1 — Dynamic subtitle
   const subtitle = buildSubtitle(members.length, counts.missing, counts["needs-approval"]);
 
+  // C2 — sticky td className reused per row
+  const stickyTdCls = "sticky right-0 z-[1] bg-[var(--surface)] shadow-[-2px_0_6px_rgba(0,0,0,0.04)]";
+
   return (
     <>
       {/* Toast */}
       {toast && (
-        <div style={{
-          position: "fixed", bottom: 24, right: 24, zIndex: 9999,
-          background: "#111827", color: "#fff", borderRadius: 8,
-          padding: "10px 18px", fontSize: 14, fontWeight: 600,
-          boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
-        }}>
+        <div className="fixed bottom-6 right-6 z-[9999] bg-[#111827] text-white rounded-lg px-[18px] py-[10px] text-sm font-semibold shadow-[0_4px_16px_rgba(0,0,0,0.2)]">
           {toast}
         </div>
       )}
 
-      <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+      <section className="flex flex-col gap-4">
 
         {/* Page header */}
         <div className="page-header">
@@ -454,7 +437,7 @@ export function TeamStatus() {
         </div>
 
         {/* C3 + NEW-2 — Filter bar: ALL four tabs always show their count badge */}
-        <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
+        <div className="flex gap-2 flex-wrap">
           {(Object.keys(FILTER_LABELS) as Filter[]).map(f => {
             const isActive = filter === f;
             return (
@@ -466,14 +449,13 @@ export function TeamStatus() {
               >
                 {FILTER_LABELS[f]}
                 {/* Badge always rendered for every tab */}
-                <span style={{
-                  marginLeft: 6,
-                  background: isActive ? "rgba(255,255,255,0.25)" : "var(--n-200)",
-                  color: isActive ? "#fff" : "var(--text-secondary)",
-                  borderRadius: 10, padding: "1px 7px",
-                  fontSize: 11, fontWeight: 700,
-                  minWidth: 18, textAlign: "center", display: "inline-block",
-                }}>
+                <span
+                  className="ml-[6px] rounded-[10px] px-[7px] py-[1px] text-[11px] font-bold min-w-[18px] text-center inline-block"
+                  style={{
+                    background: isActive ? "rgba(255,255,255,0.25)" : "var(--n-200)",
+                    color: isActive ? "#fff" : "var(--text-secondary)",
+                  }}
+                >
                   {counts[f]}
                 </span>
               </button>
@@ -482,31 +464,27 @@ export function TeamStatus() {
         </div>
 
         {/* M2 — Visual separator between filter bar and table */}
-        <div style={{ borderTop: "1px solid var(--border-subtle)", marginTop: -4 }} />
+        <div className="border-t border-border-subtle -mt-1" />
 
         {/* Table */}
-        <div className="card" style={{ overflow: "auto" }}>
+        <div className="card overflow-auto">
           {loading ? (
-            <div style={{ padding: "var(--space-8)", color: "var(--text-tertiary)", textAlign: "center" }}>
+            <div className="p-8 text-text-tertiary text-center">
               Loading…
             </div>
           ) : filtered.length === 0 && members.length === 0 ? (
             /* H5 — Full empty state for 0 members */
-            <div style={{
-              padding: "var(--space-10) var(--space-6)",
-              display: "flex", flexDirection: "column",
-              alignItems: "center", gap: "var(--space-3)", textAlign: "center",
-            }}>
+            <div className="py-10 px-6 flex flex-col items-center gap-3 text-center">
               <EmptyTeamIcon />
-              <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text-primary)" }}>
+              <div className="text-[0.95rem] font-bold text-text-primary">
                 No direct reports assigned
               </div>
-              <div style={{ fontSize: "0.8rem", color: "var(--text-tertiary)", maxWidth: 320 }}>
+              <div className="text-[0.8rem] text-text-tertiary max-w-[320px]">
                 You don't have any team members yet. Ask your admin to assign employees to you.
               </div>
             </div>
           ) : filtered.length === 0 ? (
-            <div style={{ padding: "var(--space-8)", color: "var(--text-tertiary)", textAlign: "center" }}>
+            <div className="p-8 text-text-tertiary text-center">
               No team members match this filter.
             </div>
           ) : (
@@ -518,28 +496,23 @@ export function TeamStatus() {
              * so header text never bleeds into adjacent columns.
              */
             <table
-              className="data-table"
-              style={{ tableLayout: "fixed", width: "100%" }}
+              className="data-table [table-layout:fixed] w-full"
               role="grid"
             >
               <thead>
                 <tr>
                   {/* NEW-1 — th base style: overflow hidden, no wrap, ellipsis */}
-                  <th style={{ width: "23%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Member</th>
-                  <th style={{ width: "13%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Attendance</th>
-                  <th style={{ width: "11%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <th className="w-[23%] overflow-hidden text-ellipsis whitespace-nowrap">Member</th>
+                  <th className="w-[13%] overflow-hidden text-ellipsis whitespace-nowrap">Attendance</th>
+                  <th className="w-[11%] overflow-hidden text-ellipsis whitespace-nowrap">
                     <ClockIcon />Check-in Time
                   </th>
-                  <th style={{ width: "19%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Week Progress</th>
-                  <th style={{ width: "12%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Timesheet</th>
+                  <th className="w-[19%] overflow-hidden text-ellipsis whitespace-nowrap">Week Progress</th>
+                  <th className="w-[12%] overflow-hidden text-ellipsis whitespace-nowrap">Timesheet</th>
                   {/* C2 — sticky right column */}
-                  <th style={{
-                    width: "22%",
-                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                    position: "sticky", right: 0, zIndex: 2,
-                    background: "var(--n-50)",
-                    boxShadow: "-2px 0 6px rgba(0,0,0,0.06)",
-                  }}>Pending Actions</th>
+                  <th className="w-[22%] overflow-hidden text-ellipsis whitespace-nowrap sticky right-0 z-[2] bg-n-50 shadow-[-2px_0_6px_rgba(0,0,0,0.06)]">
+                    Pending Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -549,35 +522,22 @@ export function TeamStatus() {
                   const attStatus = toBadgeStatus(
                     m.attendance === "onLeave" ? "on-leave" : m.attendance
                   );
-                  // C2 — sticky td style reused per row
-                  const stickyTd: React.CSSProperties = {
-                    position: "sticky", right: 0, zIndex: 1,
-                    background: "var(--surface)",
-                    boxShadow: "-2px 0 6px rgba(0,0,0,0.04)",
-                  };
                   return (
                     <tr key={m.userId}>
                       {/* Member — title tooltip for truncated names */}
                       <td>
-                        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+                        <div className="flex items-center gap-3">
                           <Avatar member={m} />
-                          <div style={{ minWidth: 0 }}>
+                          <div className="min-w-0">
                             <div
-                              style={{
-                                fontWeight: 600, fontSize: "0.875rem",
-                                color: "var(--text-primary)",
-                                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                              }}
+                              className="font-semibold text-[0.875rem] text-text-primary overflow-hidden text-ellipsis whitespace-nowrap"
                               title={m.displayName || m.username}
                             >
                               {m.displayName || m.username}
                             </div>
                             {m.displayName && (
                               <div
-                                style={{
-                                  fontSize: "0.75rem", color: "var(--text-tertiary)",
-                                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                                }}
+                                className="text-[0.75rem] text-text-tertiary overflow-hidden text-ellipsis whitespace-nowrap"
                                 title={`@${m.username}`}
                               >
                                 @{m.username}
@@ -591,12 +551,12 @@ export function TeamStatus() {
                       <td><StatusBadge status={attStatus} /></td>
 
                       {/* Check-in / out */}
-                      <td style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
+                      <td className="text-[0.8rem] text-text-secondary">
                         {m.checkInAtUtc ? (
                           <div>
                             <div>{fmtLocalTime(m.checkInAtUtc)}</div>
                             {m.checkOutAtUtc && (
-                              <div style={{ color: "var(--text-tertiary)" }}>
+                              <div className="text-text-tertiary">
                                 {fmtLocalTime(m.checkOutAtUtc)}
                               </div>
                             )}
@@ -615,21 +575,13 @@ export function TeamStatus() {
                       <td><StatusBadge status={tsStatus} /></td>
 
                       {/* Pending Actions — sticky right */}
-                      <td style={stickyTd}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", flexWrap: "wrap" }}>
+                      <td className={stickyTdCls}>
+                        <div className="flex items-center gap-2 flex-wrap">
                           {m.pendingApprovalCount > 0 && (
                             <button
                               type="button"
                               onClick={() => navigate("/approvals")}
-                              style={{
-                                background: "none", border: "none", padding: 0,
-                                color: "var(--brand-600)", fontWeight: 600,
-                                fontSize: "0.8rem", cursor: "pointer",
-                                textDecoration: "none", display: "inline-flex",
-                                alignItems: "center",
-                              }}
-                              onMouseEnter={e => (e.currentTarget.style.textDecoration = "underline")}
-                              onMouseLeave={e => (e.currentTarget.style.textDecoration = "none")}
+                              className="bg-transparent border-0 p-0 text-brand-600 font-semibold text-[0.8rem] cursor-pointer inline-flex items-center hover:underline"
                               title={`View ${m.pendingApprovalCount} pending approval${m.pendingApprovalCount !== 1 ? "s" : ""}`}
                             >
                               {m.pendingApprovalCount} pending<ArrowRight />
@@ -639,13 +591,7 @@ export function TeamStatus() {
                           {m.todayTimesheetStatus === "missing" && (
                             <button
                               type="button"
-                              className="btn btn-sm"
-                              style={{
-                                border: "1px solid var(--border-subtle)",
-                                background: "var(--surface)",
-                                color: "var(--text-secondary)",
-                                fontSize: "0.72rem",
-                              }}
+                              className="btn btn-sm border border-border-subtle bg-[var(--surface)] text-text-secondary text-[0.72rem]"
                               disabled={isReminding}
                               onClick={() => void remind(m.userId, m.username)}
                               title="Send reminder notification"
@@ -657,8 +603,7 @@ export function TeamStatus() {
                           {m.pendingApprovalCount > 0 && (
                             <button
                               type="button"
-                              className="btn btn-outline-success btn-sm"
-                              style={{ fontSize: "0.72rem", display: "inline-flex", alignItems: "center", gap: 4 }}
+                              className="btn btn-outline-success btn-sm text-[0.72rem] inline-flex items-center gap-1"
                               onClick={() => navigate("/approvals")}
                               title="Go to Approvals"
                             >
@@ -667,7 +612,7 @@ export function TeamStatus() {
                           )}
 
                           {m.pendingApprovalCount === 0 && m.todayTimesheetStatus !== "missing" && (
-                            <span style={{ fontSize: "0.8rem", color: "var(--text-tertiary)" }}>—</span>
+                            <span className="text-[0.8rem] text-text-tertiary">—</span>
                           )}
                         </div>
                       </td>
@@ -680,12 +625,7 @@ export function TeamStatus() {
 
           {/* H5 — Contextual message for very small teams (1 member) */}
           {!loading && members.length === 1 && (
-            <div style={{
-              padding: "var(--space-3) var(--space-5)",
-              borderTop: "1px solid var(--border-subtle)",
-              fontSize: "0.78rem", color: "var(--text-tertiary)",
-              textAlign: "center",
-            }}>
+            <div className="px-5 py-3 border-t border-border-subtle text-[0.78rem] text-text-tertiary text-center">
               You're viewing all 1 direct report. Add more team members to see richer data here.
             </div>
           )}

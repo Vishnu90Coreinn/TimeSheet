@@ -11,6 +11,139 @@ This file translates the provided BRD/FRS into implementation-ready tasks for th
 
 ---
 
+## 🔴 CURRENT PRIORITY — Epic E-CA: Clean Architecture Migration
+
+> **Status:** `TODO` — starts next session (Session 19)
+> **Branch:** `feature/clean-architecture`
+> **Goal:** Migrate the .NET backend from CRUD-first anemic monolith to Layered Clean Architecture.
+> **Constraint:** Zero breaking changes to API routes or frontend at any phase. All 52 tests must pass after each phase.
+
+### Architecture Target
+
+```
+TimeSheet.Domain        ← Entities + behavior, Value Objects, Domain Events, Interfaces
+TimeSheet.Application   ← MediatR CQRS, FluentValidation, Result<T>, Use Cases
+TimeSheet.Infrastructure← EF Core, Repositories, UnitOfWork, Background Jobs, Services
+TimeSheet.Api           ← Thin controllers, Middleware, Program.cs (composition root)
+TimeSheet.Domain.Tests        ← Unit tests: entity behavior
+TimeSheet.Application.Tests   ← Unit tests: handlers (mocked repos)
+TimeSheet.Integration.Tests   ← Existing 52 tests moved here
+```
+
+---
+
+### Phase 1 — Solution Scaffold
+
+- [ ] **CA-001** Create `TimeSheet.Domain` class library project (net10.0, zero NuGet deps)
+- [ ] **CA-002** Create `TimeSheet.Application` class library (depends on Domain; add MediatR, FluentValidation, Mapster)
+- [ ] **CA-003** Create `TimeSheet.Infrastructure` class library (depends on Application + Domain; EF Core, SQL Server move here)
+- [ ] **CA-004** Update `TimeSheet.Api` project references: remove direct EF Core, add Application + Infrastructure
+- [ ] **CA-005** Update `TimeSheet.sln` to include all 4 src projects + rename test project to `TimeSheet.Integration.Tests`
+- [ ] **CA-006** Create `src/TimeSheet.Domain.Tests` and `src/TimeSheet.Application.Tests` xUnit projects
+- [ ] **CA-007** Add `Entity.cs` base class (Id, `List<IDomainEvent>`, `AddDomainEvent`, `ClearDomainEvents`)
+- [ ] **CA-008** Add `Result<T>` / `Result` (Success, NotFound, Forbidden, Validation, Conflict) + `.ToActionResult()` extension
+- [ ] **CA-009** Add `IUnitOfWork` interface in Domain (`SaveChangesAsync`)
+- [ ] **CA-010** Add `ICurrentUserService` interface in Application (`UserId`, `Username`, `Role`, `IsAdmin`, `IsManagerOf`)
+- [ ] **CA-011** Add `IDateTimeProvider` interface in Application (`UtcNow`)
+- [ ] **CA-012** Add MediatR pipeline behaviors: `ValidationBehavior`, `LoggingBehavior`, `PerformanceBehavior`
+- [ ] **CA-013** Add `DependencyInjection.cs` in Application (`services.AddApplication()`)
+- [ ] **CA-014** Add `DependencyInjection.cs` in Infrastructure (`services.AddInfrastructure(config)`)
+- [ ] **CA-015** Wire `AddApplication()` + `AddInfrastructure()` in `Program.cs` — verify app still starts + 52 tests pass
+
+### Phase 2 — Domain Enrichment
+
+- [ ] **CA-020** Move all 25 entity models from `Api/Models/` → `TimeSheet.Domain/Entities/` (keep EF attributes temporarily)
+- [ ] **CA-021** Move all enums (`TimesheetStatus`, `LeaveStatus`, `WorkSessionStatus`, `NotificationType`) → `TimeSheet.Domain/Enums/`
+- [ ] **CA-022** Add behavior to `Timesheet` entity: `Submit()`, `Approve(approverId)`, `Reject(approverId, comment)`, `PushBack(approverId, comment)`
+- [ ] **CA-023** Add behavior to `LeaveRequest` entity: `Approve(approverId)`, `Reject(approverId, comment)`, `Cancel()`
+- [ ] **CA-024** Add behavior to `WorkSession` entity: `CheckOut(checkoutTime)`, `AddBreak(start)`, `EndBreak(end)`
+- [ ] **CA-025** Create Value Objects: `DateRange`, `Duration` (minutes wrapper), `WorkHours` (policy-bounded)
+- [ ] **CA-026** Create Domain Exceptions: `DomainException` (base), `TimesheetLockedException`, `InsufficientLeaveBalanceException`, `InvalidApprovalStateException`
+- [ ] **CA-027** Create Domain Events: `TimesheetSubmittedEvent`, `TimesheetApprovedEvent`, `TimesheetRejectedEvent`, `LeaveApprovedEvent`, `LeaveRejectedEvent`
+- [ ] **CA-028** Define repository interfaces in Domain: `ITimesheetRepository`, `IUserRepository`, `ILeaveRepository`, `IProjectRepository`, `INotificationRepository`
+- [ ] **CA-029** Write unit tests for all entity behavior methods (Domain.Tests)
+- [ ] **CA-030** Verify 52 integration tests still pass
+
+### Phase 3 — Infrastructure Layer
+
+- [ ] **CA-031** Move `TimeSheetDbContext.cs` → `TimeSheet.Infrastructure/Persistence/`
+- [ ] **CA-032** Move `Migrations/` → `TimeSheet.Infrastructure/Persistence/Migrations/`
+- [ ] **CA-033** Split EF Fluent config into per-entity `IEntityTypeConfiguration<T>` files under `Infrastructure/Persistence/Configurations/`
+- [ ] **CA-034** Implement `BaseRepository<T>` (generic CRUD) + specific repositories: `TimesheetRepository`, `UserRepository`, `LeaveRepository`, `ProjectRepository`
+- [ ] **CA-035** Implement `UnitOfWork`: `SaveChangesAsync` collects domain events → `db.SaveChangesAsync()` → dispatches events via `IMediator.Publish`
+- [ ] **CA-036** Move `TokenService`, `PasswordHasher` → `Infrastructure/Services/`
+- [ ] **CA-037** Move `AttendanceCalculationService`, `AuditService`, `NotificationService` → `Infrastructure/Services/`
+- [ ] **CA-038** Implement `CurrentUserService` (reads `IHttpContextAccessor`) in Infrastructure
+- [ ] **CA-039** Implement `DateTimeProvider` (wraps `DateTime.UtcNow`) in Infrastructure
+- [ ] **CA-040** Move `RefreshTokenCleanupService`, `NotificationSchedulerService`, `AnomalyDetectionService` → `Infrastructure/BackgroundJobs/`
+- [ ] **CA-041** Register all Infrastructure services in `AddInfrastructure()`
+- [ ] **CA-042** Verify 52 integration tests still pass
+
+### Phase 4 — Application Layer (CQRS, feature by feature)
+
+#### Auth
+- [ ] **CA-050** `LoginCommand` + Handler (calls `IUserRepository`, `ITokenService`, `IPasswordHasher`)
+- [ ] **CA-051** `RefreshTokenCommand` + Handler
+- [ ] **CA-052** `LogoutCommand` + Handler
+- [ ] **CA-053** Slim `AuthController` to mediator.Send() calls only
+
+#### Timesheets
+- [ ] **CA-054** `GetDayTimesheetQuery` + Handler
+- [ ] **CA-055** `GetWeekSummaryQuery` + Handler
+- [ ] **CA-056** `AddTimesheetEntryCommand` + Validator + Handler
+- [ ] **CA-057** `UpdateTimesheetEntryCommand` + Validator + Handler
+- [ ] **CA-058** `DeleteTimesheetEntryCommand` + Handler
+- [ ] **CA-059** `SubmitTimesheetCommand` + Handler (calls `timesheet.Submit()`)
+- [ ] **CA-060** `SubmitWeekCommand` + Handler
+- [ ] **CA-061** Slim `TimesheetsController` to mediator.Send() calls only
+
+#### Approvals
+- [ ] **CA-062** `GetPendingApprovalsQuery` + Handler
+- [ ] **CA-063** `ApproveTimesheetCommand` + Handler (calls `timesheet.Approve()`)
+- [ ] **CA-064** `RejectTimesheetCommand` + Handler (calls `timesheet.Reject()`)
+- [ ] **CA-065** Slim `ApprovalsController`
+
+#### Leave
+- [ ] **CA-066** `ApplyLeaveCommand` + Validator + Handler (balance check → `leaveRequest.Create()`)
+- [ ] **CA-067** `ApproveLeaveCommand` + Handler (calls `leaveRequest.Approve()`)
+- [ ] **CA-068** `RejectLeaveCommand` + Handler
+- [ ] **CA-069** `GetLeaveBalanceQuery`, `GetLeaveRequestsQuery`
+- [ ] **CA-070** Slim `LeaveController`
+
+#### Reports / Dashboard / Admin
+- [ ] **CA-071** Reports queries (projections direct to DTOs — bypass repository for perf)
+- [ ] **CA-072** Dashboard queries per role
+- [ ] **CA-073** Users, Projects, Categories, Holidays, WorkPolicies, LeavePolicies CRUD commands/queries
+- [ ] **CA-074** Profile commands (UpdateProfile, ChangePassword, UpdateAvatar)
+- [ ] **CA-075** Slim all remaining controllers
+
+#### Application Tests
+- [ ] **CA-076** Unit tests for all Command handlers (mocked IRepository + IUnitOfWork)
+- [ ] **CA-077** Unit tests for all Query handlers
+- [ ] **CA-078** Verify 52 integration tests still pass
+
+### Phase 5 — Domain Events
+
+- [ ] **CA-080** `TimesheetApprovedEventHandler` → creates Notification (replaces imperative call in controller)
+- [ ] **CA-081** `TimesheetRejectedEventHandler` → creates Notification
+- [ ] **CA-082** `LeaveApprovedEventHandler` → creates Notification + adjusts LeaveBalance
+- [ ] **CA-083** `LeaveRejectedEventHandler` → creates Notification
+- [ ] **CA-084** `TimesheetSubmittedEventHandler` → creates pending-approval Notification for manager
+- [ ] **CA-085** Remove all imperative notification/audit calls from controllers (they now fire via events)
+- [ ] **CA-086** Verify 52 integration tests still pass
+
+### Phase 6 — Cleanup & Tests
+
+- [ ] **CA-090** Delete `Api/Models/`, `Api/Services/`, `Api/Data/` folders (now empty after moves)
+- [ ] **CA-091** Enforce architecture rule: `TimeSheet.Api.csproj` must not reference `Microsoft.EntityFrameworkCore` directly
+- [ ] **CA-092** Add `ExceptionHandlingMiddleware` in API — maps `DomainException` → 422, `NotFoundException` → 404, `ForbiddenException` → 403
+- [ ] **CA-093** Add `IPagedQuery<T>` interface — enforce on all list queries (prevent unbounded result sets)
+- [ ] **CA-094** Add EF Core retry policy (`EnableRetryOnFailure`) in Infrastructure DI
+- [ ] **CA-095** Final architecture review — confirm no direct DbContext access in Api or Application layers
+- [ ] **CA-096** Update README with new solution structure diagram
+
+---
+
 ## Epic E1 — Foundation and Access
 
 ### E1-F1 Authentication and Session

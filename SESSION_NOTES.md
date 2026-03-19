@@ -943,3 +943,77 @@ Start **Sprint 21 — Saved & Scheduled Reports + True Export** on branch `featu
 - **`gh` CLI not installed:** GitHub CLI (`gh`) is not available on this machine. All GitHub operations (PR creation, etc.) must be done via browser or by installing `gh`.
 - **RefreshTokenCleanupService uses `ExecuteDeleteAsync`:** This is an EF Core 7+ bulk delete. Requires SQL Server provider in production (InMemory does not support it — the service uses try/catch to swallow the InMemory error).
 - **`AuditService.WriteAsync` does NOT call `SaveChangesAsync`:** The caller is responsible. This is intentional so audit log entries are part of the same transaction as the main entity change.
+
+---
+
+## Session 18 — Tailwind Migration Complete + Clean Architecture Plan (2026-03-19)
+
+### What Was Done
+
+#### Tailwind CSS v4 Migration — Completed & Merged
+- All 10 migration sessions (A–J) completed across previous sessions.
+- **Session G (this session):** Migrated `Profile.tsx` — ToastStack, PwdField, camera overlay (`group`/`group-hover`), ToggleRow dynamic bg/opacity/knob kept as `style={{}}`.
+- **Sessions H, I, J (parallel subagents):** Migrated `Leave.tsx`, `Dashboard.tsx`, `Timesheets.tsx` simultaneously.
+  - `Leave.tsx`: Removed 130-line PAGE_STYLES, appended `lv-*` classes to design-system.css
+  - `Dashboard.tsx`: Removed all `onMouseEnter/Leave` handlers; `dash-*` CSS classes added
+  - `Timesheets.tsx`: Removed 758-line PAGE_STYLES; `ts-*` CSS classes added
+- **Merged** `TimesheetV1.0_Tailwind` → `master` via no-ff merge commit `6ca488b` (22 files, −2565 lines removed, 886 lines added to design-system.css).
+- **Bug fix (post-merge):** CSS reset `*, *::before, *::after { padding: 0 }` was unlayered, beating all Tailwind `@layer utilities` padding/margin utilities. Fixed by wrapping the reset in `@layer base` — commit `6ca488b`.
+
+#### Clean Architecture Migration — Plan Created
+- Evaluated current .NET backend: CRUD-first anemic domain model, 21 controllers with direct DbContext access, 10 services (inconsistently applied), no repository pattern, no CQRS.
+- Designed full Layered Clean Architecture plan:
+  - `TimeSheet.Domain` — Entities with behavior, Value Objects, Domain Events, Repository interfaces, Exceptions
+  - `TimeSheet.Application` — MediatR CQRS (Commands/Queries), FluentValidation pipeline, Result<T> pattern, ICurrentUserService
+  - `TimeSheet.Infrastructure` — EF Core (moved from API), Repository implementations, UnitOfWork with domain event dispatch
+  - `TimeSheet.Api` — Thin controllers (8 lines each), composition root only
+- 6-phase migration strategy: Scaffold → Domain Enrichment → Infrastructure → Application (feature by feature) → Domain Events → Tests
+- **Zero downtime migration:** Each phase leaves the app fully functional; all existing API routes unchanged; no frontend impact.
+
+### Commits
+- `89dc8bc` — style: migrate Profile.tsx to Tailwind (Session G)
+- `7c88611` — style: migrate Leave.tsx to Tailwind (Session H) [parallel agent]
+- `975a4c6` — style: migrate Timesheets.tsx to Tailwind (Session J) [parallel agent]
+- `7c0ddc4` — style: migrate Dashboard.tsx to Tailwind (Session I) [parallel agent]
+- Merge commit — feat: complete Tailwind CSS v4 migration (Sessions A–J)
+- `6ca488b` — fix: wrap CSS reset in @layer base to restore Tailwind padding/margin utilities
+
+---
+
+## Pending For Next Session
+
+> Last updated: Session 18 (2026-03-19).
+
+### 🔴 Priority 1 — Clean Architecture Migration (NEW — supersedes Sprint 21)
+Start **Phase 1: Solution Scaffold** on branch `feature/clean-architecture`
+
+See `PROJECT_TASKS.md` Epic E-CA for full task breakdown.
+
+**Phase order:**
+1. **Phase 1** — Create solution structure, project references, base types (Entity, Result<T>, IUnitOfWork)
+2. **Phase 2** — Move & enrich domain entities; add Value Objects, Domain Events, Exceptions
+3. **Phase 3** — Infrastructure layer (Repositories, UnitOfWork, services moved from API)
+4. **Phase 4** — Application layer, feature by feature (Auth → Timesheets → Approvals → Leave → Reports → Admin)
+5. **Phase 5** — Domain events wired through UnitOfWork.SaveChangesAsync
+6. **Phase 6** — Unit tests (Domain + Application handlers)
+
+### Sprint Roadmap (on hold during CA migration)
+Sprints 21–25 remain planned but are deprioritized until Clean Architecture is in place.
+New features built on the clean architecture will be far easier to implement and test.
+
+9. **Sprint 21** — Saved & Scheduled Reports (`feature/sprint-21-saved-reports`)
+10. **Sprint 22** — Approval Delegation
+11. **Sprint 23** — Command Palette
+12. **Sprint 24** — Mobile PWA
+13. **Sprint 25** — Dark Mode
+
+---
+
+## Known Issues / Gotchas
+
+- **EF Core 9 dual-provider in tests:** Fix in `CustomWebApplicationFactory.cs` — do not revert.
+- **net10.0 only:** Both `.csproj` files target `net10.0`. Do not downgrade.
+- **`gh` CLI not installed:** GitHub operations via browser only.
+- **RefreshTokenCleanupService uses `ExecuteDeleteAsync`:** InMemory provider swallows the error via try/catch — intentional.
+- **`AuditService.WriteAsync` does NOT call `SaveChangesAsync`:** Caller is responsible — intentional (same transaction).
+- **Tailwind v4 CSS layers:** All custom CSS resets must stay inside `@layer base`. Unlayered CSS beats `@layer utilities` — never add unlayered `padding` or `margin` rules to design-system.css.

@@ -1862,3 +1862,169 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
 .lv-onbehalf-banner { display: flex; align-items: center; gap: var(--space-2); font-size: 0.8rem;
   color: #1d4ed8; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--r-md);
   padding: 8px 12px; }
+
+/* ── Dashboard (dash-*) ──────────────────────────────────────────────────── */
+
+/* Freshness bar — data-age indicator shown below page header */
+.dash-freshness-bar {
+  display: flex; align-items: center; justify-content: flex-end;
+  gap: 8px; font-size: 0.78rem; color: var(--text-tertiary);
+  margin-top: calc(var(--space-2) * -1);
+}
+
+/* Refresh button inside freshness bar */
+.dash-refresh-btn {
+  background: none;
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  color: var(--brand-600);
+  display: flex; align-items: center; gap: 4px;
+  padding: 3px 8px;
+  font-size: 0.75rem;
+  border-radius: var(--r-sm);
+  font-weight: 600;
+  font-family: var(--font-sans);
+  transition: border-color 0.15s, background 0.15s;
+}
+.dash-refresh-btn:hover { background: var(--brand-50); border-color: var(--brand-300); }
+
+/* Period selector tab strip */
+.dash-period-selector {
+  display: flex; gap: 2px;
+  background: var(--n-50);
+  border-radius: var(--r-md);
+  padding: 2px;
+  border: 1px solid var(--border-subtle);
+}
+.dash-period-btn {
+  padding: 4px 10px; font-size: 0.72rem; font-weight: 400;
+  border-radius: var(--r-sm); cursor: pointer;
+  background: transparent;
+  color: var(--text-tertiary);
+  border: 1px solid transparent;
+  font-family: var(--font-sans);
+  transition: all 0.12s;
+}
+.dash-period-btn--active {
+  font-weight: 600;
+  background: var(--surface-base);
+  color: var(--text-primary);
+  border-color: var(--border-subtle);
+}
+
+/* Export dropdown menu */
+.dash-export-menu {
+  position: absolute; top: calc(100% + 4px); right: 0; z-index: 50;
+  background: var(--surface-base);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-md);
+  min-width: 140px;
+  overflow: hidden;
+}
+.dash-export-item {
+  display: block; width: 100%; text-align: left;
+  padding: 8px 14px; font-size: 0.8rem;
+  background: none; border: none; cursor: pointer;
+  color: var(--text-primary); font-family: var(--font-sans);
+  transition: background 0.1s;
+}
+.dash-export-item:hover { background: var(--n-50); }
+
+/* Anomaly alerts panel */
+.dash-anomaly-panel {
+  background: var(--n-0);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  padding: 20px;
+}
+
+/* Anomaly filter buttons */
+.dash-anomaly-filter-btn {
+  padding: 3px 10px; font-size: 0.72rem; font-weight: 400;
+  border-radius: 20px; cursor: pointer;
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-tertiary);
+  font-family: var(--font-sans);
+  transition: all 0.12s;
+}
+.dash-anomaly-filter-btn--all {
+  font-weight: 700;
+  border-color: var(--brand-500);
+  background: var(--brand-50);
+  color: var(--brand-600);
+}
+.dash-anomaly-filter-btn--warning {
+  font-weight: 700;
+  border-color: #f59e0b;
+  background: #fef3c7;
+  color: #b45309;
+}
+.dash-anomaly-filter-btn--critical {
+  font-weight: 700;
+  border-color: #ef4444;
+  background: #fee2e2;
+  color: #ef4444;
+}
+
+/* Dismiss button inside anomaly row */
+.dash-dismiss-btn {
+  flex-shrink: 0;
+  padding: 3px 10px; font-size: 0.72rem; font-weight: 500;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer; margin-top: 2px;
+  font-family: var(--font-sans);
+  transition: border-color 0.15s, color 0.15s;
+}
+.dash-dismiss-btn:hover { border-color: var(--brand-400); color: var(--brand-600); }
+
+/* Inline approval confirmation panel */
+.dash-confirm-panel {
+  background: var(--warning-light);
+  border: 1px solid #fbbf24;
+  border-radius: var(--r-md);
+  padding: var(--space-3);
+  margin-bottom: var(--space-3);
+  font-size: 0.8rem;
+}
+
+/* Pending approval row */
+.dash-approval-row {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-2);
+  background: var(--n-25);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+}
+
+/* Bar chart dept — vertical bars */
+.dash-bar-chart-dept {
+  display: flex; gap: 6px; align-items: flex-end;
+  height: 140px; padding-top: 20px;
+}
+.dash-bar-col {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0;
+}
+.dash-bar-val {
+  font-size: 0.6rem; color: var(--text-tertiary);
+  margin-bottom: 2px; line-height: 1;
+}
+.dash-bar-seg {
+  width: 100%; border-radius: 4px 4px 0 0; cursor: default;
+}
+.dash-bar-label {
+  font-size: 0.62rem; color: var(--text-tertiary);
+  margin-top: 4px; width: 100%; text-align: center;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* Horizontal bar chart label column */
+.dash-hbar-label {
+  width: 88px; font-size: 0.72rem; color: var(--text-secondary);
+  text-align: right; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; flex-shrink: 0;
+}

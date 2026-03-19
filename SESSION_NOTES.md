@@ -1079,25 +1079,104 @@ All work on `feature/clean-architecture`. **Do NOT merge to master until all 6 p
 
 ---
 
+## Session 20 — Clean Architecture Phase 2: Domain Enrichment (2026-03-20)
+
+### What Was Done
+
+#### Branch
+All work on `feature/clean-architecture`.
+
+#### CA-020, CA-021: Entity + Enum move (parallel agent)
+- 25 entity models moved from `apps/api/Models/` → `src/TimeSheet.Domain/Entities/` with namespace `TimeSheet.Domain.Entities`
+- 5 enums extracted to `src/TimeSheet.Domain/Enums/`: `TimesheetStatus`, `WorkSessionStatus`, `LeaveRequestStatus`, `ApprovalActionType`, `NotificationType`
+- Added `Cancelled = 3` to `LeaveRequestStatus`
+- `apps/api/GlobalUsings.cs` + `apps/api.tests/GlobalUsings.cs` added — `global using TimeSheet.Domain.Entities/Enums`
+- Removed `using TimeSheet.Api.Models;` from all 26 Api files + 9 test files
+- Original hollowed-out stubs deleted in cleanup commit
+
+#### CA-025: Value Objects (parallel agent)
+- `src/TimeSheet.Domain/ValueObjects/DateRange.cs` — `Start`, `End`, validation, `Overlaps()`, `Contains()`, `Length`
+- `src/TimeSheet.Domain/ValueObjects/Duration.cs` — wraps `TimeSpan`, factory methods, arithmetic
+- `src/TimeSheet.Domain/ValueObjects/WorkHours.cs` — validates 0–24h, `Add()`, `IsWithin()`
+
+#### CA-027: Domain Events (parallel agent)
+- `src/TimeSheet.Domain/Events/TimesheetSubmittedEvent.cs` — `(TimesheetId, UserId, WorkDate)`
+- `src/TimeSheet.Domain/Events/TimesheetApprovedEvent.cs` — `(TimesheetId, ApproverId)`
+- `src/TimeSheet.Domain/Events/TimesheetRejectedEvent.cs` — `(TimesheetId, ApproverId, Comment)`
+- `src/TimeSheet.Domain/Events/TimesheetPushedBackEvent.cs` — `(TimesheetId, ApproverId, Comment)`
+- `src/TimeSheet.Domain/Events/LeaveRequestApprovedEvent.cs` — `(LeaveRequestId, ApproverId, UserId, ...)`
+- `src/TimeSheet.Domain/Events/LeaveRequestRejectedEvent.cs` — `(LeaveRequestId, ApproverId, UserId, ...)`
+- `src/TimeSheet.Domain/Events/WorkSessionCheckedOutEvent.cs` — `(WorkSessionId, UserId, CheckOutAtUtc)`
+
+#### CA-028: Repository Interfaces (parallel agent)
+- `src/TimeSheet.Domain/Interfaces/ITimesheetRepository.cs`
+- `src/TimeSheet.Domain/Interfaces/IUserRepository.cs`
+- `src/TimeSheet.Domain/Interfaces/ILeaveRepository.cs`
+- `src/TimeSheet.Domain/Interfaces/IProjectRepository.cs`
+- `src/TimeSheet.Domain/Interfaces/INotificationRepository.cs`
+
+#### CA-022: Timesheet behaviors (parallel agent)
+- `Timesheet` now inherits `Entity` base
+- `Submit()` — Draft→Submitted + `TimesheetSubmittedEvent`
+- `Approve(approverId)` — Submitted→Approved + `TimesheetApprovedEvent`
+- `Reject(approverId, comment)` — Submitted→Rejected + `TimesheetRejectedEvent`
+- `PushBack(approverId, comment)` — Submitted→Draft + `TimesheetPushedBackEvent`
+- All methods throw `InvalidStateTransitionException` on wrong state
+
+#### CA-023: LeaveRequest behaviors (parallel agent)
+- `LeaveRequest` now inherits `Entity` base
+- `Approve(approverId)` — Pending→Approved + `LeaveRequestApprovedEvent`
+- `Reject(approverId, comment)` — Pending→Rejected + `LeaveRequestRejectedEvent`
+- `Cancel()` — Pending|Approved→Cancelled (no event)
+
+#### CA-024: WorkSession behaviors (parallel agent)
+- `WorkSession` now inherits `Entity` base
+- `CheckOut(checkOutAtUtc)` — Active→Completed + `WorkSessionCheckedOutEvent`
+- `AddBreak(startAtUtc)` — adds `BreakEntry`, throws if open break exists
+- `EndBreak(endAtUtc)` — closes open break, throws if none found
+
+#### CA-029 + CA-030: Unit tests + verification
+- 22 domain unit tests in `tests/TimeSheet.Domain.Tests/`
+  - `TimesheetTests.cs` (8 tests)
+  - `LeaveRequestTests.cs` (7 tests)
+  - `WorkSessionTests.cs` (7 tests)
+- **52/52 integration tests still passing**
+
+### Result
+- **22 domain unit tests passing**
+- **52/52 integration tests passing**
+- **0 build errors**
+- Phase 2 fully complete ✓
+
+### Commits on `feature/clean-architecture` (Phase 2)
+- `4d4413c` — feat(domain): domain events (CA-027)
+- `a314698` — feat(domain): entity + enum move (CA-020, CA-021)
+- `376ba34` — feat(domain): cleanup project files + model stubs
+- `8a4485e` — feat(domain): WorkSession behaviors (CA-024)
+- `0d77e26` — feat(domain): LeaveRequest behaviors (CA-023)
+- `0512220` — feat(domain): Timesheet behaviors (CA-022)
+- `a1a680a` — test(domain): unit tests for all entity behaviors (CA-029)
+
+---
+
 ## Pending For Next Session
 
-> Last updated: Session 19 (2026-03-20).
+> Last updated: Session 20 (2026-03-20).
 
-### 🔴 Priority — Clean Architecture Phase 2: Domain Enrichment
+### 🔴 Priority — Clean Architecture Phase 3: Infrastructure (EF Config + Repositories)
 Branch: `feature/clean-architecture` (all CA work stays here until user manually tests & raises PR to master)
 
-**Tasks (CA-020–030):**
-- CA-020: Move 25 entity models → `src/TimeSheet.Domain/Entities/`
-- CA-021: Move enums → `src/TimeSheet.Domain/Enums/`
-- CA-022: Add behavior to `Timesheet` entity (Submit, Approve, Reject, PushBack)
-- CA-023: Add behavior to `LeaveRequest` entity (Approve, Reject, Cancel)
-- CA-024: Add behavior to `WorkSession` entity (CheckOut, AddBreak, EndBreak)
-- CA-025: Create Value Objects (DateRange, Duration, WorkHours)
-- CA-026: Create Domain Exceptions (TimesheetLockedException etc.)
-- CA-027: Create Domain Events (TimesheetSubmitted/Approved/Rejected, LeaveApproved/Rejected)
-- CA-028: Define repository interfaces in Domain
-- CA-029: Write unit tests for all entity behavior methods
-- CA-030: Verify 52 integration tests still pass
+**Phase 3 Tasks (CA-031–045):**
+- CA-031: Create `TimeSheetDbContext` in Infrastructure (move from Api; configure via Fluent API)
+- CA-032: Implement `ITimesheetRepository` (EF Core queries: by user, by date range, by status)
+- CA-033: Implement `IUserRepository` (by id, by email, active users)
+- CA-034: Implement `ILeaveRepository` (by user, by date, by status, balance queries)
+- CA-035: Implement `IProjectRepository` (active projects, by member)
+- CA-036: Implement `INotificationRepository` (unread by user, mark read)
+- CA-037: Implement `IUnitOfWork` in EF — dispatch domain events after `SaveChangesAsync`
+- CA-038: Update `AddInfrastructure()` to register all repositories + DbContext
+- CA-039: Move EF entity configurations from data annotations → Fluent API (`IEntityTypeConfiguration<T>`)
+- CA-040: Verify 52 integration tests still pass
 
 ### Merge Policy
 - All phases (1–6) must be complete on `feature/clean-architecture`

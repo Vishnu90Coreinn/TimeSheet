@@ -50,19 +50,19 @@ TimeSheet.Integration.Tests   ← Existing 52 tests moved here
 - [x] **CA-014** Add `DependencyInjection.cs` in Infrastructure (`services.AddInfrastructure(config)`)
 - [x] **CA-015** Wire `AddApplication()` + `AddInfrastructure()` in `Program.cs` — verify app still starts + 52 tests pass
 
-### Phase 2 — Domain Enrichment
+### Phase 2 — Domain Enrichment ✓ DONE (Session 20)
 
-- [ ] **CA-020** Move all 25 entity models from `Api/Models/` → `TimeSheet.Domain/Entities/` (keep EF attributes temporarily)
-- [ ] **CA-021** Move all enums (`TimesheetStatus`, `LeaveStatus`, `WorkSessionStatus`, `NotificationType`) → `TimeSheet.Domain/Enums/`
-- [ ] **CA-022** Add behavior to `Timesheet` entity: `Submit()`, `Approve(approverId)`, `Reject(approverId, comment)`, `PushBack(approverId, comment)`
-- [ ] **CA-023** Add behavior to `LeaveRequest` entity: `Approve(approverId)`, `Reject(approverId, comment)`, `Cancel()`
-- [ ] **CA-024** Add behavior to `WorkSession` entity: `CheckOut(checkoutTime)`, `AddBreak(start)`, `EndBreak(end)`
-- [ ] **CA-025** Create Value Objects: `DateRange`, `Duration` (minutes wrapper), `WorkHours` (policy-bounded)
-- [ ] **CA-026** Create Domain Exceptions: `DomainException` (base), `TimesheetLockedException`, `InsufficientLeaveBalanceException`, `InvalidApprovalStateException`
-- [ ] **CA-027** Create Domain Events: `TimesheetSubmittedEvent`, `TimesheetApprovedEvent`, `TimesheetRejectedEvent`, `LeaveApprovedEvent`, `LeaveRejectedEvent`
-- [ ] **CA-028** Define repository interfaces in Domain: `ITimesheetRepository`, `IUserRepository`, `ILeaveRepository`, `IProjectRepository`, `INotificationRepository`
-- [ ] **CA-029** Write unit tests for all entity behavior methods (Domain.Tests)
-- [ ] **CA-030** Verify 52 integration tests still pass
+- [x] **CA-020** Move all 25 entity models from `Api/Models/` → `TimeSheet.Domain/Entities/` (keep EF attributes temporarily)
+- [x] **CA-021** Move all enums (`TimesheetStatus`, `LeaveStatus`, `WorkSessionStatus`, `NotificationType`) → `TimeSheet.Domain/Enums/` — also added `Cancelled=3` to `LeaveRequestStatus`
+- [x] **CA-022** Add behavior to `Timesheet` entity: `Submit()`, `Approve(approverId)`, `Reject(approverId, comment)`, `PushBack(approverId, comment)`
+- [x] **CA-023** Add behavior to `LeaveRequest` entity: `Approve(approverId)`, `Reject(approverId, comment)`, `Cancel()`
+- [x] **CA-024** Add behavior to `WorkSession` entity: `CheckOut(checkoutTime)`, `AddBreak(start)`, `EndBreak(end)`
+- [x] **CA-025** Create Value Objects: `DateRange`, `Duration`, `WorkHours`
+- [x] **CA-026** Domain Exceptions already created in Phase 1: `DomainException`, `InvalidStateTransitionException`, `InsufficientLeaveBalanceException`
+- [x] **CA-027** Create Domain Events: `TimesheetSubmittedEvent`, `TimesheetApprovedEvent`, `TimesheetRejectedEvent`, `TimesheetPushedBackEvent`, `LeaveRequestApprovedEvent`, `LeaveRequestRejectedEvent`, `WorkSessionCheckedOutEvent`
+- [x] **CA-028** Define repository interfaces in Domain: `ITimesheetRepository`, `IUserRepository`, `ILeaveRepository`, `IProjectRepository`, `INotificationRepository`
+- [x] **CA-029** Write unit tests for all entity behavior methods (Domain.Tests) — 22 tests passing
+- [x] **CA-030** Verify 52 integration tests still pass ✓
 
 ### Phase 3 — Infrastructure Layer
 

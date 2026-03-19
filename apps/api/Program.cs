@@ -9,6 +9,8 @@ using Serilog.Events;
 using TimeSheet.Api.Data;
 using TimeSheet.Api.Middleware;
 using TimeSheet.Api.Services;
+using TimeSheet.Application;
+using TimeSheet.Infrastructure;
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
@@ -23,6 +25,8 @@ try
     builder.Host.UseSerilog();
 
     builder.Services.AddControllers();
+    builder.Services.AddApplication();
+    builder.Services.AddInfrastructure(builder.Configuration);
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
     builder.Services.AddProblemDetails();

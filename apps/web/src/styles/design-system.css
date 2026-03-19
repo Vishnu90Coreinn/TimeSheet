@@ -1520,6 +1520,208 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
   .rpt-tabs-select { display: block; }
 }
 
+/* ── Timesheets page (ts-*) ──────────────────────────────── */
+
+/* Week nav arrow buttons */
+.ts-week-nav-btn {
+  flex-shrink: 0;
+  width: 32px;
+  background: var(--surface, #fff);
+  border: 1.5px solid var(--border-subtle, #e5e7eb);
+  border-radius: 10px;
+  font-size: 22px;
+  color: var(--n-500, #6b7280);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  padding: 0;
+  line-height: 1;
+}
+.ts-week-nav-btn:hover {
+  border-color: #6366f1;
+  color: #6366f1;
+  background: #eef2ff;
+}
+
+/* Day cards in the week strip */
+.ts-day-card {
+  background: var(--surface, #fff);
+  border: 1.5px solid var(--border-subtle, #e5e7eb);
+  border-radius: 10px;
+  padding: 10px 6px 8px;
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.15s, background 0.15s;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+.ts-day-card:hover { border-color: #6366f1; }
+.ts-day-card--selected { border-color: #6366f1; background: #eef2ff; }
+.ts-day-card--today .ts-day-num { color: #6366f1; font-weight: 700; }
+.ts-day-card--approved { border-color: #6ee7b7; background: #f0fdf4; }
+.ts-day-card--approved .ts-day-num { color: #059669; }
+.ts-day-card--approved .ts-day-hours-logged { color: rgb(5, 150, 105); }
+
+/* Shared form input style (input, select, textarea) */
+.ts-form-input {
+  border: 1.5px solid var(--border-subtle, #e5e7eb);
+  border-radius: 7px;
+  padding: 7px 10px;
+  font-size: 13px;
+  background: #fff;
+  color: var(--n-900, #111827);
+  outline: none;
+  transition: border-color 0.15s;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+.ts-form-input:focus { border-color: #6366f1; }
+
+/* Entry card */
+.ts-entry-card {
+  border: 1.5px solid var(--border-subtle, #e5e7eb);
+  border-left: 3px solid #6366f1;
+  border-radius: 10px;
+  background: #fff;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.ts-entry-card--locked { background: #fafafa; opacity: 0.85; }
+.ts-entry-card--approved { border-left-color: rgb(5, 150, 105) !important; background: #f0fdf4; }
+
+/* Icon buttons (edit/delete on entry cards) */
+.ts-icon-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: 1.5px solid var(--border-subtle, #e5e7eb);
+  background: #fff;
+  color: var(--n-500, #6b7280);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.ts-icon-btn:hover { background: #f3f4f6; border-color: #6366f1; color: #6366f1; }
+.ts-icon-btn--danger:hover { background: #fef2f2; border-color: #ef4444; color: #ef4444; }
+
+/* Day summary gradient bar at the bottom of entries */
+.ts-day-bar {
+  background: linear-gradient(135deg, #4338ca, #6366f1);
+  border-radius: 12px;
+  padding: 10px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+  margin-top: 4px;
+}
+.ts-day-bar--approved {
+  background: linear-gradient(135deg, rgb(5, 150, 105), rgb(16, 185, 129));
+}
+
+/* Sidebar cards */
+.ts-sidebar-card {
+  background: #fff;
+  border: 1.5px solid var(--border-subtle, #e5e7eb);
+  border-radius: 14px;
+  padding: 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ts-sidebar-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--n-400, #9ca3af);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Green presence dot */
+.ts-green-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.ts-green-dot--pulse { animation: ts-pulse 1.5s ease-in-out infinite; }
+@keyframes ts-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+/* Stop button (red outline variant) */
+.ts-btn-stop {
+  border: 1.5px solid #ef4444 !important;
+  color: #ef4444 !important;
+  background: #fff !important;
+}
+.ts-btn-stop:hover { background: #fef2f2 !important; }
+
+/* Timer sidebar selects */
+.ts-timer-select {
+  width: 100%;
+  border: 1.5px solid var(--border-subtle, #e5e7eb);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--n-900, #111827);
+  background: var(--surface, #fff);
+  margin-bottom: 6px;
+  outline: none;
+}
+.ts-timer-select:focus { border-color: #6366f1; }
+
+/* Timer note input */
+.ts-timer-note {
+  width: 100%;
+  border: 1.5px solid var(--border-subtle, #e5e7eb);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--n-900, #111827);
+  background: var(--surface, #fff);
+  outline: none;
+  box-sizing: border-box;
+}
+.ts-timer-note:focus { border-color: #6366f1; }
+
+/* Timer convert date input */
+.ts-timer-date-input {
+  border: 1.5px solid var(--border-subtle, #e5e7eb);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: var(--n-900, #111827);
+  background: var(--surface, #fff);
+  outline: none;
+}
+.ts-timer-date-input:focus { border-color: #6366f1; }
+
+/* Week progress bar fill (gradient) */
+.ts-week-prog-fill {
+  height: 100%;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #6366f1, #818cf8);
+  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 /* ── Leave page (lv-*) ───────────────────────────────────── */
 .lv-layout { display: flex; gap: var(--space-6); align-items: flex-start; }
 .lv-main   { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-6); }

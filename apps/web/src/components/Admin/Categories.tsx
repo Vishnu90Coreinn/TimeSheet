@@ -10,8 +10,8 @@ const BLANK: CatForm = { name: "", isBillable: false, isActive: true };
 type SortDir = "asc" | "desc";
 
 function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
-  if (!active) return <span style={{ opacity: 0.4, fontSize: "0.7rem", marginLeft: 3 }}>↕</span>;
-  return <span style={{ fontSize: "0.75rem", marginLeft: 3, color: "var(--brand-600)" }}>{dir === "asc" ? "↑" : "↓"}</span>;
+  if (!active) return <span className="opacity-40 text-[0.7rem] ml-[3px]">↕</span>;
+  return <span className="text-[0.75rem] ml-[3px] text-brand-600">{dir === "asc" ? "↑" : "↓"}</span>;
 }
 
 function Drawer({ open, title, onClose, children, footer }: { open: boolean; title: string; onClose: () => void; children: ReactNode; footer?: ReactNode }) {
@@ -49,7 +49,7 @@ function ConfirmModal({ open, title, body, onConfirm, onCancel }: { open: boolea
 
 function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <div className="toggle-wrap" onClick={() => onChange(!checked)} style={{ cursor: "pointer" }}>
+    <div className="toggle-wrap cursor-pointer" onClick={() => onChange(!checked)}>
       <div className={`toggle-track${checked ? " on" : ""}`}>
         <div className="toggle-thumb" />
       </div>
@@ -143,7 +143,7 @@ export function Categories() {
   const drawerTitle = editing === "new" ? "New Category" : editing ? `Edit: ${(editing as TaskCategory).name}` : "";
 
   return (
-    <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
+    <section className="flex flex-col gap-6">
       {/* Toast */}
       {toast && <div className={`toast${toast.ok ? " toast--ok" : " toast--err"}`}>{toast.ok ? "✓" : "✗"} {toast.msg}</div>}
 
@@ -161,12 +161,12 @@ export function Categories() {
           <label className="form-label" htmlFor="cat-name">Name <span className="required">*</span></label>
           <input id="cat-name" className="input-field" value={form.name} onChange={(e) => f("name", e.target.value)} maxLength={120} required />
         </div>
-        <label style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", fontSize: "0.825rem", color: "var(--text-secondary)" }}>
-          <input type="checkbox" checked={form.isBillable} onChange={(e) => f("isBillable", e.target.checked)} style={{ accentColor: "var(--brand-600)" }} />
+        <label className="flex items-center gap-2 text-[0.825rem] text-text-secondary">
+          <input type="checkbox" checked={form.isBillable} onChange={(e) => f("isBillable", e.target.checked)} className="[accent-color:var(--brand-600)]" />
           Billable
         </label>
-        <label style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", fontSize: "0.825rem", color: "var(--text-secondary)" }}>
-          <input type="checkbox" checked={form.isActive} onChange={(e) => f("isActive", e.target.checked)} style={{ accentColor: "var(--brand-600)" }} />
+        <label className="flex items-center gap-2 text-[0.825rem] text-text-secondary">
+          <input type="checkbox" checked={form.isActive} onChange={(e) => f("isActive", e.target.checked)} className="[accent-color:var(--brand-600)]" />
           Active
         </label>
       </Drawer>
@@ -193,7 +193,7 @@ export function Categories() {
       </div>
 
       {/* Table */}
-      <div className="card" style={{ overflow: "visible" }}>
+      <div className="card overflow-visible">
         <div className="card-header">
           <div>
             <div className="card-title">All Categories</div>
@@ -210,22 +210,20 @@ export function Categories() {
                 <th className="th-sort" onClick={() => toggleSort("name")} aria-sort={sortCol === "name" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
                   Name <SortIcon active={sortCol === "name"} dir={sortDir} />
                 </th>
-                <th className="th-sort" style={{ width: 110 }} onClick={() => toggleSort("isBillable")} aria-sort={sortCol === "isBillable" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
+                <th className="th-sort w-[110px]" onClick={() => toggleSort("isBillable")} aria-sort={sortCol === "isBillable" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
                   Billable <SortIcon active={sortCol === "isBillable"} dir={sortDir} />
                 </th>
-                <th className="th-sort" style={{ width: 110 }} onClick={() => toggleSort("isActive")} aria-sort={sortCol === "isActive" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
+                <th className="th-sort w-[110px]" onClick={() => toggleSort("isActive")} aria-sort={sortCol === "isActive" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
                   Active <SortIcon active={sortCol === "isActive"} dir={sortDir} />
                 </th>
-                <th style={{ width: 80 }}>Actions</th>
+                <th className="w-20">Actions</th>
               </tr>
             </thead>
             <tbody>
               {sorted.map((c) => (
-                <tr key={c.id} style={{ opacity: c.isActive ? 1 : 0.55 }}>
+                <tr key={c.id} className={c.isActive ? "" : "opacity-[0.55]"}>
                   <td>
-                    <button style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-primary)", fontWeight: 600, padding: 0, textAlign: "left", fontSize: "inherit" }} onClick={() => openEdit(c)}>
-                      {c.name}
-                    </button>
+                    <button className="btn-table-link" onClick={() => openEdit(c)}>{c.name}</button>
                   </td>
                   <td><ToggleSwitch checked={c.isBillable} onChange={() => void toggleBillable(c)} /></td>
                   <td><ToggleSwitch checked={c.isActive} onChange={() => void toggleActive(c)} /></td>

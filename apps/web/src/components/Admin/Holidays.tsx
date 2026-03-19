@@ -10,8 +10,8 @@ const BLANK: HolidayForm = { name: "", date: "", isRecurring: false };
 type SortDir = "asc" | "desc";
 
 function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
-  if (!active) return <span style={{ opacity: 0.4, fontSize: "0.7rem", marginLeft: 3 }}>↕</span>;
-  return <span style={{ fontSize: "0.75rem", marginLeft: 3, color: "var(--brand-600)" }}>{dir === "asc" ? "↑" : "↓"}</span>;
+  if (!active) return <span className="opacity-40 text-[0.7rem] ml-[3px]">↕</span>;
+  return <span className="text-[0.75rem] ml-[3px] text-brand-600">{dir === "asc" ? "↑" : "↓"}</span>;
 }
 
 function fmtDate(iso: string): string {
@@ -132,7 +132,7 @@ export function Holidays() {
   const drawerTitle = editing === "new" ? "Add Holiday" : editing ? `Edit: ${(editing as Holiday).name}` : "";
 
   return (
-    <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
+    <section className="flex flex-col gap-6">
       {/* Drawer form */}
       <Drawer open={!!editing} title={drawerTitle} onClose={() => setEditing(null)}
         footer={
@@ -151,8 +151,8 @@ export function Holidays() {
           <label className="form-label" htmlFor="hol-date">Date <span className="required">*</span></label>
           <input id="hol-date" type="date" className="input-field" value={form.date} onChange={(e) => f("date", e.target.value)} required />
         </div>
-        <label style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", fontSize: "0.825rem", color: "var(--text-secondary)" }}>
-          <input type="checkbox" checked={form.isRecurring} onChange={(e) => f("isRecurring", e.target.checked)} style={{ accentColor: "var(--brand-600)" }} />
+        <label className="flex items-center gap-2 text-[0.825rem] text-text-secondary">
+          <input type="checkbox" checked={form.isRecurring} onChange={(e) => f("isRecurring", e.target.checked)} className="[accent-color:var(--brand-600)]" />
           Recurring annually
         </label>
       </Drawer>
@@ -166,19 +166,18 @@ export function Holidays() {
           </>
         }
       >
-        <p style={{ fontSize: "0.825rem", color: "var(--text-secondary)", marginBottom: "var(--space-3)" }}>
+        <p className="text-[0.825rem] text-text-secondary mb-3">
           Paste one holiday per line in the format:<br />
-          <code style={{ fontFamily: "monospace", fontSize: "0.8rem" }}>Holiday Name, YYYY-MM-DD, true/false</code><br />
+          <code className="font-mono text-[0.8rem]">Holiday Name, YYYY-MM-DD, true/false</code><br />
           The third column (recurring) is optional and defaults to false.
         </p>
-        {importError && <div className="alert alert-error" style={{ marginBottom: "var(--space-3)" }}>{importError}</div>}
+        {importError && <div className="alert alert-error mb-3">{importError}</div>}
         <textarea
-          className="input-field"
+          className="input-field font-mono text-[0.8rem] resize-y"
           rows={10}
           placeholder={"Christmas Day, 2026-12-25, true\nNew Year's Day, 2026-01-01, true"}
           value={importText}
           onChange={(e) => setImportText(e.target.value)}
-          style={{ fontFamily: "monospace", fontSize: "0.8rem", resize: "vertical" }}
         />
       </Drawer>
 
@@ -198,7 +197,6 @@ export function Holidays() {
           <div className="page-subtitle">Manage public holidays and recurring observances</div>
         </div>
         <div className="page-actions">
-          {/* Year stepper */}
           <div className="year-stepper">
             <button className="year-stepper-btn" onClick={() => setYear(y => y - 1)}>‹</button>
             <span className="year-stepper-val">{year}</span>
@@ -211,7 +209,7 @@ export function Holidays() {
       </div>
 
       {/* Table */}
-      <div className="card" style={{ overflow: "visible" }}>
+      <div className="card overflow-visible">
         <div className="card-header">
           <div>
             <div className="card-title">Holidays — {year}</div>
@@ -228,27 +226,25 @@ export function Holidays() {
                 <th className="th-sort" onClick={() => toggleSort("name")} aria-sort={sortCol === "name" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
                   Name <SortIcon active={sortCol === "name"} dir={sortDir} />
                 </th>
-                <th className="th-sort" style={{ width: 200 }} onClick={() => toggleSort("date")} aria-sort={sortCol === "date" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
+                <th className="th-sort w-[200px]" onClick={() => toggleSort("date")} aria-sort={sortCol === "date" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
                   Date <SortIcon active={sortCol === "date"} dir={sortDir} />
                 </th>
-                <th className="th-sort" style={{ width: 140 }} onClick={() => toggleSort("isRecurring")} aria-sort={sortCol === "isRecurring" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
+                <th className="th-sort w-[140px]" onClick={() => toggleSort("isRecurring")} aria-sort={sortCol === "isRecurring" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
                   Recurrence <SortIcon active={sortCol === "isRecurring"} dir={sortDir} />
                 </th>
-                <th style={{ width: 100 }}>Actions</th>
+                <th className="w-[100px]">Actions</th>
               </tr>
             </thead>
             <tbody>
               {sorted.map((h) => (
                 <tr key={h.id}>
                   <td>
-                    <button style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-primary)", fontWeight: 600, padding: 0, textAlign: "left", fontSize: "inherit" }} onClick={() => openEdit(h)}>
-                      {h.name}
-                    </button>
+                    <button className="btn-table-link" onClick={() => openEdit(h)}>{h.name}</button>
                   </td>
                   <td>{fmtDate(h.date)}</td>
                   <td>
                     {h.isRecurring
-                      ? <span className="badge" style={{ background: "#ede9fe", color: "#6d28d9", border: "1px solid #c4b5fd" }}>↻ Annual</span>
+                      ? <span className="badge bg-purple-100 text-purple-700 border border-purple-300">↻ Annual</span>
                       : <span className="badge badge-neutral">Once</span>}
                   </td>
                   <td>

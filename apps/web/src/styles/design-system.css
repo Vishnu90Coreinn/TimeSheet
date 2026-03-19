@@ -493,6 +493,8 @@ a { text-decoration: none; color: inherit; }
 .table-base tbody tr.row-status-warning td:first-child { box-shadow: inset 3px 0 0 var(--warning); }
 .table-base tbody tr.row-status-error   td:first-child { box-shadow: inset 3px 0 0 var(--danger);  }
 .empty-row td { text-align: center; padding: var(--space-10); color: var(--text-tertiary); font-size: 0.825rem; }
+/* Clickable name/text button inside a table cell — replaces the repeated inline style pattern */
+.btn-table-link { background: none; border: none; cursor: pointer; color: var(--text-primary); font-weight: 600; padding: 0; text-align: left; font-size: inherit; }
 
 /* ── App Shell: Topbar ────────────────────────────────────── */
 .shell-topnav {

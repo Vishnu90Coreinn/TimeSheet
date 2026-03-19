@@ -1519,3 +1519,144 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
   .rpt-tabs-row { display: none; }
   .rpt-tabs-select { display: block; }
 }
+
+/* ── Leave page (lv-*) ───────────────────────────────────── */
+.lv-layout { display: flex; gap: var(--space-6); align-items: flex-start; }
+.lv-main   { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-6); }
+.lv-sidebar { width: 300px; flex-shrink: 0; position: sticky; top: var(--space-6);
+  display: flex; flex-direction: column; gap: var(--space-5); }
+@media (max-width: 900px) {
+  .lv-layout { flex-direction: column; }
+  .lv-sidebar { width: 100%; position: static; }
+}
+
+/* Balance cards */
+.lv-balances { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: var(--space-4); }
+.lv-bal-card { background: var(--n-0); border: 1px solid var(--border-subtle); border-radius: var(--r-xl);
+  padding: var(--space-5); box-shadow: var(--shadow-xs); display: flex; flex-direction: column; gap: var(--space-3); }
+.lv-bal-card--zero { background: var(--n-25, #fafafa); border: 1px dashed var(--border-default);
+  border-radius: var(--r-xl); padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-3); opacity: 0.7; }
+.lv-bal-type { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-tertiary); }
+.lv-bal-days { font-size: 2.25rem; font-weight: 800; line-height: 1; font-family: var(--font-display); }
+.lv-bal-of   { font-size: 0.78rem; color: var(--text-secondary); }
+.lv-bal-bar  { height: 5px; border-radius: var(--r-full); background: var(--n-100); overflow: hidden; cursor: default; }
+.lv-bal-fill { height: 100%; border-radius: var(--r-full); transition: width 0.4s; }
+.lv-bal-zero-cta { font-size: 0.7rem; color: var(--brand-600, #4f46e5); font-weight: 600; text-decoration: none;
+  display: inline-flex; align-items: center; gap: 3px; }
+
+/* Form */
+.lv-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+@media (max-width: 640px) { .lv-form-grid { grid-template-columns: 1fr; } }
+.lv-form-full { grid-column: 1 / -1; }
+.form-label { font-size: 0.8125rem !important; }
+
+/* History cards */
+.lv-hist-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-3); }
+.lv-year-sel { font-size: 0.825rem; padding: 5px var(--space-3); border: 1px solid var(--border-default);
+  border-radius: var(--r-md); background: var(--n-0); color: var(--text-primary);
+  font-family: var(--font-sans); cursor: pointer; }
+.lv-hist-sub { font-size: 0.8rem; color: var(--text-secondary); margin-top: var(--space-2); }
+.lv-hist-cards { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4) var(--space-5) var(--space-5); }
+.lv-hist-card { background: var(--n-25, #fafafa); border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg); padding: var(--space-4); display: flex; align-items: flex-start;
+  justify-content: space-between; gap: var(--space-4); }
+.lv-hist-card-left { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.lv-hist-card-type { font-size: 0.65rem; font-weight: 700; color: var(--text-tertiary);
+  text-transform: uppercase; letter-spacing: 0.08em; }
+.lv-hist-card-dates { font-size: 0.9rem; font-weight: 600; color: var(--text-primary); }
+.lv-hist-card-meta { font-size: 0.75rem; color: var(--text-tertiary); margin-top: 1px; }
+.lv-hist-card-right { display: flex; flex-direction: column; align-items: flex-end;
+  gap: var(--space-2); flex-shrink: 0; }
+.lv-hist-card-actions { display: flex; gap: var(--space-2); margin-top: var(--space-1); }
+.lv-hist-empty { display: flex; flex-direction: column; align-items: center; text-align: center;
+  padding: var(--space-10) var(--space-6); gap: var(--space-2); color: var(--text-tertiary); }
+.lv-hist-empty-title { font-size: 0.875rem; font-weight: 600; color: var(--text-secondary); }
+.lv-hist-empty-sub { font-size: 0.8rem; }
+
+/* Pending approvals empty state */
+.lv-pending-empty { display: flex; flex-direction: column; align-items: center; text-align: center;
+  padding: var(--space-10) var(--space-6); gap: var(--space-3); }
+.lv-pending-empty-icon { color: var(--n-300, #d1d5db); }
+.lv-pending-empty-title { font-size: 0.9rem; font-weight: 700; color: var(--text-primary); }
+.lv-pending-empty-sub { font-size: 0.8rem; color: var(--text-secondary); max-width: 280px; line-height: 1.5; }
+
+/* Table avatar */
+.lv-table-avatar {
+  width: 28px; height: 28px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.7rem; font-weight: 700; color: #fff; flex-shrink: 0;
+}
+
+/* Mini calendar */
+.lv-cal { background: var(--n-0); border: 1px solid var(--border-subtle); border-radius: var(--r-xl);
+  padding: var(--space-5); box-shadow: var(--shadow-xs); }
+.lv-cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-4); }
+.lv-cal-month { font-size: 0.9rem; font-weight: 700; color: var(--text-primary); }
+.lv-cal-btn { background: none; border: 1px solid var(--border-subtle); border-radius: var(--r-md);
+  width: 28px; height: 28px; cursor: pointer; font-size: 0.8rem; color: var(--text-secondary);
+  display: flex; align-items: center; justify-content: center; }
+.lv-cal-btn:hover { background: var(--n-100); }
+.lv-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.lv-cal-day-label { font-size: 0.65rem; font-weight: 700; color: var(--text-tertiary); text-align: center;
+  padding: 2px 0 4px; }
+.lv-cal-cell { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 3px 2px;
+  min-height: 34px; }
+.lv-cal-num { font-size: 0.75rem; font-weight: 500; color: var(--text-primary); width: 22px; height: 22px;
+  display: flex; align-items: center; justify-content: center; border-radius: var(--r-full); }
+.lv-cal-num.today { background: #6366f1; color: #fff; font-weight: 700; }
+.lv-cal-num.other-month { color: var(--text-tertiary); }
+.lv-cal-dot { width: 6px; height: 6px; border-radius: var(--r-full); }
+.lv-cal-chip {
+  width: 16px; height: 16px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.5rem; font-weight: 700; color: #fff; flex-shrink: 0; cursor: default;
+}
+.lv-cal-legend { display: flex; align-items: center; gap: var(--space-4); margin-top: var(--space-4);
+  flex-wrap: wrap; }
+.lv-cal-leg-item { display: flex; align-items: center; gap: var(--space-2); font-size: 0.72rem;
+  color: var(--text-secondary); }
+.lv-cal-leg-dot { width: 10px; height: 10px; border-radius: var(--r-full); flex-shrink: 0; }
+.lv-cal-leg-today { width: 10px; height: 10px; border-radius: var(--r-full); background: #6366f1; flex-shrink: 0; }
+
+/* Team on leave */
+.lv-team-head { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-tertiary); margin-bottom: var(--space-3); }
+.lv-team-card { background: var(--n-0); border: 1px solid var(--border-subtle); border-radius: var(--r-xl);
+  padding: var(--space-4) var(--space-5); box-shadow: var(--shadow-xs); }
+.lv-team-list { display: flex; flex-direction: column; gap: var(--space-3); }
+.lv-team-entry { display: flex; align-items: center; gap: var(--space-3); }
+.lv-team-avatar { width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-weight: 700;
+  font-size: 0.75rem; color: #fff; }
+.lv-team-meta { flex: 1; min-width: 0; }
+.lv-team-name { font-size: 0.82rem; font-weight: 600; color: var(--text-primary); }
+.lv-team-sub  { font-size: 0.72rem; color: var(--text-secondary); margin-top: 1px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lv-pill-away     { font-size: 0.65rem; font-weight: 700; padding: 2px 8px; border-radius: var(--r-full);
+  background: #fef2f2; color: #dc2626; }
+.lv-pill-upcoming { font-size: 0.65rem; font-weight: 700; padding: 2px 8px; border-radius: var(--r-full);
+  background: #f0fdfa; color: #0d9488; }
+
+/* Manager pending reject row */
+.lv-mgr-reject-row { background: var(--n-50); border-top: 1px solid var(--border-subtle);
+  padding: var(--space-4) var(--space-5); display: flex; gap: var(--space-3);
+  align-items: center; flex-wrap: wrap; }
+
+/* Confirmation modal */
+.lv-modal-backdrop { position: fixed; inset: 0; background: rgba(17,24,39,0.45); z-index: 1000;
+  display: flex; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
+.lv-modal { background: var(--n-0); border-radius: 16px; padding: 28px 28px 24px;
+  max-width: 400px; width: calc(100% - 32px);
+  box-shadow: 0 24px 64px rgba(0,0,0,0.22), 0 4px 16px rgba(0,0,0,0.12);
+  display: flex; flex-direction: column; gap: var(--space-3); }
+.lv-modal-icon { width: 44px; height: 44px; border-radius: 12px; background: #fef2f2;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.lv-modal-title { font-size: 1rem; font-weight: 700; color: var(--text-primary); }
+.lv-modal-body { font-size: 0.875rem; color: var(--text-secondary); line-height: 1.55; }
+.lv-modal-actions { display: flex; gap: var(--space-3); justify-content: flex-end; margin-top: var(--space-2); }
+
+/* On-behalf banner */
+.lv-onbehalf-banner { display: flex; align-items: center; gap: var(--space-2); font-size: 0.8rem;
+  color: #1d4ed8; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--r-md);
+  padding: 8px 12px; }

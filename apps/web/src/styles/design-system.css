@@ -1221,3 +1221,54 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
   transition: color 0.15s;
 }
 .card-footer-link:hover { color: var(--brand-700); text-decoration: underline; }
+
+/* ── Anomaly pulse animation (Notifications) ─────────────── */
+@keyframes anomaly-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.6; transform: scale(1.3); }
+}
+
+/* ── Responsive sidebar ──────────────────────────────────── */
+.shell-topnav-hamburger { display: none; }
+
+.shell-sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 299;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+/* Tablet (768–1279px): auto-collapse to icon-only */
+@media (min-width: 768px) and (max-width: 1279px) {
+  .shell-sidebar { width: 60px; }
+  .shell-sidebar .sidebar-brand-name,
+  .shell-sidebar .org-switcher,
+  .shell-sidebar .nav-section-label,
+  .shell-sidebar .nav-item span,
+  .shell-sidebar .sidebar-footer .nav-item span { display: none; }
+  .shell-sidebar .nav-item          { justify-content: center; padding: 7px; }
+  .shell-sidebar .sidebar-brand     { justify-content: center; padding: var(--space-3); }
+  .shell-sidebar .sidebar-brand > div:first-child { display: none; }
+  .shell-sidebar .sidebar-collapse-btn,
+  .shell-sidebar .sidebar-user-info { display: none; }
+  .shell-sidebar .sidebar-user-section { padding: var(--space-2); }
+  .shell-sidebar .sidebar-user-row  { justify-content: center; padding: var(--space-1); }
+  .shell-sidebar .nav-badge         { display: none; }
+}
+
+/* Mobile (<768px): sidebar as fixed slide-in overlay */
+@media (max-width: 767px) {
+  .shell-topnav-hamburger { display: flex !important; }
+
+  .shell-sidebar {
+    position: fixed;
+    left: 0;
+    z-index: 300;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    width: var(--sidebar-width);
+  }
+  .shell-sidebar.mobile-open { transform: translateX(0); }
+  .shell-sidebar-backdrop.mobile-open { display: block; }
+}

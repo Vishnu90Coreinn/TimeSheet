@@ -27,6 +27,10 @@ public interface ITimesheetQueryService
     Task<int> GetAttendanceNetMinutesAsync(Guid userId, DateOnly date, CancellationToken ct = default);
 
     Task<int> GetExpectedMinutesAsync(Guid userId, DateOnly date, CancellationToken ct = default);
+
+    Task<DateOnly?> GetWorkDateByEntryIdAsync(Guid entryId, Guid userId, CancellationToken ct = default);
+
+    Task<bool?> IsActiveUserAsync(Guid userId, CancellationToken ct = default);
 }
 
 // ── Response records ─────────────────────────────────────────────────────────

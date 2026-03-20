@@ -21,7 +21,11 @@ public class DeleteTimesheetEntryCommandHandler(
     {
         var userId = currentUser.UserId;
 
-        var timesheet = await timesheetRepo.GetByUserAndDateAsync(userId, request.WorkDate, ct);
+        var workDate = await timesheetQuery.GetWorkDateByEntryIdAsync(request.EntryId, userId, ct);
+        if (workDate is null)
+            return Result<TimesheetDayResult>.NotFound("Entry not found.");
+
+        var timesheet = await timesheetRepo.GetByUserAndDateAsync(userId, workDate.Value, ct);
         if (timesheet is null)
             return Result<TimesheetDayResult>.NotFound("Timesheet not found.");
 
@@ -31,11 +35,11 @@ public class DeleteTimesheetEntryCommandHandler(
 
         // Validate edit window
         var today = dateTimeProvider.TodayUtc;
-        if (request.WorkDate > today)
+        if (workDate.Value > today)
             return Result<TimesheetDayResult>.Failure("Future dates are not allowed.");
 
         var backdateDays = await timesheetQuery.GetBackdateWindowDaysAsync(userId, ct);
-        if (request.WorkDate < today.AddDays(-backdateDays))
+        if (workDate.Value < today.AddDays(-backdateDays))
             return Result<TimesheetDayResult>.Failure($"Editing window is limited to {backdateDays} day(s).");
 
         if (timesheet.Status != TimesheetStatus.Draft)
@@ -47,12 +51,12 @@ public class DeleteTimesheetEntryCommandHandler(
             "TimesheetEntryDeleted",
             "TimesheetEntry",
             request.EntryId.ToString(),
-            $"Entry deleted for {request.WorkDate}",
+            $"Entry deleted for {workDate.Value}",
             userId);
 
         await unitOfWork.SaveChangesAsync(ct);
 
-        var day = await timesheetQuery.GetDayAsync(userId, request.WorkDate, ct);
+        var day = await timesheetQuery.GetDayAsync(userId, workDate.Value, ct);
         return Result<TimesheetDayResult>.Success(day!);
     }
 }

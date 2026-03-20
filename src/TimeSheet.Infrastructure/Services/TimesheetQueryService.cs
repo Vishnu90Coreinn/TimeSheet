@@ -257,4 +257,18 @@ public class TimesheetQueryService : AppInterfaces.ITimesheetQueryService
 
         return expected;
     }
+
+    public async Task<DateOnly?> GetWorkDateByEntryIdAsync(Guid entryId, Guid userId, CancellationToken ct = default)
+        => await _context.TimesheetEntries
+            .AsNoTracking()
+            .Where(e => e.Id == entryId && e.Timesheet.UserId == userId)
+            .Select(e => (DateOnly?)e.Timesheet.WorkDate)
+            .SingleOrDefaultAsync(ct);
+
+    public async Task<bool?> IsActiveUserAsync(Guid userId, CancellationToken ct = default)
+        => await _context.Users
+            .AsNoTracking()
+            .Where(u => u.Id == userId)
+            .Select(u => (bool?)u.IsActive)
+            .SingleOrDefaultAsync(ct);
 }

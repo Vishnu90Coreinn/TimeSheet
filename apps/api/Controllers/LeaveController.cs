@@ -12,7 +12,7 @@ namespace TimeSheet.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/v1/leave")]
-public class LeaveController(TimeSheetDbContext dbContext, IAuditService auditService, INotificationService notificationService, ISender mediator) : ControllerBase
+public class LeaveController(TimeSheetDbContext dbContext, ISender mediator) : ControllerBase
 {
     [HttpGet("types")]
     public async Task<IActionResult> GetLeaveTypes()

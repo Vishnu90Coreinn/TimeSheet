@@ -3,13 +3,14 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TimeSheet.Api.Dtos;
+using AppInterfaces = TimeSheet.Application.Common.Interfaces;
 
 namespace TimeSheet.Api.Controllers;
 
 [ApiController]
 [Authorize]
 [Route("api/v1/profile")]
-public class ProfileController(TimeSheetDbContext dbContext, IPasswordHasher passwordHasher) : ControllerBase
+public class ProfileController(TimeSheetDbContext dbContext, AppInterfaces.IPasswordHasher passwordHasher) : ControllerBase
 {
     private Guid? GetUserId()
     {

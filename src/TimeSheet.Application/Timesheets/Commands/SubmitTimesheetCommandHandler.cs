@@ -21,6 +21,11 @@ public class SubmitTimesheetCommandHandler(
     {
         var userId = currentUser.UserId;
 
+        // Active user guard
+        var isActive = await timesheetQuery.IsActiveUserAsync(userId, ct);
+        if (isActive is null) return Result<TimesheetDayResult>.NotFound("User not found.");
+        if (isActive is false) return Result<TimesheetDayResult>.Forbidden("Inactive users cannot submit timesheets.");
+
         // Validate edit window
         var today = dateTimeProvider.TodayUtc;
         if (request.WorkDate > today)

@@ -1,8 +1,6 @@
-using System.Security.Claims;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using TimeSheet.Api.Dtos;
 using AppInterfaces = TimeSheet.Application.Common.Interfaces;
 using TimeSheet.Application.Common.Models;
@@ -14,9 +12,7 @@ namespace TimeSheet.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/v1/timesheets")]
-public class TimesheetsController(
-    ISender mediator,
-    TimeSheetDbContext dbContext) : ControllerBase
+public class TimesheetsController(ISender mediator) : ControllerBase
 {
     [HttpGet("entry-options")]
     public async Task<IActionResult> GetEntryOptions(CancellationToken ct)
@@ -97,21 +93,7 @@ public class TimesheetsController(
     [HttpDelete("entries/{entryId:guid}")]
     public async Task<IActionResult> DeleteEntry(Guid entryId, CancellationToken ct)
     {
-        var userId = GetUserId();
-        if (userId is null) return Unauthorized();
-
-        // Minimal DB lookup to retrieve WorkDate (needed by command; avoids adding WorkDate to route)
-        var entry = await dbContext.TimesheetEntries
-            .Include(e => e.Timesheet)
-            .AsNoTracking()
-            .SingleOrDefaultAsync(e => e.Id == entryId && e.Timesheet.UserId == userId.Value, ct);
-
-        if (entry is null) return NotFound();
-
-        var result = await mediator.Send(
-            new DeleteTimesheetEntryCommand(entryId, entry.Timesheet.WorkDate),
-            ct);
-
+        var result = await mediator.Send(new DeleteTimesheetEntryCommand(entryId), ct);
         if (!result.IsSuccess) return Fail(result);
         return Ok(MapDay(result.Value!));
     }
@@ -119,23 +101,8 @@ public class TimesheetsController(
     [HttpPost("submit")]
     public async Task<IActionResult> Submit([FromBody] SubmitTimesheetRequest request, CancellationToken ct)
     {
-        var userId = GetUserId();
-        if (userId is null) return Unauthorized();
-
-        var isActive = await dbContext.Users
-            .AsNoTracking()
-            .Where(u => u.Id == userId)
-            .Select(u => (bool?)u.IsActive)
-            .SingleOrDefaultAsync(ct);
-
-        if (isActive is null) return Unauthorized();
-        if (isActive is false)
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = "Inactive users cannot submit timesheets." });
-
         var result = await mediator.Send(
-            new SubmitTimesheetCommand(request.WorkDate, request.Notes, request.MismatchReason),
-            ct);
-
+            new SubmitTimesheetCommand(request.WorkDate, request.Notes, request.MismatchReason), ct);
         if (!result.IsSuccess) return Fail(result);
         return Ok(MapDay(result.Value!));
     }
@@ -176,12 +143,4 @@ public class TimesheetsController(
         ResultStatus.Validation => BadRequest(new { message = result.Error }),
         _ => BadRequest(new { message = result.Error })
     };
-
-    private Guid? GetUserId()
-    {
-        var sub = User.FindFirstValue(ClaimTypes.NameIdentifier)
-                  ?? User.FindFirstValue(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub);
-        return Guid.TryParse(sub, out var userId) ? userId : null;
-    }
-
 }

@@ -4,4 +4,4 @@ using TimeSheet.Application.Common.Models;
 
 namespace TimeSheet.Application.Timesheets.Commands;
 
-public record DeleteTimesheetEntryCommand(Guid EntryId, DateOnly WorkDate) : IRequest<Result<TimesheetDayResult>>;
+public record DeleteTimesheetEntryCommand(Guid EntryId) : IRequest<Result<TimesheetDayResult>>;

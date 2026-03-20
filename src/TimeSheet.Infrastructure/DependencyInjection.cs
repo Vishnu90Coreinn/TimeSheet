@@ -50,6 +50,8 @@ public static class DependencyInjection
         services.AddScoped<AppInterfaces.INotificationService, NotificationService>();
         services.AddSingleton<AppInterfaces.IJwtSettings, JwtSettings>();
 
+        services.AddScoped<AppInterfaces.ITimesheetQueryService, TimesheetQueryService>();
+
         // CurrentUserService (requires IHttpContextAccessor)
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();

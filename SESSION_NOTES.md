@@ -1159,24 +1159,57 @@ All work on `feature/clean-architecture`.
 
 ---
 
+## Session 21 — Clean Architecture Phase 3: Infrastructure Layer (2026-03-20)
+
+### What Was Done
+
+#### CA-031 + CA-032: DbContext + Migrations moved
+- `TimeSheetDbContext.cs` → `src/TimeSheet.Infrastructure/Persistence/` (namespace `TimeSheet.Infrastructure.Persistence`)
+- 15 migration files → `src/TimeSheet.Infrastructure/Persistence/Migrations/`
+- `DbInitializer.cs` → `src/TimeSheet.Infrastructure/Persistence/`
+- GlobalUsings updated; `MigrationsAssembly("TimeSheet.Infrastructure")` set
+
+#### CA-033: IEntityTypeConfiguration split
+- 25 configuration files in `src/TimeSheet.Infrastructure/Persistence/Configurations/`
+- `OnModelCreating` → `modelBuilder.ApplyConfigurationsFromAssembly(...)`
+
+#### CA-034: BaseRepository + 5 specific repositories
+- `BaseRepository<T>` + `TimesheetRepository`, `UserRepository`, `LeaveRepository`, `ProjectRepository`, `NotificationRepository`
+- All implement their domain interfaces
+
+#### CA-035: UnitOfWork with domain event dispatch
+- Collects events from tracked `Entity` instances, saves, then dispatches via `publisher.Publish((dynamic)event)`
+- Domain stays free of MediatR
+
+#### CA-036 + CA-037 + CA-040: Services + Background Jobs moved
+- `TokenService`, `PasswordHasher`, `AttendanceCalculationService`, `AuditService`, `NotificationService` → `Infrastructure/Services/`
+- `RefreshTokenCleanupService`, `NotificationSchedulerService`, `AnomalyDetectionService` → `Infrastructure/BackgroundJobs/`
+
+#### CA-038: CurrentUserService
+- `CurrentUserService` implements `ICurrentUserService` — reads JWT claims via `IHttpContextAccessor`
+
+#### CA-041 + CA-042: DI consolidated + tests pass
+- All registrations in `AddInfrastructure()` — `Program.cs` now minimal
+- **52/52 integration tests passing** ✓
+
+### Commits (Phase 3)
+- `f8ca647` — feat(infra): move DbContext + Migrations (CA-031, CA-032)
+- `01ae7f3` — feat(infra): EF configs + repositories + UnitOfWork (CA-033–035)
+- `cca0bdd` — feat(infra): services + DI consolidation (CA-036–042)
+
+---
+
 ## Pending For Next Session
 
-> Last updated: Session 20 (2026-03-20).
+> Last updated: Session 21 (2026-03-20).
 
-### 🔴 Priority — Clean Architecture Phase 3: Infrastructure (EF Config + Repositories)
+### 🔴 Priority — Clean Architecture Phase 4: Application Layer (CQRS)
 Branch: `feature/clean-architecture` (all CA work stays here until user manually tests & raises PR to master)
 
-**Phase 3 Tasks (CA-031–045):**
-- CA-031: Create `TimeSheetDbContext` in Infrastructure (move from Api; configure via Fluent API)
-- CA-032: Implement `ITimesheetRepository` (EF Core queries: by user, by date range, by status)
-- CA-033: Implement `IUserRepository` (by id, by email, active users)
-- CA-034: Implement `ILeaveRepository` (by user, by date, by status, balance queries)
-- CA-035: Implement `IProjectRepository` (active projects, by member)
-- CA-036: Implement `INotificationRepository` (unread by user, mark read)
-- CA-037: Implement `IUnitOfWork` in EF — dispatch domain events after `SaveChangesAsync`
-- CA-038: Update `AddInfrastructure()` to register all repositories + DbContext
-- CA-039: Move EF entity configurations from data annotations → Fluent API (`IEntityTypeConfiguration<T>`)
-- CA-040: Verify 52 integration tests still pass
+**Phase 4 — High-value commands/queries (CA-050–063):**
+- CA-050–052: Auth commands (`LoginCommand`, `RefreshTokenCommand`, `LogoutCommand`) + slim `AuthController`
+- CA-054–059: Timesheet queries+commands (`GetDayTimesheet`, `GetWeekSummary`, `SubmitTimesheet`, `ApproveTimesheet`, `RejectTimesheet`) + slim `TimesheetsController`
+- CA-060–063: Leave commands (`SubmitLeaveRequest`, `ApproveLeaveRequest`, `RejectLeaveRequest`) + slim `LeaveController`
 
 ### Merge Policy
 - All phases (1–6) must be complete on `feature/clean-architecture`

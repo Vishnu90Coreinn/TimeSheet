@@ -64,20 +64,20 @@ TimeSheet.Integration.Tests   ← Existing 52 tests moved here
 - [x] **CA-029** Write unit tests for all entity behavior methods (Domain.Tests) — 22 tests passing
 - [x] **CA-030** Verify 52 integration tests still pass ✓
 
-### Phase 3 — Infrastructure Layer
+### Phase 3 — Infrastructure Layer ✓ DONE (Session 21)
 
-- [ ] **CA-031** Move `TimeSheetDbContext.cs` → `TimeSheet.Infrastructure/Persistence/`
-- [ ] **CA-032** Move `Migrations/` → `TimeSheet.Infrastructure/Persistence/Migrations/`
-- [ ] **CA-033** Split EF Fluent config into per-entity `IEntityTypeConfiguration<T>` files under `Infrastructure/Persistence/Configurations/`
-- [ ] **CA-034** Implement `BaseRepository<T>` (generic CRUD) + specific repositories: `TimesheetRepository`, `UserRepository`, `LeaveRepository`, `ProjectRepository`
-- [ ] **CA-035** Implement `UnitOfWork`: `SaveChangesAsync` collects domain events → `db.SaveChangesAsync()` → dispatches events via `IMediator.Publish`
-- [ ] **CA-036** Move `TokenService`, `PasswordHasher` → `Infrastructure/Services/`
-- [ ] **CA-037** Move `AttendanceCalculationService`, `AuditService`, `NotificationService` → `Infrastructure/Services/`
-- [ ] **CA-038** Implement `CurrentUserService` (reads `IHttpContextAccessor`) in Infrastructure
-- [ ] **CA-039** Implement `DateTimeProvider` (wraps `DateTime.UtcNow`) in Infrastructure
-- [ ] **CA-040** Move `RefreshTokenCleanupService`, `NotificationSchedulerService`, `AnomalyDetectionService` → `Infrastructure/BackgroundJobs/`
-- [ ] **CA-041** Register all Infrastructure services in `AddInfrastructure()`
-- [ ] **CA-042** Verify 52 integration tests still pass
+- [x] **CA-031** Move `TimeSheetDbContext.cs` → `TimeSheet.Infrastructure/Persistence/`
+- [x] **CA-032** Move `Migrations/` → `TimeSheet.Infrastructure/Persistence/Migrations/`
+- [x] **CA-033** Split EF Fluent config into 25 `IEntityTypeConfiguration<T>` files; OnModelCreating uses ApplyConfigurationsFromAssembly
+- [x] **CA-034** `BaseRepository<T>` + `TimesheetRepository`, `UserRepository`, `LeaveRepository`, `ProjectRepository`, `NotificationRepository`
+- [x] **CA-035** `UnitOfWork`: SaveChangesAsync → collect domain events → save → dispatch via `(dynamic)` MediatR publish (Domain free of MediatR)
+- [x] **CA-036** `TokenService`, `PasswordHasher` + interfaces → `Infrastructure/Services/`
+- [x] **CA-037** `AttendanceCalculationService`, `AuditService`, `NotificationService` → `Infrastructure/Services/`
+- [x] **CA-038** `CurrentUserService` reads JWT claims via `IHttpContextAccessor`
+- [x] **CA-039** `DateTimeProvider` already done in Phase 1
+- [x] **CA-040** `RefreshTokenCleanupService`, `NotificationSchedulerService`, `AnomalyDetectionService` → `Infrastructure/BackgroundJobs/`
+- [x] **CA-041** All services registered in `AddInfrastructure()`; `Program.cs` only has AddApplication + AddInfrastructure + JWT/CORS/RateLimit
+- [x] **CA-042** 52/52 integration tests passing ✓
 
 ### Phase 4 — Application Layer (CQRS, feature by feature)
 

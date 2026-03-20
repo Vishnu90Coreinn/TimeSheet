@@ -3,7 +3,6 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Microsoft.Extensions.DependencyInjection;
 using TimeSheet.Api.Dtos;
-using TimeSheet.Api.Services;
 using Xunit;
 
 namespace TimeSheet.Api.Tests;

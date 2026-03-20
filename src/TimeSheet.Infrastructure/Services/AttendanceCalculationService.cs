@@ -1,5 +1,8 @@
+using TimeSheet.Domain.Entities;
+using TimeSheet.Domain.Enums;
+using TimeSheet.Infrastructure.Persistence;
 
-namespace TimeSheet.Api.Services;
+namespace TimeSheet.Infrastructure.Services;
 
 public interface IAttendanceCalculationService
 {

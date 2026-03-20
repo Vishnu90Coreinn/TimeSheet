@@ -1,4 +1,3 @@
-using TimeSheet.Api.Services;
 using Xunit;
 
 namespace TimeSheet.Api.Tests;

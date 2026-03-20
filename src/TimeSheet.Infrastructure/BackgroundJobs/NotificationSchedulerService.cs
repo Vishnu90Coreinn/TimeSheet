@@ -1,6 +1,12 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using TimeSheet.Domain.Enums;
+using TimeSheet.Infrastructure.Persistence;
+using TimeSheet.Infrastructure.Services;
 
-namespace TimeSheet.Api.Services;
+namespace TimeSheet.Infrastructure.BackgroundJobs;
 
 public class NotificationSchedulerService(IServiceProvider serviceProvider, ILogger<NotificationSchedulerService> logger) : BackgroundService
 {

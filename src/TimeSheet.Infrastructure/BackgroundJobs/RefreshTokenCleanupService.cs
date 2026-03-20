@@ -1,6 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using TimeSheet.Infrastructure.Persistence;
 
-namespace TimeSheet.Api.Services;
+namespace TimeSheet.Infrastructure.BackgroundJobs;
 
 public class RefreshTokenCleanupService(IServiceProvider serviceProvider, ILogger<RefreshTokenCleanupService> logger) : BackgroundService
 {

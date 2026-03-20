@@ -8,7 +8,6 @@ using Serilog;
 using Serilog.Events;
 using TimeSheet.Api.Data;
 using TimeSheet.Api.Middleware;
-using TimeSheet.Api.Services;
 using TimeSheet.Application;
 using TimeSheet.Infrastructure;
 using TimeSheet.Infrastructure.Persistence;

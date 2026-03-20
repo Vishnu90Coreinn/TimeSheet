@@ -1,6 +1,9 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using TimeSheet.Domain.Entities;
+using TimeSheet.Infrastructure.Persistence;
 
-namespace TimeSheet.Api.Services;
+namespace TimeSheet.Infrastructure.Services;
 
 public interface IAuditService
 {
@@ -14,7 +17,7 @@ public class AuditService(TimeSheetDbContext dbContext) : IAuditService
         Guid? actorUserId = null;
         if (actor is not null)
         {
-            var sub = actor.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier || c.Type == System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
+            var sub = actor.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier || c.Type == JwtRegisteredClaimNames.Sub)?.Value;
             if (Guid.TryParse(sub, out var parsed)) actorUserId = parsed;
         }
 

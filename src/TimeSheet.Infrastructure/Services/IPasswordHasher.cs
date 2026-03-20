@@ -1,4 +1,4 @@
-namespace TimeSheet.Api.Services;
+namespace TimeSheet.Infrastructure.Services;
 
 public interface IPasswordHasher
 {

@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using TimeSheet.Api.Dtos;
-using TimeSheet.Api.Services;
 
 namespace TimeSheet.Api.Controllers;
 

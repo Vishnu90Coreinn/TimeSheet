@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 
-namespace TimeSheet.Api.Services;
+namespace TimeSheet.Infrastructure.Services;
 
 public class PasswordHasher : IPasswordHasher
 {

@@ -36,4 +36,26 @@ public class LeaveRepository(TimeSheetDbContext context)
                 lb => lb.UserId == userId && lb.LeaveTypeId == leaveTypeId && lb.Year == year, ct);
 
     public void Add(LeaveRequest leaveRequest) => _dbSet.Add(leaveRequest);
+
+    public void AddRange(IEnumerable<LeaveRequest> leaveRequests) => _dbSet.AddRange(leaveRequests);
+
+    public void RemoveRange(IEnumerable<LeaveRequest> leaveRequests) => _dbSet.RemoveRange(leaveRequests);
+
+    public async Task<IReadOnlyList<DateOnly>> GetActiveDatesAsync(
+        Guid userId, IReadOnlyList<DateOnly> dates, CancellationToken ct = default)
+        => await _dbSet
+            .AsNoTracking()
+            .Where(lr => lr.UserId == userId
+                && lr.Status != LeaveRequestStatus.Rejected
+                && dates.Contains(lr.LeaveDate))
+            .Select(lr => lr.LeaveDate)
+            .ToListAsync(ct);
+
+    public async Task<IReadOnlyList<LeaveRequest>> GetRejectedForDatesAsync(
+        Guid userId, IReadOnlyList<DateOnly> dates, CancellationToken ct = default)
+        => await _dbSet
+            .Where(lr => lr.UserId == userId
+                && lr.Status == LeaveRequestStatus.Rejected
+                && dates.Contains(lr.LeaveDate))
+            .ToListAsync(ct);
 }

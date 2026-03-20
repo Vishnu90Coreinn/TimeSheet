@@ -31,4 +31,14 @@ public class UserRepository(TimeSheetDbContext context) : IUserRepository
     public void Add(User user) => _dbSet.Add(user);
 
     public void Update(User user) => _dbSet.Update(user);
+
+    public async Task<User?> GetWithDetailsAsync(Guid id, CancellationToken ct = default)
+        => await _dbSet
+            .AsNoTracking()
+            .Include(u => u.Department)
+            .Include(u => u.WorkPolicy)
+            .Include(u => u.LeavePolicy)
+            .Include(u => u.Manager)
+            .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
+            .FirstOrDefaultAsync(u => u.Id == id, ct);
 }

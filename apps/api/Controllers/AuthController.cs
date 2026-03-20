@@ -2,16 +2,16 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.EntityFrameworkCore;
 using TimeSheet.Api.Dtos;
 using TimeSheet.Application.Auth.Commands;
+using TimeSheet.Application.Auth.Queries;
 using TimeSheet.Application.Common.Models;
 
 namespace TimeSheet.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/auth")]
-public class AuthController(ISender mediator, TimeSheetDbContext dbContext) : ControllerBase
+public class AuthController(ISender mediator) : ControllerBase
 {
     [HttpPost("login")]
     [EnableRateLimiting("login")]
@@ -46,46 +46,14 @@ public class AuthController(ISender mediator, TimeSheetDbContext dbContext) : Co
 
     [Authorize]
     [HttpGet("me")]
-    public async Task<IActionResult> Me()
+    public async Task<IActionResult> Me(CancellationToken ct)
     {
-        var sub = User.Claims.FirstOrDefault(c => c.Type == System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
-        if (!Guid.TryParse(sub, out var userId))
-        {
-            return Unauthorized();
-        }
-
-        var user = await dbContext.Users
-            .AsNoTracking()
-            .Include(u => u.Department)
-            .Include(u => u.WorkPolicy)
-            .Include(u => u.LeavePolicy)
-            .Include(u => u.Manager)
-            .Include(u => u.UserRoles)
-            .ThenInclude(ur => ur.Role)
-            .SingleOrDefaultAsync(u => u.Id == userId);
-
-        if (user is null)
-        {
-            return NotFound();
-        }
-
-        var roleName = user.UserRoles.Select(ur => ur.Role.Name).FirstOrDefault() ?? "employee";
-
-        return Ok(new UserResponse(
-            user.Id,
-            user.Username,
-            user.Email,
-            user.EmployeeId,
-            roleName,
-            user.IsActive,
-            user.DepartmentId,
-            user.Department?.Name,
-            user.WorkPolicyId,
-            user.WorkPolicy?.Name,
-            user.LeavePolicyId,
-            user.LeavePolicy?.Name,
-            user.ManagerId,
-            user.Manager?.Username));
+        var result = await mediator.Send(new GetCurrentUserQuery(), ct);
+        if (!result.IsSuccess) return Fail(result);
+        var u = result.Value!;
+        return Ok(new UserResponse(u.Id, u.Username, u.Email, u.EmployeeId, u.Role, u.IsActive,
+            u.DepartmentId, u.DepartmentName, u.WorkPolicyId, u.WorkPolicyName,
+            u.LeavePolicyId, u.LeavePolicyName, u.ManagerId, u.ManagerUsername));
     }
 
     private IActionResult Fail(Result result) => result.Status switch

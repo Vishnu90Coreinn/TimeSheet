@@ -10,4 +10,5 @@ public interface IUserRepository
     Task<IReadOnlyList<User>> GetActiveUsersAsync(CancellationToken ct = default);
     void Add(User user);
     void Update(User user);
+    Task<User?> GetWithDetailsAsync(Guid id, CancellationToken ct = default);
 }

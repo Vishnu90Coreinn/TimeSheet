@@ -38,4 +38,14 @@ public class TimesheetRepository(TimeSheetDbContext context)
     public void Add(Timesheet timesheet) => _dbSet.Add(timesheet);
 
     public void Remove(Timesheet timesheet) => _dbSet.Remove(timesheet);
+
+    public void RemoveEntry(TimesheetEntry entry) => context.Set<TimesheetEntry>().Remove(entry);
+
+    public async Task<IReadOnlyList<Timesheet>> GetByUserAndWeekTrackedAsync(
+        Guid userId, DateOnly weekStart, DateOnly weekEnd, CancellationToken ct = default)
+        => await _dbSet
+            .Include(t => t.Entries)
+            .Where(t => t.UserId == userId && t.WorkDate >= weekStart && t.WorkDate <= weekEnd)
+            .OrderBy(t => t.WorkDate)
+            .ToListAsync(ct);
 }

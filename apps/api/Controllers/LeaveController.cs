@@ -57,65 +57,12 @@ public class LeaveController(TimeSheetDbContext dbContext, IAuditService auditSe
     }
 
     [HttpPost("requests")]
-    public async Task<IActionResult> ApplyLeave([FromBody] ApplyLeaveRequest request)
+    public async Task<IActionResult> ApplyLeave([FromBody] ApplyLeaveRequest request, CancellationToken ct)
     {
-        var userId = GetUserId();
-        if (userId is null)
-        {
-            return Unauthorized();
-        }
-
-        if (request.ToDate < request.FromDate)
-            return BadRequest(new { message = "ToDate must be on or after FromDate." });
-
-        // Expand date range into individual working days (exclude Sat/Sun)
-        var days = new List<DateOnly>();
-        for (var d = request.FromDate; d <= request.ToDate; d = d.AddDays(1))
-        {
-            if (d.DayOfWeek != DayOfWeek.Saturday && d.DayOfWeek != DayOfWeek.Sunday)
-                days.Add(d);
-        }
-
-        if (days.Count == 0)
-            return BadRequest(new { message = "The selected date range contains no working days." });
-
-        // Check for existing pending/approved requests on any of these days
-        var existingDates = await dbContext.LeaveRequests
-            .Where(lr => lr.UserId == userId.Value &&
-                         lr.Status != LeaveRequestStatus.Rejected &&
-                         days.Contains(lr.LeaveDate))
-            .Select(lr => lr.LeaveDate)
-            .ToListAsync();
-
-        if (existingDates.Count > 0)
-            return Conflict(new { message = $"You already have a leave request on {string.Join(", ", existingDates.Select(d => d.ToString("MMM d")))}. Cancel it first before re-applying." });
-
-        // Remove any rejected requests for these dates so the unique key constraint is not violated on re-apply
-        var rejectedToReplace = await dbContext.LeaveRequests
-            .Where(lr => lr.UserId == userId.Value &&
-                         lr.Status == LeaveRequestStatus.Rejected &&
-                         days.Contains(lr.LeaveDate))
-            .ToListAsync();
-        if (rejectedToReplace.Count > 0)
-            dbContext.LeaveRequests.RemoveRange(rejectedToReplace);
-
-        var leaveGroupId = Guid.NewGuid();
-        var requests = days.Select(day => new LeaveRequest
-        {
-            UserId = userId.Value,
-            LeaveTypeId = request.LeaveTypeId,
-            LeaveDate = day,
-            IsHalfDay = request.IsHalfDay,
-            Comment = request.Comment,
-            Status = LeaveRequestStatus.Pending,
-            LeaveGroupId = leaveGroupId,
-            CreatedAtUtc = DateTime.UtcNow
-        }).ToList();
-
-        dbContext.LeaveRequests.AddRange(requests);
-        await dbContext.SaveChangesAsync();
-
-        return Ok(new { leaveGroupId, count = requests.Count });
+        var result = await mediator.Send(
+            new ApplyLeaveCommand(request.FromDate, request.ToDate, request.LeaveTypeId, request.IsHalfDay, request.Comment), ct);
+        if (!result.IsSuccess) return result.ToActionResult();
+        return Ok(new { leaveGroupId = result.Value!.LeaveGroupId, count = result.Value.Count });
     }
 
     [HttpDelete("requests/{id:guid}")]

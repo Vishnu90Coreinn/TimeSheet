@@ -41,9 +41,14 @@ public static class DependencyInjection
         services.AddScoped<InfraInterfaces.IPasswordHasher, PasswordHasher>();
         services.AddScoped<InfraInterfaces.ITokenService, TokenService>();
 
-        services.AddScoped<IAttendanceCalculationService, AttendanceCalculationService>();
-        services.AddScoped<IAuditService, AuditService>();
-        services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<InfraInterfaces.IAttendanceCalculationService, AttendanceCalculationService>();
+        services.AddScoped<InfraInterfaces.IAuditService, AuditService>();
+        services.AddScoped<InfraInterfaces.INotificationService, NotificationService>();
+
+        // Also register for Application interfaces (used by MediatR handlers)
+        services.AddScoped<AppInterfaces.IAuditService, AuditService>();
+        services.AddScoped<AppInterfaces.INotificationService, NotificationService>();
+        services.AddSingleton<AppInterfaces.IJwtSettings, JwtSettings>();
 
         // CurrentUserService (requires IHttpContextAccessor)
         services.AddHttpContextAccessor();

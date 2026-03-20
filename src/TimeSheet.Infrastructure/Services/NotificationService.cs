@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using TimeSheet.Domain.Entities;
 using TimeSheet.Domain.Enums;
 using TimeSheet.Infrastructure.Persistence;
+using AppInterfaces = TimeSheet.Application.Common.Interfaces;
 
 namespace TimeSheet.Infrastructure.Services;
 
@@ -13,7 +14,7 @@ public interface INotificationService
     Task MarkAllReadAsync(Guid userId);
 }
 
-public class NotificationService(TimeSheetDbContext dbContext) : INotificationService
+public class NotificationService(TimeSheetDbContext dbContext) : INotificationService, AppInterfaces.INotificationService
 {
     public async Task CreateAsync(Guid userId, string title, string message, NotificationType type)
     {

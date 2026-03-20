@@ -1,6 +1,9 @@
+using MediatR;
 using Microsoft.EntityFrameworkCore;
+using TimeSheet.Domain.Entities;
+using TimeSheet.Domain.Enums;
 
-namespace TimeSheet.Api.Data;
+namespace TimeSheet.Infrastructure.Persistence;
 
 public class TimeSheetDbContext(DbContextOptions<TimeSheetDbContext> options) : DbContext(options)
 {

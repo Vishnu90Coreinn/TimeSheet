@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using TimeSheet.Api.Data;
 
 namespace TimeSheet.Api.Services;
 

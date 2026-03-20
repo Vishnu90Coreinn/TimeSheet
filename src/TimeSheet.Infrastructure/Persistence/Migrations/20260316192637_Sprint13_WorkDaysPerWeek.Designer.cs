@@ -5,15 +5,15 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using TimeSheet.Api.Data;
+using TimeSheet.Infrastructure.Persistence;
 
 #nullable disable
 
-namespace TimeSheet.Api.Migrations
+namespace TimeSheet.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(TimeSheetDbContext))]
-    [Migration("20260317164716_Sprint18_TimesheetTemplates")]
-    partial class Sprint18_TimesheetTemplates
+    [Migration("20260316192637_Sprint13_WorkDaysPerWeek")]
+    partial class Sprint13_WorkDaysPerWeek
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -492,52 +492,6 @@ namespace TimeSheet.Api.Migrations
                     b.ToTable("TaskCategories", (string)null);
                 });
 
-            modelBuilder.Entity("TimeSheet.Api.Models.TimerSession", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("CategoryId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("ConvertedToEntryId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<int?>("DurationMinutes")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Note")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<Guid>("ProjectId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("StartedAtUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("StoppedAtUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CategoryId");
-
-                    b.HasIndex("ConvertedToEntryId");
-
-                    b.HasIndex("ProjectId");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("UserId", "StoppedAtUtc");
-
-                    b.ToTable("TimerSessions", (string)null);
-                });
-
             modelBuilder.Entity("TimeSheet.Api.Models.Timesheet", b =>
                 {
                     b.Property<Guid>("Id")
@@ -624,52 +578,14 @@ namespace TimeSheet.Api.Migrations
                     b.ToTable("TimesheetEntries", (string)null);
                 });
 
-            modelBuilder.Entity("TimeSheet.Api.Models.TimesheetTemplate", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("EntriesJson")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(120)
-                        .HasColumnType("nvarchar(120)");
-
-                    b.Property<DateTime>("UpdatedAtUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("TimesheetTemplates", (string)null);
-                });
-
             modelBuilder.Entity("TimeSheet.Api.Models.User", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("AvatarDataUrl")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<Guid?>("DepartmentId")
                         .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("DisplayName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -728,34 +644,6 @@ namespace TimeSheet.Api.Migrations
                     b.HasIndex("WorkPolicyId");
 
                     b.ToTable("Users", (string)null);
-                });
-
-            modelBuilder.Entity("TimeSheet.Api.Models.UserNotificationPreferences", b =>
-                {
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<bool>("EmailEnabled")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("InAppEnabled")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("OnApproval")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("OnLeaveStatus")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("OnRejection")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("OnReminder")
-                        .HasColumnType("bit");
-
-                    b.HasKey("UserId");
-
-                    b.ToTable("UserNotificationPreferences", (string)null);
                 });
 
             modelBuilder.Entity("TimeSheet.Api.Models.UserRole", b =>
@@ -989,40 +877,6 @@ namespace TimeSheet.Api.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("TimeSheet.Api.Models.TimerSession", b =>
-                {
-                    b.HasOne("TimeSheet.Api.Models.TaskCategory", "Category")
-                        .WithMany()
-                        .HasForeignKey("CategoryId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("TimeSheet.Api.Models.TimesheetEntry", "ConvertedToEntry")
-                        .WithMany()
-                        .HasForeignKey("ConvertedToEntryId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("TimeSheet.Api.Models.Project", "Project")
-                        .WithMany()
-                        .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("TimeSheet.Api.Models.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Category");
-
-                    b.Navigation("ConvertedToEntry");
-
-                    b.Navigation("Project");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("TimeSheet.Api.Models.Timesheet", b =>
                 {
                     b.HasOne("TimeSheet.Api.Models.User", "ApprovedByUser")
@@ -1068,17 +922,6 @@ namespace TimeSheet.Api.Migrations
                     b.Navigation("Timesheet");
                 });
 
-            modelBuilder.Entity("TimeSheet.Api.Models.TimesheetTemplate", b =>
-                {
-                    b.HasOne("TimeSheet.Api.Models.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("TimeSheet.Api.Models.User", b =>
                 {
                     b.HasOne("TimeSheet.Api.Models.Department", "Department")
@@ -1108,17 +951,6 @@ namespace TimeSheet.Api.Migrations
                     b.Navigation("Manager");
 
                     b.Navigation("WorkPolicy");
-                });
-
-            modelBuilder.Entity("TimeSheet.Api.Models.UserNotificationPreferences", b =>
-                {
-                    b.HasOne("TimeSheet.Api.Models.User", "User")
-                        .WithOne()
-                        .HasForeignKey("TimeSheet.Api.Models.UserNotificationPreferences", "UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("TimeSheet.Api.Models.UserRole", b =>

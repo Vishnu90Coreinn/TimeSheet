@@ -5,15 +5,15 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using TimeSheet.Api.Data;
+using TimeSheet.Infrastructure.Persistence;
 
 #nullable disable
 
-namespace TimeSheet.Api.Migrations
+namespace TimeSheet.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(TimeSheetDbContext))]
-    [Migration("20260317103122_Sprint13_UserProfile")]
-    partial class Sprint13_UserProfile
+    [Migration("20260317104802_Sprint13_ProfileUX")]
+    partial class Sprint13_ProfileUX
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -584,8 +584,15 @@ namespace TimeSheet.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("AvatarDataUrl")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<Guid?>("DepartmentId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Email")
                         .IsRequired()

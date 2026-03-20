@@ -2,7 +2,7 @@
 
 #nullable disable
 
-namespace TimeSheet.Api.Migrations
+namespace TimeSheet.Infrastructure.Persistence.Migrations
 {
     /// <inheritdoc />
     public partial class Sprint13_ProfileUX : Migration

@@ -5,11 +5,11 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using TimeSheet.Api.Data;
+using TimeSheet.Infrastructure.Persistence;
 
 #nullable disable
 
-namespace TimeSheet.Api.Migrations
+namespace TimeSheet.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(TimeSheetDbContext))]
     [Migration("20260316071603_Sprint9")]

@@ -11,6 +11,7 @@ using TimeSheet.Api.Middleware;
 using TimeSheet.Api.Services;
 using TimeSheet.Application;
 using TimeSheet.Infrastructure;
+using TimeSheet.Infrastructure.Persistence;
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
@@ -32,7 +33,8 @@ try
     builder.Services.AddProblemDetails();
 
     builder.Services.AddDbContext<TimeSheetDbContext>(options =>
-        options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+        options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"),
+            b => b.MigrationsAssembly("TimeSheet.Infrastructure")));
 
     builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
     builder.Services.AddScoped<ITokenService, TokenService>();

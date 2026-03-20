@@ -5,15 +5,15 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using TimeSheet.Api.Data;
+using TimeSheet.Infrastructure.Persistence;
 
 #nullable disable
 
-namespace TimeSheet.Api.Migrations
+namespace TimeSheet.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(TimeSheetDbContext))]
-    [Migration("20260317161547_Sprint16_TimerSessions")]
-    partial class Sprint16_TimerSessions
+    [Migration("20260317164716_Sprint18_TimesheetTemplates")]
+    partial class Sprint18_TimesheetTemplates
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -624,6 +624,37 @@ namespace TimeSheet.Api.Migrations
                     b.ToTable("TimesheetEntries", (string)null);
                 });
 
+            modelBuilder.Entity("TimeSheet.Api.Models.TimesheetTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EntriesJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("TimesheetTemplates", (string)null);
+                });
+
             modelBuilder.Entity("TimeSheet.Api.Models.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1035,6 +1066,17 @@ namespace TimeSheet.Api.Migrations
                     b.Navigation("TaskCategory");
 
                     b.Navigation("Timesheet");
+                });
+
+            modelBuilder.Entity("TimeSheet.Api.Models.TimesheetTemplate", b =>
+                {
+                    b.HasOne("TimeSheet.Api.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("TimeSheet.Api.Models.User", b =>

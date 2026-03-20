@@ -10,6 +10,8 @@ public interface ITimesheetRepository
     Task<IReadOnlyList<Timesheet>> GetByUserAndDateRangeAsync(Guid userId, DateOnly from, DateOnly to, CancellationToken ct = default);
     void Add(Timesheet timesheet);
     void Remove(Timesheet timesheet);
+    void AddEntry(TimesheetEntry entry);
     void RemoveEntry(TimesheetEntry entry);
+    void AddApprovalAction(ApprovalAction action);
     Task<IReadOnlyList<Timesheet>> GetByUserAndWeekTrackedAsync(Guid userId, DateOnly weekStart, DateOnly weekEnd, CancellationToken ct = default);
 }

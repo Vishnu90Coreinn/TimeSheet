@@ -11,9 +11,7 @@ public class RejectTimesheetCommandHandler(
     ITimesheetRepository timesheetRepository,
     IUnitOfWork unitOfWork,
     ICurrentUserService currentUser,
-    IDateTimeProvider dateTimeProvider,
-    IAuditService auditService,
-    INotificationService notificationService)
+    IDateTimeProvider dateTimeProvider)
     : IRequestHandler<RejectTimesheetCommand, Result>
 {
     public async Task<Result> Handle(RejectTimesheetCommand request, CancellationToken cancellationToken)
@@ -33,7 +31,7 @@ public class RejectTimesheetCommandHandler(
 
         timesheet.Reject(currentUser.UserId, request.Comment);
 
-        timesheet.ApprovalActions.Add(new ApprovalAction
+        timesheetRepository.AddApprovalAction(new ApprovalAction
         {
             Id = Guid.NewGuid(),
             TimesheetId = timesheet.Id,
@@ -43,20 +41,7 @@ public class RejectTimesheetCommandHandler(
             ActionedAtUtc = dateTimeProvider.UtcNow
         });
 
-        await auditService.WriteAsync(
-            "TimesheetRejected",
-            "Timesheet",
-            request.TimesheetId.ToString(),
-            $"Rejected by {currentUser.UserId}",
-            currentUser.UserId);
-
         await unitOfWork.SaveChangesAsync(cancellationToken);
-
-        await notificationService.CreateAsync(
-            timesheet.UserId,
-            "Timesheet Rejected",
-            $"Your timesheet for {timesheet.WorkDate:yyyy-MM-dd} has been rejected.",
-            NotificationType.StatusChange);
 
         return Result.Success();
     }

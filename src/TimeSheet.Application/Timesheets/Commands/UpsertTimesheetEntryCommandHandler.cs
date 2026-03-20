@@ -56,7 +56,6 @@ public class UpsertTimesheetEntryCommandHandler(
                 Status = TimesheetStatus.Draft
             };
             timesheetRepo.Add(timesheet);
-            await unitOfWork.SaveChangesAsync(ct);
         }
 
         if (timesheet.Status != TimesheetStatus.Draft)
@@ -88,7 +87,7 @@ public class UpsertTimesheetEntryCommandHandler(
                     Minutes = request.Minutes,
                     Notes = request.Notes
                 };
-                timesheet.Entries.Add(entry);
+                timesheetRepo.AddEntry(entry);
                 entryId = entry.Id;
             }
         }
@@ -103,7 +102,7 @@ public class UpsertTimesheetEntryCommandHandler(
                 Minutes = request.Minutes,
                 Notes = request.Notes
             };
-            timesheet.Entries.Add(entry);
+            timesheetRepo.AddEntry(entry);
             entryId = entry.Id;
         }
 

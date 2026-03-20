@@ -13,4 +13,5 @@ public interface ILeaveRepository
     void RemoveRange(IEnumerable<LeaveRequest> leaveRequests);
     Task<IReadOnlyList<DateOnly>> GetActiveDatesAsync(Guid userId, IReadOnlyList<DateOnly> dates, CancellationToken ct = default);
     Task<IReadOnlyList<LeaveRequest>> GetRejectedForDatesAsync(Guid userId, IReadOnlyList<DateOnly> dates, CancellationToken ct = default);
+    void AddBalance(LeaveBalance balance);
 }

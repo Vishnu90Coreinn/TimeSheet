@@ -11,9 +11,7 @@ public class ApproveTimesheetCommandHandler(
     ITimesheetRepository timesheetRepository,
     IUnitOfWork unitOfWork,
     ICurrentUserService currentUser,
-    IDateTimeProvider dateTimeProvider,
-    IAuditService auditService,
-    INotificationService notificationService)
+    IDateTimeProvider dateTimeProvider)
     : IRequestHandler<ApproveTimesheetCommand, Result>
 {
     public async Task<Result> Handle(ApproveTimesheetCommand request, CancellationToken cancellationToken)
@@ -31,7 +29,7 @@ public class ApproveTimesheetCommandHandler(
         timesheet.Approve(currentUser.UserId);
         timesheet.ManagerComment = request.Comment?.Trim();
 
-        timesheet.ApprovalActions.Add(new ApprovalAction
+        timesheetRepository.AddApprovalAction(new ApprovalAction
         {
             Id = Guid.NewGuid(),
             TimesheetId = timesheet.Id,
@@ -41,20 +39,7 @@ public class ApproveTimesheetCommandHandler(
             ActionedAtUtc = dateTimeProvider.UtcNow
         });
 
-        await auditService.WriteAsync(
-            "TimesheetApproved",
-            "Timesheet",
-            request.TimesheetId.ToString(),
-            $"Approved by {currentUser.UserId}",
-            currentUser.UserId);
-
         await unitOfWork.SaveChangesAsync(cancellationToken);
-
-        await notificationService.CreateAsync(
-            timesheet.UserId,
-            "Timesheet Approved",
-            $"Your timesheet for {timesheet.WorkDate:yyyy-MM-dd} has been approved.",
-            NotificationType.StatusChange);
 
         return Result.Success();
     }

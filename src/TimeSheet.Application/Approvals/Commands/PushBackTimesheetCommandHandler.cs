@@ -11,9 +11,7 @@ public class PushBackTimesheetCommandHandler(
     ITimesheetRepository timesheetRepository,
     IUnitOfWork unitOfWork,
     ICurrentUserService currentUser,
-    IDateTimeProvider dateTimeProvider,
-    IAuditService auditService,
-    INotificationService notificationService)
+    IDateTimeProvider dateTimeProvider)
     : IRequestHandler<PushBackTimesheetCommand, Result>
 {
     public async Task<Result> Handle(PushBackTimesheetCommand request, CancellationToken cancellationToken)
@@ -33,7 +31,7 @@ public class PushBackTimesheetCommandHandler(
 
         timesheet.PushBack(currentUser.UserId, request.Comment);
 
-        timesheet.ApprovalActions.Add(new ApprovalAction
+        timesheetRepository.AddApprovalAction(new ApprovalAction
         {
             Id = Guid.NewGuid(),
             TimesheetId = timesheet.Id,
@@ -43,20 +41,7 @@ public class PushBackTimesheetCommandHandler(
             ActionedAtUtc = dateTimeProvider.UtcNow
         });
 
-        await auditService.WriteAsync(
-            "TimesheetPushedBack",
-            "Timesheet",
-            request.TimesheetId.ToString(),
-            $"Pushed back by {currentUser.UserId}",
-            currentUser.UserId);
-
         await unitOfWork.SaveChangesAsync(cancellationToken);
-
-        await notificationService.CreateAsync(
-            timesheet.UserId,
-            "Timesheet Pushed Back",
-            $"Your timesheet for {timesheet.WorkDate:yyyy-MM-dd} has been pushed back for revision.",
-            NotificationType.StatusChange);
 
         return Result.Success();
     }

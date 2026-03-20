@@ -27,6 +27,8 @@ public static class DependencyInjection
         services.AddScoped<ITimesheetRepository, TimesheetRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<ILeaveRepository, LeaveRepository>();
+        services.AddScoped<ILeaveTypeRepository, LeaveTypeRepository>();
+        services.AddScoped<ILeavePolicyRepository, LeavePolicyRepository>();
         services.AddScoped<IProjectRepository, ProjectRepository>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
@@ -46,6 +48,7 @@ public static class DependencyInjection
 
         services.AddScoped<AppInterfaces.ITimesheetQueryService, TimesheetQueryService>();
         services.AddScoped<AppInterfaces.IApprovalQueryService, ApprovalQueryService>();
+        services.AddScoped<AppInterfaces.ILeaveQueryService, LeaveQueryService>();
 
         // CurrentUserService (requires IHttpContextAccessor)
         services.AddHttpContextAccessor();

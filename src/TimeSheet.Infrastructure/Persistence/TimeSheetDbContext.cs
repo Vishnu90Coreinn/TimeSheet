@@ -34,5 +34,11 @@ public class TimeSheetDbContext(DbContextOptions<TimeSheetDbContext> options) : 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(TimeSheetDbContext).Assembly);
+
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes()
+            .Where(t => typeof(Domain.Common.Entity).IsAssignableFrom(t.ClrType)))
+        {
+            modelBuilder.Entity(entityType.ClrType).Ignore(nameof(Domain.Common.Entity.DomainEvents));
+        }
     }
 }

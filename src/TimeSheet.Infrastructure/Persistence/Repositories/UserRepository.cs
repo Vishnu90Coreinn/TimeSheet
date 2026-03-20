@@ -13,6 +13,7 @@ public class UserRepository(TimeSheetDbContext context) : IUserRepository
 
     public async Task<User?> GetByUsernameOrEmailAsync(string identifier, CancellationToken ct = default)
         => await _dbSet
+            .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
             .FirstOrDefaultAsync(
                 u => u.Username == identifier || u.Email == identifier, ct);
 

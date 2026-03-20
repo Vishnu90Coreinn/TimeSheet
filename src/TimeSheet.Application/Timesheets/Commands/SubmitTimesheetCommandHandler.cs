@@ -11,8 +11,7 @@ public class SubmitTimesheetCommandHandler(
     ITimesheetRepository timesheetRepo,
     IUnitOfWork unitOfWork,
     ICurrentUserService currentUser,
-    IDateTimeProvider dateTimeProvider,
-    IAuditService auditService)
+    IDateTimeProvider dateTimeProvider)
     : IRequestHandler<SubmitTimesheetCommand, Result<TimesheetDayResult>>
 {
     public async Task<Result<TimesheetDayResult>> Handle(
@@ -54,13 +53,6 @@ public class SubmitTimesheetCommandHandler(
         timesheet.SubmissionNotes = request.Notes;
         timesheet.MismatchReason = hasMismatch ? request.MismatchReason?.Trim() : null;
         timesheet.Submit();
-
-        await auditService.WriteAsync(
-            "TimesheetSubmitted",
-            "Timesheet",
-            timesheet.Id.ToString(),
-            $"Submitted timesheet for {request.WorkDate}",
-            userId);
 
         await unitOfWork.SaveChangesAsync(ct);
 

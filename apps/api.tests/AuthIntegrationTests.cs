@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using TimeSheet.Api.Dtos;
 using Xunit;
@@ -115,6 +116,9 @@ public class AuthIntegrationTests : IClassFixture<CustomWebApplicationFactory>
         var db = setupScope.ServiceProvider.GetRequiredService<TimeSheetDbContext>();
         var hasher = setupScope.ServiceProvider.GetRequiredService<IPasswordHasher>();
 
+        var employeeRole = await db.Roles.SingleAsync(r => r.Name == "employee");
+        var category = await db.TaskCategories.FirstAsync();
+
         var user = new User
         {
             Id = Guid.NewGuid(),
@@ -126,7 +130,19 @@ public class AuthIntegrationTests : IClassFixture<CustomWebApplicationFactory>
             IsActive = true
         };
 
+        var project = new Project
+        {
+            Id = Guid.NewGuid(),
+            Name = "Project employee.two",
+            Code = $"P-{Guid.NewGuid():N}"[..10],
+            IsActive = true,
+            IsArchived = false
+        };
+
         db.Users.Add(user);
+        db.UserRoles.Add(new UserRole { UserId = user.Id, RoleId = employeeRole.Id });
+        db.Projects.Add(project);
+        db.ProjectMembers.Add(new ProjectMember { UserId = user.Id, ProjectId = project.Id });
         await db.SaveChangesAsync();
 
         using var client = _factory.CreateClient();
@@ -139,9 +155,16 @@ public class AuthIntegrationTests : IClassFixture<CustomWebApplicationFactory>
 
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", loginPayload!.AccessToken);
 
+        var workDate = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+
+        // Create an entry first (no work policy → mismatch reason not required)
+        var entryResponse = await client.PostAsJsonAsync("/api/v1/timesheets/entries",
+            new UpsertTimesheetEntryRequest(workDate, null, project.Id, category.Id, 60, "work"));
+        Assert.Equal(HttpStatusCode.OK, entryResponse.StatusCode);
+
         var submitResponse = await client.PostAsJsonAsync(
             "/api/v1/timesheets/submit",
-            new SubmitTimesheetRequest(DateOnly.FromDateTime(DateTime.UtcNow.Date), "Daily update", null));
+            new SubmitTimesheetRequest(workDate, "Daily update", null));
 
         Assert.Equal(HttpStatusCode.OK, submitResponse.StatusCode);
     }

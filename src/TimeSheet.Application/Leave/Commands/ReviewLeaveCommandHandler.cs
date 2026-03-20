@@ -10,9 +10,7 @@ namespace TimeSheet.Application.Leave.Commands;
 public class ReviewLeaveCommandHandler(
     ILeaveRepository leaveRepo,
     IUnitOfWork unitOfWork,
-    ICurrentUserService currentUser,
-    IAuditService auditService,
-    INotificationService notificationService)
+    ICurrentUserService currentUser)
     : IRequestHandler<ReviewLeaveCommand, Result>
 {
     public async Task<Result> Handle(ReviewLeaveCommand request, CancellationToken ct)
@@ -30,28 +28,11 @@ public class ReviewLeaveCommandHandler(
         if (request.Approve)
         {
             leaveRequest.Approve(currentUser.UserId);
-            await notificationService.CreateAsync(
-                leaveRequest.UserId,
-                "Leave Request Updated",
-                $"Your leave request for {leaveRequest.LeaveDate:yyyy-MM-dd} has been approved.",
-                NotificationType.StatusChange);
         }
         else
         {
             leaveRequest.Reject(currentUser.UserId, request.Comment ?? string.Empty);
-            await notificationService.CreateAsync(
-                leaveRequest.UserId,
-                "Leave Request Updated",
-                $"Your leave request for {leaveRequest.LeaveDate:yyyy-MM-dd} has been rejected.",
-                NotificationType.StatusChange);
         }
-
-        await auditService.WriteAsync(
-            request.Approve ? "LeaveApproved" : "LeaveRejected",
-            "LeaveRequest",
-            request.LeaveRequestId.ToString(),
-            $"Reviewer {currentUser.Username} {(request.Approve ? "approved" : "rejected")} leave for {leaveRequest.LeaveDate:yyyy-MM-dd}",
-            currentUser.UserId);
 
         await unitOfWork.SaveChangesAsync(ct);
 

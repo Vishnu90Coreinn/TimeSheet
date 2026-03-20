@@ -19,7 +19,7 @@ public class AuthController(ISender mediator) : ControllerBase
     {
         var result = await mediator.Send(new LoginCommand(request.Identifier, request.Password), ct);
         if (!result.IsSuccess)
-            return Fail(result);
+            return Unauthorized(new { message = result.Error });
 
         var v = result.Value!;
         return Ok(new LoginResponse(v.AccessToken, v.RefreshToken, v.UserId, v.Username, v.Email, v.Role));

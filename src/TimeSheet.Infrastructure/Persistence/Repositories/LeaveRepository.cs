@@ -58,4 +58,6 @@ public class LeaveRepository(TimeSheetDbContext context)
                 && lr.Status == LeaveRequestStatus.Rejected
                 && dates.Contains(lr.LeaveDate))
             .ToListAsync(ct);
+
+    public void AddBalance(LeaveBalance balance) => _context.LeaveBalances.Add(balance);
 }

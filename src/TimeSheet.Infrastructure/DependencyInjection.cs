@@ -1,7 +1,9 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using TimeSheet.Application.Common.Interfaces;
 using TimeSheet.Domain.Interfaces;
+using TimeSheet.Infrastructure.BackgroundJobs;
 using TimeSheet.Infrastructure.Persistence;
 using TimeSheet.Infrastructure.Persistence.Repositories;
 using TimeSheet.Infrastructure.Services;
@@ -14,16 +16,35 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
+        // Persistence
+        services.AddDbContext<TimeSheetDbContext>(options =>
+            options.UseSqlServer(configuration.GetConnectionString("DefaultConnection"),
+                b => b.MigrationsAssembly("TimeSheet.Infrastructure")));
 
-        // ICurrentUserService is registered in the API layer (needs IHttpContextAccessor)
-
+        // Repositories
         services.AddScoped<ITimesheetRepository, TimesheetRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<ILeaveRepository, LeaveRepository>();
         services.AddScoped<IProjectRepository, ProjectRepository>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+        // Core services
+        services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
+        services.AddScoped<IPasswordHasher, PasswordHasher>();
+        services.AddScoped<ITokenService, TokenService>();
+        services.AddScoped<IAttendanceCalculationService, AttendanceCalculationService>();
+        services.AddScoped<IAuditService, AuditService>();
+        services.AddScoped<INotificationService, NotificationService>();
+
+        // CurrentUserService (requires IHttpContextAccessor)
+        services.AddHttpContextAccessor();
+        services.AddScoped<ICurrentUserService, CurrentUserService>();
+
+        // Background jobs
+        services.AddHostedService<RefreshTokenCleanupService>();
+        services.AddHostedService<NotificationSchedulerService>();
+        services.AddHostedService<AnomalyDetectionService>();
 
         return services;
     }

@@ -2,15 +2,12 @@ using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Serilog.Events;
-using TimeSheet.Api.Data;
 using TimeSheet.Api.Middleware;
 using TimeSheet.Application;
 using TimeSheet.Infrastructure;
-using TimeSheet.Infrastructure.Persistence;
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
@@ -30,19 +27,6 @@ try
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
     builder.Services.AddProblemDetails();
-
-    builder.Services.AddDbContext<TimeSheetDbContext>(options =>
-        options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"),
-            b => b.MigrationsAssembly("TimeSheet.Infrastructure")));
-
-    builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
-    builder.Services.AddScoped<ITokenService, TokenService>();
-    builder.Services.AddScoped<IAttendanceCalculationService, AttendanceCalculationService>();
-    builder.Services.AddScoped<IAuditService, AuditService>();
-    builder.Services.AddScoped<INotificationService, NotificationService>();
-    builder.Services.AddHostedService<RefreshTokenCleanupService>();
-    builder.Services.AddHostedService<NotificationSchedulerService>();
-    builder.Services.AddHostedService<AnomalyDetectionService>();
 
     var jwt = builder.Configuration.GetSection("Jwt");
     var jwtKey = jwt["Key"] ?? throw new InvalidOperationException("JWT Key is not configured.");

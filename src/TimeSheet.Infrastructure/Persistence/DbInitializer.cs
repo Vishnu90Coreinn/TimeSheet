@@ -1,6 +1,9 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using TimeSheet.Domain.Entities;
+using TimeSheet.Infrastructure.Services;
 
-namespace TimeSheet.Api.Data;
+namespace TimeSheet.Infrastructure.Persistence;
 
 public static class DbInitializer
 {

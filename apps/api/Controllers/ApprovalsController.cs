@@ -1,50 +1,25 @@
 using System.Security.Claims;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TimeSheet.Api.Dtos;
+using TimeSheet.Application.Approvals.Commands;
+using TimeSheet.Application.Approvals.Queries;
+using TimeSheet.Application.Common.Models;
 
 namespace TimeSheet.Api.Controllers;
 
 [ApiController]
 [Authorize(Roles = "manager,admin")]
 [Route("api/v1/approvals")]
-public class ApprovalsController(TimeSheetDbContext dbContext, IAuditService auditService, INotificationService notificationService) : ControllerBase
+public class ApprovalsController(ISender mediator, TimeSheetDbContext dbContext) : ControllerBase
 {
     [HttpGet("pending-timesheets")]
-    public async Task<IActionResult> GetPendingTimesheets()
+    public async Task<IActionResult> GetPendingTimesheets(CancellationToken cancellationToken)
     {
-        var managerId = GetUserId();
-        if (managerId is null)
-        {
-            return Unauthorized();
-        }
-
-        var role = User.FindFirstValue(ClaimTypes.Role) ?? "employee";
-        var query = dbContext.Timesheets
-            .AsNoTracking()
-            .Where(t => t.Status == TimesheetStatus.Submitted);
-
-        if (!string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase))
-        {
-            query = query.Where(t => t.User.ManagerId == managerId.Value);
-        }
-
-        var items = await query
-            .OrderBy(t => t.WorkDate)
-            .Select(t => new TimesheetApprovalListItem(
-                t.Id,
-                t.UserId,
-                t.User.Username,
-                t.WorkDate,
-                t.Entries.Sum(e => e.Minutes),
-                t.Status.ToString().ToLowerInvariant(),
-                t.SubmittedAtUtc,
-                t.MismatchReason != null,
-                t.MismatchReason))
-            .ToListAsync();
-
-        return Ok(items);
+        var result = await mediator.Send(new GetPendingTimesheetsQuery(), cancellationToken);
+        return result.IsSuccess ? Ok(result.Value) : Fail(result);
     }
 
     [HttpGet("history/{timesheetId:guid}")]
@@ -89,22 +64,25 @@ public class ApprovalsController(TimeSheetDbContext dbContext, IAuditService aud
         return Ok(history);
     }
 
-    [HttpPost("timesheets/{timesheetId:guid}/approve")]
-    public async Task<IActionResult> Approve(Guid timesheetId, [FromBody] TimesheetDecisionRequest request)
+    [HttpPost("timesheets/{id:guid}/approve")]
+    public async Task<IActionResult> Approve(Guid id, [FromBody] TimesheetDecisionRequest request, CancellationToken cancellationToken)
     {
-        return await Decide(timesheetId, ApprovalActionType.Approved, TimesheetStatus.Approved, request.Comment, false);
+        var result = await mediator.Send(new ApproveTimesheetCommand(id, request.Comment), cancellationToken);
+        return result.IsSuccess ? Ok(new { message = "Action completed." }) : Fail(result);
     }
 
-    [HttpPost("timesheets/{timesheetId:guid}/reject")]
-    public async Task<IActionResult> Reject(Guid timesheetId, [FromBody] TimesheetDecisionRequest request)
+    [HttpPost("timesheets/{id:guid}/reject")]
+    public async Task<IActionResult> Reject(Guid id, [FromBody] TimesheetDecisionRequest request, CancellationToken cancellationToken)
     {
-        return await Decide(timesheetId, ApprovalActionType.Rejected, TimesheetStatus.Rejected, request.Comment, true);
+        var result = await mediator.Send(new RejectTimesheetCommand(id, request.Comment ?? string.Empty), cancellationToken);
+        return result.IsSuccess ? Ok(new { message = "Action completed." }) : Fail(result);
     }
 
-    [HttpPost("timesheets/{timesheetId:guid}/push-back")]
-    public async Task<IActionResult> PushBack(Guid timesheetId, [FromBody] TimesheetDecisionRequest request)
+    [HttpPost("timesheets/{id:guid}/push-back")]
+    public async Task<IActionResult> PushBack(Guid id, [FromBody] TimesheetDecisionRequest request, CancellationToken cancellationToken)
     {
-        return await Decide(timesheetId, ApprovalActionType.PushedBack, TimesheetStatus.Draft, request.Comment, true);
+        var result = await mediator.Send(new PushBackTimesheetCommand(id, request.Comment ?? string.Empty), cancellationToken);
+        return result.IsSuccess ? Ok(new { message = "Action completed." }) : Fail(result);
     }
 
     [HttpGet("stats")]
@@ -152,73 +130,14 @@ public class ApprovalsController(TimeSheetDbContext dbContext, IAuditService aud
         });
     }
 
-    private async Task<IActionResult> Decide(Guid timesheetId, ApprovalActionType actionType, TimesheetStatus nextStatus, string? comment, bool requireComment)
+    private IActionResult Fail(Result result) => result.Status switch
     {
-        var managerId = GetUserId();
-        if (managerId is null)
-        {
-            return Unauthorized();
-        }
-
-        if (requireComment && string.IsNullOrWhiteSpace(comment))
-        {
-            return BadRequest(new { message = "Comment is required for this action." });
-        }
-
-        var role = User.FindFirstValue(ClaimTypes.Role) ?? "employee";
-        var timesheet = await dbContext.Timesheets.Include(x => x.User).SingleOrDefaultAsync(x => x.Id == timesheetId);
-        if (timesheet is null)
-        {
-            return NotFound();
-        }
-
-        if (timesheet.Status != TimesheetStatus.Submitted)
-        {
-            return Conflict(new { message = "Only submitted timesheets can be actioned." });
-        }
-
-        if (!string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase) && timesheet.User.ManagerId != managerId.Value)
-        {
-            return Forbid();
-        }
-
-        timesheet.Status = nextStatus;
-        timesheet.ManagerComment = comment?.Trim();
-        timesheet.ApprovedByUserId = managerId.Value;
-        if (nextStatus == TimesheetStatus.Approved)
-        {
-            timesheet.ApprovedAtUtc = DateTime.UtcNow;
-            timesheet.RejectedAtUtc = null;
-        }
-        else if (nextStatus == TimesheetStatus.Rejected)
-        {
-            timesheet.RejectedAtUtc = DateTime.UtcNow;
-            timesheet.ApprovedAtUtc = null;
-        }
-        else
-        {
-            timesheet.ApprovedAtUtc = null;
-            timesheet.RejectedAtUtc = null;
-        }
-
-        dbContext.ApprovalActions.Add(new ApprovalAction
-        {
-            Id = Guid.NewGuid(),
-            TimesheetId = timesheet.Id,
-            ManagerUserId = managerId.Value,
-            Action = actionType,
-            Comment = comment?.Trim() ?? string.Empty,
-            ActionedAtUtc = DateTime.UtcNow
-        });
-
-        await auditService.WriteAsync($"Timesheet{actionType}", "Timesheet", timesheetId.ToString(), $"Manager {managerId} set status to {nextStatus}", User);
-        await dbContext.SaveChangesAsync();
-
-        await notificationService.CreateAsync(timesheet.UserId, "Timesheet Status Updated",
-            $"Your timesheet for {timesheet.WorkDate:yyyy-MM-dd} has been {actionType.ToString().ToLower()}.", NotificationType.StatusChange);
-
-        return Ok(new { message = "Action completed." });
-    }
+        ResultStatus.NotFound => NotFound(new { message = result.Error }),
+        ResultStatus.Forbidden => Forbid(),
+        ResultStatus.Conflict => Conflict(new { message = result.Error }),
+        ResultStatus.Validation => BadRequest(new { message = result.Error }),
+        _ => BadRequest(new { message = result.Error })
+    };
 
     private Guid? GetUserId()
     {

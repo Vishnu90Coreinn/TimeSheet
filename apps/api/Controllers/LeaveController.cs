@@ -1,15 +1,18 @@
 using System.Security.Claims;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TimeSheet.Api.Dtos;
+using TimeSheet.Api.Extensions;
+using TimeSheet.Application.Leave.Commands;
 
 namespace TimeSheet.Api.Controllers;
 
 [ApiController]
 [Authorize]
 [Route("api/v1/leave")]
-public class LeaveController(TimeSheetDbContext dbContext, IAuditService auditService, INotificationService notificationService) : ControllerBase
+public class LeaveController(TimeSheetDbContext dbContext, IAuditService auditService, INotificationService notificationService, ISender mediator) : ControllerBase
 {
     [HttpGet("types")]
     public async Task<IActionResult> GetLeaveTypes()
@@ -118,21 +121,8 @@ public class LeaveController(TimeSheetDbContext dbContext, IAuditService auditSe
     [HttpDelete("requests/{id:guid}")]
     public async Task<IActionResult> CancelLeave(Guid id)
     {
-        var userId = GetUserId();
-        if (userId is null) return Unauthorized();
-
-        // Match by group ID first (multi-day), then by individual request ID (legacy)
-        var requests = await dbContext.LeaveRequests
-            .Where(lr => lr.UserId == userId.Value && (lr.LeaveGroupId == id || lr.Id == id))
-            .ToListAsync();
-
-        if (requests.Count == 0) return NotFound(new { message = "Leave request not found." });
-        if (requests.Any(lr => lr.Status != LeaveRequestStatus.Pending))
-            return Conflict(new { message = "Only pending leave requests can be cancelled." });
-
-        dbContext.LeaveRequests.RemoveRange(requests);
-        await dbContext.SaveChangesAsync();
-        return NoContent();
+        var result = await mediator.Send(new CancelLeaveCommand(id));
+        return result.ToActionResult();
     }
 
     [HttpGet("requests/my")]
@@ -212,51 +202,8 @@ public class LeaveController(TimeSheetDbContext dbContext, IAuditService auditSe
     [Authorize(Roles = "manager,admin")]
     public async Task<IActionResult> ReviewLeave(Guid leaveRequestId, [FromBody] ReviewLeaveRequest request)
     {
-        var managerId = GetUserId();
-        if (managerId is null)
-        {
-            return Unauthorized();
-        }
-
-        var role = User.FindFirstValue(ClaimTypes.Role) ?? "employee";
-
-        var leave = await dbContext.LeaveRequests
-            .Include(x => x.User)
-            .SingleOrDefaultAsync(x => x.Id == leaveRequestId);
-
-        if (leave is null)
-        {
-            return NotFound();
-        }
-
-        if (leave.Status != LeaveRequestStatus.Pending)
-        {
-            return Conflict(new { message = "Only pending leaves can be reviewed." });
-        }
-
-        if (!string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase) && leave.User.ManagerId != managerId.Value)
-        {
-            return Forbid();
-        }
-
-        if (!request.Approve && string.IsNullOrWhiteSpace(request.Comment))
-        {
-            return BadRequest(new { message = "Comment is required when rejecting leave." });
-        }
-
-        leave.Status = request.Approve ? LeaveRequestStatus.Approved : LeaveRequestStatus.Rejected;
-        leave.ReviewedByUserId = managerId.Value;
-        leave.ReviewerComment = request.Comment?.Trim();
-        leave.ReviewedAtUtc = DateTime.UtcNow;
-
-        await dbContext.SaveChangesAsync();
-
-        await auditService.WriteAsync(request.Approve ? "LeaveApproved" : "LeaveRejected", "LeaveRequest", leave.Id.ToString(), $"Manager reviewed leave for {leave.LeaveDate}", User);
-        await notificationService.CreateAsync(leave.UserId, "Leave Request Updated",
-            $"Your leave request for {leave.LeaveDate:yyyy-MM-dd} has been {(request.Approve ? "approved" : "rejected")}.", NotificationType.StatusChange);
-        await dbContext.SaveChangesAsync();
-
-        return Ok(await MapLeaveResponse(leave.Id));
+        var result = await mediator.Send(new ReviewLeaveCommand(leaveRequestId, request.Approve, request.Comment));
+        return result.ToActionResult();
     }
 
     // ── Leave Policies (admin only) ───────────────────────────────

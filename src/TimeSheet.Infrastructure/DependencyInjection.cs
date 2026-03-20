@@ -7,6 +7,8 @@ using TimeSheet.Infrastructure.BackgroundJobs;
 using TimeSheet.Infrastructure.Persistence;
 using TimeSheet.Infrastructure.Persistence.Repositories;
 using TimeSheet.Infrastructure.Services;
+using AppInterfaces = TimeSheet.Application.Common.Interfaces;
+using InfraInterfaces = TimeSheet.Infrastructure.Services;
 
 namespace TimeSheet.Infrastructure;
 
@@ -27,12 +29,18 @@ public static class DependencyInjection
         services.AddScoped<ILeaveRepository, LeaveRepository>();
         services.AddScoped<IProjectRepository, ProjectRepository>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
+        services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
-        // Core services
+        // Core services — registered for Application interfaces (used by handlers)
         services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
-        services.AddScoped<IPasswordHasher, PasswordHasher>();
-        services.AddScoped<ITokenService, TokenService>();
+        services.AddScoped<AppInterfaces.IPasswordHasher, PasswordHasher>();
+        services.AddScoped<AppInterfaces.ITokenService, TokenService>();
+
+        // Also register for Infrastructure-local interfaces (used by controllers still injecting them directly)
+        services.AddScoped<InfraInterfaces.IPasswordHasher, PasswordHasher>();
+        services.AddScoped<InfraInterfaces.ITokenService, TokenService>();
+
         services.AddScoped<IAttendanceCalculationService, AttendanceCalculationService>();
         services.AddScoped<IAuditService, AuditService>();
         services.AddScoped<INotificationService, NotificationService>();

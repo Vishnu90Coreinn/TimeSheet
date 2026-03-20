@@ -4,10 +4,11 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
+using AppInterfaces = TimeSheet.Application.Common.Interfaces;
 
 namespace TimeSheet.Infrastructure.Services;
 
-public class TokenService(IConfiguration configuration) : ITokenService
+public class TokenService(IConfiguration configuration) : ITokenService, AppInterfaces.ITokenService
 {
     public string CreateAccessToken(Guid userId, string username, string role)
     {

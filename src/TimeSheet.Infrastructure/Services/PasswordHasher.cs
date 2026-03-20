@@ -1,8 +1,9 @@
 using System.Security.Cryptography;
+using AppInterfaces = TimeSheet.Application.Common.Interfaces;
 
 namespace TimeSheet.Infrastructure.Services;
 
-public class PasswordHasher : IPasswordHasher
+public class PasswordHasher : IPasswordHasher, AppInterfaces.IPasswordHasher
 {
     public string Hash(string password)
     {

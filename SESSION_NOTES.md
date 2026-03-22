@@ -943,3 +943,292 @@ Start **Sprint 21 — Saved & Scheduled Reports + True Export** on branch `featu
 - **`gh` CLI not installed:** GitHub CLI (`gh`) is not available on this machine. All GitHub operations (PR creation, etc.) must be done via browser or by installing `gh`.
 - **RefreshTokenCleanupService uses `ExecuteDeleteAsync`:** This is an EF Core 7+ bulk delete. Requires SQL Server provider in production (InMemory does not support it — the service uses try/catch to swallow the InMemory error).
 - **`AuditService.WriteAsync` does NOT call `SaveChangesAsync`:** The caller is responsible. This is intentional so audit log entries are part of the same transaction as the main entity change.
+
+---
+
+## Session 18 — Tailwind Migration Complete + Clean Architecture Plan (2026-03-19)
+
+### What Was Done
+
+#### Tailwind CSS v4 Migration — Completed & Merged
+- All 10 migration sessions (A–J) completed across previous sessions.
+- **Session G (this session):** Migrated `Profile.tsx` — ToastStack, PwdField, camera overlay (`group`/`group-hover`), ToggleRow dynamic bg/opacity/knob kept as `style={{}}`.
+- **Sessions H, I, J (parallel subagents):** Migrated `Leave.tsx`, `Dashboard.tsx`, `Timesheets.tsx` simultaneously.
+  - `Leave.tsx`: Removed 130-line PAGE_STYLES, appended `lv-*` classes to design-system.css
+  - `Dashboard.tsx`: Removed all `onMouseEnter/Leave` handlers; `dash-*` CSS classes added
+  - `Timesheets.tsx`: Removed 758-line PAGE_STYLES; `ts-*` CSS classes added
+- **Merged** `TimesheetV1.0_Tailwind` → `master` via no-ff merge commit `6ca488b` (22 files, −2565 lines removed, 886 lines added to design-system.css).
+- **Bug fix (post-merge):** CSS reset `*, *::before, *::after { padding: 0 }` was unlayered, beating all Tailwind `@layer utilities` padding/margin utilities. Fixed by wrapping the reset in `@layer base` — commit `6ca488b`.
+
+#### Clean Architecture Migration — Plan Created
+- Evaluated current .NET backend: CRUD-first anemic domain model, 21 controllers with direct DbContext access, 10 services (inconsistently applied), no repository pattern, no CQRS.
+- Designed full Layered Clean Architecture plan:
+  - `TimeSheet.Domain` — Entities with behavior, Value Objects, Domain Events, Repository interfaces, Exceptions
+  - `TimeSheet.Application` — MediatR CQRS (Commands/Queries), FluentValidation pipeline, Result<T> pattern, ICurrentUserService
+  - `TimeSheet.Infrastructure` — EF Core (moved from API), Repository implementations, UnitOfWork with domain event dispatch
+  - `TimeSheet.Api` — Thin controllers (8 lines each), composition root only
+- 6-phase migration strategy: Scaffold → Domain Enrichment → Infrastructure → Application (feature by feature) → Domain Events → Tests
+- **Zero downtime migration:** Each phase leaves the app fully functional; all existing API routes unchanged; no frontend impact.
+
+### Commits
+- `89dc8bc` — style: migrate Profile.tsx to Tailwind (Session G)
+- `7c88611` — style: migrate Leave.tsx to Tailwind (Session H) [parallel agent]
+- `975a4c6` — style: migrate Timesheets.tsx to Tailwind (Session J) [parallel agent]
+- `7c0ddc4` — style: migrate Dashboard.tsx to Tailwind (Session I) [parallel agent]
+- Merge commit — feat: complete Tailwind CSS v4 migration (Sessions A–J)
+- `6ca488b` — fix: wrap CSS reset in @layer base to restore Tailwind padding/margin utilities
+
+---
+
+## Pending For Next Session
+
+> Last updated: Session 18 (2026-03-19).
+
+### 🔴 Priority 1 — Clean Architecture Migration (NEW — supersedes Sprint 21)
+Start **Phase 1: Solution Scaffold** on branch `feature/clean-architecture`
+
+See `PROJECT_TASKS.md` Epic E-CA for full task breakdown.
+
+**Phase order:**
+1. **Phase 1** — Create solution structure, project references, base types (Entity, Result<T>, IUnitOfWork)
+2. **Phase 2** — Move & enrich domain entities; add Value Objects, Domain Events, Exceptions
+3. **Phase 3** — Infrastructure layer (Repositories, UnitOfWork, services moved from API)
+4. **Phase 4** — Application layer, feature by feature (Auth → Timesheets → Approvals → Leave → Reports → Admin)
+5. **Phase 5** — Domain events wired through UnitOfWork.SaveChangesAsync
+6. **Phase 6** — Unit tests (Domain + Application handlers)
+
+### Sprint Roadmap (on hold during CA migration)
+Sprints 21–25 remain planned but are deprioritized until Clean Architecture is in place.
+New features built on the clean architecture will be far easier to implement and test.
+
+9. **Sprint 21** — Saved & Scheduled Reports (`feature/sprint-21-saved-reports`)
+10. **Sprint 22** — Approval Delegation
+11. **Sprint 23** — Command Palette
+12. **Sprint 24** — Mobile PWA
+13. **Sprint 25** — Dark Mode
+
+---
+
+## Known Issues / Gotchas
+
+- **EF Core 9 dual-provider in tests:** Fix in `CustomWebApplicationFactory.cs` — do not revert.
+- **net10.0 only:** Both `.csproj` files target `net10.0`. Do not downgrade.
+- **`gh` CLI not installed:** GitHub operations via browser only.
+- **RefreshTokenCleanupService uses `ExecuteDeleteAsync`:** InMemory provider swallows the error via try/catch — intentional.
+- **`AuditService.WriteAsync` does NOT call `SaveChangesAsync`:** Caller is responsible — intentional (same transaction).
+- **Tailwind v4 CSS layers:** All custom CSS resets must stay inside `@layer base`. Unlayered CSS beats `@layer utilities` — never add unlayered `padding` or `margin` rules to design-system.css.
+
+---
+
+## Session 19 — Clean Architecture Phase 1: Solution Scaffold (2026-03-20)
+
+### What Was Done
+
+#### Branch
+All work on `feature/clean-architecture`. **Do NOT merge to master until all 6 phases are complete and user has manually tested and approved.** User will raise the PR manually.
+
+#### CA-001–006: Project creation & solution wiring
+- Created 5 new projects via `dotnet new`:
+  - `src/TimeSheet.Domain/` (classlib, net10.0, zero NuGet deps)
+  - `src/TimeSheet.Application/` (classlib, net10.0)
+  - `src/TimeSheet.Infrastructure/` (classlib, net10.0)
+  - `tests/TimeSheet.Domain.Tests/` (xunit, net10.0)
+  - `tests/TimeSheet.Application.Tests/` (xunit, net10.0)
+- Added all 5 to `TimeSheet.sln`
+- Project references set per dependency rule:
+  - Application → Domain
+  - Infrastructure → Domain + Application
+  - Api → Application + Infrastructure
+  - Domain.Tests → Domain
+  - Application.Tests → Application
+- NuGet packages added:
+  - Application: MediatR 12.4.1, FluentValidation.DependencyInjectionExtensions 11.11.0, Mapster 7.4.0, Microsoft.Extensions.Logging.Abstractions 9.0.0, Microsoft.Extensions.DependencyInjection.Abstractions 9.0.0
+  - Infrastructure: EF Core 9.0.0, EF Core SqlServer 9.0.0, MediatR 12.4.1, Microsoft.Extensions.* 9.0.0
+  - Application.Tests: Moq 4.20.72, FluentAssertions 7.2.0
+
+#### CA-007, CA-009: Domain base types (parallel agent)
+- `src/TimeSheet.Domain/Common/IDomainEvent.cs` — plain marker interface (no MediatR dep in Domain)
+- `src/TimeSheet.Domain/Common/Entity.cs` — `Guid Id` + domain events list + `AddDomainEvent` / `ClearDomainEvents`
+- `src/TimeSheet.Domain/Common/AuditableEntity.cs` — extends Entity with `CreatedAtUtc` / `UpdatedAtUtc`
+- `src/TimeSheet.Domain/Interfaces/IUnitOfWork.cs` — `SaveChangesAsync` contract
+- `src/TimeSheet.Domain/Exceptions/` — `DomainException` (base), `InvalidStateTransitionException`, `InsufficientLeaveBalanceException`
+
+#### CA-008, CA-010–013: Application layer (parallel agent)
+- `Common/Models/Result.cs` — `Result` + `Result<T>` with `ResultStatus` enum (Success, NotFound, Forbidden, Validation, Conflict, Error)
+- `Common/Interfaces/ICurrentUserService.cs` — `UserId`, `Username`, `Role`, `IsAdmin`, `IsManager`, `IsManagerOf(Guid)`
+- `Common/Interfaces/IDateTimeProvider.cs` — `UtcNow`, `TodayUtc`
+- `Common/Exceptions/` — `ValidationException`, `NotFoundException`, `ForbiddenException`
+- `Common/Behaviors/` — `LoggingBehavior`, `PerformanceBehavior`, `ValidationBehavior` (MediatR 12.x signature: `next()` not `next(ct)`)
+- `DependencyInjection.cs` — `AddApplication()` registers MediatR + all 3 behaviors + FluentValidation validators
+
+#### CA-014, CA-015: Infrastructure stub + API wiring (parallel agent)
+- `src/TimeSheet.Infrastructure/Services/DateTimeProvider.cs` — implements `IDateTimeProvider`
+- `src/TimeSheet.Infrastructure/DependencyInjection.cs` — `AddInfrastructure()` stub (registers `IDateTimeProvider`; repositories added in Phase 3)
+- `apps/api/Extensions/ResultExtensions.cs` — `ToActionResult()` overloads for `Result` and `Result<T>`
+- `apps/api/Program.cs` — added `builder.Services.AddApplication()` + `builder.Services.AddInfrastructure(builder.Configuration)`
+
+### Result
+- **52/52 tests passing**
+- **0 build errors** (file-lock warnings are harmless — dev server was running)
+- All existing API behaviour unchanged
+
+### Commits on `feature/clean-architecture`
+- `d43d3a9` — feat(domain): Entity, IDomainEvent, IUnitOfWork, exceptions (CA-007, CA-009)
+- `24b176a` — feat(application): Result<T>, interfaces, exceptions, behaviors, DI (CA-008, CA-010–013)
+- `78817ea` — feat(infra+api): DateTimeProvider, Infrastructure DI, ResultExtensions, Program.cs wiring (CA-013–015)
+
+---
+
+## Session 20 — Clean Architecture Phase 2: Domain Enrichment (2026-03-20)
+
+### What Was Done
+
+#### Branch
+All work on `feature/clean-architecture`.
+
+#### CA-020, CA-021: Entity + Enum move (parallel agent)
+- 25 entity models moved from `apps/api/Models/` → `src/TimeSheet.Domain/Entities/` with namespace `TimeSheet.Domain.Entities`
+- 5 enums extracted to `src/TimeSheet.Domain/Enums/`: `TimesheetStatus`, `WorkSessionStatus`, `LeaveRequestStatus`, `ApprovalActionType`, `NotificationType`
+- Added `Cancelled = 3` to `LeaveRequestStatus`
+- `apps/api/GlobalUsings.cs` + `apps/api.tests/GlobalUsings.cs` added — `global using TimeSheet.Domain.Entities/Enums`
+- Removed `using TimeSheet.Api.Models;` from all 26 Api files + 9 test files
+- Original hollowed-out stubs deleted in cleanup commit
+
+#### CA-025: Value Objects (parallel agent)
+- `src/TimeSheet.Domain/ValueObjects/DateRange.cs` — `Start`, `End`, validation, `Overlaps()`, `Contains()`, `Length`
+- `src/TimeSheet.Domain/ValueObjects/Duration.cs` — wraps `TimeSpan`, factory methods, arithmetic
+- `src/TimeSheet.Domain/ValueObjects/WorkHours.cs` — validates 0–24h, `Add()`, `IsWithin()`
+
+#### CA-027: Domain Events (parallel agent)
+- `src/TimeSheet.Domain/Events/TimesheetSubmittedEvent.cs` — `(TimesheetId, UserId, WorkDate)`
+- `src/TimeSheet.Domain/Events/TimesheetApprovedEvent.cs` — `(TimesheetId, ApproverId)`
+- `src/TimeSheet.Domain/Events/TimesheetRejectedEvent.cs` — `(TimesheetId, ApproverId, Comment)`
+- `src/TimeSheet.Domain/Events/TimesheetPushedBackEvent.cs` — `(TimesheetId, ApproverId, Comment)`
+- `src/TimeSheet.Domain/Events/LeaveRequestApprovedEvent.cs` — `(LeaveRequestId, ApproverId, UserId, ...)`
+- `src/TimeSheet.Domain/Events/LeaveRequestRejectedEvent.cs` — `(LeaveRequestId, ApproverId, UserId, ...)`
+- `src/TimeSheet.Domain/Events/WorkSessionCheckedOutEvent.cs` — `(WorkSessionId, UserId, CheckOutAtUtc)`
+
+#### CA-028: Repository Interfaces (parallel agent)
+- `src/TimeSheet.Domain/Interfaces/ITimesheetRepository.cs`
+- `src/TimeSheet.Domain/Interfaces/IUserRepository.cs`
+- `src/TimeSheet.Domain/Interfaces/ILeaveRepository.cs`
+- `src/TimeSheet.Domain/Interfaces/IProjectRepository.cs`
+- `src/TimeSheet.Domain/Interfaces/INotificationRepository.cs`
+
+#### CA-022: Timesheet behaviors (parallel agent)
+- `Timesheet` now inherits `Entity` base
+- `Submit()` — Draft→Submitted + `TimesheetSubmittedEvent`
+- `Approve(approverId)` — Submitted→Approved + `TimesheetApprovedEvent`
+- `Reject(approverId, comment)` — Submitted→Rejected + `TimesheetRejectedEvent`
+- `PushBack(approverId, comment)` — Submitted→Draft + `TimesheetPushedBackEvent`
+- All methods throw `InvalidStateTransitionException` on wrong state
+
+#### CA-023: LeaveRequest behaviors (parallel agent)
+- `LeaveRequest` now inherits `Entity` base
+- `Approve(approverId)` — Pending→Approved + `LeaveRequestApprovedEvent`
+- `Reject(approverId, comment)` — Pending→Rejected + `LeaveRequestRejectedEvent`
+- `Cancel()` — Pending|Approved→Cancelled (no event)
+
+#### CA-024: WorkSession behaviors (parallel agent)
+- `WorkSession` now inherits `Entity` base
+- `CheckOut(checkOutAtUtc)` — Active→Completed + `WorkSessionCheckedOutEvent`
+- `AddBreak(startAtUtc)` — adds `BreakEntry`, throws if open break exists
+- `EndBreak(endAtUtc)` — closes open break, throws if none found
+
+#### CA-029 + CA-030: Unit tests + verification
+- 22 domain unit tests in `tests/TimeSheet.Domain.Tests/`
+  - `TimesheetTests.cs` (8 tests)
+  - `LeaveRequestTests.cs` (7 tests)
+  - `WorkSessionTests.cs` (7 tests)
+- **52/52 integration tests still passing**
+
+### Result
+- **22 domain unit tests passing**
+- **52/52 integration tests passing**
+- **0 build errors**
+- Phase 2 fully complete ✓
+
+### Commits on `feature/clean-architecture` (Phase 2)
+- `4d4413c` — feat(domain): domain events (CA-027)
+- `a314698` — feat(domain): entity + enum move (CA-020, CA-021)
+- `376ba34` — feat(domain): cleanup project files + model stubs
+- `8a4485e` — feat(domain): WorkSession behaviors (CA-024)
+- `0d77e26` — feat(domain): LeaveRequest behaviors (CA-023)
+- `0512220` — feat(domain): Timesheet behaviors (CA-022)
+- `a1a680a` — test(domain): unit tests for all entity behaviors (CA-029)
+
+---
+
+## Session 21 — Clean Architecture Phase 3: Infrastructure Layer (2026-03-20)
+
+### What Was Done
+
+#### CA-031 + CA-032: DbContext + Migrations moved
+- `TimeSheetDbContext.cs` → `src/TimeSheet.Infrastructure/Persistence/` (namespace `TimeSheet.Infrastructure.Persistence`)
+- 15 migration files → `src/TimeSheet.Infrastructure/Persistence/Migrations/`
+- `DbInitializer.cs` → `src/TimeSheet.Infrastructure/Persistence/`
+- GlobalUsings updated; `MigrationsAssembly("TimeSheet.Infrastructure")` set
+
+#### CA-033: IEntityTypeConfiguration split
+- 25 configuration files in `src/TimeSheet.Infrastructure/Persistence/Configurations/`
+- `OnModelCreating` → `modelBuilder.ApplyConfigurationsFromAssembly(...)`
+
+#### CA-034: BaseRepository + 5 specific repositories
+- `BaseRepository<T>` + `TimesheetRepository`, `UserRepository`, `LeaveRepository`, `ProjectRepository`, `NotificationRepository`
+- All implement their domain interfaces
+
+#### CA-035: UnitOfWork with domain event dispatch
+- Collects events from tracked `Entity` instances, saves, then dispatches via `publisher.Publish((dynamic)event)`
+- Domain stays free of MediatR
+
+#### CA-036 + CA-037 + CA-040: Services + Background Jobs moved
+- `TokenService`, `PasswordHasher`, `AttendanceCalculationService`, `AuditService`, `NotificationService` → `Infrastructure/Services/`
+- `RefreshTokenCleanupService`, `NotificationSchedulerService`, `AnomalyDetectionService` → `Infrastructure/BackgroundJobs/`
+
+#### CA-038: CurrentUserService
+- `CurrentUserService` implements `ICurrentUserService` — reads JWT claims via `IHttpContextAccessor`
+
+#### CA-041 + CA-042: DI consolidated + tests pass
+- All registrations in `AddInfrastructure()` — `Program.cs` now minimal
+- **52/52 integration tests passing** ✓
+
+### Commits (Phase 3)
+- `f8ca647` — feat(infra): move DbContext + Migrations (CA-031, CA-032)
+- `01ae7f3` — feat(infra): EF configs + repositories + UnitOfWork (CA-033–035)
+- `cca0bdd` — feat(infra): services + DI consolidation (CA-036–042)
+
+---
+
+## Pending For Next Session
+
+> Last updated: Session 21 (2026-03-20).
+
+### 🔴 Priority — Clean Architecture Phase 4: Application Layer (CQRS)
+Branch: `feature/clean-architecture` (all CA work stays here until user manually tests & raises PR to master)
+
+**Phase 4 — High-value commands/queries (CA-050–063):**
+- CA-050–052: Auth commands (`LoginCommand`, `RefreshTokenCommand`, `LogoutCommand`) + slim `AuthController`
+- CA-054–059: Timesheet queries+commands (`GetDayTimesheet`, `GetWeekSummary`, `SubmitTimesheet`, `ApproveTimesheet`, `RejectTimesheet`) + slim `TimesheetsController`
+- CA-060–063: Leave commands (`SubmitLeaveRequest`, `ApproveLeaveRequest`, `RejectLeaveRequest`) + slim `LeaveController`
+
+### Merge Policy
+- All phases (1–6) must be complete on `feature/clean-architecture`
+- User will manually test the running app
+- User will manually raise PR and merge to master
+- **Never auto-merge CA work to master**
+
+### Sprint Roadmap (still on hold)
+Sprints 21–25 remain deferred until CA migration is complete.
+
+---
+
+## Known Issues / Gotchas
+
+- **EF Core 9 dual-provider in tests:** Fix in `CustomWebApplicationFactory.cs` — do not revert.
+- **net10.0 only:** Both `.csproj` files target `net10.0`. Do not downgrade.
+- **`gh` CLI not installed:** GitHub operations via browser only.
+- **RefreshTokenCleanupService uses `ExecuteDeleteAsync`:** InMemory provider swallows the error via try/catch — intentional.
+- **`AuditService.WriteAsync` does NOT call `SaveChangesAsync`:** Caller is responsible — intentional (same transaction).
+- **Tailwind v4 CSS layers:** All custom CSS resets must stay inside `@layer base`.
+- **MediatR 12.x pipeline behavior signature:** `RequestHandlerDelegate<TResponse>` is a zero-arg delegate — call `next()` not `next(cancellationToken)`.
+- **CA branch policy:** All Clean Architecture work (Phases 1–6) stays on `feature/clean-architecture`. User tests manually and raises PR to master themselves.

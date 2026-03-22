@@ -3,9 +3,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using TimeSheet.Api.Data;
 using TimeSheet.Api.Dtos;
-using TimeSheet.Api.Models;
 
 namespace TimeSheet.Api.Controllers;
 
@@ -142,7 +140,6 @@ public class TimesheetTemplatesController(TimeSheetDbContext dbContext) : Contro
         {
             timesheet = new Timesheet
             {
-                Id = Guid.NewGuid(),
                 UserId = userId.Value,
                 WorkDate = request.WorkDate,
                 Status = TimesheetStatus.Draft,

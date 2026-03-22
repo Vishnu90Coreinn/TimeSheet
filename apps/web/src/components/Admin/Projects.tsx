@@ -9,68 +9,47 @@ type ProjectForm = { name: string; code: string; isActive: boolean };
 const BLANK: ProjectForm = { name: "", code: "", isActive: true };
 type SortDir = "asc" | "desc";
 
-// Inline types for budget data
 type ProjectBudgetHealthItem = {
-  id: string;
-  name: string;
-  code: string;
-  budgetedHours: number;
-  loggedHours: number;
-  pctUsed: number;
+  id: string; name: string; code: string;
+  budgetedHours: number; loggedHours: number; pctUsed: number;
   status: "on-track" | "warning" | "critical" | "over-budget" | "no-budget";
 };
 
 type WeeklyBurnEntry = { weekStart: string; hours: number };
 
 type ProjectBudgetSummaryResponse = {
-  id: string;
-  name: string;
-  budgetedHours: number;
-  loggedHours: number;
-  remainingHours: number;
-  burnRateHoursPerWeek: number;
-  projectedWeeksRemaining: number | null;
-  weeklyBreakdown: WeeklyBurnEntry[];
+  id: string; name: string; budgetedHours: number; loggedHours: number;
+  remainingHours: number; burnRateHoursPerWeek: number;
+  projectedWeeksRemaining: number | null; weeklyBreakdown: WeeklyBurnEntry[];
 };
 
-// ISO week Monday helper: date - (day+6)%7 days
 function isoWeekMonday(date: Date): Date {
   const d = new Date(date);
-  const day = d.getDay(); // 0=Sun
+  const day = d.getDay();
   const diff = (day + 6) % 7;
   d.setDate(d.getDate() - diff);
   d.setHours(0, 0, 0, 0);
   return d;
 }
+// isoWeekMonday is used by callers; suppress unused warning
+void isoWeekMonday;
 
 function budgetColor(pct: number): string {
-  if (pct >= 95) return "#ef4444"; // red
-  if (pct >= 80) return "#f59e0b"; // amber
-  return "#22c55e"; // green
+  if (pct >= 95) return "#ef4444";
+  if (pct >= 80) return "#f59e0b";
+  return "#22c55e";
 }
 
 function BurnBar({ pct, width = 80, height = 6 }: { pct: number; width?: number; height?: number }) {
   const clamped = Math.min(100, Math.max(0, pct));
   return (
     <div
-      style={{
-        display: "inline-block",
-        width,
-        height,
-        background: "var(--n-200, #e5e7eb)",
-        borderRadius: height / 2,
-        overflow: "hidden",
-        verticalAlign: "middle",
-      }}
+      className="inline-block bg-n-200 overflow-hidden align-middle"
+      style={{ width, height, borderRadius: height / 2 }}
     >
       <div
-        style={{
-          width: `${clamped}%`,
-          height: "100%",
-          background: budgetColor(pct),
-          borderRadius: height / 2,
-          transition: "width 0.3s ease",
-        }}
+        className="h-full transition-[width] duration-300 ease-in-out"
+        style={{ width: `${clamped}%`, background: budgetColor(pct), borderRadius: height / 2 }}
       />
     </div>
   );
@@ -79,7 +58,7 @@ function BurnBar({ pct, width = 80, height = 6 }: { pct: number; width?: number;
 function Sparkline({ weeks }: { weeks: WeeklyBurnEntry[] }) {
   const maxH = Math.max(...weeks.map(w => w.hours), 0.01);
   return (
-    <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 32, marginTop: 6 }}>
+    <div className="flex items-end gap-[2px] h-8 mt-[6px]">
       {weeks.map(w => {
         const frac = w.hours / maxH;
         const barH = Math.max(frac * 28, w.hours > 0 ? 2 : 1);
@@ -87,14 +66,8 @@ function Sparkline({ weeks }: { weeks: WeeklyBurnEntry[] }) {
           <div
             key={w.weekStart}
             title={`${w.weekStart}: ${w.hours.toFixed(1)}h`}
-            style={{
-              flex: 1,
-              height: barH,
-              background: w.hours > 0 ? "var(--brand-400, #818cf8)" : "var(--n-200, #e5e7eb)",
-              borderRadius: 2,
-              alignSelf: "flex-end",
-              minHeight: 1,
-            }}
+            className={`flex-1 self-end rounded-[2px] min-h-[1px] ${w.hours > 0 ? "bg-brand-400" : "bg-n-200"}`}
+            style={{ height: barH }}
           />
         );
       })}
@@ -103,8 +76,8 @@ function Sparkline({ weeks }: { weeks: WeeklyBurnEntry[] }) {
 }
 
 function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
-  if (!active) return <span style={{ opacity: 0.4, fontSize: "0.7rem", marginLeft: 3 }}>↕</span>;
-  return <span style={{ fontSize: "0.75rem", marginLeft: 3, color: "var(--brand-600)" }}>{dir === "asc" ? "↑" : "↓"}</span>;
+  if (!active) return <span className="opacity-40 text-[0.7rem] ml-[3px]">↕</span>;
+  return <span className="text-[0.75rem] ml-[3px] text-brand-600">{dir === "asc" ? "↑" : "↓"}</span>;
 }
 
 function Drawer({ open, title, onClose, children, footer }: { open: boolean; title: string; onClose: () => void; children: ReactNode; footer?: ReactNode }) {
@@ -158,10 +131,10 @@ function OverflowMenu({ items }: { items: { label: string; onClick: () => void; 
       <button ref={btnRef} className="overflow-btn" onClick={handleOpen}>···</button>
       {open && (
         <>
-          <div style={{ position: "fixed", inset: 0, zIndex: 199 }} onClick={() => setOpen(false)} />
+          <div className="fixed inset-0 z-[199]" onClick={() => setOpen(false)} />
           <div
-            className="overflow-menu"
-            style={{ position: "fixed", top: menuPos.top, right: menuPos.right, zIndex: 200 }}
+            className="overflow-menu fixed z-[200]"
+            style={{ top: menuPos.top, right: menuPos.right }}
           >
             {items.map(item => (
               <button
@@ -189,11 +162,8 @@ export function Projects() {
   const [sortCol, setSortCol] = useState<"name" | "code" | "status">("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
 
-  // Budget health state (for table column + summary card)
   const [budgetHealth, setBudgetHealth] = useState<ProjectBudgetHealthItem[]>([]);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
-
-  // Budget summary state (for edit drawer)
   const [budgetSummary, setBudgetSummary] = useState<ProjectBudgetSummaryResponse | null>(null);
   const [budgetSummaryLoading, setBudgetSummaryLoading] = useState(false);
 
@@ -243,16 +213,12 @@ export function Projects() {
 
   async function doArchive(id: string) {
     await apiFetch(`/projects/${id}/archive`, { method: "POST" });
-    setConfirm(null);
-    void load();
-    void loadBudgetHealth();
+    setConfirm(null); void load(); void loadBudgetHealth();
   }
 
   async function doDelete(id: string) {
     await apiFetch(`/projects/${id}`, { method: "DELETE" });
-    setConfirm(null);
-    void load();
-    void loadBudgetHealth();
+    setConfirm(null); void load(); void loadBudgetHealth();
   }
 
   function toggleSort(col: typeof sortCol) {
@@ -261,12 +227,9 @@ export function Projects() {
   }
 
   const f = (k: keyof ProjectForm, v: string | boolean) => setForm((p) => ({ ...p, [k]: v }));
-
   const statusOf = (p: Project) => p.isArchived ? "archived" : p.isActive ? "active" : "inactive";
-
   const budgetHealthMap = new Map(budgetHealth.map(h => [h.id, h]));
 
-  // Budget Health card counts
   const projectsWithBudget = budgetHealth.filter(h => h.budgetedHours > 0);
   const showHealthCard = projectsWithBudget.length > 0;
   const onTrackCount = budgetHealth.filter(h => h.status === "on-track").length;
@@ -295,11 +258,10 @@ export function Projects() {
 
   const drawerTitle = editing === "new" ? "New Project" : editing ? `Edit: ${(editing as Project).name}` : "";
 
-  // Budget summary panel rendered inside the edit drawer
   function BudgetPanel() {
     if (budgetSummaryLoading) {
       return (
-        <div style={{ marginTop: "var(--space-4)", padding: "var(--space-3)", background: "var(--n-50, #f9fafb)", borderRadius: "var(--r-md)", fontSize: "0.8rem", color: "var(--text-tertiary, #9ca3af)" }}>
+        <div className="mt-4 p-3 bg-n-50 rounded-md text-[0.8rem] text-text-tertiary">
           Loading budget data…
         </div>
       );
@@ -311,31 +273,32 @@ export function Projects() {
     const color = budgetColor(pct);
 
     return (
-      <div style={{ marginTop: "var(--space-4)", padding: "var(--space-3)", background: "var(--n-50, #f9fafb)", borderRadius: "var(--r-md)", border: "1px solid var(--n-200, #e5e7eb)" }}>
-        <div style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "var(--space-2)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+      <div className="mt-4 p-3 bg-n-50 rounded-md border border-n-200">
+        <div className="text-[0.75rem] font-semibold text-text-secondary mb-2 uppercase tracking-[0.05em]">
           Budget Health
         </div>
-        {/* Burn bar */}
-        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", marginBottom: "var(--space-1)" }}>
-          <div style={{ flex: 1, height: 8, background: "var(--n-200, #e5e7eb)", borderRadius: 4, overflow: "hidden" }}>
-            <div style={{ width: `${Math.min(100, pct)}%`, height: "100%", background: color, borderRadius: 4, transition: "width 0.3s ease" }} />
+        <div className="flex items-center gap-2 mb-1">
+          <div className="flex-1 h-2 bg-n-200 rounded overflow-hidden">
+            <div
+              className="h-full rounded transition-[width] duration-300"
+              style={{ width: `${Math.min(100, pct)}%`, background: color }}
+            />
           </div>
-          <span style={{ fontSize: "0.8rem", fontWeight: 700, color, whiteSpace: "nowrap" }}>{pct.toFixed(1)}% used</span>
+          <span className="text-[0.8rem] font-bold whitespace-nowrap" style={{ color }}>{pct.toFixed(1)}% used</span>
         </div>
-        <div style={{ fontSize: "0.75rem", color: "var(--text-tertiary, #9ca3af)", marginBottom: "var(--space-1)" }}>
+        <div className="text-[0.75rem] text-text-tertiary mb-1">
           {loggedHours.toFixed(1)}h logged of {budgetedHours}h budgeted
         </div>
         {projectedWeeksRemaining !== null && projectedWeeksRemaining !== undefined && burnRateHoursPerWeek > 0 && (
-          <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginBottom: "var(--space-2)" }}>
+          <div className="text-[0.75rem] text-text-secondary mb-2">
             ~{projectedWeeksRemaining} weeks remaining at current burn rate ({burnRateHoursPerWeek.toFixed(1)}h/wk)
           </div>
         )}
-        {/* 8-week sparkline */}
         {weeklyBreakdown.length > 0 && (
           <>
-            <div style={{ fontSize: "0.7rem", color: "var(--text-tertiary, #9ca3af)", marginTop: "var(--space-2)" }}>Last 8 weeks</div>
+            <div className="text-[0.7rem] text-text-tertiary mt-2">Last 8 weeks</div>
             <Sparkline weeks={weeklyBreakdown} />
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.65rem", color: "var(--text-tertiary, #9ca3af)", marginTop: 2 }}>
+            <div className="flex justify-between text-[0.65rem] text-text-tertiary mt-[2px]">
               <span>{weeklyBreakdown[0]?.weekStart.slice(5)}</span>
               <span>{weeklyBreakdown[weeklyBreakdown.length - 1]?.weekStart.slice(5)}</span>
             </div>
@@ -345,8 +308,10 @@ export function Projects() {
     );
   }
 
+  const pillBase = "inline-flex items-center gap-1 px-[10px] py-[2px] rounded-full border-0 cursor-pointer text-[0.75rem] font-semibold transition-[background] duration-150";
+
   return (
-    <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
+    <section className="flex flex-col gap-6">
       {/* Drawer form */}
       <Drawer open={!!editing} title={drawerTitle} onClose={() => setEditing(null)}
         footer={
@@ -365,11 +330,10 @@ export function Projects() {
           <label className="form-label" htmlFor="p-code">Code <span className="required">*</span></label>
           <input id="p-code" className="input-field" value={form.code} onChange={(e) => f("code", e.target.value.toUpperCase())} maxLength={50} required />
         </div>
-        <label style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", fontSize: "0.825rem", color: "var(--text-secondary)" }}>
-          <input type="checkbox" checked={form.isActive} onChange={(e) => f("isActive", e.target.checked)} style={{ accentColor: "var(--brand-600)" }} />
+        <label className="flex items-center gap-2 text-[0.825rem] text-text-secondary">
+          <input type="checkbox" checked={form.isActive} onChange={(e) => f("isActive", e.target.checked)} className="[accent-color:var(--brand-600)]" />
           Active
         </label>
-        {/* Budget Health panel — only shown when editing an existing project */}
         {editing !== "new" && <BudgetPanel />}
       </Drawer>
 
@@ -397,21 +361,15 @@ export function Projects() {
         </div>
       </div>
 
-      {/* TSK-BDG-006: Budget Health summary card */}
+      {/* Budget Health summary card */}
       {showHealthCard && (
-        <div className="card" style={{ padding: "var(--space-4)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", flexWrap: "wrap" }}>
-            <span style={{ fontSize: "0.825rem", fontWeight: 600, color: "var(--text-secondary)", marginRight: "var(--space-1)" }}>Budget Health</span>
+        <div className="card p-4">
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-[0.825rem] font-semibold text-text-secondary mr-1">Budget Health</span>
             {onTrackCount > 0 && (
               <button
                 onClick={() => setStatusFilter(statusFilter === "on-track" ? null : "on-track")}
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 4,
-                  padding: "2px 10px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: "0.75rem", fontWeight: 600,
-                  background: statusFilter === "on-track" ? "#16a34a" : "#dcfce7",
-                  color: statusFilter === "on-track" ? "#fff" : "#16a34a",
-                  transition: "background 0.15s",
-                }}
+                className={`${pillBase} ${statusFilter === "on-track" ? "bg-green-600 text-white" : "bg-green-100 text-green-600"}`}
               >
                 {onTrackCount} on-track
               </button>
@@ -419,13 +377,7 @@ export function Projects() {
             {warningCount > 0 && (
               <button
                 onClick={() => setStatusFilter(statusFilter === "warning" ? null : "warning")}
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 4,
-                  padding: "2px 10px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: "0.75rem", fontWeight: 600,
-                  background: statusFilter === "warning" ? "#d97706" : "#fef3c7",
-                  color: statusFilter === "warning" ? "#fff" : "#d97706",
-                  transition: "background 0.15s",
-                }}
+                className={`${pillBase} ${statusFilter === "warning" ? "bg-amber-600 text-white" : "bg-amber-100 text-amber-600"}`}
               >
                 {warningCount} warning
               </button>
@@ -433,13 +385,7 @@ export function Projects() {
             {criticalCount > 0 && (
               <button
                 onClick={() => setStatusFilter(statusFilter === "critical" ? null : "critical")}
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 4,
-                  padding: "2px 10px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: "0.75rem", fontWeight: 600,
-                  background: statusFilter === "critical" ? "#dc2626" : "#fee2e2",
-                  color: statusFilter === "critical" ? "#fff" : "#dc2626",
-                  transition: "background 0.15s",
-                }}
+                className={`${pillBase} ${statusFilter === "critical" ? "bg-red-600 text-white" : "bg-red-100 text-red-600"}`}
               >
                 {criticalCount} critical
               </button>
@@ -447,13 +393,7 @@ export function Projects() {
             {overBudgetCount > 0 && (
               <button
                 onClick={() => setStatusFilter(statusFilter === "over-budget" ? null : "over-budget")}
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 4,
-                  padding: "2px 10px", borderRadius: 999, border: "none", cursor: "pointer", fontSize: "0.75rem", fontWeight: 600,
-                  background: statusFilter === "over-budget" ? "#7f1d1d" : "#fecaca",
-                  color: statusFilter === "over-budget" ? "#fff" : "#7f1d1d",
-                  transition: "background 0.15s",
-                }}
+                className={`${pillBase} ${statusFilter === "over-budget" ? "bg-red-900 text-white" : "bg-red-200 text-red-900"}`}
               >
                 {overBudgetCount} over-budget
               </button>
@@ -461,7 +401,7 @@ export function Projects() {
             {statusFilter && (
               <button
                 onClick={() => setStatusFilter(null)}
-                style={{ padding: "2px 8px", borderRadius: 999, border: "1px solid var(--n-300)", background: "none", cursor: "pointer", fontSize: "0.7rem", color: "var(--text-tertiary)" }}
+                className="px-2 py-[2px] rounded-full border border-n-300 bg-transparent cursor-pointer text-[0.7rem] text-text-tertiary"
               >
                 Clear filter ✕
               </button>
@@ -471,7 +411,7 @@ export function Projects() {
       )}
 
       {/* Table */}
-      <div className="card" style={{ overflow: "visible" }}>
+      <div className="card overflow-visible">
         <div className="card-header">
           <div>
             <div className="card-title">All Projects</div>
@@ -485,46 +425,29 @@ export function Projects() {
           <table className="table-base">
             <thead>
               <tr>
-                <th
-                  className="th-sort"
-                  onClick={() => toggleSort("name")}
-                  aria-sort={sortCol === "name" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
-                >
+                <th className="th-sort" onClick={() => toggleSort("name")} aria-sort={sortCol === "name" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
                   Name <SortIcon active={sortCol === "name"} dir={sortDir} />
                 </th>
-                <th
-                  className="th-sort"
-                  style={{ width: 120 }}
-                  onClick={() => toggleSort("code")}
-                  aria-sort={sortCol === "code" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
-                >
-                  <span title="Project code used in reports" style={{ borderBottom: "1px dashed var(--n-300)", cursor: "help" }}>Code</span>
+                <th className="th-sort w-[120px]" onClick={() => toggleSort("code")} aria-sort={sortCol === "code" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
+                  <span title="Project code used in reports" className="border-b border-dashed border-n-300 cursor-help">Code</span>
                   <SortIcon active={sortCol === "code"} dir={sortDir} />
                 </th>
-                <th
-                  className="th-sort"
-                  style={{ width: 110 }}
-                  onClick={() => toggleSort("status")}
-                  aria-sort={sortCol === "status" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
-                >
+                <th className="th-sort w-[110px]" onClick={() => toggleSort("status")} aria-sort={sortCol === "status" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
                   Status <SortIcon active={sortCol === "status"} dir={sortDir} />
                 </th>
-                {/* TSK-BDG-005: Budget column */}
-                <th style={{ width: 120 }}>Budget</th>
-                <th style={{ width: 60 }}></th>
+                <th className="w-[120px]">Budget</th>
+                <th className="w-[60px]"></th>
               </tr>
             </thead>
             <tbody>
               {sorted.map((p) => {
                 const health = budgetHealthMap.get(p.id);
                 return (
-                  <tr key={p.id} style={{ opacity: p.isActive ? 1 : 0.5 }}>
+                  <tr key={p.id} className={p.isActive ? "" : "opacity-50"}>
                     <td>
-                      <button style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-primary)", fontWeight: 600, padding: 0, textAlign: "left", fontSize: "inherit" }} onClick={() => openEdit(p)}>
-                        {p.name}
-                      </button>
+                      <button className="btn-table-link" onClick={() => openEdit(p)}>{p.name}</button>
                     </td>
-                    <td><code style={{ fontFamily: "monospace", background: "var(--n-100)", padding: "2px 6px", borderRadius: "var(--r-sm)", fontSize: "0.75rem" }}>{p.code}</code></td>
+                    <td><code className="font-mono bg-n-100 px-[6px] py-0.5 rounded-sm text-[0.75rem]">{p.code}</code></td>
                     <td>
                       {p.isArchived
                         ? <span className="badge badge-neutral">archived</span>
@@ -532,14 +455,13 @@ export function Projects() {
                           ? <span className="badge badge-success">active</span>
                           : <span className="badge badge-warning">inactive</span>}
                     </td>
-                    {/* Budget cell */}
                     <td>
                       {!health || health.budgetedHours === 0 ? (
-                        <span style={{ color: "var(--text-tertiary, #9ca3af)", fontSize: "0.8rem" }}>—</span>
+                        <span className="text-text-tertiary text-[0.8rem]">—</span>
                       ) : (
-                        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                        <div className="flex items-center gap-[5px]">
                           <BurnBar pct={health.pctUsed} width={40} height={6} />
-                          <span style={{ fontSize: "0.75rem", fontWeight: 600, color: budgetColor(health.pctUsed), whiteSpace: "nowrap" }}>
+                          <span className="text-[0.75rem] font-semibold whitespace-nowrap" style={{ color: budgetColor(health.pctUsed) }}>
                             {health.pctUsed.toFixed(0)}%
                           </span>
                         </div>

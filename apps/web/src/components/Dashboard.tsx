@@ -245,7 +245,7 @@ function Sparkline({ values, color = "var(--brand-500)", width = 60, height = 20
   const step = width / (values.length - 1);
   const pts = values.map((v, i) => `${i * step},${height - ((v - min) / range) * (height - 2) - 1}`).join(" ");
   return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} aria-hidden="true" style={{ overflow: "visible" }}>
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} aria-hidden="true" className="overflow-visible">
       <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
     </svg>
   );
@@ -254,37 +254,23 @@ function Sparkline({ values, color = "var(--brand-500)", width = 60, height = 20
 // ── Bar chart for departments (fixes height=0 bug) ────────────────────────────
 function BarChartDept({ data, maxVal }: { data: DeptRow[]; maxVal: number }) {
   return (
-    <div style={{ display: "flex", gap: 6, alignItems: "flex-end", height: 140, paddingTop: 20 }}>
+    <div className="dash-bar-chart-dept">
       {data.slice(0, 7).map((r, i) => {
         const barH = maxVal > 0 ? Math.max(4, Math.round((r.minutes / maxVal) * 100)) : 4;
         return (
-          <div key={r.department} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 0 }}>
-            <div style={{ fontSize: "0.6rem", color: "var(--text-tertiary)", marginBottom: 2, lineHeight: 1 }}>
+          <div key={r.department} className="dash-bar-col">
+            <div className="dash-bar-val">
               {fmtMinutes(r.minutes)}
             </div>
             <div
+              className="dash-bar-seg"
               style={{
-                width: "100%",
                 height: `${barH}px`,
                 background: PALETTE[i % PALETTE.length],
-                borderRadius: "4px 4px 0 0",
-                cursor: "default",
               }}
               title={`${r.department}: ${fmtMinutes(r.minutes)}`}
             />
-            <div
-              style={{
-                fontSize: "0.62rem",
-                color: "var(--text-tertiary)",
-                marginTop: 4,
-                width: "100%",
-                textAlign: "center",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-              title={r.department}
-            >
+            <div className="dash-bar-label" title={r.department}>
               {r.department}
             </div>
           </div>
@@ -316,14 +302,14 @@ function ComplianceHeatmap({ data, onViewReport }: { data: ComplianceItem[]; onV
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-        <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--text-primary)" }}>
+      <div className="flex items-center gap-[8px] mb-[8px]">
+        <span className="text-[0.82rem] font-semibold text-[var(--text-primary)]">
           {compliantCount}/{knownDays.length} days compliant
         </span>
         <span className={`stat-trend ${statusClass}`}>{statusLabel}</span>
       </div>
       {/* Column headers */}
-      <div className="compliance-day-labels" style={{ marginBottom: 4 }}>
+      <div className="compliance-day-labels mb-[4px]">
         {DAY_NAMES.map((n, i) => <div key={i} className="compliance-day-label">{n}</div>)}
       </div>
       <div className="compliance-heatmap-grid">
@@ -346,21 +332,21 @@ function ComplianceHeatmap({ data, onViewReport }: { data: ComplianceItem[]; onV
         })}
       </div>
       {/* Legend */}
-      <div style={{ display: "flex", gap: 12, marginTop: 8, alignItems: "center", flexWrap: "wrap" }}>
+      <div className="flex gap-[12px] mt-[8px] items-center flex-wrap">
         {[
           { color: "var(--success)", label: "Compliant" },
           { color: "var(--danger)", label: "Non-compliant" },
           { color: "var(--n-150)", label: "No data", opacity: 0.4 },
         ].map(({ color, label, opacity }) => (
-          <div key={label} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: "0.7rem", color: "var(--text-tertiary)" }}>
-            <div style={{ width: 10, height: 10, borderRadius: 2, background: color, opacity }} />
+          <div key={label} className="flex items-center gap-[4px] text-[0.7rem] text-[var(--text-tertiary)]">
+            <div className="w-[10px] h-[10px] rounded-[2px]" style={{ background: color, opacity }} />
             {label}
           </div>
         ))}
       </div>
       {/* Footer CTA */}
       {onViewReport && (
-        <div style={{ marginTop: 10, borderTop: "1px solid var(--border-subtle)", paddingTop: 8 }}>
+        <div className="mt-[10px] border-t border-[var(--border-subtle)] pt-[8px]">
           <button onClick={onViewReport} className="card-footer-link">View compliance report →</button>
         </div>
       )}
@@ -374,27 +360,34 @@ function HBarChartDept({ data }: { data: DeptRow[] }) {
   const avg = data.reduce((a, r) => a + r.minutes, 0) / Math.max(data.length, 1);
   const avgPct = (avg / max) * 100;
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+    <div className="flex flex-col gap-[8px]">
       {data.slice(0, 7).map((r, i) => {
         const pct = Math.max(2, (r.minutes / max) * 100);
         return (
-          <div key={r.department} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ width: 88, fontSize: "0.72rem", color: "var(--text-secondary)", textAlign: "right", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flexShrink: 0 }} title={r.department}>
+          <div key={r.department} className="flex items-center gap-[8px]">
+            <div className="dash-hbar-label" title={r.department}>
               {r.department}
             </div>
-            <div style={{ flex: 1, position: "relative", height: 18, borderRadius: "var(--r-sm)", overflow: "visible" }}>
-              <div style={{ position: "absolute", inset: 0, background: "var(--n-50)", borderRadius: "var(--r-sm)" }} />
-              <div style={{ position: "absolute", top: 0, left: 0, height: "100%", width: `${pct}%`, background: PALETTE[i % PALETTE.length], borderRadius: "var(--r-sm)", transition: "width 0.5s cubic-bezier(0.16,1,0.3,1)" }} />
-              <div style={{ position: "absolute", top: -3, bottom: -3, left: `${avgPct}%`, width: 1.5, background: "var(--n-400)", opacity: 0.7, pointerEvents: "none" }} title={`Avg: ${fmtMinutes(Math.round(avg))}`} />
+            <div className="relative flex-1 h-[18px] rounded-[var(--r-sm)] overflow-visible">
+              <div className="absolute inset-0 bg-[var(--n-50)] rounded-[var(--r-sm)]" />
+              <div
+                className="absolute top-0 left-0 h-full rounded-[var(--r-sm)] [transition:width_0.5s_cubic-bezier(0.16,1,0.3,1)]"
+                style={{ width: `${pct}%`, background: PALETTE[i % PALETTE.length] }}
+              />
+              <div
+                className="absolute top-[-3px] bottom-[-3px] w-[1.5px] bg-[var(--n-400)] opacity-70 pointer-events-none"
+                style={{ left: `${avgPct}%` }}
+                title={`Avg: ${fmtMinutes(Math.round(avg))}`}
+              />
             </div>
-            <div style={{ width: 36, fontSize: "0.7rem", color: "var(--text-tertiary)", textAlign: "right", flexShrink: 0 }}>
+            <div className="w-[36px] text-[0.7rem] text-[var(--text-tertiary)] text-right shrink-0">
               {fmtMinutes(r.minutes)}
             </div>
           </div>
         );
       })}
-      <div style={{ paddingLeft: 96, fontSize: "0.68rem", color: "var(--text-tertiary)", display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
-        <div style={{ width: 12, height: 1.5, background: "var(--n-400)", opacity: 0.7 }} />
+      <div className="flex items-center gap-[4px] mt-[2px] text-[0.68rem] text-[var(--text-tertiary)] pl-[96px]">
+        <div className="w-[12px] h-[1.5px] bg-[var(--n-400)] opacity-70" />
         Avg: {fmtMinutes(Math.round(avg))}
       </div>
     </div>
@@ -404,12 +397,12 @@ function HBarChartDept({ data }: { data: DeptRow[] }) {
 // ── Single-department stat display ────────────────────────────────────────────
 function SingleDeptStat({ dept }: { dept: DeptRow }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "var(--space-6) 0", gap: "var(--space-2)" }}>
-      <div style={{ fontFamily: "var(--font-display)", fontSize: "2.5rem", fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.04em", lineHeight: 1 }}>
+    <div className="flex flex-col items-center justify-center py-[var(--space-6)] gap-[var(--space-2)]">
+      <div className="[font-family:var(--font-display)] text-[2.5rem] font-bold text-[var(--text-primary)] [letter-spacing:-0.04em] leading-none">
         {fmtMinutes(dept.minutes)}
       </div>
-      <div style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--text-secondary)", marginTop: 4 }}>{dept.department}</div>
-      <div style={{ fontSize: "0.75rem", color: "var(--text-tertiary)" }}>Total effort this period</div>
+      <div className="text-[0.9rem] font-semibold text-[var(--text-secondary)] mt-[4px]">{dept.department}</div>
+      <div className="text-[0.75rem] text-[var(--text-tertiary)]">Total effort this period</div>
     </div>
   );
 }
@@ -433,7 +426,7 @@ function KpiItem({ name, color, value, max, pctLabel, onView }: {
         <div className="kpi-name">
           <div className="kpi-dot" style={{ background: color }} />
           {name}
-          {pctLabel && <span style={{ marginLeft: 4, fontSize: "0.68rem", color: "var(--text-tertiary)" }}>{pctLabel}</span>}
+          {pctLabel && <span className="ml-[4px] text-[0.68rem] text-[var(--text-tertiary)]">{pctLabel}</span>}
         </div>
         <div className="kpi-val">{fmtMinutes(value)}</div>
       </div>
@@ -473,11 +466,10 @@ function UtilBar({ minutes, status }: { minutes: number; status?: string }) {
     fillClass = "progress-fill--caution"; labelColor = "#f97316"; label = "~ Near target";
   }
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+    <div className="flex flex-col gap-[2px]">
+      <div className="flex items-center gap-[6px]">
         <div
-          className="progress-track"
-          style={{ flex: 1, maxWidth: 60, height: 4 }}
+          className="progress-track flex-1 max-w-[60px] h-[4px]"
           role="progressbar"
           aria-valuenow={barPct}
           aria-valuemin={0}
@@ -486,10 +478,10 @@ function UtilBar({ minutes, status }: { minutes: number; status?: string }) {
         >
           <div className={`progress-fill ${fillClass}`} style={{ width: `${barPct}%` }} />
         </div>
-        <span style={{ fontSize: "0.7rem", color: labelColor, fontWeight: 600, minWidth: 28 }}>{barPct}%</span>
-        <span style={{ fontSize: "0.68rem", color: labelColor }}>{label}</span>
+        <span className="text-[0.7rem] font-semibold min-w-[28px]" style={{ color: labelColor }}>{barPct}%</span>
+        <span className="text-[0.68rem]" style={{ color: labelColor }}>{label}</span>
       </div>
-      <div style={{ fontSize: "0.65rem", color: "var(--text-tertiary)" }}>{actualH}h this week</div>
+      <div className="text-[0.65rem] text-[var(--text-tertiary)]">{actualH}h this week</div>
     </div>
   );
 }
@@ -498,7 +490,7 @@ function UtilBar({ minutes, status }: { minutes: number; status?: string }) {
 function WeeklyBarChart({ days }: { days: WeekDayMeta[] }) {
   if (days.length === 0) {
     return (
-      <div className="empty-state" style={{ padding: "var(--space-6) 0" }}>
+      <div className="empty-state py-[var(--space-6)]">
         <p className="empty-state__title">No data this week</p>
       </div>
     );
@@ -537,30 +529,30 @@ function WeeklyBarChart({ days }: { days: WeekDayMeta[] }) {
 // ── Skeleton ──────────────────────────────────────────────────────────────────
 function DashboardSkeleton() {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+    <div className="flex flex-col gap-[var(--space-4)]">
       <div className="page-header">
         <div>
-          <div className="skeleton skeleton-title" style={{ width: 260, height: 24, marginBottom: 8 }} />
-          <div className="skeleton skeleton-text" style={{ width: 200 }} />
+          <div className="skeleton skeleton-title w-[260px] h-[24px] mb-[8px]" />
+          <div className="skeleton skeleton-text w-[200px]" />
         </div>
       </div>
       <div className="stat-grid-4">
         {[1, 2, 3, 4].map(i => (
           <div key={i} className="stat-card">
             <div className="stat-card-top">
-              <div className="skeleton" style={{ width: 36, height: 36, borderRadius: "var(--r-md)" }} />
-              <div className="skeleton skeleton-text" style={{ width: 56 }} />
+              <div className="skeleton w-[36px] h-[36px] rounded-[var(--r-md)]" />
+              <div className="skeleton skeleton-text w-[56px]" />
             </div>
-            <div className="skeleton skeleton-title" style={{ width: 80, height: 28, margin: "16px 0 6px" }} />
-            <div className="skeleton skeleton-text" style={{ width: 110 }} />
+            <div className="skeleton skeleton-title w-[80px] h-[28px] my-[16px]" />
+            <div className="skeleton skeleton-text w-[110px]" />
           </div>
         ))}
       </div>
       <div className="dashboard-grid-2">
         {[1, 2].map(i => (
-          <div key={i} className="card" style={{ padding: "var(--space-5)", minHeight: 200 }}>
-            <div className="skeleton skeleton-title" style={{ width: 140, height: 16, marginBottom: 20 }} />
-            <div className="skeleton" style={{ width: "100%", height: 120, borderRadius: "var(--r-md)" }} />
+          <div key={i} className="card p-[var(--space-5)] min-h-[200px]">
+            <div className="skeleton skeleton-title w-[140px] h-[16px] mb-[20px]" />
+            <div className="skeleton w-full h-[120px] rounded-[var(--r-md)]" />
           </div>
         ))}
       </div>
@@ -607,7 +599,7 @@ function EmployeeDashboard({ employee, week, leaveBalances, activeProjectCount, 
   });
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+    <div className="flex flex-col gap-[var(--space-4)]">
       <div className="page-header">
         <div>
           <h1 className="page-title">{greeting(username)}</h1>
@@ -626,7 +618,7 @@ function EmployeeDashboard({ employee, week, leaveBalances, activeProjectCount, 
               {pctTarget > 0 ? `↑ ${pctTarget}% target` : "No entries"}
             </span>
           </div>
-          <div className="stat-value">{hoursThisWeek.toFixed(1)}<span style={{ fontSize: "1rem", color: "var(--text-tertiary)" }}>h</span></div>
+          <div className="stat-value">{hoursThisWeek.toFixed(1)}<span className="text-[1rem] text-[var(--text-tertiary)]">h</span></div>
           <h2 className="stat-label">Hours this week</h2>
           <div className="stat-footer">{week.weekExpectedMinutes > 0 ? `${(week.weekExpectedMinutes / 60).toFixed(0)}h expected` : "No schedule set"}</div>
         </div>
@@ -638,7 +630,7 @@ function EmployeeDashboard({ employee, week, leaveBalances, activeProjectCount, 
               {approvalRate >= 90 ? `↑ ${approvalRate}%` : "On track"}
             </span>
           </div>
-          <div className="stat-value">{approvalRate}<span style={{ fontSize: "1rem", color: "var(--text-tertiary)" }}>%</span></div>
+          <div className="stat-value">{approvalRate}<span className="text-[1rem] text-[var(--text-tertiary)]">%</span></div>
           <h2 className="stat-label">Approval rate</h2>
           <div className="stat-footer">{compliantDays} of {monthlyComplianceTrend.length} submitted this month</div>
         </div>
@@ -658,7 +650,7 @@ function EmployeeDashboard({ employee, week, leaveBalances, activeProjectCount, 
             <div className="stat-icon" style={{ background: "var(--warning-light)" }}><IconLeaf color="#f59e0b" /></div>
             <span className="stat-trend trend-flat">FY {new Date().getFullYear()}</span>
           </div>
-          <div className="stat-value">{annualLeave?.remainingDays ?? 0}<span style={{ fontSize: "1rem", color: "var(--text-tertiary)" }}>d</span></div>
+          <div className="stat-value">{annualLeave?.remainingDays ?? 0}<span className="text-[1rem] text-[var(--text-tertiary)]">d</span></div>
           <h2 className="stat-label">Leave balance</h2>
           <div className="stat-footer">{annualLeave?.leaveTypeName ?? "Annual"} · {annualLeave?.usedDays ?? 0}d used</div>
         </div>
@@ -679,7 +671,7 @@ function EmployeeDashboard({ employee, week, leaveBalances, activeProjectCount, 
           </div>
           <div className="card-body">
             <WeeklyBarChart days={week.days} />
-            <div className="chart-legend" style={{ marginTop: "var(--space-3)" }}>
+            <div className="chart-legend mt-[var(--space-3)]">
               <div className="chart-legend-item"><div className="chart-legend-dot" style={{ background: "var(--brand-400)" }} />Logged hours</div>
               <div className="chart-legend-item"><div className="chart-legend-dot" style={{ background: "var(--n-200)" }} />Daily target</div>
             </div>
@@ -695,14 +687,14 @@ function EmployeeDashboard({ employee, week, leaveBalances, activeProjectCount, 
           </div>
           <div className="card-body">
             {projectEffort.length === 0 ? (
-              <div className="empty-state" style={{ padding: "var(--space-8) 0" }}>
+              <div className="empty-state py-[var(--space-8)]">
                 <p className="empty-state__title">No entries yet</p>
                 <p className="empty-state__sub">Log time to see your project split.</p>
               </div>
             ) : (
-              <div style={{ display: "flex", alignItems: "center", gap: "var(--space-5)" }}>
+              <div className="flex items-center gap-[var(--space-5)]">
                 <DonutChart segments={donutSegs} centerLabel={`${totalEffortH}h`} centerSub="Total" size={110} />
-                <div className="kpi-list" style={{ flex: 1 }}>
+                <div className="kpi-list flex-1">
                   {projectEffort.slice(0, 4).map((r, i) => (
                     <KpiItem key={r.project} name={r.project} color={PALETTE[i % PALETTE.length]} value={r.minutes} max={maxEffort} />
                   ))}
@@ -742,7 +734,7 @@ function EmployeeDashboard({ employee, week, leaveBalances, activeProjectCount, 
           </div>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column" }}>
+        <div className="flex flex-col">
           <AttendanceWidget />
         </div>
 
@@ -755,7 +747,7 @@ function EmployeeDashboard({ employee, week, leaveBalances, activeProjectCount, 
           </div>
           <div className="card-body">
             {leaveBalances.length === 0 ? (
-              <div className="empty-state" style={{ padding: "var(--space-6) 0" }}>
+              <div className="empty-state py-[var(--space-6)]">
                 <p className="empty-state__title">No leave policy assigned</p>
               </div>
             ) : (
@@ -786,7 +778,7 @@ function EmployeeDashboard({ employee, week, leaveBalances, activeProjectCount, 
                           background: PALETTE[i % PALETTE.length],
                         }} />
                       </div>
-                      <div style={{ fontSize: "0.72rem", color: "var(--text-tertiary)", marginTop: 2 }}>
+                      <div className="text-[0.72rem] text-[var(--text-tertiary)] mt-[2px]">
                         {lb.usedDays}d used of {lb.totalDays}d
                       </div>
                     </div>
@@ -861,15 +853,10 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
   const allPresent = teamAttendance.notCheckedIn === 0 && teamAttendance.onLeave === 0;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+    <div className="flex flex-col gap-[var(--space-4)]">
       {/* Approve toast */}
       {approveToast && (
-        <div style={{
-          position: "fixed", bottom: 24, right: 24, zIndex: 9999,
-          background: "#111827", color: "#fff", borderRadius: 8,
-          padding: "10px 18px", fontSize: 14, fontWeight: 600,
-          boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
-        }}>{approveToast}</div>
+        <div className="toast">{approveToast}</div>
       )}
 
       <div className="page-header">
@@ -879,18 +866,18 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
         </div>
         {/* C2 — SVG icon instead of emoji; Reports accessible via sidebar nav too */}
         <div className="page-actions">
-          <button className="btn btn-outline btn-sm" style={{ display: "flex", alignItems: "center", gap: 6 }} onClick={() => onNavigate?.("reports")}>
+          <button className="btn btn-outline btn-sm flex items-center gap-[6px]" onClick={() => onNavigate?.("reports")}>
             <IconBarChart size={14} /> Reports
           </button>
         </div>
       </div>
 
       {/* M4 — Data freshness indicator */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, fontSize: "0.78rem", color: "var(--text-tertiary)", marginTop: -8 }}>
-        <time dateTime={lastRefreshed.toISOString()} style={{ fontWeight: 500 }}>{relativeTime(lastRefreshed)}</time>
+      <div className="dash-freshness-bar">
+        <time dateTime={lastRefreshed.toISOString()} className="font-medium">{relativeTime(lastRefreshed)}</time>
         <button
           onClick={() => void fetchPending()}
-          style={{ background: "none", border: "1px solid var(--border-subtle)", cursor: "pointer", color: "var(--brand-600)", display: "flex", alignItems: "center", gap: 4, padding: "3px 8px", fontSize: "0.75rem", borderRadius: "var(--r-sm)", fontWeight: 600 }}
+          className="dash-refresh-btn"
           aria-label="Refresh dashboard"
         >
           <IconRefresh size={12} /> Refresh
@@ -901,13 +888,10 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
       <div className="stat-grid-4">
         {/* Present Today — C1: "↑ All in" only when allPresent */}
         <div
-          className="stat-card"
-          style={{ cursor: "pointer", minHeight: 140, transition: "box-shadow 0.15s" }}
+          className="stat-card cursor-pointer min-h-[140px] hover:shadow-md"
           onClick={() => onNavigate?.("team")}
           role="link"
           aria-label={`View ${teamAttendance.present} member${teamAttendance.present !== 1 ? "s" : ""} present today`}
-          onMouseEnter={e => (e.currentTarget.style.boxShadow = "var(--shadow-md)")}
-          onMouseLeave={e => (e.currentTarget.style.boxShadow = "")}
           tabIndex={0}
           onKeyDown={e => { if (e.key === "Enter" || e.key === " ") onNavigate?.("team"); }}
         >
@@ -925,13 +909,10 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
 
         {/* On Leave Today */}
         <div
-          className="stat-card"
-          style={{ cursor: "pointer", minHeight: 140, transition: "box-shadow 0.15s" }}
+          className="stat-card cursor-pointer min-h-[140px] hover:shadow-md"
           onClick={() => onNavigate?.("team")}
           role="link"
           aria-label={`View ${teamAttendance.onLeave} member${teamAttendance.onLeave !== 1 ? "s" : ""} on leave today`}
-          onMouseEnter={e => (e.currentTarget.style.boxShadow = "var(--shadow-md)")}
-          onMouseLeave={e => (e.currentTarget.style.boxShadow = "")}
           tabIndex={0}
           onKeyDown={e => { if (e.key === "Enter" || e.key === " ") onNavigate?.("team"); }}
         >
@@ -946,13 +927,10 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
 
         {/* Not Checked In — C1: no "↑ All in" here; neutral when 0 */}
         <div
-          className="stat-card"
-          style={{ cursor: "pointer", minHeight: 140, transition: "box-shadow 0.15s" }}
+          className="stat-card cursor-pointer min-h-[140px] hover:shadow-md"
           onClick={() => onNavigate?.("team")}
           role="link"
           aria-label={`View ${teamAttendance.notCheckedIn} member${teamAttendance.notCheckedIn !== 1 ? "s" : ""} not checked in`}
-          onMouseEnter={e => (e.currentTarget.style.boxShadow = "var(--shadow-md)")}
-          onMouseLeave={e => (e.currentTarget.style.boxShadow = "")}
           tabIndex={0}
           onKeyDown={e => { if (e.key === "Enter" || e.key === " ") onNavigate?.("team"); }}
         >
@@ -972,13 +950,10 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
 
         {/* Pending Approvals */}
         <div
-          className="stat-card"
-          style={{ cursor: "pointer", minHeight: 140, transition: "box-shadow 0.15s" }}
+          className="stat-card cursor-pointer min-h-[140px] hover:shadow-md"
           onClick={() => onNavigate?.("approvals")}
           role="link"
           aria-label={`View ${timesheetHealth.pendingApprovals} pending approval${timesheetHealth.pendingApprovals !== 1 ? "s" : ""}`}
-          onMouseEnter={e => (e.currentTarget.style.boxShadow = "var(--shadow-md)")}
-          onMouseLeave={e => (e.currentTarget.style.boxShadow = "")}
           tabIndex={0}
           onKeyDown={e => { if (e.key === "Enter" || e.key === " ") onNavigate?.("approvals"); }}
         >
@@ -1008,15 +983,15 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
           <div className="card-body">
             {/* H3 — Small team (≤3): horizontal stat row instead of chart */}
             {totalTeam <= 3 ? (
-              <div style={{ display: "flex", gap: "var(--space-4)", justifyContent: "space-around" }}>
+              <div className="flex gap-[var(--space-4)] justify-around">
                 {[
                   { label: "Present", value: teamAttendance.present, color: "var(--success)" },
                   { label: "On Leave", value: teamAttendance.onLeave, color: "var(--info)" },
                   { label: "Absent", value: teamAttendance.notCheckedIn, color: "var(--warning)" },
                 ].map(b => (
-                  <div key={b.label} style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: "1.8rem", fontWeight: 700, color: b.color, lineHeight: 1 }}>{b.value}</div>
-                    <div style={{ fontSize: "0.72rem", color: "var(--text-tertiary)", marginTop: 4 }}>{b.label}</div>
+                  <div key={b.label} className="text-center">
+                    <div className="text-[1.8rem] font-bold leading-none" style={{ color: b.color }}>{b.value}</div>
+                    <div className="text-[0.72rem] text-[var(--text-tertiary)] mt-[4px]">{b.label}</div>
                   </div>
                 ))}
               </div>
@@ -1026,22 +1001,22 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
                 role="img"
                 aria-label={`Team attendance: ${teamAttendance.present} present, ${teamAttendance.onLeave} on leave, ${teamAttendance.notCheckedIn} absent`}
               >
-                <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+                <div className="flex gap-[8px] items-end">
                   {/* Y-axis */}
-                  <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", height: 100, paddingBottom: 22, paddingTop: 4 }}>
+                  <div className="flex flex-col justify-between h-[100px] pb-[22px] pt-[4px]">
                     {Array.from({ length: Math.min(totalTeam + 1, 5) }, (_, i) => {
                       const tick = Math.round((totalTeam / Math.min(totalTeam, 4)) * (Math.min(totalTeam, 4) - i));
                       return (
-                        <div key={i} style={{ fontSize: "0.6rem", color: "var(--text-tertiary)", textAlign: "right", lineHeight: 1 }}>
+                        <div key={i} className="text-[0.6rem] text-[var(--text-tertiary)] text-right leading-none">
                           {tick}
                         </div>
                       );
                     })}
                   </div>
-                  <div style={{ flex: 1, display: "flex", gap: 8, alignItems: "flex-end", height: 100, position: "relative" }}>
+                  <div className="flex-1 flex gap-[8px] items-end h-[100px] relative">
                     {/* Gridlines */}
                     {[25, 50, 75].map(pct => (
-                      <div key={pct} style={{ position: "absolute", left: 0, right: 0, bottom: `${pct * 0.7}%`, height: 1, background: "var(--border-subtle)", pointerEvents: "none" }} />
+                      <div key={pct} className="absolute left-0 right-0 h-[1px] bg-[var(--border-subtle)] pointer-events-none" style={{ bottom: `${pct * 0.7}%` }} />
                     ))}
                     {[
                       { label: "Present", value: teamAttendance.present, color: "var(--success)" },
@@ -1051,13 +1026,14 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
                       const pct = totalTeam > 0 ? Math.round((b.value / totalTeam) * 100) : 0;
                       const barH = Math.max(4, Math.round(pct * 0.7));
                       return (
-                        <div key={b.label} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center" }}>
-                          <div style={{ fontSize: "0.65rem", color: "var(--text-tertiary)", marginBottom: 3 }}>{b.value}</div>
+                        <div key={b.label} className="flex-1 flex flex-col items-center">
+                          <div className="text-[0.65rem] text-[var(--text-tertiary)] mb-[3px]">{b.value}</div>
                           <div
-                            style={{ width: "100%", height: `${barH}px`, background: b.color, borderRadius: "4px 4px 0 0", cursor: "default" }}
+                            className="w-full [border-radius:4px_4px_0_0] cursor-default"
+                            style={{ height: `${barH}px`, background: b.color }}
                             title={`${b.label}: ${b.value} member${b.value !== 1 ? "s" : ""}`}
                           />
-                          <div style={{ fontSize: "0.7rem", color: "var(--text-tertiary)", marginTop: 4 }}>{b.label}</div>
+                          <div className="text-[0.7rem] text-[var(--text-tertiary)] mt-[4px]">{b.label}</div>
                         </div>
                       );
                     })}
@@ -1065,7 +1041,7 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
                 </div>
               </div>
             )}
-            <div className="chart-legend" style={{ marginTop: "var(--space-3)" }}>
+            <div className="chart-legend mt-[var(--space-3)]">
               <div className="chart-legend-item"><div className="chart-legend-dot" style={{ background: "var(--success)" }} />Present ({teamAttendance.present})</div>
               <div className="chart-legend-item"><div className="chart-legend-dot" style={{ background: "var(--info)" }} />On Leave ({teamAttendance.onLeave})</div>
               <div className="chart-legend-item"><div className="chart-legend-dot" style={{ background: "var(--warning)" }} />Absent ({teamAttendance.notCheckedIn})</div>
@@ -1083,22 +1059,22 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
           </div>
           <div className="card-body">
             {contributions.length === 0 ? (
-              <div className="empty-state" style={{ padding: "var(--space-6) 0" }}><p className="empty-state__title">No data</p></div>
+              <div className="empty-state py-[var(--space-6)]"><p className="empty-state__title">No data</p></div>
             ) : contributions.length === 1 ? (
               /* H4 — Single project: stat display instead of donut */
-              <div style={{ padding: "var(--space-4) 0" }}>
-                <div style={{ fontSize: "0.8rem", color: "var(--text-tertiary)", marginBottom: 4 }} title={contributions[0].project}>
+              <div className="py-[var(--space-4)]">
+                <div className="text-[0.8rem] text-[var(--text-tertiary)] mb-[4px]" title={contributions[0].project}>
                   {contributions[0].project}
                 </div>
-                <div style={{ fontSize: "1.8rem", fontWeight: 700, color: "var(--text-primary)", lineHeight: 1 }}>
+                <div className="text-[1.8rem] font-bold text-[var(--text-primary)] leading-none">
                   {(contributions[0].minutes / 60).toFixed(1)}h
                 </div>
-                <div style={{ fontSize: "0.72rem", color: "var(--text-tertiary)", marginTop: 4 }}>this week</div>
+                <div className="text-[0.72rem] text-[var(--text-tertiary)] mt-[4px]">this week</div>
               </div>
             ) : (
-              <div style={{ display: "flex", alignItems: "center", gap: "var(--space-5)" }}>
+              <div className="flex items-center gap-[var(--space-5)]">
                 <DonutChart segments={donutSegs} centerLabel={`${(totalContrib / 60).toFixed(0)}h`} centerSub="Team" size={110} />
-                <div className="kpi-list" style={{ flex: 1 }}>
+                <div className="kpi-list flex-1">
                   {contributions.slice(0, 4).map((r, i) => (
                     <KpiItem key={r.project} name={r.project} color={PALETTE[i % PALETTE.length]} value={r.minutes} max={maxContrib} />
                   ))}
@@ -1118,7 +1094,7 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
           </div>
           <div className="card-body">
             {mismatches.length === 0 ? (
-              <div className="empty-state" style={{ padding: "var(--space-8) 0" }}>
+              <div className="empty-state py-[var(--space-8)]">
                 <p className="empty-state__title">No mismatches</p>
                 <p className="empty-state__sub">All timesheets match attendance.</p>
               </div>
@@ -1129,23 +1105,23 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
                   const note = r.mismatchReason ?? "";
                   const truncated = note.length > MAX_NOTE ? note.slice(0, MAX_NOTE) + "…" : note;
                   return (
-                    <div key={i} className="activity-item" style={{ cursor: "pointer", alignItems: "flex-start" }} onClick={() => onNavigate?.("approvals")}>
-                      <div className="activity-icon-wrap" style={{ background: "var(--danger-light)", marginTop: 2 }}>⚠</div>
-                      <div className="activity-body" style={{ flex: 1 }}>
+                    <div key={i} className="activity-item cursor-pointer items-start" onClick={() => onNavigate?.("approvals")}>
+                      <div className="activity-icon-wrap mt-[2px]" style={{ background: "var(--danger-light)" }}>⚠</div>
+                      <div className="activity-body flex-1">
                         {/* C3 — structured sentence format */}
                         <div className="activity-text">
                           <strong>{formatDisplayName(r.username)}</strong> submitted a timesheet for{" "}
                           {fmtDateShort(r.workDate)} — flagged as mismatch
                         </div>
                         {note && (
-                          <div style={{ fontSize: "0.7rem", color: "var(--text-tertiary)", marginTop: 2 }}>
-                            <span style={{ fontWeight: 600 }}>Note:</span> <span title={note}>{truncated}</span>
+                          <div className="text-[0.7rem] text-[var(--text-tertiary)] mt-[2px]">
+                            <span className="font-semibold">Note:</span> <span title={note}>{truncated}</span>
                           </div>
                         )}
                         {/* C3 — review action link */}
                         <button
                           type="button"
-                          style={{ marginTop: 4, background: "none", border: "none", padding: 0, color: "var(--brand-600)", fontSize: "0.72rem", fontWeight: 600, cursor: "pointer" }}
+                          className="mt-[4px] bg-none border-none p-0 text-[var(--brand-600)] text-[0.72rem] font-semibold cursor-pointer bg-transparent"
                           onClick={e => { e.stopPropagation(); onNavigate?.("approvals"); }}
                         >
                           Review →
@@ -1168,7 +1144,7 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
           </div>
           <div className="card-body">
             {pendingList.length === 0 && timesheetHealth.pendingApprovals === 0 ? (
-              <div className="empty-state" style={{ padding: "var(--space-8) 0" }}>
+              <div className="empty-state py-[var(--space-8)]">
                 <p className="empty-state__title">All clear</p>
                 <p className="empty-state__sub">No pending approvals.</p>
               </div>
@@ -1176,49 +1152,38 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
               <div>
                 {/* H5 — inline confirmation panel */}
                 {confirming && confirmPayload && (
-                  <div style={{
-                    background: "var(--warning-light)", border: "1px solid #fbbf24",
-                    borderRadius: "var(--r-md)", padding: "var(--space-3)",
-                    marginBottom: "var(--space-3)", fontSize: "0.8rem",
-                  }}>
-                    <div style={{ fontWeight: 600, marginBottom: 8 }}>
+                  <div className="dash-confirm-panel">
+                    <div className="font-semibold mb-[8px]">
                       Approve {formatDisplayName(confirmPayload.username)}'s timesheet for {fmtDateShort(confirmPayload.workDate)}?
                     </div>
-                    <div style={{ display: "flex", gap: "var(--space-2)" }}>
+                    <div className="flex gap-[var(--space-2)]">
                       <button
-                        className="btn btn-primary btn-sm"
-                        style={{ fontSize: "0.75rem" }}
+                        className="btn btn-primary btn-sm text-[0.75rem]"
                         onClick={() => { const item = doConfirm(); if (item) void executeApprove(item); }}
                       >Confirm</button>
                       <button
-                        className="btn btn-ghost btn-sm"
-                        style={{ fontSize: "0.75rem" }}
+                        className="btn btn-ghost btn-sm text-[0.75rem]"
                         onClick={cancelConfirm}
                       >Cancel</button>
                     </div>
                   </div>
                 )}
 
-                <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+                <div className="flex flex-col gap-[var(--space-2)]">
                   {pendingList.map(a => (
-                    <div key={a.timesheetId} style={{
-                      display: "flex", alignItems: "center", gap: "var(--space-2)",
-                      padding: "var(--space-2)", background: "var(--n-25)",
-                      borderRadius: "var(--r-md)", border: "1px solid var(--border-subtle)",
-                    }}>
+                    <div key={a.timesheetId} className="dash-approval-row">
                       <div className="av" style={{ background: avatarColor(a.username), borderRadius: "var(--r-md)", flexShrink: 0 }}>
                         {a.username.slice(0, 2).toUpperCase()}
                       </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={a.username}>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[0.8rem] font-semibold text-[var(--text-primary)] overflow-hidden text-ellipsis whitespace-nowrap" title={a.username}>
                           {formatDisplayName(a.username)}
                         </div>
-                        <div style={{ fontSize: "0.7rem", color: "var(--text-tertiary)" }}>{fmtDateShort(a.workDate)} · {fmtMinutes(a.enteredMinutes)}</div>
+                        <div className="text-[0.7rem] text-[var(--text-tertiary)]">{fmtDateShort(a.workDate)} · {fmtMinutes(a.enteredMinutes)}</div>
                       </div>
                       {/* H5 — requests confirmation instead of immediate approve */}
                       <button
-                        className="btn btn-outline-success btn-sm"
-                        style={{ padding: "3px 8px", height: 26, fontSize: "0.72rem", minWidth: 28 }}
+                        className="btn btn-outline-success btn-sm [padding:3px_8px] h-[26px] text-[0.72rem] min-w-[28px]"
                         onClick={() => requestConfirm(a)}
                         disabled={approvingId === a.timesheetId || (confirming && confirmPayload?.timesheetId !== a.timesheetId)}
                         title={`Approve ${formatDisplayName(a.username)}'s timesheet`}
@@ -1230,7 +1195,7 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
 
                 {/* M1 — Fix grammatically awkward pending CTA */}
                 {timesheetHealth.pendingApprovals > 0 && (
-                  <div style={{ marginTop: "var(--space-3)" }}>
+                  <div className="mt-[var(--space-3)]">
                     <button className="btn btn-outline w-full btn-sm" onClick={() => onNavigate?.("approvals")}>
                       {timesheetHealth.pendingApprovals === 1
                         ? "View 1 pending approval →"
@@ -1250,7 +1215,7 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
           </div>
           <div className="card-body">
             {contributions.length === 0 ? (
-              <div className="empty-state" style={{ padding: "var(--space-6) 0" }}><p className="empty-state__title">No data</p></div>
+              <div className="empty-state py-[var(--space-6)]"><p className="empty-state__title">No data</p></div>
             ) : (
               <div className="kpi-list">
                 {contributions.slice(0, 5).map((r, i) => {
@@ -1275,7 +1240,7 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
                         <div className="progress-fill" style={{ width: `${maxContrib > 0 ? Math.round((r.minutes / maxContrib) * 100) : 0}%`, background: PALETTE[i % PALETTE.length] }} />
                       </div>
                       {/* H6 — No budget cap indicator */}
-                      <div style={{ fontSize: "0.68rem", color: "var(--text-tertiary)", fontStyle: "italic", marginTop: 2 }}>
+                      <div className="text-[0.68rem] text-[var(--text-tertiary)] italic mt-[2px]">
                         No budget cap set
                       </div>
                     </div>
@@ -1366,15 +1331,15 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
   ];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
-      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+    <div className="flex flex-col gap-[var(--space-4)]">
+      <div className="flex flex-col gap-[var(--space-2)]">
         <div className="page-header">
           <div>
             <h1 className="page-title">{greeting(username)}</h1>
             <div className="page-subtitle">Organisation overview — {todayStr()}</div>
           </div>
           {/* Export split button */}
-          <div ref={exportRef} style={{ position: "relative" }}>
+          <div ref={exportRef} className="relative">
             <div className="btn-split">
               <button className="btn btn-outline btn-sm btn-split__main">
                 <IconDownload size={14} /> Export
@@ -1388,23 +1353,12 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
               </button>
             </div>
             {showExportMenu && (
-              <div style={{
-                position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 50,
-                background: "var(--surface)", border: "1px solid var(--border-subtle)",
-                borderRadius: "var(--r-md)", boxShadow: "var(--shadow-md)", minWidth: 140,
-                overflow: "hidden",
-              }}>
+              <div className="dash-export-menu">
                 {[["📄 PDF", "pdf"], ["📊 CSV", "csv"], ["🔗 Copy link", "link"]].map(([label, type]) => (
                   <button
                     key={type}
                     onClick={() => { setShowExportMenu(false); }}
-                    style={{
-                      display: "block", width: "100%", textAlign: "left",
-                      padding: "8px 14px", fontSize: "0.8rem", background: "none",
-                      border: "none", cursor: "pointer", color: "var(--text-primary)",
-                    }}
-                    onMouseEnter={e => (e.currentTarget.style.background = "var(--n-50)")}
-                    onMouseLeave={e => (e.currentTarget.style.background = "none")}
+                    className="dash-export-item"
                   >{label}</button>
                 ))}
               </div>
@@ -1412,20 +1366,14 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
           </div>
         </div>
         {/* Period selector sub-row */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: "0.72rem", color: "var(--text-tertiary)", fontWeight: 500, whiteSpace: "nowrap" }}>Viewing data for:</span>
-          <div style={{ display: "flex", gap: 2, background: "var(--n-50)", borderRadius: "var(--r-md)", padding: 2, border: "1px solid var(--border-subtle)" }}>
+        <div className="flex items-center gap-[8px]">
+          <span className="text-[0.72rem] text-[var(--text-tertiary)] font-medium whitespace-nowrap">Viewing data for:</span>
+          <div className="dash-period-selector">
             {(["today", "week", "30d", "quarter"] as const).map(p => (
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
-                style={{
-                  padding: "4px 10px", fontSize: "0.72rem", fontWeight: period === p ? 600 : 400,
-                  background: period === p ? "var(--surface)" : "transparent",
-                  color: period === p ? "var(--text-primary)" : "var(--text-tertiary)",
-                  border: period === p ? "1px solid var(--border-subtle)" : "1px solid transparent",
-                  borderRadius: "var(--r-sm)", cursor: "pointer",
-                }}
+                className={`dash-period-btn${period === p ? " dash-period-btn--active" : ""}`}
               >{PERIOD_LABELS[p]}</button>
             ))}
           </div>
@@ -1433,11 +1381,11 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
       </div>
 
       {/* Freshness bar */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, fontSize: "0.78rem", color: "var(--text-tertiary)", marginTop: -8 }}>
-        <time dateTime={lastRefreshed.toISOString()} style={{ fontWeight: 500 }}>{relativeTime(lastRefreshed)}</time>
+      <div className="dash-freshness-bar">
+        <time dateTime={lastRefreshed.toISOString()} className="font-medium">{relativeTime(lastRefreshed)}</time>
         <button
           onClick={() => window.location.reload()}
-          style={{ background: "none", border: "1px solid var(--border-subtle)", cursor: "pointer", color: "var(--brand-600)", display: "flex", alignItems: "center", gap: 4, padding: "3px 8px", fontSize: "0.75rem", borderRadius: "var(--r-sm)", fontWeight: 600 }}
+          className="dash-refresh-btn"
         >
           <IconRefresh size={12} /> Refresh
         </button>
@@ -1459,7 +1407,7 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
             <div className="stat-icon" style={{ background: billablePct >= 70 ? "var(--success-light)" : "var(--warning-light)" }}>
               <IconBarChart color={billablePct >= 70 ? "#10b981" : "#f59e0b"} />
             </div>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
+            <div className="flex flex-col items-end gap-[2px]">
               <span className={`stat-trend ${billablePct >= 70 ? "trend-up" : "trend-down"}`}>
                 {billablePct >= 70 ? "↑ On track" : "↓ Below target"}
               </span>
@@ -1467,7 +1415,7 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
             </div>
           </div>
           <div className="stat-value">
-            {billablePct}<span style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-tertiary)", marginLeft: 1 }}>%</span>
+            {billablePct}<span className="text-[0.875rem] font-semibold text-[var(--text-tertiary)] ml-[1px]">%</span>
           </div>
           <h2 className="stat-label">Billable ratio</h2>
           <div className="stat-footer">{fmtMinutes(billable.billableMinutes)} billable · {PERIOD_LABELS[period].toLowerCase()}</div>
@@ -1496,7 +1444,7 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
           <h2 className="stat-label">Pending approvals</h2>
           <div className="stat-footer">
             {pendingCount > 0
-              ? <button style={{ background: "none", border: "none", color: "var(--brand-500)", cursor: "pointer", padding: 0, fontSize: "0.72rem" }} onClick={() => onNavigate?.("approvals")}>Review →</button>
+              ? <button className="bg-transparent border-none text-[var(--brand-500)] cursor-pointer p-0 text-[0.72rem]" onClick={() => onNavigate?.("approvals")}>Review →</button>
               : "No action needed"
             }
           </div>
@@ -1517,43 +1465,23 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
         }
 
         return (
-          <div style={{
-            background: "#fff",
-            border: "1px solid var(--border-subtle)",
-            borderRadius: 12,
-            padding: 20,
-          }}>
+          <div className="dash-anomaly-panel">
             {/* Header */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
-              <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 6 }}>
+            <div className="flex items-center justify-between mb-[14px] flex-wrap gap-[8px]">
+              <span className="font-bold text-[0.9rem] text-[var(--text-primary)] flex items-center gap-[6px]">
                 🔔 Anomaly Alerts
                 {anomalies.some(a => a.severity === "critical") && (
-                  <span style={{ background: "#fee2e2", color: "#ef4444", borderRadius: 8, padding: "2px 8px", fontSize: "0.72rem", fontWeight: 700 }}>
+                  <span className="bg-[#fee2e2] text-[#ef4444] rounded-[8px] px-[8px] py-[2px] text-[0.72rem] font-bold">
                     {anomalies.filter(a => a.severity === "critical").length} critical
                   </span>
                 )}
               </span>
-              <div style={{ display: "flex", gap: 4 }}>
+              <div className="flex gap-[4px]">
                 {(["all", "warning", "critical"] as const).map(f => (
                   <button
                     key={f}
                     onClick={() => setAnomalyFilter(f)}
-                    style={{
-                      padding: "3px 10px",
-                      fontSize: "0.72rem",
-                      fontWeight: anomalyFilter === f ? 700 : 400,
-                      borderRadius: 20,
-                      border: anomalyFilter === f
-                        ? (f === "critical" ? "1px solid #ef4444" : f === "warning" ? "1px solid #f59e0b" : "1px solid var(--brand-500)")
-                        : "1px solid var(--border-subtle)",
-                      background: anomalyFilter === f
-                        ? (f === "critical" ? "#fee2e2" : f === "warning" ? "#fef3c7" : "var(--brand-50)")
-                        : "transparent",
-                      color: anomalyFilter === f
-                        ? (f === "critical" ? "#ef4444" : f === "warning" ? "#b45309" : "var(--brand-600)")
-                        : "var(--text-tertiary)",
-                      cursor: "pointer",
-                    }}
+                    className={`dash-anomaly-filter-btn${anomalyFilter === f ? ` dash-anomaly-filter-btn--${f}` : ""}`}
                   >
                     {f.charAt(0).toUpperCase() + f.slice(1)}
                   </button>
@@ -1563,73 +1491,47 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
 
             {/* Alert rows */}
             {visible.length === 0 ? (
-              <div style={{ fontSize: "0.8rem", color: "var(--text-tertiary)", padding: "12px 0", textAlign: "center" }}>
+              <div className="text-[0.8rem] text-[var(--text-tertiary)] py-[12px] text-center">
                 No {anomalyFilter === "all" ? "" : anomalyFilter + " "}alerts.
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+              <div className="flex flex-col gap-0">
                 {visible.map((a, idx) => (
                   <div
                     key={a.id}
-                    style={{
-                      display: "flex",
-                      alignItems: "flex-start",
-                      gap: 10,
-                      padding: "10px 0",
-                      borderTop: idx === 0 ? "1px solid var(--border-subtle)" : "1px solid var(--border-subtle)",
-                    }}
+                    className="flex items-start gap-[10px] py-[10px] border-t border-[var(--border-subtle)]"
                   >
                     {/* Severity icon */}
-                    <div style={{ flexShrink: 0, marginTop: 1, fontSize: "1rem", lineHeight: 1 }}>
+                    <div className="shrink-0 mt-[1px] text-[1rem] leading-none">
                       {a.severity === "critical"
-                        ? <span style={{ color: "#ef4444" }}>🔴</span>
-                        : <span style={{ color: "#f59e0b" }}>⚠️</span>
+                        ? <span className="text-[#ef4444]">🔴</span>
+                        : <span className="text-[#f59e0b]">⚠️</span>
                       }
                     </div>
                     {/* Content */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: a.severity === "critical" ? "#ef4444" : "#b45309", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <div className="flex-1 min-w-0">
+                      <div className={`text-[13px] font-bold mb-[2px] overflow-hidden text-ellipsis whitespace-nowrap ${a.severity === "critical" ? "text-[#ef4444]" : "text-[#b45309]"}`}>
                         {a.title}
                       </div>
-                      <div style={{
-                        fontSize: 12,
-                        color: "var(--text-secondary)",
-                        display: "-webkit-box",
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: "vertical",
-                        overflow: "hidden",
-                        marginBottom: 4,
-                      }}>
+                      <div className="text-[12px] text-[var(--text-secondary)] [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical] overflow-hidden mb-[4px]">
                         {a.message}
                       </div>
-                      <div style={{ fontSize: "0.68rem", color: "var(--text-tertiary)" }}>
+                      <div className="text-[0.68rem] text-[var(--text-tertiary)]">
                         {anomalyRelativeTime(a.createdAtUtc)}
                       </div>
                     </div>
                     {/* Dismiss button */}
                     <button
                       onClick={() => void dismissAnomaly(a.id)}
-                      style={{
-                        flexShrink: 0,
-                        padding: "3px 10px",
-                        fontSize: "0.72rem",
-                        fontWeight: 500,
-                        borderRadius: "var(--r-sm)",
-                        border: "1px solid var(--border-subtle)",
-                        background: "transparent",
-                        color: "var(--text-secondary)",
-                        cursor: "pointer",
-                        marginTop: 2,
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--brand-400)"; e.currentTarget.style.color = "var(--brand-600)"; }}
-                      onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border-subtle)"; e.currentTarget.style.color = "var(--text-secondary)"; }}
+                      className="dash-dismiss-btn"
                     >
                       Dismiss
                     </button>
                   </div>
                 ))}
                 {hiddenCount > 0 && (
-                  <div style={{ fontSize: "0.75rem", color: "var(--brand-600)", fontWeight: 600, paddingTop: 8, textAlign: "center", cursor: "pointer" }}
+                  <div
+                    className="text-[0.75rem] text-[var(--brand-600)] font-semibold pt-[8px] text-center cursor-pointer"
                     onClick={() => setAnomalyFilter("all")}
                   >
                     Show {hiddenCount} more
@@ -1649,7 +1551,7 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
           </div>
           <div className="card-body">
             {effortByDepartment.length === 0 ? (
-              <div className="empty-state" style={{ padding: "var(--space-6) 0" }}>
+              <div className="empty-state py-[var(--space-6)]">
                 <div className="empty-state__icon">🏢</div>
                 <p className="empty-state__title">No department data</p>
                 <p className="empty-state__sub">No effort recorded for this period.</p>
@@ -1667,7 +1569,7 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
             <div><h2 className="card-title">Billable vs Non-Billable</h2><div className="card-subtitle">{PERIOD_LABELS[period]}</div></div>
           </div>
           <div className="card-body">
-            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-5)" }}>
+            <div className="flex items-center gap-[var(--space-5)]">
               {donutSegs.length > 0 && (
                 <DonutChart
                   segments={donutSegs}
@@ -1676,11 +1578,11 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
                   size={130}
                 />
               )}
-              <div className="kpi-list" style={{ flex: 1 }}>
+              <div className="kpi-list flex-1">
                 {billable.billableMinutes > 0 && <KpiItem name="Billable" color="var(--success)" value={billable.billableMinutes} max={totalBillable} />}
                 {billable.nonBillableMinutes > 0 && <KpiItem name="Non-Billable" color="var(--n-300)" value={billable.nonBillableMinutes} max={totalBillable} />}
                 {billable.billableMinutes === 0 && billable.nonBillableMinutes === 0 && (
-                  <div style={{ fontSize: "0.78rem", color: "var(--text-tertiary)", padding: "var(--space-4) 0" }}>No billable data for this period.</div>
+                  <div className="text-[0.78rem] text-[var(--text-tertiary)] py-[var(--space-4)]">No billable data for this period.</div>
                 )}
               </div>
             </div>
@@ -1696,7 +1598,7 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
           </div>
           <div className="card-body">
             {underOver.length === 0 ? (
-              <div className="empty-state" style={{ padding: "var(--space-6) 0" }}>
+              <div className="empty-state py-[var(--space-6)]">
                 <div className="empty-state__icon">📊</div>
                 <p className="empty-state__title">No utilization data</p>
               </div>
@@ -1704,8 +1606,8 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
               <div className="activity-list">
                 {underOver.slice(0, 6).map((r) => (
                   <div key={r.username} className="activity-item">
-                    <div className="activity-body" style={{ gap: 2 }}>
-                      <div className="activity-text" style={{ color: "rgb(16,16,26)", fontWeight: 500, marginBottom: 3 }}>{r.username}</div>
+                    <div className="activity-body gap-[2px]">
+                      <div className="activity-text text-[rgb(16,16,26)] font-medium mb-[3px]">{r.username}</div>
                       <UtilBar minutes={r.minutes} status={r.status} />
                     </div>
                   </div>
@@ -1721,7 +1623,7 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
           </div>
           <div className="card-body">
             {complianceList.length === 0 ? (
-              <div className="empty-state" style={{ padding: "var(--space-6) 0" }}>
+              <div className="empty-state py-[var(--space-6)]">
                 <div className="empty-state__icon">📋</div>
                 <p className="empty-state__title">No compliance data</p>
               </div>
@@ -1737,7 +1639,7 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
           </div>
           <div className="card-body">
             {effortByProject.length === 0 ? (
-              <div className="empty-state" style={{ padding: "var(--space-6) 0" }}><p className="empty-state__title">No data</p></div>
+              <div className="empty-state py-[var(--space-6)]"><p className="empty-state__title">No data</p></div>
             ) : (
               <div className="kpi-list">
                 {effortByProject.slice(0, 5).map((r, i) => {
@@ -1757,7 +1659,7 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
             )}
           </div>
           {effortByProject.length > 0 && (
-            <div style={{ borderTop: "1px solid var(--border-subtle)", padding: "var(--space-3) var(--space-5)" }}>
+            <div className="border-t border-[var(--border-subtle)] px-[var(--space-5)] py-[var(--space-3)]">
               <button onClick={() => onNavigate?.("projects")} className="card-footer-link">View all projects →</button>
             </div>
           )}
@@ -1767,34 +1669,34 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
           <div className="card-header">
             <div><h2 className="card-title">On Leave Today</h2><div className="card-subtitle">Approved absences</div></div>
           </div>
-          <div className="card-body" style={{ minHeight: 120 }}>
+          <div className="card-body min-h-[120px]">
             {leaveToday.length === 0 ? (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 100, gap: 6, textAlign: "center" }}>
-                <svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="var(--n-300)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ opacity: 0.7 }}>
+              <div className="flex flex-col items-center justify-center min-h-[100px] gap-[6px] text-center">
+                <svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="var(--n-300)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="opacity-70">
                   <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
                 </svg>
-                <p style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--text-secondary)" }}>No one on leave today</p>
-                <p style={{ fontSize: "0.72rem", color: "var(--text-tertiary)" }}>Full team is in.</p>
+                <p className="text-[0.82rem] font-semibold text-[var(--text-secondary)]">No one on leave today</p>
+                <p className="text-[0.72rem] text-[var(--text-tertiary)]">Full team is in.</p>
               </div>
             ) : (
               <div className="activity-list">
                 {leaveToday.slice(0, 6).map((entry, i) => (
                   <div key={i} className="activity-item">
-                    <div className="av" style={{ background: avatarColor(entry.username), borderRadius: "var(--r-md)", flexShrink: 0, width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.65rem", fontWeight: 700, color: "#fff" }}>
+                    <div className="av shrink-0 w-[28px] h-[28px] flex items-center justify-center text-[0.65rem] font-bold text-white" style={{ background: avatarColor(entry.username), borderRadius: "var(--r-md)" }}>
                       {entry.username.slice(0, 2).toUpperCase()}
                     </div>
                     <div className="activity-body">
-                      <div className="activity-text" style={{ color: "rgb(16,16,26)", fontWeight: 500 }}>{entry.username}</div>
+                      <div className="activity-text text-[rgb(16,16,26)] font-medium">{entry.username}</div>
                       <div className="activity-meta">{entry.leaveTypeName}</div>
                     </div>
-                    <div className="activity-ts" style={{ whiteSpace: "nowrap" }}>
+                    <div className="activity-ts whitespace-nowrap">
                       {fmtDateShort(entry.fromDate)}
                       {entry.toDate !== entry.fromDate && <> – {fmtDateShort(entry.toDate)}</>}
                     </div>
                   </div>
                 ))}
                 {leaveToday.length > 6 && (
-                  <div style={{ fontSize: "0.72rem", color: "var(--text-tertiary)", textAlign: "center", paddingTop: 4 }}>
+                  <div className="text-[0.72rem] text-[var(--text-tertiary)] text-center pt-[4px]">
                     +{leaveToday.length - 6} more
                   </div>
                 )}
@@ -1814,8 +1716,7 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
         </div>
         <div className="card-body">
           <div
-            className="progress-track"
-            style={{ height: 8 }}
+            className="progress-track h-[8px]"
             role="progressbar"
             aria-valuenow={totalStaff > 0 ? Math.round((submittedCount / totalStaff) * 100) : 0}
             aria-valuemin={0}
@@ -1827,12 +1728,12 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
               background: "var(--brand-500)",
             }} />
           </div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "var(--space-3)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)" }}>
-              <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-primary)" }}>
+          <div className="flex items-center justify-between mt-[var(--space-3)]">
+            <div className="flex items-center gap-[var(--space-4)]">
+              <div className="text-[0.85rem] font-semibold text-[var(--text-primary)]">
                 {totalStaff > 0 ? `${Math.round((submittedCount / totalStaff) * 100)}%` : "—"}
               </div>
-              <div style={{ fontSize: "0.75rem", color: "var(--text-tertiary)" }}>
+              <div className="text-[0.75rem] text-[var(--text-tertiary)]">
                 {totalStaff > 0 ? `${totalStaff - submittedCount} not yet submitted` : ""}
               </div>
             </div>
@@ -1875,7 +1776,7 @@ export function Dashboard({ role, username, onNavigate }: DashboardProps) {
             : 0;
           setEmpState({
             employee,
-            week: week ?? { weekStartDate: "", weekEndDate: "", weekEnteredMinutes: 0, weekExpectedMinutes: 0, weekAttendanceNetMinutes: 0, days: [] },
+            week: week ?? { weekStartDate: "", weekEndDate: "", weekExpectedMinutes: 0, weekEnteredMinutes: 0, weekAttendanceNetMinutes: 0, days: [] },
             leaveBalances: Array.isArray(leaveBalances) ? leaveBalances : [],
             activeProjectCount,
           });

@@ -1,0 +1,51 @@
+using TimeSheet.Domain.Entities;
+using TimeSheet.Domain.Enums;
+using TimeSheet.Infrastructure.Persistence;
+
+namespace TimeSheet.Infrastructure.Services;
+
+public interface IAttendanceCalculationService
+{
+    AttendanceTotals Calculate(IReadOnlyCollection<WorkSession> sessions, WorkPolicy? policy, DateTime nowUtc);
+}
+
+public record AttendanceTotals(int GrossMinutes, int FixedLunchMinutes, int BreakMinutes, int NetMinutes);
+
+public class AttendanceCalculationService : IAttendanceCalculationService
+{
+    public AttendanceTotals Calculate(IReadOnlyCollection<WorkSession> sessions, WorkPolicy? policy, DateTime nowUtc)
+    {
+        var grossMinutes = sessions.Sum(s =>
+        {
+            if (s.Status == WorkSessionStatus.Active)
+            {
+                var activeEndUtc = s.CheckOutAtUtc ?? nowUtc;
+                return (int)Math.Max(0, (activeEndUtc - s.CheckInAtUtc).TotalMinutes);
+            }
+
+            if (!s.CheckOutAtUtc.HasValue)
+            {
+                return 0;
+            }
+
+            return (int)Math.Max(0, (s.CheckOutAtUtc.Value - s.CheckInAtUtc).TotalMinutes);
+        });
+
+        var breakMinutes = sessions.SelectMany(s => s.Breaks).Sum(b =>
+        {
+            var end = b.EndAtUtc ?? nowUtc;
+            return (int)Math.Max(0, (end - b.StartAtUtc).TotalMinutes);
+        });
+
+        var lunchDeduction = policy?.FixedLunchDeductionMinutes ?? 45;
+        var lowGrossThreshold = policy?.LowGrossThresholdMinutes ?? 300;
+        var skipLunchForLowGross = policy?.SkipLunchDeductionForLowGross ?? true;
+
+        var fixedLunch = skipLunchForLowGross && grossMinutes < lowGrossThreshold
+            ? 0
+            : Math.Clamp(lunchDeduction, 0, grossMinutes);
+
+        var net = Math.Max(0, grossMinutes - fixedLunch - breakMinutes);
+        return new AttendanceTotals(grossMinutes, fixedLunch, breakMinutes, net);
+    }
+}

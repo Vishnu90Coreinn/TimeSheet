@@ -15,8 +15,8 @@ const BLANK: PolicyForm = { name: "", isActive: true, allocations: {} };
 type SortDir = "asc" | "desc";
 
 function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
-  if (!active) return <span style={{ opacity: 0.4, fontSize: "0.7rem", marginLeft: 3 }}>↕</span>;
-  return <span style={{ fontSize: "0.75rem", marginLeft: 3, color: "var(--brand-600)" }}>{dir === "asc" ? "↑" : "↓"}</span>;
+  if (!active) return <span className="opacity-40 text-[0.7rem] ml-[3px]">↕</span>;
+  return <span className="text-[0.75rem] ml-[3px] text-brand-600">{dir === "asc" ? "↑" : "↓"}</span>;
 }
 
 function Drawer({ open, title, onClose, children, footer }: { open: boolean; title: string; onClose: () => void; children: ReactNode; footer?: ReactNode }) {
@@ -55,15 +55,15 @@ function ConfirmModal({ open, title, body, onConfirm, onCancel }: { open: boolea
 function AllocPills({ allocs }: { allocs: LeavePolicyAlloc[] }) {
   const nonZero = allocs.filter(a => a.daysPerYear > 0);
   const hasZero = allocs.some(a => a.daysPerYear === 0);
-  if (nonZero.length === 0) return <span style={{ color: "var(--text-tertiary)", fontSize: "0.8rem" }}>No allocations</span>;
+  if (nonZero.length === 0) return <span className="text-text-tertiary text-[0.8rem]">No allocations</span>;
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 4, alignItems: "center" }}>
+    <div className="flex flex-wrap gap-1 items-center">
       {nonZero.map(a => (
         <span key={a.leaveTypeId} className="alloc-pill" title={`${a.leaveTypeName}: ${a.daysPerYear} days/year`}>
           {a.leaveTypeName} · {a.daysPerYear}d
         </span>
       ))}
-      {hasZero && <span style={{ fontSize: "0.7rem", color: "var(--text-tertiary)" }}>+{allocs.filter(a => a.daysPerYear === 0).length} unset</span>}
+      {hasZero && <span className="text-[0.7rem] text-text-tertiary">+{allocs.filter(a => a.daysPerYear === 0).length} unset</span>}
     </div>
   );
 }
@@ -84,7 +84,6 @@ export function LeavePolicies() {
     else { setSortCol(col); setSortDir("asc"); }
   }
 
-  // Leave type creation
   const [ltName, setLtName] = useState("");
   const [ltActive, setLtActive] = useState(true);
   const [ltError, setLtError] = useState("");
@@ -179,7 +178,7 @@ export function LeavePolicies() {
   const drawerTitle = editing === "new" ? "New Leave Policy" : editing ? `Edit: ${(editing as LeavePolicy).name}` : "";
 
   return (
-    <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
+    <section className="flex flex-col gap-6">
       {/* Policy form drawer */}
       <Drawer open={!!editing} title={drawerTitle} onClose={() => setEditing(null)}
         footer={
@@ -201,32 +200,30 @@ export function LeavePolicies() {
             required
           />
         </div>
-        <label style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", fontSize: "0.825rem", color: "var(--text-secondary)" }}>
+        <label className="flex items-center gap-2 text-[0.825rem] text-text-secondary">
           <input
             type="checkbox"
             checked={form.isActive}
             onChange={(e) => setForm((p) => ({ ...p, isActive: e.target.checked }))}
-            style={{ accentColor: "var(--brand-600)" }}
+            className="[accent-color:var(--brand-600)]"
           />
           Active
         </label>
 
-        {/* Divider */}
-        <div style={{ borderTop: "1px solid var(--border-subtle)", margin: "var(--space-2) 0" }} />
+        <div className="border-t border-border-subtle my-2" />
 
-        {/* Allocations */}
         {activeLeaveTypes.length > 0 && (
           <div>
-            <div className="form-label" style={{ marginBottom: "var(--space-2)" }}>Leave Allocations (days/year)</div>
+            <div className="form-label mb-2">Leave Allocations (days/year)</div>
             {hasZeroAlloc && (
-              <div style={{ fontSize: "0.78rem", color: "var(--warning-dark)", background: "var(--warning-light)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: "var(--r-md)", padding: "var(--space-2) var(--space-3)", marginBottom: "var(--space-3)" }}>
+              <div className="text-[0.78rem] text-warning-dark bg-warning-light border border-[rgba(245,158,11,0.3)] rounded-md px-3 py-2 mb-3">
                 ⚠ Some leave types have 0 days allocated. Employees on this policy will have no entitlement for those types.
               </div>
             )}
-            <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+            <div className="flex flex-col gap-2">
               {activeLeaveTypes.map((t) => (
-                <div key={t.id} style={{ display: "grid", gridTemplateColumns: "1fr 90px", gap: "var(--space-3)", alignItems: "center" }}>
-                  <span style={{ fontSize: "0.85rem", color: "var(--text-primary)" }}>{t.name}</span>
+                <div key={t.id} className="grid grid-cols-[1fr_90px] gap-3 items-center">
+                  <span className="text-[0.85rem] text-text-primary">{t.name}</span>
                   <input
                     type="number"
                     className="input-field"
@@ -263,7 +260,7 @@ export function LeavePolicies() {
       </div>
 
       {/* Policies table */}
-      <div className="card" style={{ overflow: "visible" }}>
+      <div className="card overflow-visible">
         <div className="card-header">
           <div>
             <div className="card-title">All Leave Policies</div>
@@ -281,20 +278,16 @@ export function LeavePolicies() {
                   Name <SortIcon active={sortCol === "name"} dir={sortDir} />
                 </th>
                 <th>Allocations</th>
-                <th className="th-sort" style={{ width: 100 }} onClick={() => toggleSort("isActive")} aria-sort={sortCol === "isActive" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
+                <th className="th-sort w-[100px]" onClick={() => toggleSort("isActive")} aria-sort={sortCol === "isActive" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
                   Status <SortIcon active={sortCol === "isActive"} dir={sortDir} />
                 </th>
-                <th style={{ width: 100 }}>Actions</th>
+                <th className="w-[100px]">Actions</th>
               </tr>
             </thead>
             <tbody>
               {sorted.map((p) => (
                 <tr key={p.id}>
-                  <td>
-                    <button style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-primary)", fontWeight: 600, padding: 0, textAlign: "left", fontSize: "inherit" }} onClick={() => openEdit(p)}>
-                      {p.name}
-                    </button>
-                  </td>
+                  <td><button className="btn-table-link" onClick={() => openEdit(p)}>{p.name}</button></td>
                   <td><AllocPills allocs={p.allocations} /></td>
                   <td>{p.isActive ? <span className="badge badge-success">Active</span> : <span className="badge badge-neutral">Inactive</span>}</td>
                   <td>
@@ -311,14 +304,14 @@ export function LeavePolicies() {
         </div>
       </div>
 
-      {/* ── Divider ─────────────────────────────────────────── */}
-      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)" }}>
-        <div style={{ flex: 1, height: 1, background: "var(--border-subtle)" }} />
-        <span style={{ fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-tertiary)" }}>Leave Types</span>
-        <div style={{ flex: 1, height: 1, background: "var(--border-subtle)" }} />
+      {/* Divider */}
+      <div className="flex items-center gap-4">
+        <div className="flex-1 h-px bg-border-subtle" />
+        <span className="text-[0.72rem] font-bold uppercase tracking-[0.08em] text-text-tertiary">Leave Types</span>
+        <div className="flex-1 h-px bg-border-subtle" />
       </div>
 
-      {/* ── Leave Types management ─────────────────────────── */}
+      {/* Leave Types management */}
       <div className="card">
         <div className="card-header">
           <div>
@@ -327,8 +320,8 @@ export function LeavePolicies() {
           </div>
         </div>
         <div className="card-body">
-          <form onSubmit={(e) => void saveLeaveType(e)} style={{ display: "flex", gap: "var(--space-3)", alignItems: "flex-end", flexWrap: "wrap", marginBottom: "var(--space-4)" }}>
-            <div className="form-field" style={{ flex: 1, minWidth: 200 }}>
+          <form onSubmit={(e) => void saveLeaveType(e)} className="flex gap-3 items-end flex-wrap mb-4">
+            <div className="form-field flex-1 min-w-[200px]">
               <label className="form-label" htmlFor="lt-name">Leave Type Name <span className="required">*</span></label>
               <input
                 id="lt-name"
@@ -340,12 +333,12 @@ export function LeavePolicies() {
                 maxLength={120}
               />
             </div>
-            <label style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", fontSize: "0.825rem", color: "var(--text-secondary)", paddingBottom: 2 }}>
+            <label className="flex items-center gap-2 text-[0.825rem] text-text-secondary pb-[2px]">
               <input
                 type="checkbox"
                 checked={ltActive}
                 onChange={(e) => setLtActive(e.target.checked)}
-                style={{ accentColor: "var(--brand-600)" }}
+                className="[accent-color:var(--brand-600)]"
               />
               Active
             </label>
@@ -353,12 +346,12 @@ export function LeavePolicies() {
           </form>
 
           {ltError && (
-            <div style={{ fontSize: "0.8rem", color: "#b91c1c", background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 7, padding: "8px 12px", marginBottom: "var(--space-3)" }}>
+            <div className="text-[0.8rem] text-red-700 bg-red-50 border border-red-300 rounded-[7px] px-3 py-2 mb-3">
               {ltError}
             </div>
           )}
           {ltSuccess && (
-            <div style={{ fontSize: "0.8rem", color: "#166534", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 7, padding: "8px 12px", marginBottom: "var(--space-3)" }}>
+            <div className="text-[0.8rem] text-green-800 bg-green-50 border border-green-300 rounded-[7px] px-3 py-2 mb-3">
               {ltSuccess}
             </div>
           )}
@@ -366,7 +359,7 @@ export function LeavePolicies() {
           <div className="table-wrap">
             <table className="table-base">
               <thead>
-                <tr><th>Name</th><th style={{ width: 100 }}>Status</th></tr>
+                <tr><th>Name</th><th className="w-[100px]">Status</th></tr>
               </thead>
               <tbody>
                 {leaveTypes.map((t) => (

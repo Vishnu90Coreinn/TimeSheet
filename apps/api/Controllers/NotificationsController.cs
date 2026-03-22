@@ -2,8 +2,6 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TimeSheet.Api.Dtos;
-using TimeSheet.Api.Models;
-using TimeSheet.Api.Services;
 
 namespace TimeSheet.Api.Controllers;
 

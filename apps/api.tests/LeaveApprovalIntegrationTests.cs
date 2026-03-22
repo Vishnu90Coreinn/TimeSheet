@@ -3,10 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using TimeSheet.Api.Data;
 using TimeSheet.Api.Dtos;
-using TimeSheet.Api.Models;
-using TimeSheet.Api.Services;
 using Xunit;
 
 namespace TimeSheet.Api.Tests;
@@ -96,7 +93,7 @@ public class LeaveApprovalIntegrationTests : IClassFixture<CustomWebApplicationF
         var project = new Project { Id = Guid.NewGuid(), Name = $"Project {username}", Code = $"PRJ-{Guid.NewGuid():N}"[..10], IsActive = true, IsArchived = false };
         var category = await db.TaskCategories.FirstAsync();
         var workDate = DateOnly.FromDateTime(DateTime.UtcNow);
-        var timesheet = new Timesheet { Id = Guid.NewGuid(), UserId = employee.Id, WorkDate = workDate, Status = TimesheetStatus.Draft };
+        var timesheet = new Timesheet { UserId = employee.Id, WorkDate = workDate, Status = TimesheetStatus.Draft };
 
         db.Users.AddRange(manager, employee);
         db.UserRoles.AddRange(new UserRole { UserId = manager.Id, RoleId = managerRole.Id }, new UserRole { UserId = employee.Id, RoleId = employeeRole.Id });

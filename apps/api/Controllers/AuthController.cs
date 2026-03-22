@@ -1,151 +1,67 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.EntityFrameworkCore;
-using TimeSheet.Api.Data;
 using TimeSheet.Api.Dtos;
-using TimeSheet.Api.Models;
-using TimeSheet.Api.Services;
+using TimeSheet.Application.Auth.Commands;
+using TimeSheet.Application.Auth.Queries;
+using TimeSheet.Application.Common.Models;
 
 namespace TimeSheet.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/auth")]
-public class AuthController(TimeSheetDbContext dbContext, IPasswordHasher passwordHasher, ITokenService tokenService, IConfiguration configuration) : ControllerBase
+public class AuthController(ISender mediator) : ControllerBase
 {
     [HttpPost("login")]
     [EnableRateLimiting("login")]
-    public async Task<ActionResult<LoginResponse>> Login([FromBody] LoginRequest request)
+    public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken ct)
     {
-        var identifier = request.Identifier?.Trim() ?? string.Empty;
-        if (string.IsNullOrWhiteSpace(identifier) || string.IsNullOrWhiteSpace(request.Password))
-        {
-            return Problem("Username/email and password are required.", statusCode: StatusCodes.Status400BadRequest);
-        }
+        var result = await mediator.Send(new LoginCommand(request.Identifier, request.Password), ct);
+        if (!result.IsSuccess)
+            return Unauthorized(new { message = result.Error });
 
-        var user = await dbContext.Users
-            .Include(u => u.UserRoles)
-            .ThenInclude(ur => ur.Role)
-            .SingleOrDefaultAsync(u => u.Username == identifier || u.Email == identifier);
-
-        if (user is null || !user.IsActive || !passwordHasher.Verify(request.Password, user.PasswordHash))
-        {
-            return Problem("Invalid credentials.", statusCode: StatusCodes.Status401Unauthorized);
-        }
-
-        var roleName = user.UserRoles.Select(ur => ur.Role.Name).FirstOrDefault() ?? "employee";
-        var accessToken = tokenService.CreateAccessToken(user.Id, user.Username, roleName);
-        var refreshToken = tokenService.CreateRefreshToken();
-
-        var refreshTokenExpiryDays = int.TryParse(configuration["Jwt:RefreshTokenExpiryDays"], out var configuredDays)
-            ? configuredDays
-            : 14;
-
-        dbContext.RefreshTokens.Add(new RefreshToken
-        {
-            Id = Guid.NewGuid(),
-            UserId = user.Id,
-            Token = refreshToken,
-            ExpiresAtUtc = DateTime.UtcNow.AddDays(refreshTokenExpiryDays)
-        });
-
-        await dbContext.SaveChangesAsync();
-
-        return Ok(new LoginResponse(accessToken, refreshToken, user.Id, user.Username, user.Email, roleName));
+        var v = result.Value!;
+        return Ok(new LoginResponse(v.AccessToken, v.RefreshToken, v.UserId, v.Username, v.Email, v.Role));
     }
 
     [HttpPost("refresh")]
-    public async Task<ActionResult<LoginResponse>> Refresh([FromBody] RefreshTokenRequest request)
+    public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request, CancellationToken ct)
     {
-        var savedToken = await dbContext.RefreshTokens
-            .Include(rt => rt.User)
-            .ThenInclude(u => u.UserRoles)
-            .ThenInclude(ur => ur.Role)
-            .SingleOrDefaultAsync(rt => rt.Token == request.RefreshToken);
+        var result = await mediator.Send(new RefreshTokenCommand(request.RefreshToken), ct);
+        if (!result.IsSuccess)
+            return Fail(result);
 
-        if (savedToken is null || savedToken.IsRevoked || savedToken.ExpiresAtUtc <= DateTime.UtcNow || !savedToken.User.IsActive)
-        {
-            return Problem("Invalid refresh token.", statusCode: StatusCodes.Status401Unauthorized);
-        }
-
-        savedToken.IsRevoked = true;
-
-        var roleName = savedToken.User.UserRoles.Select(ur => ur.Role.Name).FirstOrDefault() ?? "employee";
-        var accessToken = tokenService.CreateAccessToken(savedToken.UserId, savedToken.User.Username, roleName);
-        var newRefreshToken = tokenService.CreateRefreshToken();
-
-        var refreshTokenExpiryDays = int.TryParse(configuration["Jwt:RefreshTokenExpiryDays"], out var configuredDays)
-            ? configuredDays
-            : 14;
-
-        dbContext.RefreshTokens.Add(new RefreshToken
-        {
-            Id = Guid.NewGuid(),
-            UserId = savedToken.UserId,
-            Token = newRefreshToken,
-            ExpiresAtUtc = DateTime.UtcNow.AddDays(refreshTokenExpiryDays)
-        });
-
-        await dbContext.SaveChangesAsync();
-
-        return Ok(new LoginResponse(accessToken, newRefreshToken, savedToken.UserId, savedToken.User.Username, savedToken.User.Email, roleName));
+        var v = result.Value!;
+        return Ok(new LoginResponse(v.AccessToken, v.RefreshToken, v.UserId, v.Username, v.Email, v.Role));
     }
 
     [Authorize]
     [HttpPost("logout")]
-    public async Task<IActionResult> Logout([FromBody] RefreshTokenRequest request)
+    public async Task<IActionResult> Logout([FromBody] RefreshTokenRequest request, CancellationToken ct)
     {
-        var savedToken = await dbContext.RefreshTokens.SingleOrDefaultAsync(rt => rt.Token == request.RefreshToken);
-        if (savedToken is not null)
-        {
-            savedToken.IsRevoked = true;
-            await dbContext.SaveChangesAsync();
-        }
-
-        return NoContent();
+        var result = await mediator.Send(new LogoutCommand(request.RefreshToken), ct);
+        return result.IsSuccess ? NoContent() : Fail(result);
     }
 
     [Authorize]
     [HttpGet("me")]
-    public async Task<IActionResult> Me()
+    public async Task<IActionResult> Me(CancellationToken ct)
     {
-        var sub = User.Claims.FirstOrDefault(c => c.Type == System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
-        if (!Guid.TryParse(sub, out var userId))
-        {
-            return Unauthorized();
-        }
-
-        var user = await dbContext.Users
-            .AsNoTracking()
-            .Include(u => u.Department)
-            .Include(u => u.WorkPolicy)
-            .Include(u => u.LeavePolicy)
-            .Include(u => u.Manager)
-            .Include(u => u.UserRoles)
-            .ThenInclude(ur => ur.Role)
-            .SingleOrDefaultAsync(u => u.Id == userId);
-
-        if (user is null)
-        {
-            return NotFound();
-        }
-
-        var roleName = user.UserRoles.Select(ur => ur.Role.Name).FirstOrDefault() ?? "employee";
-
-        return Ok(new UserResponse(
-            user.Id,
-            user.Username,
-            user.Email,
-            user.EmployeeId,
-            roleName,
-            user.IsActive,
-            user.DepartmentId,
-            user.Department?.Name,
-            user.WorkPolicyId,
-            user.WorkPolicy?.Name,
-            user.LeavePolicyId,
-            user.LeavePolicy?.Name,
-            user.ManagerId,
-            user.Manager?.Username));
+        var result = await mediator.Send(new GetCurrentUserQuery(), ct);
+        if (!result.IsSuccess) return Fail(result);
+        var u = result.Value!;
+        return Ok(new UserResponse(u.Id, u.Username, u.Email, u.EmployeeId, u.Role, u.IsActive,
+            u.DepartmentId, u.DepartmentName, u.WorkPolicyId, u.WorkPolicyName,
+            u.LeavePolicyId, u.LeavePolicyName, u.ManagerId, u.ManagerUsername));
     }
+
+    private IActionResult Fail(Result result) => result.Status switch
+    {
+        ResultStatus.NotFound => NotFound(new { message = result.Error }),
+        ResultStatus.Forbidden => StatusCode(403, new { message = result.Error }),
+        _ => Problem(result.Error, statusCode: StatusCodes.Status400BadRequest)
+    };
+
+    private IActionResult Fail<T>(Result<T> result) => Fail((Result)result);
 }

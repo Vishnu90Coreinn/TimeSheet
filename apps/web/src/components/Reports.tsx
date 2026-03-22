@@ -111,19 +111,15 @@ function fmtDateStr(iso: string): string {
 
 function statusChip(status: string): ReactNode {
   const s = status.toLowerCase();
-  const styles: Record<string, React.CSSProperties> = {
-    approved:  { background: "#d1fae5", color: "#065f46" },
-    submitted: { background: "#dbeafe", color: "#1e40af" },
-    pending:   { background: "#fef3c7", color: "#92400e" },
-    rejected:  { background: "#fee2e2", color: "#991b1b" },
-    draft:     { background: "#f3f4f6", color: "#4b5563" },
+  const cls: Record<string, string> = {
+    approved:  "bg-[#d1fae5] text-[#065f46]",
+    submitted: "bg-[#dbeafe] text-[#1e40af]",
+    pending:   "bg-[#fef3c7] text-[#92400e]",
+    rejected:  "bg-[#fee2e2] text-[#991b1b]",
+    draft:     "bg-[#f3f4f6] text-[#4b5563]",
   };
   return (
-    <span style={{
-      ...(styles[s] ?? { background: "#f3f4f6", color: "#4b5563" }),
-      fontSize: "0.72rem", fontWeight: 700, borderRadius: 6,
-      padding: "2px 8px", textTransform: "capitalize", display: "inline-block", whiteSpace: "nowrap",
-    }}>
+    <span className={`${cls[s] ?? "bg-[#f3f4f6] text-[#4b5563]"} text-[0.72rem] font-bold rounded-[6px] px-2 py-[2px] capitalize inline-block whitespace-nowrap`}>
       {status}
     </span>
   );
@@ -131,12 +127,7 @@ function statusChip(status: string): ReactNode {
 
 function boolChip(isTrue: boolean): ReactNode {
   return (
-    <span style={{
-      background: isTrue ? "#fee2e2" : "#d1fae5",
-      color: isTrue ? "#991b1b" : "#065f46",
-      fontSize: "0.72rem", fontWeight: 700, borderRadius: 6,
-      padding: "2px 8px", display: "inline-block",
-    }}>
+    <span className={`${isTrue ? "bg-[#fee2e2] text-[#991b1b]" : "bg-[#d1fae5] text-[#065f46]"} text-[0.72rem] font-bold rounded-[6px] px-2 py-[2px] inline-block`}>
       {isTrue ? "Yes" : "No"}
     </span>
   );
@@ -162,16 +153,16 @@ function aggregateAttendance(items: Record<string, unknown>[]): Record<string, u
 // ── Cell renderer ─────────────────────────────────────────────────────────────
 function renderCell(col: ColConfig, row: Record<string, unknown>): ReactNode {
   const v = row[col.key];
-  if (v === null || v === undefined || v === "") return <span style={{ color: "#9ca3af" }}>—</span>;
+  if (v === null || v === undefined || v === "") return <span className="text-[#9ca3af]">—</span>;
 
-  const primaryStyle: React.CSSProperties = col.primary ? { color: "rgb(16,16,26)", fontWeight: 500 } : {};
+  const primaryCls = col.primary ? "text-[rgb(16,16,26)] font-medium" : "";
 
   switch (col.format) {
     case "minutes":
-      return <span style={{ fontVariantNumeric: "tabular-nums", ...primaryStyle }}>{fmtMins(Number(v))}</span>;
+      return <span className={`[font-variant-numeric:tabular-nums] ${primaryCls}`}>{fmtMins(Number(v))}</span>;
 
     case "leave-days":
-      return <span style={{ fontVariantNumeric: "tabular-nums" }}>{Number(v)}d</span>;
+      return <span className="[font-variant-numeric:tabular-nums]">{Number(v)}d</span>;
 
     case "date":
       return fmtDateStr(String(v));
@@ -182,8 +173,8 @@ function renderCell(col: ColConfig, row: Record<string, unknown>): ReactNode {
       const timeStr = d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
       return (
         <span title={`${dateStr} ${timeStr}`}>
-          <span style={{ display: "block", fontWeight: 500, color: "rgb(16,16,26)" }}>{dateStr}</span>
-          <span style={{ display: "block", fontSize: "0.72rem", color: "#9ca3af", marginTop: 1 }}>{timeStr}</span>
+          <span className="block font-medium text-[rgb(16,16,26)]">{dateStr}</span>
+          <span className="block text-[0.72rem] text-[#9ca3af] mt-[1px]">{timeStr}</span>
         </span>
       );
     }
@@ -200,11 +191,11 @@ function renderCell(col: ColConfig, row: Record<string, unknown>): ReactNode {
       const pct = Math.min(100, Math.max(0, Number(v)));
       const color = pct >= 80 ? "#10b981" : pct >= 50 ? "#f59e0b" : "#ef4444";
       return (
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <div style={{ width: 72, height: 5, background: "#e5e7eb", borderRadius: 99, flexShrink: 0 }}>
-            <div style={{ width: `${pct}%`, height: "100%", background: color, borderRadius: 99 }} />
+        <div className="flex items-center gap-[6px]">
+          <div className="w-[72px] h-[5px] bg-[#e5e7eb] rounded-full shrink-0">
+            <div className="h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
           </div>
-          <span style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontVariantNumeric: "tabular-nums" }}>{pct}%</span>
+          <span className="text-[0.8rem] text-text-secondary [font-variant-numeric:tabular-nums]">{pct}%</span>
         </div>
       );
     }
@@ -215,11 +206,11 @@ function renderCell(col: ColConfig, row: Record<string, unknown>): ReactNode {
       const pct = Math.min(100, Math.round((remaining / allocated) * 100));
       const color = pct >= 50 ? "#10b981" : pct >= 20 ? "#f59e0b" : "#ef4444";
       return (
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <div style={{ minWidth: 90, height: 5, background: "#e5e7eb", borderRadius: 99, flexShrink: 0 }}>
-            <div style={{ width: `${pct}%`, height: "100%", background: color, borderRadius: 99 }} />
+        <div className="flex items-center gap-[6px]">
+          <div className="min-w-[90px] h-[5px] bg-[#e5e7eb] rounded-full shrink-0">
+            <div className="h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
           </div>
-          <span style={{ fontSize: "0.8rem", fontVariantNumeric: "tabular-nums" }}>{remaining}d</span>
+          <span className="text-[0.8rem] [font-variant-numeric:tabular-nums]">{remaining}d</span>
         </div>
       );
     }
@@ -228,20 +219,20 @@ function renderCell(col: ColConfig, row: Record<string, unknown>): ReactNode {
       const m = Number(v);
       const label = m === 0 ? "On target" : (m > 0 ? "+" : "") + fmtMins(m);
       const color = m > 0 ? "#10b981" : m < 0 ? "#ef4444" : "#6b7280";
-      return <span style={{ color, fontWeight: 700, fontSize: "0.8rem", fontVariantNumeric: "tabular-nums" }}>{label}</span>;
+      return <span className="font-bold text-[0.8rem] [font-variant-numeric:tabular-nums]" style={{ color }}>{label}</span>;
     }
 
     default:
       return col.primary
-        ? <span style={primaryStyle}>{String(v)}</span>
+        ? <span className={primaryCls}>{String(v)}</span>
         : String(v);
   }
 }
 
 // ── Sort icon ─────────────────────────────────────────────────────────────────
 function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
-  if (!active) return <span style={{ opacity: 0.45, fontSize: "0.7rem", marginLeft: 3 }}>↕</span>;
-  return <span style={{ fontSize: "0.75rem", marginLeft: 3, color: "var(--brand-600,#4f46e5)" }}>{dir === "asc" ? "↑" : "↓"}</span>;
+  if (!active) return <span className="opacity-[0.45] text-[0.7rem] ml-[3px]">↕</span>;
+  return <span className="text-[0.75rem] ml-[3px] text-brand-600">{dir === "asc" ? "↑" : "↓"}</span>;
 }
 
 // ── KPI computation ───────────────────────────────────────────────────────────
@@ -333,52 +324,6 @@ function computeKpi(key: ReportKey, items: Record<string, unknown>[]): KpiCard[]
   }
 }
 
-// ── Page CSS ──────────────────────────────────────────────────────────────────
-const PAGE_STYLES = `
-.rpt-tabs-row { display: flex; align-items: center; gap: 4px; }
-.rpt-tabs { display: flex; gap: 4px; overflow-x: auto; flex: 1;
-  scrollbar-width: none; -ms-overflow-style: none; padding-bottom: 2px; }
-.rpt-tabs::-webkit-scrollbar { display: none; }
-.rpt-tab { padding: 7px 16px; border-radius: 8px; border: 1px solid transparent; background: none;
-  cursor: pointer; font-size: 0.8rem; font-weight: 500; color: var(--text-secondary, #6b7280);
-  transition: all .15s; white-space: nowrap; }
-.rpt-tab:hover { background: var(--n-50, #f9fafb); color: var(--text-primary, #111827); }
-.rpt-tab--active { background: var(--brand-600, #4f46e5); color: #fff; border-color: var(--brand-600, #4f46e5); }
-.rpt-tab-arrow { width: 28px; height: 28px; border-radius: 6px; border: 1px solid #e5e7eb;
-  background: #fff; cursor: pointer; font-size: 1rem; color: #6b7280; display: flex;
-  align-items: center; justify-content: center; flex-shrink: 0; transition: all .15s; padding: 0; }
-.rpt-tab-arrow:hover { background: #f9fafb; color: #111827; border-color: #d1d5db; }
-.rpt-filter-bar { display: flex; align-items: flex-end; gap: var(--space-4, 16px); flex-wrap: wrap; }
-.rpt-kpi-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-4, 16px); }
-.rpt-kpi-card { background: var(--surface-card, #fff); border: 1px solid var(--n-200, #e5e7eb);
-  border-left-width: 3px; border-radius: 12px; padding: 16px 20px; }
-.rpt-kpi-card--red    { border-left-color: #ef4444; }
-.rpt-kpi-card--amber  { border-left-color: #f59e0b; }
-.rpt-kpi-card--green  { border-left-color: #10b981; }
-.rpt-kpi-card--none   { border-left-color: var(--n-200, #e5e7eb); }
-.rpt-kpi-value { font-size: 1.45rem; font-weight: 700; color: rgb(16,16,26); line-height: 1; margin-bottom: 5px; }
-.rpt-kpi-label { font-size: 0.72rem; font-weight: 600; color: var(--text-secondary, #6b7280); text-transform: uppercase; letter-spacing: .05em; }
-.rpt-kpi-sub { font-size: 0.72rem; color: var(--text-tertiary, #9ca3af); margin-top: 2px; }
-.rpt-th-sort { cursor: pointer; user-select: none; white-space: nowrap; }
-.rpt-th-sort:hover { color: var(--brand-600, #4f46e5); }
-.rpt-table-outer { position: relative; overflow: hidden; }
-.rpt-table-outer::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; width: 28px;
-  background: linear-gradient(to right, transparent, var(--surface-card, #fff));
-  pointer-events: none; z-index: 1; }
-.rpt-table-outer table tbody tr:hover { background: rgba(99,102,241,0.04); }
-.rpt-pagination { display: flex; align-items: center; gap: 12px; padding: 12px 16px;
-  border-top: 1px solid var(--n-200, #e5e7eb); flex-wrap: wrap; }
-.rpt-showing { font-size: 0.8rem; color: var(--text-secondary, #6b7280); flex: 1; }
-.rpt-page-controls { display: flex; align-items: center; gap: 8px; }
-.rpt-page-info { font-size: 0.825rem; color: var(--text-secondary, #6b7280); }
-.rpt-freshness { font-size: 0.72rem; color: var(--text-tertiary, #9ca3af); margin-left: 8px; }
-.rpt-zero-alloc { opacity: 0.4; }
-.rpt-tabs-select { display: none; width: 100%; }
-@media (max-width: 640px) {
-  .rpt-tabs-row { display: none; }
-  .rpt-tabs-select { display: block; }
-}
-`;
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export function Reports() {
@@ -494,9 +439,7 @@ export function Reports() {
   })() : "";
 
   return (
-    <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
-      <style>{PAGE_STYLES}</style>
-
+    <section className="flex flex-col gap-6">
       {/* Page header */}
       <div className="page-header">
         <div>
@@ -544,7 +487,7 @@ export function Reports() {
             onChange={e => setToDate(e.target.value)} min={fromDate} max={today} />
         </div>
         {uniqueEmployees.length > 0 && (
-          <div className="form-field" style={{ minWidth: 180 }}>
+          <div className="form-field min-w-[180px]">
             <label className="form-label" htmlFor="rpt-emp">Employee</label>
             <select id="rpt-emp" className="input-field" value={employeeFilter}
               onChange={e => setEmployeeFilter(e.target.value)}>
@@ -570,7 +513,7 @@ export function Reports() {
       )}
 
       {/* Table card */}
-      <div className="card" style={{ overflow: "hidden" }}>
+      <div className="card overflow-hidden">
         <div className="card-header">
           <div>
             <div className="card-title">{TABS.find(t => t.key === reportKey)?.label}</div>
@@ -582,26 +525,23 @@ export function Reports() {
           <div className="page-actions">
             <input
               type="text"
-              className="input-field"
+              className="input-field w-[200px] h-[30px] text-[0.8rem]"
               placeholder="Search rows…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              style={{ width: 200, height: 30, fontSize: "0.8rem" }}
             />
-            <div style={{ position: "relative", display: "inline-block" }}>
-              <button className="btn btn-outline btn-sm" onClick={() => setExportOpen(o => !o)} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <div className="relative inline-block">
+              <button className="btn btn-outline btn-sm flex items-center gap-1" onClick={() => setExportOpen(o => !o)}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 Export ▾
               </button>
               {exportOpen && (
                 <>
-                  <div style={{ position: "fixed", inset: 0, zIndex: 99 }} onClick={() => setExportOpen(false)} />
-                  <div style={{ position: "absolute", right: 0, top: "calc(100% + 4px)", background: "var(--n-0)", border: "1px solid var(--border-default)", borderRadius: "var(--r-lg)", boxShadow: "var(--shadow-md)", zIndex: 100, minWidth: 130, padding: "4px 0" }}>
+                  <div className="fixed inset-0 z-[99]" onClick={() => setExportOpen(false)} />
+                  <div className="absolute right-0 top-[calc(100%+4px)] bg-n-0 border border-border-default rounded-lg shadow-md z-[100] min-w-[130px] py-1">
                     {(["csv", "excel", "pdf"] as const).map(fmt => (
                       <button key={fmt}
-                        style={{ display: "block", padding: "8px 16px", fontSize: "0.825rem", cursor: "pointer", background: "none", border: "none", width: "100%", textAlign: "left", color: "var(--text-secondary)", fontFamily: "var(--font-sans)" }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "var(--n-50)"; }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "none"; }}
+                        className="rpt-export-item"
                         onClick={() => { void exportReport(fmt); setExportOpen(false); }}>
                         {fmt.toUpperCase()}
                       </button>
@@ -630,8 +570,7 @@ export function Reports() {
                       {cols.map(c => (
                         <th
                           key={c.key}
-                          className={c.sortable ? "rpt-th-sort" : ""}
-                          style={c.align === "right" ? { textAlign: "right" } : undefined}
+                          className={[c.sortable && "rpt-th-sort", c.align === "right" && "text-right"].filter(Boolean).join(" ")}
                           aria-sort={c.sortable ? (sortCol === c.key ? (sortDir === "asc" ? "ascending" : "descending") : "none") : undefined}
                           onClick={c.sortable ? () => toggleSort(c.key) : undefined}
                         >
@@ -647,7 +586,7 @@ export function Reports() {
                       return (
                         <tr key={i} className={isZeroAlloc ? "rpt-zero-alloc" : undefined}>
                           {cols.map(c => (
-                            <td key={c.key} style={c.align === "right" ? { textAlign: "right" } : undefined}>
+                            <td key={c.key} className={c.align === "right" ? "text-right" : undefined}>
                               {renderCell(c, row)}
                             </td>
                           ))}
@@ -669,8 +608,7 @@ export function Reports() {
               <span className="rpt-showing">{showingText}</span>
               <div className="rpt-page-controls">
                 <select
-                  className="input-field"
-                  style={{ width: "auto", fontSize: "0.8rem", padding: "4px 8px", height: "auto" }}
+                  className="input-field w-auto text-[0.8rem] px-2 py-1 h-auto"
                   value={pageSize}
                   onChange={e => changePageSize(Number(e.target.value))}
                   aria-label="Rows per page"

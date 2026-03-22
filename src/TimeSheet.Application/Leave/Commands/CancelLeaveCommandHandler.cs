@@ -14,20 +14,21 @@ public class CancelLeaveCommandHandler(
 {
     public async Task<Result> Handle(CancelLeaveCommand request, CancellationToken ct)
     {
-        var leaveRequest = await leaveRepo.GetByIdAsync(request.LeaveRequestId, ct);
-        if (leaveRequest is null)
+        var leaveRequests = await leaveRepo.GetByIdOrGroupIdAsync(request.LeaveRequestId, ct);
+        if (leaveRequests.Count == 0)
             return Result.NotFound("Leave request not found.");
 
-        if (leaveRequest.UserId != currentUser.UserId && !currentUser.IsAdmin)
+        if (leaveRequests.Any(lr => lr.UserId != currentUser.UserId) && !currentUser.IsAdmin)
             return Result.Forbidden("You can only cancel your own leave requests.");
 
-        if (leaveRequest.Status == LeaveRequestStatus.Rejected)
+        if (leaveRequests.Any(lr => lr.Status == LeaveRequestStatus.Rejected))
             return Result.Conflict("Cannot cancel a rejected leave request.");
 
-        if (leaveRequest.Status == LeaveRequestStatus.Cancelled)
+        if (leaveRequests.All(lr => lr.Status == LeaveRequestStatus.Cancelled))
             return Result.Conflict("Leave request is already cancelled.");
 
-        leaveRequest.Cancel();
+        foreach (var leaveRequest in leaveRequests.Where(lr => lr.Status != LeaveRequestStatus.Cancelled))
+            leaveRequest.Cancel();
 
         await unitOfWork.SaveChangesAsync(ct);
 

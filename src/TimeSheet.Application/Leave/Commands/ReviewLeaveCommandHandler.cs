@@ -25,6 +25,9 @@ public class ReviewLeaveCommandHandler(
         if (!currentUser.IsAdmin && !currentUser.IsManager)
             return Result.Forbidden("Only managers or admins can review leave requests.");
 
+        if (!currentUser.IsAdmin && !currentUser.IsManagerOf(leaveRequest.UserId))
+            return Result.Forbidden("You can only review leave requests for your direct reports.");
+
         if (request.Approve)
         {
             leaveRequest.Approve(currentUser.UserId);

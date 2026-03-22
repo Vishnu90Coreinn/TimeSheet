@@ -5,6 +5,7 @@ namespace TimeSheet.Domain.Interfaces;
 public interface ILeaveRepository
 {
     Task<LeaveRequest?> GetByIdAsync(Guid id, CancellationToken ct = default);
+    Task<IReadOnlyList<LeaveRequest>> GetByIdOrGroupIdAsync(Guid idOrGroupId, CancellationToken ct = default);
     Task<IReadOnlyList<LeaveRequest>> GetPendingForManagerAsync(Guid managerId, CancellationToken ct = default);
     Task<IReadOnlyList<LeaveRequest>> GetByUserAsync(Guid userId, CancellationToken ct = default);
     Task<LeaveBalance?> GetBalanceAsync(Guid userId, Guid leaveTypeId, int year, CancellationToken ct = default);

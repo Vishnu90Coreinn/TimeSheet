@@ -13,6 +13,12 @@ public class LeaveRepository(TimeSheetDbContext context)
             .Include(lr => lr.LeaveType)
             .FirstOrDefaultAsync(lr => lr.Id == id, ct);
 
+    public async Task<IReadOnlyList<LeaveRequest>> GetByIdOrGroupIdAsync(Guid idOrGroupId, CancellationToken ct = default)
+        => await _dbSet
+            .Include(lr => lr.LeaveType)
+            .Where(lr => lr.Id == idOrGroupId || lr.LeaveGroupId == idOrGroupId)
+            .ToListAsync(ct);
+
     public async Task<IReadOnlyList<LeaveRequest>> GetPendingForManagerAsync(Guid managerId, CancellationToken ct = default)
         => await _dbSet
             .AsNoTracking()

@@ -10,8 +10,8 @@ const BLANK: PolicyForm = { name: "", dailyHours: "8", workDaysPerWeek: 5, isAct
 type SortDir = "asc" | "desc";
 
 function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
-  if (!active) return <span style={{ opacity: 0.4, fontSize: "0.7rem", marginLeft: 3 }}>↕</span>;
-  return <span style={{ fontSize: "0.75rem", marginLeft: 3, color: "var(--brand-600)" }}>{dir === "asc" ? "↑" : "↓"}</span>;
+  if (!active) return <span className="opacity-40 text-[0.7rem] ml-[3px]">↕</span>;
+  return <span className="text-[0.75rem] ml-[3px] text-brand-600">{dir === "asc" ? "↑" : "↓"}</span>;
 }
 
 function Drawer({ open, title, onClose, children, footer }: { open: boolean; title: string; onClose: () => void; children: ReactNode; footer?: ReactNode }) {
@@ -102,7 +102,6 @@ export function WorkPolicies() {
 
   const f = (k: keyof PolicyForm, v: string | boolean | number) => setForm((prev) => ({ ...prev, [k]: v }));
 
-  // Live weekly preview
   const hours = parseFloat(form.dailyHours);
   const daysLabel = form.workDaysPerWeek === 6 ? "Mon–Sat" : "Mon–Fri";
   const weeklyHours = isNaN(hours) ? null : (hours * form.workDaysPerWeek).toFixed(1).replace(/\.0$/, "");
@@ -123,7 +122,7 @@ export function WorkPolicies() {
   const drawerTitle = editing === "new" ? "New Work Policy" : editing ? `Edit — ${(editing as WorkPolicy).name}` : "";
 
   return (
-    <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
+    <section className="flex flex-col gap-6">
       {/* Drawer */}
       <Drawer open={!!editing} title={drawerTitle} onClose={() => setEditing(null)}
         footer={
@@ -133,16 +132,16 @@ export function WorkPolicies() {
           </>
         }
       >
-        {error && <p style={{ color: "var(--danger)", fontSize: "0.825rem", margin: 0 }}>{error}</p>}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-4)" }}>
-          <div className="form-field" style={{ gridColumn: "1 / -1" }}>
+        {error && <p className="text-danger text-[0.825rem] m-0">{error}</p>}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="form-field col-span-2">
             <label className="form-label">Policy Name <span className="required">*</span></label>
             <input className="input-field" placeholder="e.g. Standard 8h, Consultant 2h" value={form.name} onChange={(e) => f("name", e.target.value)} />
           </div>
           <div className="form-field">
             <label className="form-label">Daily Hours <span className="required">*</span></label>
             <input className="input-field" type="number" min="0.5" max="24" step="0.5" placeholder="e.g. 8" value={form.dailyHours} onChange={(e) => f("dailyHours", e.target.value)} />
-            {weeklyPreview && <div style={{ fontSize: "0.75rem", color: "var(--text-tertiary)", marginTop: 4 }}>{weeklyPreview}</div>}
+            {weeklyPreview && <div className="text-[0.75rem] text-text-tertiary mt-1">{weeklyPreview}</div>}
           </div>
           <div className="form-field">
             <label className="form-label">Work Days / Week</label>
@@ -153,8 +152,8 @@ export function WorkPolicies() {
           </div>
           <div className="form-field">
             <label className="form-label">Status</label>
-            <label style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", height: 38, cursor: "pointer", fontSize: "0.825rem", color: "var(--text-secondary)" }}>
-              <input type="checkbox" checked={form.isActive} onChange={(e) => f("isActive", e.target.checked)} style={{ accentColor: "var(--brand-600)" }} />
+            <label className="flex items-center gap-2 h-[38px] cursor-pointer text-[0.825rem] text-text-secondary">
+              <input type="checkbox" checked={form.isActive} onChange={(e) => f("isActive", e.target.checked)} className="[accent-color:var(--brand-600)]" />
               Active
             </label>
           </div>
@@ -183,7 +182,7 @@ export function WorkPolicies() {
       </div>
 
       {/* Table */}
-      <div className="card" style={{ overflow: "visible" }}>
+      <div className="card overflow-visible">
         <div className="card-header">
           <div>
             <div className="card-title">All Work Policies</div>
@@ -200,14 +199,14 @@ export function WorkPolicies() {
                 <th className="th-sort" onClick={() => toggleSort("name")} aria-sort={sortCol === "name" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
                   Policy Name <SortIcon active={sortCol === "name"} dir={sortDir} />
                 </th>
-                <th className="th-sort" style={{ width: 130 }} onClick={() => toggleSort("dailyExpectedMinutes")} aria-sort={sortCol === "dailyExpectedMinutes" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
+                <th className="th-sort w-[130px]" onClick={() => toggleSort("dailyExpectedMinutes")} aria-sort={sortCol === "dailyExpectedMinutes" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
                   Daily Hours <SortIcon active={sortCol === "dailyExpectedMinutes"} dir={sortDir} />
                 </th>
-                <th style={{ width: 160 }}>Weekly Target</th>
-                <th className="th-sort" style={{ width: 100 }} onClick={() => toggleSort("isActive")} aria-sort={sortCol === "isActive" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
+                <th className="w-[160px]">Weekly Target</th>
+                <th className="th-sort w-[100px]" onClick={() => toggleSort("isActive")} aria-sort={sortCol === "isActive" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
                   Status <SortIcon active={sortCol === "isActive"} dir={sortDir} />
                 </th>
-                <th style={{ width: 100, textAlign: "right" }}>Actions</th>
+                <th className="w-[100px] text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -217,20 +216,18 @@ export function WorkPolicies() {
               {sorted.map((p) => (
                 <tr key={p.id}>
                   <td>
-                    <button style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-primary)", fontWeight: 600, padding: 0, textAlign: "left", fontSize: "inherit" }} onClick={() => openEdit(p)}>
-                      {p.name}
-                    </button>
+                    <button className="btn-table-link" onClick={() => openEdit(p)}>{p.name}</button>
                   </td>
                   <td>{(p.dailyExpectedMinutes / 60).toFixed(1)}h / day</td>
                   <td>
                     <span>{((p.dailyExpectedMinutes / 60) * (p.workDaysPerWeek ?? 5)).toFixed(0)}h / week</span>
-                    <span style={{ color: "var(--text-tertiary)", fontSize: "0.75rem", marginLeft: 4 }}>({p.workDaysPerWeek === 6 ? "Mon–Sat" : "Mon–Fri"})</span>
+                    <span className="text-text-tertiary text-[0.75rem] ml-1">({p.workDaysPerWeek === 6 ? "Mon–Sat" : "Mon–Fri"})</span>
                   </td>
                   <td>
                     <span className={`badge ${p.isActive ? "badge-success" : "badge-neutral"}`}>{p.isActive ? "Active" : "Inactive"}</span>
                   </td>
-                  <td style={{ textAlign: "right" }}>
-                    <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                  <td className="text-right">
+                    <div className="flex gap-2 justify-end">
                       <button className="btn btn-ghost btn-sm" onClick={() => openEdit(p)}>Edit</button>
                       <button className="btn btn-subtle-danger btn-sm" onClick={() => setDeleteTarget(p)}>Delete</button>
                     </div>
@@ -243,11 +240,11 @@ export function WorkPolicies() {
       </div>
 
       {/* How it works */}
-      <div className="card" style={{ background: "var(--n-50)", border: "1px solid var(--border-subtle)" }}>
-        <div className="card-body" style={{ padding: "var(--space-4) var(--space-5)" }}>
-          <p style={{ fontSize: "0.825rem", color: "var(--text-secondary)", margin: 0, lineHeight: 1.6 }}>
-            <strong style={{ color: "var(--text-primary)" }}>How it works:</strong> Each employee is assigned a Work Policy in the{" "}
-            <strong style={{ color: "var(--brand-600)" }}>Users</strong> admin page.
+      <div className="card bg-n-50 border border-border-subtle">
+        <div className="card-body px-5 py-4">
+          <p className="text-[0.825rem] text-text-secondary m-0 leading-[1.6]">
+            <strong className="text-text-primary">How it works:</strong> Each employee is assigned a Work Policy in the{" "}
+            <strong className="text-brand-600">Users</strong> admin page.
             The policy defines their daily expected hours, which determines the weekly target shown in the Timesheet.
             Create separate policies for consultants (2h), part-time (4h), and full-time employees (8h).
           </p>

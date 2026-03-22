@@ -1,5 +1,5 @@
 /**
- * Login.tsx — v3.0 exact Pulse reference layout
+ * Login.tsx — Pulse SaaS design v3.0
  * Left: gradient brand panel with features + testimonial
  * Right: clean sign-in form
  */
@@ -54,8 +54,6 @@ export function Login({ onLogin }: LoginProps) {
 
   return (
     <>
-      <style>{STYLES}</style>
-
       {/* Background */}
       <div className="lp-bg">
         <div className="lp-pattern" />
@@ -152,7 +150,7 @@ export function Login({ onLogin }: LoginProps) {
                 {/* Remember me */}
                 <div className="lp-row2">
                   <label className="lp-checkbox-label">
-                    <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} style={{ accentColor: "var(--brand-500)", cursor: "pointer" }} />
+                    <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="[accent-color:var(--brand-500)] cursor-pointer" />
                     Keep me signed in
                   </label>
                 </div>
@@ -186,197 +184,3 @@ export function Login({ onLogin }: LoginProps) {
   );
 }
 
-const STYLES = `
-  .lp-bg {
-    min-height: 100vh; background: var(--n-50);
-    display: flex; align-items: stretch;
-    position: relative; overflow: hidden;
-  }
-  .lp-pattern {
-    position: fixed; inset: 0; z-index: 0;
-    background-image:
-      radial-gradient(circle at 20% 20%, rgba(99,102,241,0.06) 0%, transparent 50%),
-      radial-gradient(circle at 80% 80%, rgba(99,102,241,0.04) 0%, transparent 50%);
-  }
-  .lp-dots {
-    position: fixed; inset: 0; z-index: 0;
-    background-image: radial-gradient(circle, var(--n-200) 1px, transparent 1px);
-    background-size: 28px 28px; opacity: 0.7;
-    mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 0%, transparent 100%);
-  }
-  .lp-wrapper {
-    position: relative; z-index: 1;
-    display: flex; align-items: center; justify-content: center;
-    width: 100%; min-height: 100vh; padding: 24px;
-  }
-  .lp-card {
-    background: var(--n-0);
-    border: 1px solid var(--border-default);
-    border-radius: var(--r-2xl);
-    box-shadow: var(--shadow-xl);
-    width: 100%; max-width: 960px;
-    display: grid; grid-template-columns: 1fr 1fr;
-    overflow: hidden;
-    animation: lpReveal 0.5s cubic-bezier(0.16,1,0.3,1);
-  }
-  @keyframes lpReveal {
-    from { opacity: 0; transform: translateY(16px) scale(0.98); }
-    to   { opacity: 1; transform: translateY(0) scale(1); }
-  }
-  @media (max-width: 720px) { .lp-card { grid-template-columns: 1fr; } .lp-left { display: none; } }
-
-  /* Left */
-  .lp-left {
-    background: linear-gradient(145deg, var(--brand-700) 0%, var(--brand-600) 40%, var(--brand-500) 100%);
-    padding: 48px 40px;
-    display: flex; flex-direction: column; justify-content: space-between;
-    position: relative; overflow: hidden;
-  }
-  .lp-left-pattern {
-    position: absolute; inset: 0;
-    background-image:
-      linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
-    background-size: 32px 32px;
-  }
-  .lp-left-orb1 {
-    position: absolute; top: -80px; right: -80px;
-    width: 300px; height: 300px; border-radius: 50%;
-    background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
-  }
-  .lp-left-orb2 {
-    position: absolute; bottom: -60px; left: -60px;
-    width: 250px; height: 250px; border-radius: 50%;
-    background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 70%);
-  }
-  .lp-brand {
-    position: relative; z-index: 1;
-    display: flex; align-items: center; gap: 12px;
-    margin-bottom: 48px;
-  }
-  .lp-brand-icon {
-    width: 36px; height: 36px;
-    background: rgba(255,255,255,0.15);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255,255,255,0.2);
-    border-radius: var(--r-lg);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1rem;
-  }
-  .lp-brand-name {
-    font-family: var(--font-display);
-    font-size: 1.25rem; font-weight: 700;
-    color: #fff; letter-spacing: -0.02em;
-  }
-  .lp-headline {
-    position: relative; z-index: 1; flex: 1;
-  }
-  .lp-headline h1 {
-    font-family: var(--font-display);
-    font-size: clamp(1.75rem, 2.5vw, 2.25rem); font-weight: 700;
-    color: #fff; line-height: 1.15; letter-spacing: -0.03em;
-    margin-bottom: 16px;
-  }
-  .lp-headline h1 span { opacity: 0.65; }
-  .lp-headline p {
-    font-size: 0.875rem; color: rgba(255,255,255,0.65);
-    line-height: 1.6; max-width: 280px; margin-bottom: 32px;
-  }
-  .lp-features { display: flex; flex-direction: column; gap: 12px; position: relative; z-index: 1; }
-  .lp-feature {
-    display: flex; align-items: center; gap: 12px;
-    font-size: 0.8rem; color: rgba(255,255,255,0.8);
-  }
-  .lp-feat-icon {
-    width: 26px; height: 26px;
-    background: rgba(255,255,255,0.12);
-    border-radius: var(--r-sm);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 0.75rem; flex-shrink: 0;
-  }
-  .lp-testimonial {
-    position: relative; z-index: 1; margin-top: 32px;
-    padding: 16px 20px;
-    background: rgba(255,255,255,0.08);
-    border: 1px solid rgba(255,255,255,0.12);
-    border-radius: var(--r-lg);
-  }
-  .lp-quote { font-size: 0.82rem; color: rgba(255,255,255,0.8); line-height: 1.6; font-style: italic; margin-bottom: 12px; }
-  .lp-author { display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: rgba(255,255,255,0.55); }
-  .lp-author-av {
-    width: 22px; height: 22px; border-radius: 50%;
-    background: rgba(255,255,255,0.2);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 0.65rem; font-weight: 700; color: #fff;
-  }
-
-  /* Right */
-  .lp-right { padding: 48px 40px; display: flex; flex-direction: column; justify-content: center; }
-  .lp-right-header { margin-bottom: 32px; }
-  .lp-right-header h2 {
-    font-family: var(--font-display);
-    font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em;
-    color: var(--text-primary); margin-bottom: 4px;
-  }
-  .lp-right-header p { font-size: 0.875rem; color: var(--text-secondary); }
-
-  .lp-field { margin-bottom: 16px; }
-  .lp-label { display: block; font-size: 0.775rem; font-weight: 600; color: var(--text-primary); letter-spacing: 0.01em; margin-bottom: 8px; }
-  .lp-label-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-  .lp-forgot { font-size: 0.775rem; font-weight: 500; color: var(--brand-600); background: none; border: none; cursor: pointer; padding: 0; }
-  .lp-forgot:hover { text-decoration: underline; }
-
-  .lp-input-wrap { position: relative; }
-  .lp-input-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-tertiary); display: flex; align-items: center; pointer-events: none; }
-  .lp-input {
-    width: 100%; height: 42px;
-    padding: 0 12px 0 36px;
-    background: var(--surface-sunken);
-    border: 1.5px solid var(--border-default);
-    border-radius: var(--r-md);
-    font-size: 0.875rem; font-family: var(--font-sans);
-    color: var(--text-primary); outline: none;
-    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
-    box-sizing: border-box;
-  }
-  .lp-input:hover { border-color: var(--border-strong); background: var(--n-0); }
-  .lp-input:focus { border-color: var(--brand-400); box-shadow: 0 0 0 3px rgba(99,102,241,0.12); background: var(--n-0); }
-  .lp-input::placeholder { color: var(--text-tertiary); }
-  .lp-input--err { border-color: var(--danger) !important; }
-
-  .lp-row2 { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-  .lp-checkbox-label { display: flex; align-items: center; gap: 8px; font-size: 0.825rem; color: var(--text-secondary); cursor: pointer; }
-
-  .lp-error {
-    display: flex; align-items: center; gap: 8px;
-    padding: 10px 14px; margin-bottom: 16px;
-    background: var(--danger-light); border: 1px solid rgba(239,68,68,0.2);
-    border-radius: var(--r-md); font-size: 0.825rem; color: var(--danger-dark);
-  }
-
-  .lp-submit {
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-    width: 100%; height: 42px;
-    background: var(--brand-600); color: #fff;
-    border: none; border-radius: var(--r-md);
-    font-family: var(--font-sans); font-size: 0.875rem; font-weight: 600;
-    cursor: pointer; transition: all 0.15s; letter-spacing: 0.01em;
-  }
-  .lp-submit:hover:not(:disabled) { background: var(--brand-700); box-shadow: var(--shadow-brand); transform: translateY(-1px); }
-  .lp-submit:active:not(:disabled) { transform: translateY(0); }
-  .lp-submit:disabled { opacity: 0.55; cursor: not-allowed; }
-
-  .lp-spinner {
-    width: 18px; height: 18px;
-    border: 2px solid rgba(255,255,255,0.35);
-    border-top-color: #fff; border-radius: 50%;
-    animation: lpSpin 0.7s linear infinite; display: inline-block;
-  }
-  @keyframes lpSpin { to { transform: rotate(360deg); } }
-
-  .lp-trust {
-    display: flex; align-items: center; justify-content: center; gap: 16px;
-    margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border-subtle);
-  }
-  .lp-trust-item { display: flex; align-items: center; gap: 4px; font-size: 0.72rem; color: var(--text-tertiary); font-weight: 500; }
-`;

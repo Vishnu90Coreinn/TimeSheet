@@ -3,10 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using TimeSheet.Api.Data;
 using TimeSheet.Api.Dtos;
-using TimeSheet.Api.Models;
-using TimeSheet.Api.Services;
 using Xunit;
 
 namespace TimeSheet.Api.Tests;
@@ -48,7 +45,6 @@ public class AttendanceIntegrationTests : IClassFixture<CustomWebApplicationFact
 
             db.WorkSessions.Add(new WorkSession
             {
-                Id = Guid.NewGuid(),
                 UserId = user.Id,
                 WorkDate = DateOnly.FromDateTime(priorDayCheckIn),
                 CheckInAtUtc = priorDayCheckIn,

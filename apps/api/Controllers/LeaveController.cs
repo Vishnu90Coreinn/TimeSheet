@@ -1,416 +1,150 @@
 using System.Security.Claims;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using TimeSheet.Api.Data;
 using TimeSheet.Api.Dtos;
-using TimeSheet.Api.Models;
-using TimeSheet.Api.Services;
+using TimeSheet.Api.Extensions;
+using TimeSheet.Application.Leave.Commands;
+using TimeSheet.Application.Leave.Queries;
 
 namespace TimeSheet.Api.Controllers;
 
 [ApiController]
 [Authorize]
 [Route("api/v1/leave")]
-public class LeaveController(TimeSheetDbContext dbContext, IAuditService auditService, INotificationService notificationService) : ControllerBase
+public class LeaveController(TimeSheetDbContext dbContext, ISender mediator) : ControllerBase
 {
     [HttpGet("types")]
-    public async Task<IActionResult> GetLeaveTypes()
+    public async Task<IActionResult> GetLeaveTypes(CancellationToken ct)
     {
-        var role = User.FindFirstValue(ClaimTypes.Role) ?? "employee";
-        var query = dbContext.LeaveTypes.AsNoTracking();
-        if (!string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase))
-        {
-            query = query.Where(x => x.IsActive);
-        }
-
-        var items = await query.OrderBy(x => x.Name)
-            .Select(x => new LeaveTypeResponse(x.Id, x.Name, x.IsActive))
-            .ToListAsync();
-
-        return Ok(items);
+        var isAdmin = User.IsInRole("admin");
+        var result = await mediator.Send(new GetLeaveTypesQuery(!isAdmin), ct);
+        return result.IsSuccess ? Ok(result.Value) : result.ToActionResult();
     }
 
     [HttpPost("types")]
     [Authorize(Roles = "admin")]
-    public async Task<IActionResult> UpsertLeaveType([FromBody] UpsertLeaveTypeRequest request)
+    public async Task<IActionResult> UpsertLeaveType([FromBody] UpsertLeaveTypeRequest request, CancellationToken ct)
     {
-        var name = request.Name.Trim();
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            return BadRequest(new { message = "Name is required." });
-        }
-
-        var existing = await dbContext.LeaveTypes.SingleOrDefaultAsync(x => x.Name == name);
-        if (existing is null)
-        {
-            existing = new LeaveType { Id = Guid.NewGuid(), Name = name, IsActive = request.IsActive };
-            dbContext.LeaveTypes.Add(existing);
-        }
-        else
-        {
-            existing.IsActive = request.IsActive;
-        }
-
-        await dbContext.SaveChangesAsync();
-        return Ok(new LeaveTypeResponse(existing.Id, existing.Name, existing.IsActive));
+        var result = await mediator.Send(new UpsertLeaveTypeCommand(null, request.Name, request.IsActive), ct);
+        return result.ToActionResult();
     }
 
     [HttpPost("requests")]
-    public async Task<IActionResult> ApplyLeave([FromBody] ApplyLeaveRequest request)
+    public async Task<IActionResult> ApplyLeave([FromBody] ApplyLeaveRequest request, CancellationToken ct)
     {
-        var userId = GetUserId();
-        if (userId is null)
-        {
-            return Unauthorized();
-        }
-
-        if (request.ToDate < request.FromDate)
-            return BadRequest(new { message = "ToDate must be on or after FromDate." });
-
-        // Expand date range into individual working days (exclude Sat/Sun)
-        var days = new List<DateOnly>();
-        for (var d = request.FromDate; d <= request.ToDate; d = d.AddDays(1))
-        {
-            if (d.DayOfWeek != DayOfWeek.Saturday && d.DayOfWeek != DayOfWeek.Sunday)
-                days.Add(d);
-        }
-
-        if (days.Count == 0)
-            return BadRequest(new { message = "The selected date range contains no working days." });
-
-        // Check for existing pending/approved requests on any of these days
-        var existingDates = await dbContext.LeaveRequests
-            .Where(lr => lr.UserId == userId.Value &&
-                         lr.Status != LeaveRequestStatus.Rejected &&
-                         days.Contains(lr.LeaveDate))
-            .Select(lr => lr.LeaveDate)
-            .ToListAsync();
-
-        if (existingDates.Count > 0)
-            return Conflict(new { message = $"You already have a leave request on {string.Join(", ", existingDates.Select(d => d.ToString("MMM d")))}. Cancel it first before re-applying." });
-
-        // Remove any rejected requests for these dates so the unique key constraint is not violated on re-apply
-        var rejectedToReplace = await dbContext.LeaveRequests
-            .Where(lr => lr.UserId == userId.Value &&
-                         lr.Status == LeaveRequestStatus.Rejected &&
-                         days.Contains(lr.LeaveDate))
-            .ToListAsync();
-        if (rejectedToReplace.Count > 0)
-            dbContext.LeaveRequests.RemoveRange(rejectedToReplace);
-
-        var leaveGroupId = Guid.NewGuid();
-        var requests = days.Select(day => new LeaveRequest
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId.Value,
-            LeaveTypeId = request.LeaveTypeId,
-            LeaveDate = day,
-            IsHalfDay = request.IsHalfDay,
-            Comment = request.Comment,
-            Status = LeaveRequestStatus.Pending,
-            LeaveGroupId = leaveGroupId,
-            CreatedAtUtc = DateTime.UtcNow
-        }).ToList();
-
-        dbContext.LeaveRequests.AddRange(requests);
-        await dbContext.SaveChangesAsync();
-
-        return Ok(new { leaveGroupId, count = requests.Count });
+        var result = await mediator.Send(
+            new ApplyLeaveCommand(request.FromDate, request.ToDate, request.LeaveTypeId, request.IsHalfDay, request.Comment), ct);
+        if (!result.IsSuccess) return result.ToActionResult();
+        return Ok(new { leaveGroupId = result.Value!.LeaveGroupId, count = result.Value.Count });
     }
 
     [HttpDelete("requests/{id:guid}")]
     public async Task<IActionResult> CancelLeave(Guid id)
     {
-        var userId = GetUserId();
-        if (userId is null) return Unauthorized();
-
-        // Match by group ID first (multi-day), then by individual request ID (legacy)
-        var requests = await dbContext.LeaveRequests
-            .Where(lr => lr.UserId == userId.Value && (lr.LeaveGroupId == id || lr.Id == id))
-            .ToListAsync();
-
-        if (requests.Count == 0) return NotFound(new { message = "Leave request not found." });
-        if (requests.Any(lr => lr.Status != LeaveRequestStatus.Pending))
-            return Conflict(new { message = "Only pending leave requests can be cancelled." });
-
-        dbContext.LeaveRequests.RemoveRange(requests);
-        await dbContext.SaveChangesAsync();
-        return NoContent();
+        var result = await mediator.Send(new CancelLeaveCommand(id));
+        return result.ToActionResult();
     }
 
     [HttpGet("requests/my")]
-    public async Task<IActionResult> GetMyLeaveRequests()
+    public async Task<IActionResult> GetMyLeaveRequests(CancellationToken ct)
     {
-        var userId = GetUserId();
-        if (userId is null)
-        {
-            return Unauthorized();
-        }
-
-        var items = await dbContext.LeaveRequests
-            .AsNoTracking()
-            .Where(x => x.UserId == userId.Value)
-            .OrderByDescending(x => x.LeaveDate)
-            .Select(x => new LeaveRequestResponse(
-                x.Id,
-                x.UserId,
-                x.User.Username,
-                x.LeaveDate,
-                x.LeaveTypeId,
-                x.LeaveType.Name,
-                x.IsHalfDay,
-                x.Status.ToString().ToLowerInvariant(),
-                x.Comment,
-                x.ReviewedByUserId,
-                x.ReviewedByUser != null ? x.ReviewedByUser.Username : null,
-                x.ReviewerComment,
-                x.CreatedAtUtc,
-                x.ReviewedAtUtc))
-            .ToListAsync();
-
-        return Ok(items);
+        var result = await mediator.Send(new GetMyLeaveRequestsQuery(), ct);
+        return result.IsSuccess ? Ok(result.Value) : result.ToActionResult();
     }
 
     [HttpGet("requests/pending")]
     [Authorize(Roles = "manager,admin")]
-    public async Task<IActionResult> GetPendingLeaveRequests()
+    public async Task<IActionResult> GetPendingLeaveRequests(CancellationToken ct)
     {
-        var managerId = GetUserId();
-        if (managerId is null)
-        {
-            return Unauthorized();
-        }
-
-        var role = User.FindFirstValue(ClaimTypes.Role) ?? "employee";
-        var query = dbContext.LeaveRequests.AsNoTracking().Where(x => x.Status == LeaveRequestStatus.Pending);
-
-        if (!string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase))
-        {
-            query = query.Where(x => x.User.ManagerId == managerId.Value);
-        }
-
-        var items = await query
-            .OrderBy(x => x.LeaveDate)
-            .Select(x => new LeaveRequestResponse(
-                x.Id,
-                x.UserId,
-                x.User.Username,
-                x.LeaveDate,
-                x.LeaveTypeId,
-                x.LeaveType.Name,
-                x.IsHalfDay,
-                x.Status.ToString().ToLowerInvariant(),
-                x.Comment,
-                x.ReviewedByUserId,
-                x.ReviewedByUser != null ? x.ReviewedByUser.Username : null,
-                x.ReviewerComment,
-                x.CreatedAtUtc,
-                x.ReviewedAtUtc))
-            .ToListAsync();
-
-        return Ok(items);
+        var result = await mediator.Send(new GetPendingLeaveRequestsQuery(), ct);
+        return result.IsSuccess ? Ok(result.Value) : result.ToActionResult();
     }
 
     [HttpPost("requests/{leaveRequestId:guid}/review")]
     [Authorize(Roles = "manager,admin")]
     public async Task<IActionResult> ReviewLeave(Guid leaveRequestId, [FromBody] ReviewLeaveRequest request)
     {
-        var managerId = GetUserId();
-        if (managerId is null)
-        {
-            return Unauthorized();
-        }
-
-        var role = User.FindFirstValue(ClaimTypes.Role) ?? "employee";
-
-        var leave = await dbContext.LeaveRequests
-            .Include(x => x.User)
-            .SingleOrDefaultAsync(x => x.Id == leaveRequestId);
-
-        if (leave is null)
-        {
-            return NotFound();
-        }
-
-        if (leave.Status != LeaveRequestStatus.Pending)
-        {
-            return Conflict(new { message = "Only pending leaves can be reviewed." });
-        }
-
-        if (!string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase) && leave.User.ManagerId != managerId.Value)
-        {
-            return Forbid();
-        }
-
-        if (!request.Approve && string.IsNullOrWhiteSpace(request.Comment))
-        {
-            return BadRequest(new { message = "Comment is required when rejecting leave." });
-        }
-
-        leave.Status = request.Approve ? LeaveRequestStatus.Approved : LeaveRequestStatus.Rejected;
-        leave.ReviewedByUserId = managerId.Value;
-        leave.ReviewerComment = request.Comment?.Trim();
-        leave.ReviewedAtUtc = DateTime.UtcNow;
-
-        await dbContext.SaveChangesAsync();
-
-        await auditService.WriteAsync(request.Approve ? "LeaveApproved" : "LeaveRejected", "LeaveRequest", leave.Id.ToString(), $"Manager reviewed leave for {leave.LeaveDate}", User);
-        await notificationService.CreateAsync(leave.UserId, "Leave Request Updated",
-            $"Your leave request for {leave.LeaveDate:yyyy-MM-dd} has been {(request.Approve ? "approved" : "rejected")}.", NotificationType.StatusChange);
-        await dbContext.SaveChangesAsync();
-
-        return Ok(await MapLeaveResponse(leave.Id));
+        var result = await mediator.Send(new ReviewLeaveCommand(leaveRequestId, request.Approve, request.Comment));
+        return result.ToActionResult();
     }
 
     // ── Leave Policies (admin only) ───────────────────────────────
 
     [HttpGet("policies")]
     [Authorize(Roles = "admin")]
-    public async Task<IActionResult> GetPolicies()
+    public async Task<IActionResult> GetPolicies(CancellationToken ct)
     {
-        var policies = await dbContext.LeavePolicies
-            .Include(p => p.Allocations)
-                .ThenInclude(a => a.LeaveType)
-            .OrderBy(p => p.Name)
-            .ToListAsync();
-
-        var result = policies.Select(p => new LeavePolicyResponse(
-            p.Id, p.Name, p.IsActive,
-            p.Allocations.Select(a => new LeavePolicyAllocationResponse(a.LeaveTypeId, a.LeaveType.Name, a.DaysPerYear)).ToList()
-        ));
-        return Ok(result);
+        var result = await mediator.Send(new GetLeavePoliciesQuery(), ct);
+        return result.IsSuccess ? Ok(result.Value) : result.ToActionResult();
     }
 
     [HttpPost("policies")]
     [Authorize(Roles = "admin")]
-    public async Task<IActionResult> CreatePolicy([FromBody] UpsertLeavePolicyRequest request)
+    public async Task<IActionResult> CreatePolicy([FromBody] UpsertLeavePolicyRequest request, CancellationToken ct)
     {
-        var policy = new LeavePolicy { Id = Guid.NewGuid(), Name = request.Name, IsActive = request.IsActive };
-        policy.Allocations = request.Allocations.Select(a => new LeavePolicyAllocation
-        {
-            Id = Guid.NewGuid(),
-            LeavePolicyId = policy.Id,
-            LeaveTypeId = a.LeaveTypeId,
-            DaysPerYear = a.DaysPerYear
-        }).ToList();
-        dbContext.LeavePolicies.Add(policy);
-        await dbContext.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetPolicies), new { id = policy.Id }, new { id = policy.Id });
+        var allocations = request.Allocations
+            .Select(a => new LeavePolicyAllocationDto(a.LeaveTypeId, a.DaysPerYear))
+            .ToList();
+        var result = await mediator.Send(new CreateLeavePolicyCommand(request.Name, request.IsActive, allocations), ct);
+        if (!result.IsSuccess) return result.ToActionResult();
+        return CreatedAtAction(nameof(GetPolicies), new { id = result.Value }, new { id = result.Value });
     }
 
     [HttpPut("policies/{id:guid}")]
     [Authorize(Roles = "admin")]
-    public async Task<IActionResult> UpdatePolicy(Guid id, [FromBody] UpsertLeavePolicyRequest request)
+    public async Task<IActionResult> UpdatePolicy(Guid id, [FromBody] UpsertLeavePolicyRequest request, CancellationToken ct)
     {
-        var policy = await dbContext.LeavePolicies.Include(p => p.Allocations).FirstOrDefaultAsync(p => p.Id == id);
-        if (policy is null) return NotFound();
-
-        policy.Name = request.Name;
-        policy.IsActive = request.IsActive;
-
-        // Replace allocations
-        dbContext.LeavePolicyAllocations.RemoveRange(policy.Allocations);
-        policy.Allocations = request.Allocations.Select(a => new LeavePolicyAllocation
-        {
-            Id = Guid.NewGuid(),
-            LeavePolicyId = policy.Id,
-            LeaveTypeId = a.LeaveTypeId,
-            DaysPerYear = a.DaysPerYear
-        }).ToList();
-
-        await dbContext.SaveChangesAsync();
-        return NoContent();
+        var allocations = request.Allocations
+            .Select(a => new LeavePolicyAllocationDto(a.LeaveTypeId, a.DaysPerYear))
+            .ToList();
+        var result = await mediator.Send(new UpdateLeavePolicyCommand(id, request.Name, request.IsActive, allocations), ct);
+        return result.ToActionResult();
     }
 
     [HttpDelete("policies/{id:guid}")]
     [Authorize(Roles = "admin")]
-    public async Task<IActionResult> DeletePolicy(Guid id)
+    public async Task<IActionResult> DeletePolicy(Guid id, CancellationToken ct)
     {
-        var policy = await dbContext.LeavePolicies.FindAsync(id);
-        if (policy is null) return NotFound();
-        dbContext.LeavePolicies.Remove(policy);
-        await dbContext.SaveChangesAsync();
-        return NoContent();
+        var result = await mediator.Send(new DeleteLeavePolicyCommand(id), ct);
+        return result.ToActionResult();
     }
 
     // ── Leave Balance ─────────────────────────────────────────────
 
     [HttpGet("balance/my")]
-    public async Task<IActionResult> GetMyBalance()
+    public async Task<IActionResult> GetMyBalance(CancellationToken ct)
     {
-        var userId = GetUserId();
-        if (userId is null) return Unauthorized();
-        var year = DateTime.UtcNow.Year;
-        return Ok(await ComputeBalances(userId.Value, year));
+        var result = await mediator.Send(new GetLeaveBalanceQuery(), ct);
+        return result.IsSuccess ? Ok(result.Value) : result.ToActionResult();
     }
 
     [HttpGet("balance/{userId:guid}")]
     [Authorize(Roles = "admin")]
-    public async Task<IActionResult> GetUserBalance(Guid userId)
+    public async Task<IActionResult> GetUserBalance(Guid userId, CancellationToken ct)
     {
-        var year = DateTime.UtcNow.Year;
-        return Ok(await ComputeBalances(userId, year));
+        var result = await mediator.Send(new GetLeaveBalanceQuery(userId), ct);
+        return result.IsSuccess ? Ok(result.Value) : result.ToActionResult();
     }
 
     [HttpPut("balance/{userId:guid}/{leaveTypeId:guid}")]
     [Authorize(Roles = "admin")]
-    public async Task<IActionResult> AdjustBalance(Guid userId, Guid leaveTypeId, [FromBody] AdjustLeaveBalanceRequest request)
+    public async Task<IActionResult> AdjustBalance(Guid userId, Guid leaveTypeId, [FromBody] AdjustLeaveBalanceRequest request, CancellationToken ct)
     {
-        var year = DateTime.UtcNow.Year;
-        var balance = await dbContext.LeaveBalances
-            .FirstOrDefaultAsync(lb => lb.UserId == userId && lb.LeaveTypeId == leaveTypeId && lb.Year == year);
-
-        if (balance is null)
-        {
-            balance = new LeaveBalance { Id = Guid.NewGuid(), UserId = userId, LeaveTypeId = leaveTypeId, Year = year };
-            dbContext.LeaveBalances.Add(balance);
-        }
-
-        balance.ManualAdjustmentDays += request.Adjustment;
-        balance.Note = request.Note;
-        balance.UpdatedAtUtc = DateTime.UtcNow;
-        await dbContext.SaveChangesAsync();
-        return Ok(await ComputeBalances(userId, year));
+        var result = await mediator.Send(new UpdateLeaveBalanceCommand(userId, leaveTypeId, request.Adjustment, request.Note), ct);
+        if (!result.IsSuccess) return result.ToActionResult();
+        var balanceResult = await mediator.Send(new GetLeaveBalanceQuery(userId), ct);
+        return balanceResult.IsSuccess ? Ok(balanceResult.Value) : balanceResult.ToActionResult();
     }
 
     // ── Leave History (grouped) ───────────────────────────────────
 
     [HttpGet("requests/my/grouped")]
-    public async Task<IActionResult> GetMyGroupedRequests()
+    public async Task<IActionResult> GetMyGroupedRequests(CancellationToken ct)
     {
-        var userId = GetUserId();
-        if (userId is null) return Unauthorized();
-
-        var leaveRequests = await dbContext.LeaveRequests
-            .Include(lr => lr.LeaveType)
-            .Include(lr => lr.ReviewedByUser)
-            .Where(lr => lr.UserId == userId.Value)
-            .OrderBy(lr => lr.LeaveDate)
-            .ToListAsync();
-
-        // Group by LeaveGroupId (fall back to individual records for legacy data with no group)
-        var groups = leaveRequests
-            .GroupBy(lr => lr.LeaveGroupId ?? lr.Id)
-            .Select(g =>
-            {
-                var first = g.First();
-                return new LeaveRequestGroupResponse(
-                    GroupId: g.Key,
-                    LeaveTypeName: first.LeaveType.Name,
-                    FromDate: g.Min(r => r.LeaveDate),
-                    ToDate: g.Max(r => r.LeaveDate),
-                    Days: g.Count(),
-                    Status: first.Status.ToString().ToLower(),
-                    AppliedOnDate: DateOnly.FromDateTime(first.CreatedAtUtc),
-                    ApprovedByUsername: first.ReviewedByUser?.Username,
-                    Comment: first.Comment
-                );
-            })
-            .OrderByDescending(g => g.FromDate)
-            .ToList();
-
-        return Ok(groups);
+        var result = await mediator.Send(new GetMyGroupedLeaveQuery(), ct);
+        return result.IsSuccess ? Ok(result.Value) : result.ToActionResult();
     }
 
     // ── Leave Calendar ────────────────────────────────────────────
@@ -620,68 +354,11 @@ public class LeaveController(TimeSheetDbContext dbContext, IAuditService auditSe
         return Ok(grouped);
     }
 
-    // ── Private helper ────────────────────────────────────────────
-
-    private async Task<LeaveBalanceResponse[]> ComputeBalances(Guid userId, int year)
-    {
-        var leaveTypes = await dbContext.LeaveTypes.Where(lt => lt.IsActive).OrderBy(lt => lt.Name).ToListAsync();
-
-        // Policy allocations give the base entitlement (DaysPerYear)
-        var policyAllocations = await dbContext.Users
-            .Where(u => u.Id == userId && u.LeavePolicyId != null)
-            .SelectMany(u => u.LeavePolicy!.Allocations)
-            .ToListAsync();
-
-        // Manual adjustments stored per-user per-year (admin overrides)
-        var manualAdjustments = await dbContext.LeaveBalances
-            .Where(lb => lb.UserId == userId && lb.Year == year)
-            .ToListAsync();
-
-        var usedByType = await dbContext.LeaveRequests
-            .Where(lr => lr.UserId == userId
-                && lr.LeaveDate.Year == year
-                && lr.Status == LeaveRequestStatus.Approved)
-            .GroupBy(lr => lr.LeaveTypeId)
-            .Select(g => new { LeaveTypeId = g.Key, Count = g.Count() })
-            .ToListAsync();
-
-        return leaveTypes.Select(lt =>
-        {
-            var policyAlloc = policyAllocations.FirstOrDefault(a => a.LeaveTypeId == lt.Id);
-            var manual = manualAdjustments.FirstOrDefault(b => b.LeaveTypeId == lt.Id);
-            var used = usedByType.FirstOrDefault(u => u.LeaveTypeId == lt.Id)?.Count ?? 0;
-            var total = (policyAlloc?.DaysPerYear ?? 0) + (manual?.ManualAdjustmentDays ?? 0);
-            return new LeaveBalanceResponse(lt.Id, lt.Name, total, used, Math.Max(0, total - used));
-        }).ToArray();
-    }
-
     private Guid? GetUserId()
     {
         var sub = User.FindFirstValue(ClaimTypes.NameIdentifier)
                   ?? User.FindFirstValue(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub);
 
         return Guid.TryParse(sub, out var userId) ? userId : null;
-    }
-
-    private async Task<LeaveRequestResponse> MapLeaveResponse(Guid id)
-    {
-        return await dbContext.LeaveRequests.AsNoTracking()
-            .Where(x => x.Id == id)
-            .Select(x => new LeaveRequestResponse(
-                x.Id,
-                x.UserId,
-                x.User.Username,
-                x.LeaveDate,
-                x.LeaveTypeId,
-                x.LeaveType.Name,
-                x.IsHalfDay,
-                x.Status.ToString().ToLowerInvariant(),
-                x.Comment,
-                x.ReviewedByUserId,
-                x.ReviewedByUser != null ? x.ReviewedByUser.Username : null,
-                x.ReviewerComment,
-                x.CreatedAtUtc,
-                x.ReviewedAtUtc))
-            .SingleAsync();
     }
 }

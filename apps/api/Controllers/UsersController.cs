@@ -2,17 +2,15 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using TimeSheet.Api.Data;
 using TimeSheet.Api.Dtos;
-using TimeSheet.Api.Models;
-using TimeSheet.Api.Services;
+using AppInterfaces = TimeSheet.Application.Common.Interfaces;
 
 namespace TimeSheet.Api.Controllers;
 
 [ApiController]
 [Authorize(Roles = "admin")]
 [Route("api/v1/users")]
-public class UsersController(TimeSheetDbContext dbContext, IPasswordHasher passwordHasher, IAuditService auditService) : ControllerBase
+public class UsersController(TimeSheetDbContext dbContext, AppInterfaces.IPasswordHasher passwordHasher, AppInterfaces.IAuditService auditService) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<IEnumerable<UserResponse>>> GetAll([FromQuery] string? q)
@@ -113,7 +111,7 @@ public class UsersController(TimeSheetDbContext dbContext, IPasswordHasher passw
         dbContext.Users.Add(user);
         dbContext.UserRoles.Add(new UserRole { UserId = user.Id, RoleId = role.Id });
 
-        await auditService.WriteAsync("UserCreated", "User", user.Id.ToString(), $"Created user {user.Username}", User);
+        await auditService.WriteAsync("UserCreated", "User", user.Id.ToString(), $"Created user {user.Username}", GetUserId());
         await dbContext.SaveChangesAsync();
 
         return CreatedAtAction(nameof(GetById), new { id = user.Id },
@@ -162,7 +160,7 @@ public class UsersController(TimeSheetDbContext dbContext, IPasswordHasher passw
 
         SyncUserRole(user, role.Id);
 
-        await auditService.WriteAsync("UserUpdated", "User", user.Id.ToString(), $"Updated user {user.Username}", User);
+        await auditService.WriteAsync("UserUpdated", "User", user.Id.ToString(), $"Updated user {user.Username}", GetUserId());
         await dbContext.SaveChangesAsync();
 
         return NoContent();
@@ -186,7 +184,7 @@ public class UsersController(TimeSheetDbContext dbContext, IPasswordHasher passw
 
         user.ManagerId = request.ManagerId;
 
-        await auditService.WriteAsync("ManagerAssigned", "User", user.Id.ToString(), $"Assigned manager {manager.Username} to {user.Username}", User);
+        await auditService.WriteAsync("ManagerAssigned", "User", user.Id.ToString(), $"Assigned manager {manager.Username} to {user.Username}", GetUserId());
         await dbContext.SaveChangesAsync();
 
         return NoContent();
@@ -225,10 +223,17 @@ public class UsersController(TimeSheetDbContext dbContext, IPasswordHasher passw
         SyncUserRole(user, role.Id);
         user.Role = request.RoleName;
 
-        await auditService.WriteAsync("RoleAssigned", "User", user.Id.ToString(), $"Assigned role {role.Name} to {user.Username}", User);
+        await auditService.WriteAsync("RoleAssigned", "User", user.Id.ToString(), $"Assigned role {role.Name} to {user.Username}", GetUserId());
         await dbContext.SaveChangesAsync();
 
         return NoContent();
+    }
+
+    private Guid? GetUserId()
+    {
+        var sub = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                  ?? User.FindFirstValue(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub);
+        return Guid.TryParse(sub, out var id) ? id : null;
     }
 
     private void SyncUserRole(User user, Guid roleId)

@@ -73,7 +73,7 @@ export function OverflowMenu({ items }: { items: OverflowMenuItem[] }) {
       </button>
       {open && (
         <>
-          <div style={{ position: "fixed", inset: 0, zIndex: 99 }} onClick={() => setOpen(false)} />
+          <div className="fixed inset-0 z-[99]" onClick={() => setOpen(false)} />
           <div className="overflow-menu">
             {items.map((item) => (
               <button
@@ -100,11 +100,11 @@ interface ToggleSwitchProps {
 }
 export function ToggleSwitch({ checked, onChange, label, disabled }: ToggleSwitchProps) {
   return (
-    <label className="toggle-wrap" style={{ opacity: disabled ? 0.5 : 1, pointerEvents: disabled ? "none" : undefined }}>
+    <label className={`toggle-wrap${disabled ? " opacity-50 pointer-events-none" : ""}`}>
       <div className={`toggle-track${checked ? " on" : ""}`} onClick={() => !disabled && onChange(!checked)}>
         <div className="toggle-thumb" />
       </div>
-      {label && <span style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>{label}</span>}
+      {label && <span className="text-[0.8rem] text-text-secondary">{label}</span>}
     </label>
   );
 }

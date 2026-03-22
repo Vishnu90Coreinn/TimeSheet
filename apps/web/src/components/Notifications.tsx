@@ -1,5 +1,5 @@
 /**
- * Notifications.tsx — Pulse SaaS design v2.0
+ * Notifications.tsx — Pulse SaaS design v3.0
  */
 import { useEffect, useRef, useState } from "react";
 import { apiFetch } from "../api/client";
@@ -54,63 +54,29 @@ export function NotificationBell() {
   const hasAnomalies = notifications.some((n) => Number(n.type) === 5);
 
   return (
-    <div ref={ref} style={{ position: "relative", display: "inline-block" }}>
+    <div ref={ref} className="relative inline-block">
       {/* Bell icon button */}
       <button
-        className="icon-btn"
+        className="icon-btn relative"
         onClick={() => setOpen((o) => !o)}
         aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}${hasAnomalies ? " — anomaly alerts" : ""}`}
-        style={{ position: "relative" }}
       >
         <BellIcon />
         {unreadCount > 0 && <span className="notif-badge" aria-hidden="true">{unreadCount > 9 ? "9+" : unreadCount}</span>}
         {hasAnomalies && (
           <span
             aria-hidden="true"
-            style={{
-              position: "absolute",
-              top: 2,
-              right: 2,
-              width: 6,
-              height: 6,
-              background: "#ef4444",
-              borderRadius: "50%",
-              animation: "anomaly-pulse 1.5s ease-in-out infinite",
-            }}
+            className="absolute top-[2px] right-[2px] w-[6px] h-[6px] bg-red-500 rounded-full [animation:anomaly-pulse_1.5s_ease-in-out_infinite]"
           />
         )}
       </button>
-      <style>{`
-        @keyframes anomaly-pulse {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.6; transform: scale(1.3); }
-        }
-      `}</style>
 
       {/* Dropdown panel */}
       {open && (
-        <div style={{
-          position: "absolute", right: 0, top: "calc(100% + 8px)",
-          width: "340px",
-          background: "var(--n-0)",
-          border: "1px solid var(--border-subtle)",
-          borderRadius: "var(--r-lg)",
-          boxShadow: "var(--shadow-lg)",
-          zIndex: 200,
-          overflow: "hidden",
-          maxHeight: "440px",
-          display: "flex",
-          flexDirection: "column",
-        }}>
+        <div className="absolute right-0 top-[calc(100%+8px)] w-[340px] bg-n-0 border border-border-subtle rounded-lg shadow-lg z-[200] overflow-hidden max-h-[440px] flex flex-col">
           {/* Header */}
-          <div style={{
-            padding: "var(--space-4)",
-            borderBottom: "1px solid var(--border-subtle)",
-            display: "flex", justifyContent: "space-between", alignItems: "center",
-            background: "var(--n-25)",
-            flexShrink: 0,
-          }}>
-            <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "0.875rem", color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+          <div className="flex justify-between items-center px-4 py-3 border-b border-border-subtle bg-n-25 flex-shrink-0">
+            <span className="flex items-center gap-2 font-bold text-[0.875rem] text-text-primary" style={{ fontFamily: "var(--font-display)" }}>
               Notifications
               {unreadCount > 0 && <span className="badge badge-brand">{unreadCount}</span>}
             </span>
@@ -122,35 +88,34 @@ export function NotificationBell() {
           </div>
 
           {/* Body */}
-          <div style={{ overflowY: "auto", flex: 1 }}>
+          <div className="overflow-y-auto flex-1">
             {notifications.length === 0 ? (
-              <div style={{ padding: "var(--space-8)", textAlign: "center" }}>
-                <div style={{ fontSize: "1.5rem", marginBottom: "var(--space-2)", opacity: 0.3 }}>🔔</div>
-                <p style={{ fontSize: "0.825rem", color: "var(--text-tertiary)", margin: 0 }}>No unread notifications</p>
+              <div className="flex flex-col items-center justify-center px-4 py-8 text-center">
+                <div className="text-2xl mb-2 opacity-30">🔔</div>
+                <p className="text-[0.825rem] text-text-tertiary m-0">No unread notifications</p>
               </div>
             ) : (
               notifications.map((n) => {
                 const nType = Number(n.type);
                 const isAnomaly = nType === 5;
                 return (
-                  <div key={n.id} style={{
-                    padding: "var(--space-3) var(--space-4)",
-                    borderBottom: "1px solid var(--border-subtle)",
-                    background: isAnomaly ? "#fff5f5" : undefined,
-                  }}>
-                    <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 2 }}>
-                      <span style={{ fontSize: "1rem", lineHeight: 1, flexShrink: 0, marginTop: 1, width: 20, textAlign: "center" }} aria-hidden="true">
+                  <div
+                    key={n.id}
+                    className={`px-4 py-3 border-b border-border-subtle${isAnomaly ? " bg-[#fff5f5]" : ""}`}
+                  >
+                    <div className="flex items-start gap-2 mb-[2px]">
+                      <span className="text-[1rem] leading-none flex-shrink-0 mt-[1px] w-5 text-center" aria-hidden="true">
                         {notifIcon(nType)}
                       </span>
-                      <div style={{ fontSize: "0.825rem", fontWeight: isAnomaly ? 700 : 600, color: isAnomaly ? "#ef4444" : "var(--text-primary)" }}>
+                      <div className={`text-[0.825rem] ${isAnomaly ? "font-bold text-red-500" : "font-semibold text-text-primary"}`}>
                         {n.title}
                       </div>
                     </div>
-                    <div style={{ fontSize: "0.775rem", color: "var(--text-secondary)", marginBottom: "var(--space-2)", paddingLeft: 28 }}>
+                    <div className="text-[0.775rem] text-text-secondary mb-2 pl-7">
                       {n.message}
                     </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingLeft: 28 }}>
-                      <span style={{ fontSize: "0.72rem", color: "var(--text-tertiary)" }}>
+                    <div className="flex justify-between items-center pl-7">
+                      <span className="text-[0.72rem] text-text-tertiary">
                         {new Date(n.createdAtUtc).toLocaleString()}
                       </span>
                       <button className="btn btn-ghost btn-sm" onClick={() => void markRead(n.id)}>

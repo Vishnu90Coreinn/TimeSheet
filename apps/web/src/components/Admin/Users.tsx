@@ -15,8 +15,8 @@ const EMP_ID_RE = /^EMP-\d{4}$/;
 type SortDir = "asc" | "desc";
 
 function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
-  if (!active) return <span style={{ opacity: 0.4, fontSize: "0.7rem", marginLeft: 3 }}>↕</span>;
-  return <span style={{ fontSize: "0.75rem", marginLeft: 3, color: "var(--brand-600)" }}>{dir === "asc" ? "↑" : "↓"}</span>;
+  if (!active) return <span className="opacity-40 text-[0.7rem] ml-[3px]">↕</span>;
+  return <span className="text-[0.75rem] ml-[3px] text-brand-600">{dir === "asc" ? "↑" : "↓"}</span>;
 }
 
 function pwdStrength(pwd: string): "weak" | "medium" | "strong" | null {
@@ -123,7 +123,6 @@ export function Users() {
   const f = (k: keyof UserForm, v: string | boolean) => setForm((p) => ({ ...p, [k]: v }));
 
   const strength = editing === "new" ? pwdStrength(form.password) : null;
-  const strengthColor = strength === "strong" ? "var(--success)" : strength === "medium" ? "var(--warning)" : strength === "weak" ? "var(--danger)" : "transparent";
 
   const filtered = users.filter(u => {
     const q = search.toLowerCase();
@@ -144,7 +143,7 @@ export function Users() {
   const drawerTitle = editing === "new" ? "Create User" : editing ? `Edit: ${(editing as User).username}` : "";
 
   return (
-    <section style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
+    <section className="flex flex-col gap-6">
       {/* Drawer form */}
       <Drawer open={!!editing} title={drawerTitle} onClose={() => setEditing(null)}
         footer={
@@ -155,7 +154,7 @@ export function Users() {
         }
       >
         {error && <div className="alert alert-error">{error}</div>}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-4)" }}>
+        <div className="grid grid-cols-2 gap-4">
           <div className="form-field">
             <label className="form-label" htmlFor="u-username">Username <span className="required">*</span></label>
             <input id="u-username" className="input-field" value={form.username} onChange={(e) => f("username", e.target.value)} />
@@ -174,7 +173,7 @@ export function Users() {
               placeholder="EMP-0001"
             />
             {form.employeeId && !EMP_ID_RE.test(form.employeeId) && (
-              <div style={{ fontSize: "0.72rem", color: "var(--danger)", marginTop: 3 }}>Format: EMP-XXXX (4 digits)</div>
+              <div className="text-[0.72rem] text-danger mt-[3px]">Format: EMP-XXXX (4 digits)</div>
             )}
           </div>
           <div className="form-field">
@@ -187,21 +186,20 @@ export function Users() {
             </select>
           </div>
           {editing === "new" && (
-            <div className="form-field" style={{ gridColumn: "1 / -1" }}>
+            <div className="form-field col-span-2">
               <label className="form-label" htmlFor="u-pwd">Password <span className="required">*</span></label>
-              <div style={{ position: "relative" }}>
+              <div className="relative">
                 <input
                   id="u-pwd"
                   type={showPwd ? "text" : "password"}
-                  className="input-field"
+                  className="input-field pr-11"
                   value={form.password}
                   onChange={(e) => f("password", e.target.value)}
-                  style={{ paddingRight: 44 }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPwd(s => !s)}
-                  style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--text-tertiary)", fontSize: "0.8rem" }}
+                  className="absolute right-[10px] top-1/2 -translate-y-1/2 bg-transparent border-0 cursor-pointer text-text-tertiary text-[0.8rem]"
                 >
                   {showPwd ? "Hide" : "Show"}
                 </button>
@@ -209,7 +207,9 @@ export function Users() {
               {strength && (
                 <>
                   <div className={`pwd-strength-bar pwd-strength-bar--${strength}`} />
-                  <div className="pwd-strength-label" style={{ color: strengthColor }}>{strength.charAt(0).toUpperCase() + strength.slice(1)} password</div>
+                  <div className={`pwd-strength-label ${strength === "strong" ? "text-success" : strength === "medium" ? "text-warning" : "text-danger"}`}>
+                    {strength.charAt(0).toUpperCase() + strength.slice(1)} password
+                  </div>
                 </>
               )}
             </div>
@@ -242,8 +242,8 @@ export function Users() {
               {users.filter((u) => !editing || editing === "new" || (editing as User).id !== u.id).map((u) => <option key={u.id} value={u.id}>{u.username}</option>)}
             </select>
           </div>
-          <label style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", fontSize: "0.825rem", color: "var(--text-secondary)", alignSelf: "end", paddingBottom: 10 }}>
-            <input type="checkbox" checked={form.isActive} onChange={(e) => f("isActive", e.target.checked)} style={{ accentColor: "var(--brand-600)" }} />
+          <label className="flex items-center gap-2 text-[0.825rem] text-text-secondary self-end pb-[10px]">
+            <input type="checkbox" checked={form.isActive} onChange={(e) => f("isActive", e.target.checked)} className="[accent-color:var(--brand-600)]" />
             Active
           </label>
         </div>
@@ -261,14 +261,14 @@ export function Users() {
       </div>
 
       {/* Table */}
-      <div className="card" style={{ overflow: "visible" }}>
+      <div className="card overflow-visible">
         <div className="card-header">
           <div>
             <div className="card-title">All Users</div>
             <div className="card-subtitle">{users.length} user{users.length === 1 ? "" : "s"}</div>
           </div>
         </div>
-        <div className="table-search-bar" style={{ flexWrap: "wrap" }}>
+        <div className="table-search-bar flex-wrap">
           <input
             className="input-field table-search-input"
             placeholder="Search by username, email or employee ID…"
@@ -276,8 +276,7 @@ export function Users() {
             onChange={(e) => setSearch(e.target.value)}
           />
           <select
-            className="input-field"
-            style={{ width: "auto", minWidth: 130 }}
+            className="input-field w-auto min-w-[130px]"
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
           >
@@ -291,37 +290,40 @@ export function Users() {
           <table className="table-base">
             <thead>
               <tr>
-                <th style={{ width: 44 }}></th>
+                <th className="w-11"></th>
                 <th className="th-sort" onClick={() => toggleSort("username")} aria-sort={sortCol === "username" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
                   Username <SortIcon active={sortCol === "username"} dir={sortDir} />
                 </th>
                 <th>Email</th>
-                <th style={{ width: 110 }}>Employee ID</th>
-                <th className="th-sort" style={{ width: 90 }} onClick={() => toggleSort("role")} aria-sort={sortCol === "role" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
+                <th className="w-[110px]">Employee ID</th>
+                <th className="th-sort w-[90px]" onClick={() => toggleSort("role")} aria-sort={sortCol === "role" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
                   Role <SortIcon active={sortCol === "role"} dir={sortDir} />
                 </th>
                 <th className="th-sort" onClick={() => toggleSort("departmentName")} aria-sort={sortCol === "departmentName" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
                   Department <SortIcon active={sortCol === "departmentName"} dir={sortDir} />
                 </th>
                 <th>Leave Policy</th>
-                <th className="th-sort" style={{ width: 90 }} onClick={() => toggleSort("isActive")} aria-sort={sortCol === "isActive" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
+                <th className="th-sort w-[90px]" onClick={() => toggleSort("isActive")} aria-sort={sortCol === "isActive" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
                   Status <SortIcon active={sortCol === "isActive"} dir={sortDir} />
                 </th>
-                <th style={{ width: 130 }}>Actions</th>
+                <th className="w-[130px]">Actions</th>
               </tr>
             </thead>
             <tbody>
               {sorted.map((u) => (
-                <tr key={u.id} style={{ opacity: u.isActive ? 1 : 0.55 }}>
+                <tr key={u.id} className={u.isActive ? "" : "opacity-[0.55]"}>
                   <td>
-                    <div style={{ width: 32, height: 32, borderRadius: "var(--r-md)", background: avatarColor(u.username), display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: "0.72rem" }}>
+                    <div
+                      className="w-8 h-8 rounded-md flex items-center justify-center text-white font-bold text-[0.72rem]"
+                      style={{ background: avatarColor(u.username) }}
+                    >
                       {initials(u.username)}
                     </div>
                   </td>
                   <td><strong>{u.username}</strong></td>
-                  <td className="td-muted" style={{ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.email}</td>
-                  <td><code style={{ fontFamily: "monospace", fontSize: "0.75rem", background: "var(--n-100)", padding: "2px 5px", borderRadius: "var(--r-sm)" }}>{u.employeeId || "—"}</code></td>
-                  <td><span className={`badge ${u.role === "admin" ? "badge-error" : u.role === "manager" ? "badge-warning" : u.role === "consultant" ? "badge-brand" : "badge-brand"}`}>{u.role}</span></td>
+                  <td className="td-muted max-w-[180px] overflow-hidden text-ellipsis whitespace-nowrap">{u.email}</td>
+                  <td><code className="font-mono text-[0.75rem] bg-n-100 px-[5px] py-0.5 rounded-sm">{u.employeeId || "—"}</code></td>
+                  <td><span className={`badge ${u.role === "admin" ? "badge-error" : u.role === "manager" ? "badge-warning" : "badge-brand"}`}>{u.role}</span></td>
                   <td className="td-muted">{u.departmentName ?? "—"}</td>
                   <td className="td-muted">{u.leavePolicyName ?? "—"}</td>
                   <td>{u.isActive ? <span className="badge badge-success">Active</span> : <span className="badge badge-neutral">Inactive</span>}</td>

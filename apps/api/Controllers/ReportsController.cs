@@ -1,8 +1,11 @@
 using System.Globalization;
 using System.Security.Claims;
 using System.Text;
+using ClosedXML.Excel;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using QuestPDF.Fluent;
+using QuestPDF.Helpers;
 using Microsoft.EntityFrameworkCore;
 using TimeSheet.Api.Dtos;
 
@@ -288,18 +291,124 @@ public class ReportsController(TimeSheetDbContext dbContext) : ControllerBase
     [HttpGet("{reportKey}/export")]
     public async Task<IActionResult> Export(string reportKey, [FromQuery] string format = "csv", [FromQuery] ReportFilterRequest? filter = null)
     {
-        format = format.ToLowerInvariant();
         var reportData = await BuildRawReport(reportKey, filter ?? new ReportFilterRequest(null, null, null, null, null));
         if (reportData is null) return NotFound(new { message = "Unknown report key." });
 
-        var csv = ToCsv(reportData.Value.Headers, reportData.Value.Rows);
-        var bytes = Encoding.UTF8.GetBytes(csv);
-        return format switch
+        var (headers, rows) = reportData.Value;
+        var fileName = $"{reportKey}-{DateTime.UtcNow:yyyyMMdd}";
+
+        return format.ToLowerInvariant() switch
         {
-            "excel" => File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"{reportKey}-{DateTime.UtcNow:yyyyMMdd}.xlsx"),
-            "pdf" => File(bytes, "application/pdf", $"{reportKey}-{DateTime.UtcNow:yyyyMMdd}.pdf"),
-            _ => File(bytes, "text/csv", $"{reportKey}-{DateTime.UtcNow:yyyyMMdd}.csv")
+            "excel" or "xlsx" => BuildExcel(headers, rows, fileName),
+            "pdf" => BuildPdf(headers, rows, fileName, reportKey),
+            _ => BuildCsv(headers, rows, fileName)
         };
+    }
+
+    private IActionResult BuildCsv(string[] headers, List<string[]> rows, string fileName)
+    {
+        var csv = ToCsv(headers, rows);
+        var bytes = Encoding.UTF8.GetBytes(csv);
+        return File(bytes, "text/csv", $"{fileName}.csv");
+    }
+
+    private IActionResult BuildExcel(string[] headers, List<string[]> rows, string fileName)
+    {
+        using var workbook = new XLWorkbook();
+        var ws = workbook.Worksheets.Add("Report");
+
+        // Header row — bold, light blue fill
+        for (var col = 0; col < headers.Length; col++)
+        {
+            var cell = ws.Cell(1, col + 1);
+            cell.Value = headers[col];
+            cell.Style.Font.Bold = true;
+            cell.Style.Fill.BackgroundColor = XLColor.FromHtml("#4F81BD");
+            cell.Style.Font.FontColor = XLColor.White;
+        }
+
+        // Data rows
+        for (var row = 0; row < rows.Count; row++)
+        {
+            for (var col = 0; col < rows[row].Length; col++)
+            {
+                ws.Cell(row + 2, col + 1).Value = rows[row][col];
+            }
+            // Alternate row shading
+            if (row % 2 == 0)
+                ws.Row(row + 2).Cells(1, headers.Length).Style.Fill.BackgroundColor = XLColor.FromHtml("#F2F7FF");
+        }
+
+        ws.Columns().AdjustToContents();
+        ws.SheetView.FreezeRows(1);
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return File(stream.ToArray(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"{fileName}.xlsx");
+    }
+
+    private IActionResult BuildPdf(string[] headers, List<string[]> rows, string fileName, string reportTitle)
+    {
+        // Use QuestPDF to generate a real PDF
+        QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
+        var pdfBytes = QuestPDF.Fluent.Document.Create(container =>
+        {
+            container.Page(page => BuildPdfPage(page, headers, rows, reportTitle));
+        }).GeneratePdf();
+
+        return File(pdfBytes, "application/pdf", $"{fileName}.pdf");
+    }
+
+    private static void BuildPdfPage(QuestPDF.Fluent.PageDescriptor page, string[] headers, List<string[]> rows, string reportTitle)
+    {
+        page.Size(PageSizes.A4.Landscape());
+        page.Margin(1.5f, QuestPDF.Infrastructure.Unit.Centimetre);
+        page.DefaultTextStyle(x => x.FontSize(8).FontFamily("Arial"));
+
+        page.Header().Column(col =>
+        {
+            col.Item().Text(CultureInfo.CurrentCulture.TextInfo.ToTitleCase(reportTitle.Replace("-", " ")))
+                .FontSize(14).Bold().FontColor(QuestPDF.Helpers.Colors.Blue.Darken2);
+            col.Item().Text($"Generated: {DateTime.UtcNow:dd MMM yyyy HH:mm} UTC")
+                .FontSize(8).FontColor(QuestPDF.Helpers.Colors.Grey.Medium);
+            col.Item().PaddingTop(4).LineHorizontal(0.5f).LineColor(QuestPDF.Helpers.Colors.Grey.Lighten2);
+        });
+
+        page.Content().PaddingTop(8).Table(table =>
+        {
+            table.ColumnsDefinition(cols =>
+            {
+                foreach (var _ in headers)
+                    cols.RelativeColumn();
+            });
+
+            table.Header(header =>
+            {
+                foreach (var h in headers)
+                {
+                    header.Cell().Background(QuestPDF.Helpers.Colors.Blue.Darken2)
+                        .Padding(4).Text(h).FontColor(QuestPDF.Helpers.Colors.White).Bold().FontSize(7);
+                }
+            });
+
+            for (var i = 0; i < rows.Count; i++)
+            {
+                var bg = i % 2 == 0 ? QuestPDF.Helpers.Colors.White : QuestPDF.Helpers.Colors.Grey.Lighten5;
+                foreach (var cell in rows[i])
+                {
+                    table.Cell().Background(bg).Padding(3).Text(cell).FontSize(7);
+                }
+            }
+        });
+
+        page.Footer().AlignCenter().Text(x =>
+        {
+            x.Span("Page ").FontSize(7).FontColor(QuestPDF.Helpers.Colors.Grey.Medium);
+            x.CurrentPageNumber().FontSize(7).FontColor(QuestPDF.Helpers.Colors.Grey.Medium);
+            x.Span(" of ").FontSize(7).FontColor(QuestPDF.Helpers.Colors.Grey.Medium);
+            x.TotalPages().FontSize(7).FontColor(QuestPDF.Helpers.Colors.Grey.Medium);
+        });
     }
 
     private async Task<(string[] Headers, List<string[]> Rows)?> BuildRawReport(string reportKey, ReportFilterRequest filter)

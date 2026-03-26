@@ -3,7 +3,7 @@
  */
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { apiFetch } from "../api/client";
-import type { ReportKey } from "../types";
+import type { ReportKey, SavedReport, SavedReportPayload } from "../types";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type PagedResponse = { page: number; pageSize: number; total: number; items: Record<string, unknown>[] };
@@ -85,6 +85,8 @@ const TABS: { key: ReportKey; label: string }[] = [
 ];
 
 const PAGE_SIZES = [10, 25, 50, 100];
+
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
 const today = new Date().toISOString().slice(0, 10);
@@ -324,6 +326,15 @@ function computeKpi(key: ReportKey, items: Record<string, unknown>[]): KpiCard[]
   }
 }
 
+// ── Schedule description helper ───────────────────────────────────────────────
+function scheduleDesc(r: SavedReport): string {
+  if (r.scheduleType === "None") return "No schedule";
+  if (r.scheduleType === "Weekly") {
+    const day = DAY_NAMES[r.scheduleDayOfWeek ?? 1] ?? "Monday";
+    return `Weekly on ${day} at ${String(r.scheduleHour).padStart(2, "0")}:00`;
+  }
+  return `Monthly on 1st at ${String(r.scheduleHour).padStart(2, "0")}:00`;
+}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export function Reports() {
@@ -341,6 +352,21 @@ export function Reports() {
   const [lastLoaded, setLastLoaded] = useState<Date | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const tabsRef = useRef<HTMLDivElement>(null);
+
+  // ── Saved Reports state ────────────────────────────────────────────────────
+  const [savedReports, setSavedReports] = useState<SavedReport[]>([]);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [showManageModal, setShowManageModal] = useState(false);
+  const [showSavedDropdown, setShowSavedDropdown] = useState(false);
+  const [saveName, setSaveName] = useState("");
+  const [saveSchedule, setSaveSchedule] = useState<"None" | "Weekly" | "Monthly">("None");
+  const [saveDay, setSaveDay] = useState(1); // Monday
+  const [saveHour, setSaveHour] = useState(8);
+  const [saveEmails, setSaveEmails] = useState<string[]>([]);
+  const [emailInput, setEmailInput] = useState("");
+  const [editingReport, setEditingReport] = useState<SavedReport | null>(null);
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   function scrollTabs(dir: -1 | 1) {
     tabsRef.current?.scrollBy({ left: dir * 180, behavior: "smooth" });
@@ -365,7 +391,16 @@ export function Reports() {
     setLoading(false);
   }
 
+  async function loadSavedReports() {
+    const r = await apiFetch("/reports/saved");
+    if (r.ok) {
+      const d = await r.json() as SavedReport[];
+      setSavedReports(d);
+    }
+  }
+
   useEffect(() => { void loadReport(reportKey, 1); }, []);
+  useEffect(() => { void loadSavedReports(); }, []);
 
   function switchTab(key: ReportKey) {
     setReportKey(key);
@@ -397,6 +432,99 @@ export function Reports() {
   function toggleSort(key: string) {
     if (sortCol === key) setSortDir(d => d === "asc" ? "desc" : "asc");
     else { setSortCol(key); setSortDir("asc"); }
+  }
+
+  function buildFiltersJson() {
+    return JSON.stringify({ fromDate, toDate });
+  }
+
+  function openSaveModal(report?: SavedReport) {
+    if (report) {
+      setEditingReport(report);
+      setSaveName(report.name);
+      setSaveSchedule(report.scheduleType);
+      setSaveDay(report.scheduleDayOfWeek ?? 1);
+      setSaveHour(report.scheduleHour);
+      setSaveEmails(report.recipientEmails ?? []);
+    } else {
+      setEditingReport(null);
+      setSaveName("");
+      setSaveSchedule("None");
+      setSaveDay(1);
+      setSaveHour(8);
+      setSaveEmails([]);
+    }
+    setEmailInput("");
+    setShowSaveModal(true);
+  }
+
+  function closeSaveModal() {
+    setShowSaveModal(false);
+    setEditingReport(null);
+  }
+
+  function addEmail() {
+    const email = emailInput.trim();
+    if (email && !saveEmails.includes(email)) {
+      setSaveEmails(prev => [...prev, email]);
+    }
+    setEmailInput("");
+  }
+
+  function removeEmail(email: string) {
+    setSaveEmails(prev => prev.filter(e => e !== email));
+  }
+
+  async function handleSaveReport() {
+    if (!saveName.trim()) return;
+    setSaveLoading(true);
+    const payload: SavedReportPayload = {
+      name: saveName.trim(),
+      reportKey: editingReport ? editingReport.reportKey : reportKey,
+      filtersJson: editingReport ? editingReport.filtersJson : buildFiltersJson(),
+      scheduleType: saveSchedule,
+      scheduleDayOfWeek: saveSchedule === "Weekly" ? saveDay : null,
+      scheduleHour: saveHour,
+      recipientEmails: saveEmails,
+    };
+    let r: Response;
+    if (editingReport) {
+      r = await apiFetch(`/reports/saved/${editingReport.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    } else {
+      r = await apiFetch("/reports/saved", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    }
+    if (r.ok) {
+      await loadSavedReports();
+      closeSaveModal();
+    }
+    setSaveLoading(false);
+  }
+
+  function applyFilters(filtersJson: string) {
+    try {
+      const filters = JSON.parse(filtersJson) as { fromDate?: string; toDate?: string };
+      if (filters.fromDate) setFromDate(filters.fromDate);
+      if (filters.toDate) setToDate(filters.toDate);
+    } catch {
+      // ignore malformed JSON
+    }
+  }
+
+  function loadSavedReportFilters(report: SavedReport) {
+    setReportKey(report.reportKey as ReportKey);
+    applyFilters(report.filtersJson);
+    setShowSavedDropdown(false);
+    setSortCol(null);
+    setSearch("");
+    setEmployeeFilter("");
+  }
+
+  async function deleteSavedReport(id: string) {
+    const r = await apiFetch(`/reports/saved/${id}`, { method: "DELETE" });
+    if (r.ok || r.status === 204) {
+      setSavedReports(prev => prev.filter(s => s.id !== id));
+    }
+    setDeleteConfirmId(null);
   }
 
   const cols = REPORT_COLS[reportKey].filter(c => !c.hidden);
@@ -445,6 +573,45 @@ export function Reports() {
         <div>
           <div className="page-title">Reports</div>
           <div className="page-subtitle">Workforce analytics and data exports</div>
+        </div>
+        {/* Saved Reports dropdown + Manage link */}
+        <div className="flex items-center gap-2">
+          <div className="relative inline-block">
+            <button
+              className="btn btn-outline btn-sm flex items-center gap-1"
+              onClick={() => setShowSavedDropdown(o => !o)}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              Saved Reports ▾
+            </button>
+            {showSavedDropdown && (
+              <>
+                <div className="fixed inset-0 z-[99]" onClick={() => setShowSavedDropdown(false)} />
+                <div className="absolute right-0 top-[calc(100%+4px)] bg-n-0 border border-border-default rounded-lg shadow-md z-[100] min-w-[240px] py-1">
+                  {savedReports.length === 0 ? (
+                    <div className="px-4 py-3 text-[0.8rem] text-[#9ca3af]">No saved reports yet.</div>
+                  ) : (
+                    savedReports.map(sr => (
+                      <button
+                        key={sr.id}
+                        className="rpt-export-item w-full text-left"
+                        onClick={() => loadSavedReportFilters(sr)}
+                      >
+                        <span className="block font-medium text-[0.82rem]">{sr.name}</span>
+                        <span className="block text-[0.72rem] text-[#9ca3af]">{TABS.find(t => t.key === sr.reportKey)?.label ?? sr.reportKey}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+          <button
+            className="btn btn-ghost btn-sm text-[0.8rem] underline underline-offset-2"
+            onClick={() => { setShowManageModal(true); setShowSavedDropdown(false); }}
+          >
+            Manage
+          </button>
         </div>
       </div>
 
@@ -497,6 +664,13 @@ export function Reports() {
           </div>
         )}
         <button className="btn btn-primary" onClick={() => void loadReport(reportKey, 1)}>Apply</button>
+        <button
+          className="btn btn-outline btn-sm flex items-center gap-1"
+          onClick={() => openSaveModal()}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Save Report
+        </button>
       </div>
 
       {/* KPI strip */}
@@ -625,6 +799,196 @@ export function Reports() {
           </>
         )}
       </div>
+
+      {/* ── Save Report Modal ─────────────────────────────────────────────── */}
+      {showSaveModal && (
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center" }}
+          onClick={e => { if (e.target === e.currentTarget) closeSaveModal(); }}
+        >
+          <div style={{ background: "var(--color-n-0, #fff)", borderRadius: 12, padding: "28px 32px", width: "100%", maxWidth: 480, boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+              <span style={{ fontWeight: 700, fontSize: "1.05rem" }}>{editingReport ? "Edit Saved Report" : "Save Report"}</span>
+              <button className="btn btn-ghost btn-sm" onClick={closeSaveModal} aria-label="Close">✕</button>
+            </div>
+
+            {/* Name */}
+            <div className="form-field" style={{ marginBottom: 14 }}>
+              <label className="form-label" htmlFor="save-name">Report Name</label>
+              <input
+                id="save-name"
+                type="text"
+                className="input-field"
+                placeholder="e.g. Monthly Attendance"
+                value={saveName}
+                onChange={e => setSaveName(e.target.value)}
+                autoFocus
+              />
+            </div>
+
+            {/* Schedule type */}
+            <div className="form-field" style={{ marginBottom: 14 }}>
+              <label className="form-label" htmlFor="save-schedule">Schedule</label>
+              <select
+                id="save-schedule"
+                className="input-field"
+                value={saveSchedule}
+                onChange={e => setSaveSchedule(e.target.value as "None" | "Weekly" | "Monthly")}
+              >
+                <option value="None">No schedule</option>
+                <option value="Weekly">Weekly</option>
+                <option value="Monthly">Monthly (1st of month)</option>
+              </select>
+            </div>
+
+            {/* Weekly: day of week */}
+            {saveSchedule === "Weekly" && (
+              <div className="form-field" style={{ marginBottom: 14 }}>
+                <label className="form-label" htmlFor="save-day">Day of Week</label>
+                <select
+                  id="save-day"
+                  className="input-field"
+                  value={saveDay}
+                  onChange={e => setSaveDay(Number(e.target.value))}
+                >
+                  {DAY_NAMES.map((d, i) => <option key={i} value={i}>{d}</option>)}
+                </select>
+              </div>
+            )}
+
+            {/* Hour (Weekly or Monthly) */}
+            {saveSchedule !== "None" && (
+              <div className="form-field" style={{ marginBottom: 14 }}>
+                <label className="form-label" htmlFor="save-hour">Send at Hour (UTC)</label>
+                <select
+                  id="save-hour"
+                  className="input-field"
+                  value={saveHour}
+                  onChange={e => setSaveHour(Number(e.target.value))}
+                >
+                  {Array.from({ length: 24 }, (_, i) => (
+                    <option key={i} value={i}>{String(i).padStart(2, "0")}:00</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Recipient emails */}
+            <div className="form-field" style={{ marginBottom: 20 }}>
+              <label className="form-label">Recipient Emails</label>
+              <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+                <input
+                  type="email"
+                  className="input-field"
+                  placeholder="email@example.com"
+                  value={emailInput}
+                  onChange={e => setEmailInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addEmail(); } }}
+                />
+                <button type="button" className="btn btn-outline btn-sm" onClick={addEmail}>Add</button>
+              </div>
+              {saveEmails.length > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {saveEmails.map(email => (
+                    <span key={email} style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "#f3f4f6", borderRadius: 6, padding: "2px 8px", fontSize: "0.78rem" }}>
+                      {email}
+                      <button type="button" onClick={() => removeEmail(email)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280", fontSize: "0.9rem", lineHeight: 1, padding: 0 }} aria-label={`Remove ${email}`}>×</button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button className="btn btn-ghost btn-sm" onClick={closeSaveModal} disabled={saveLoading}>Cancel</button>
+              <button className="btn btn-primary" onClick={() => void handleSaveReport()} disabled={saveLoading || !saveName.trim()}>
+                {saveLoading ? "Saving…" : editingReport ? "Update" : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Manage Saved Reports Modal ────────────────────────────────────── */}
+      {showManageModal && (
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center" }}
+          onClick={e => { if (e.target === e.currentTarget) setShowManageModal(false); }}
+        >
+          <div style={{ background: "var(--color-n-0, #fff)", borderRadius: 12, padding: "28px 32px", width: "100%", maxWidth: 640, maxHeight: "80vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+              <span style={{ fontWeight: 700, fontSize: "1.05rem" }}>Manage Saved Reports</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => setShowManageModal(false)} aria-label="Close">✕</button>
+            </div>
+
+            <div style={{ overflowY: "auto", flex: 1 }}>
+              {savedReports.length === 0 ? (
+                <div className="empty-state">
+                  <div className="empty-state__icon">📋</div>
+                  <p className="empty-state__title">No saved reports</p>
+                  <p className="empty-state__desc">Save a report using the "Save Report" button in the filter bar.</p>
+                </div>
+              ) : (
+                <table className="table-base" style={{ width: "100%" }}>
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Report</th>
+                      <th>Schedule</th>
+                      <th>Last Run</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {savedReports.map(sr => (
+                      <tr key={sr.id}>
+                        <td>
+                          <span className="text-[rgb(16,16,26)] font-medium text-[0.88rem]">{sr.name}</span>
+                        </td>
+                        <td>
+                          <span className="text-[0.82rem] text-[#6b7280]">{TABS.find(t => t.key === sr.reportKey)?.label ?? sr.reportKey}</span>
+                        </td>
+                        <td>
+                          <span className="text-[0.82rem]">{scheduleDesc(sr)}</span>
+                        </td>
+                        <td>
+                          <span className="text-[0.82rem] text-[#9ca3af]">{sr.lastRunAt ? fmtDateStr(sr.lastRunAt) : "Never"}</span>
+                        </td>
+                        <td>
+                          <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                            {deleteConfirmId === sr.id ? (
+                              <>
+                                <button className="btn btn-sm" style={{ background: "#fee2e2", color: "#991b1b", border: "none" }} onClick={() => void deleteSavedReport(sr.id)}>Confirm Delete</button>
+                                <button className="btn btn-ghost btn-sm" onClick={() => setDeleteConfirmId(null)}>Cancel</button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  className="btn btn-outline btn-sm"
+                                  onClick={() => { setShowManageModal(false); openSaveModal(sr); }}
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  className="btn btn-sm"
+                                  style={{ background: "#fee2e2", color: "#991b1b", border: "none" }}
+                                  onClick={() => setDeleteConfirmId(sr.id)}
+                                >
+                                  Delete
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

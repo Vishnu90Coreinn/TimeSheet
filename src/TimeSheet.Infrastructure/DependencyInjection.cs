@@ -38,6 +38,7 @@ public static class DependencyInjection
         services.AddScoped<IDepartmentRepository, DepartmentRepository>();
         services.AddScoped<IWorkPolicyRepository, WorkPolicyRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<ISavedReportRepository, SavedReportRepository>();
 
         // Core services — registered for Application interfaces (used by handlers)
         services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
@@ -63,6 +64,7 @@ public static class DependencyInjection
         services.AddHostedService<RefreshTokenCleanupService>();
         services.AddHostedService<NotificationSchedulerService>();
         services.AddHostedService<AnomalyDetectionService>();
+        services.AddHostedService<ReportSchedulerService>();
 
         return services;
     }

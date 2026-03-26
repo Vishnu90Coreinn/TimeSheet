@@ -30,6 +30,7 @@ public class TimeSheetDbContext(DbContextOptions<TimeSheetDbContext> options) : 
     public DbSet<UserNotificationPreferences> UserNotificationPreferences => Set<UserNotificationPreferences>();
     public DbSet<TimerSession> TimerSessions => Set<TimerSession>();
     public DbSet<TimesheetTemplate> TimesheetTemplates => Set<TimesheetTemplate>();
+    public DbSet<SavedReport> SavedReports => Set<SavedReport>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

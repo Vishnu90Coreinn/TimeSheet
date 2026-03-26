@@ -45,3 +45,26 @@ export type NotificationPreferences = {
   onApproval: boolean; onRejection: boolean; onLeaveStatus: boolean; onReminder: boolean;
   inAppEnabled: boolean; emailEnabled: boolean;
 };
+
+export interface SavedReport {
+  id: string;
+  name: string;
+  reportKey: string;
+  filtersJson: string;
+  scheduleType: 'None' | 'Weekly' | 'Monthly';
+  scheduleDayOfWeek: number | null;
+  scheduleHour: number;
+  recipientEmails: string[];
+  lastRunAt: string | null;
+  createdAt: string;
+}
+
+export interface SavedReportPayload {
+  name: string;
+  reportKey: string;
+  filtersJson: string;
+  scheduleType: 'None' | 'Weekly' | 'Monthly';
+  scheduleDayOfWeek: number | null;
+  scheduleHour: number;
+  recipientEmails: string[];
+}

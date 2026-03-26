@@ -95,3 +95,13 @@ public record OvertimeDeficitReportRow(
     int TargetMinutes,
     int LoggedMinutes,
     int DeltaMinutes);
+
+public record SavedReportRequest(
+    string Name,
+    string ReportKey,
+    string FiltersJson,
+    string ScheduleType,
+    DayOfWeek? ScheduleDayOfWeek,
+    int ScheduleHour,
+    List<string> RecipientEmails
+);

@@ -1,100 +1,67 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using TimeSheet.Api.Dtos;
+using TimeSheet.Application.Common.Models;
+using TimeSheet.Application.ReferenceData.Commands;
+using TimeSheet.Application.ReferenceData.Queries;
 
 namespace TimeSheet.Api.Controllers;
 
 [ApiController]
 [Authorize(Roles = "admin")]
 [Route("api/v1/masters")]
-public class MastersController(TimeSheetDbContext dbContext) : ControllerBase
+public class MastersController(ISender mediator) : ControllerBase
 {
     [HttpGet("departments")]
-    public async Task<ActionResult<IEnumerable<DepartmentResponse>>> GetDepartments()
+    public async Task<IActionResult> GetDepartments(CancellationToken ct)
     {
-        var departments = await dbContext.Departments.AsNoTracking()
-            .OrderBy(d => d.Name)
-            .Select(d => new DepartmentResponse(d.Id, d.Name, d.IsActive))
-            .ToListAsync();
-
-        return Ok(departments);
+        var result = await mediator.Send(new GetDepartmentsQuery(), ct);
+        return result.IsSuccess ? Ok(result.Value) : Fail(result);
     }
 
     [HttpPost("departments")]
-    public async Task<ActionResult<DepartmentResponse>> CreateDepartment([FromBody] DepartmentResponse request)
+    public async Task<IActionResult> CreateDepartment([FromBody] DepartmentResponse request, CancellationToken ct)
     {
-        if (await dbContext.Departments.AnyAsync(d => d.Name == request.Name))
-        {
-            return Conflict(new { message = "Department already exists." });
-        }
-
-        var department = new Department { Id = Guid.NewGuid(), Name = request.Name.Trim(), IsActive = request.IsActive };
-        dbContext.Departments.Add(department);
-        await dbContext.SaveChangesAsync();
-
-        return Ok(new DepartmentResponse(department.Id, department.Name, department.IsActive));
+        var result = await mediator.Send(new CreateDepartmentCommand(request.Name, request.IsActive), ct);
+        return result.IsSuccess ? Ok(result.Value) : Fail(result);
     }
 
     [HttpGet("work-policies")]
-    public async Task<ActionResult<IEnumerable<WorkPolicyResponse>>> GetWorkPolicies()
+    public async Task<IActionResult> GetWorkPolicies(CancellationToken ct)
     {
-        var policies = await dbContext.WorkPolicies.AsNoTracking()
-            .OrderBy(w => w.Name)
-            .Select(w => new WorkPolicyResponse(w.Id, w.Name, w.DailyExpectedMinutes, w.WorkDaysPerWeek, w.IsActive))
-            .ToListAsync();
-
-        return Ok(policies);
+        var result = await mediator.Send(new GetWorkPoliciesQuery(), ct);
+        return result.IsSuccess ? Ok(result.Value) : Fail(result);
     }
 
     [HttpPost("work-policies")]
-    public async Task<ActionResult<WorkPolicyResponse>> CreateWorkPolicy([FromBody] WorkPolicyResponse request)
+    public async Task<IActionResult> CreateWorkPolicy([FromBody] WorkPolicyResponse request, CancellationToken ct)
     {
-        if (await dbContext.WorkPolicies.AnyAsync(w => w.Name == request.Name))
-        {
-            return Conflict(new { message = "Work policy already exists." });
-        }
-
-        var policy = new WorkPolicy
-        {
-            Id = Guid.NewGuid(),
-            Name = request.Name.Trim(),
-            DailyExpectedMinutes = request.DailyExpectedMinutes,
-            WorkDaysPerWeek = request.WorkDaysPerWeek is >= 5 and <= 6 ? request.WorkDaysPerWeek : 5,
-            IsActive = request.IsActive
-        };
-
-        dbContext.WorkPolicies.Add(policy);
-        await dbContext.SaveChangesAsync();
-
-        return Ok(new WorkPolicyResponse(policy.Id, policy.Name, policy.DailyExpectedMinutes, policy.WorkDaysPerWeek, policy.IsActive));
+        var result = await mediator.Send(new CreateWorkPolicyCommand(request.Name, request.DailyExpectedMinutes, request.WorkDaysPerWeek, request.IsActive), ct);
+        return result.IsSuccess ? Ok(result.Value) : Fail(result);
     }
 
     [HttpPut("work-policies/{id:guid}")]
-    public async Task<ActionResult<WorkPolicyResponse>> UpdateWorkPolicy(Guid id, [FromBody] WorkPolicyResponse request)
+    public async Task<IActionResult> UpdateWorkPolicy(Guid id, [FromBody] WorkPolicyResponse request, CancellationToken ct)
     {
-        var policy = await dbContext.WorkPolicies.FindAsync(id);
-        if (policy is null) return NotFound();
-
-        if (await dbContext.WorkPolicies.AnyAsync(w => w.Name == request.Name && w.Id != id))
-            return Conflict(new { message = "A work policy with that name already exists." });
-
-        policy.Name = request.Name.Trim();
-        policy.DailyExpectedMinutes = request.DailyExpectedMinutes;
-        policy.WorkDaysPerWeek = request.WorkDaysPerWeek is >= 5 and <= 6 ? request.WorkDaysPerWeek : 5;
-        policy.IsActive = request.IsActive;
-
-        await dbContext.SaveChangesAsync();
-        return Ok(new WorkPolicyResponse(policy.Id, policy.Name, policy.DailyExpectedMinutes, policy.WorkDaysPerWeek, policy.IsActive));
+        var result = await mediator.Send(new UpdateWorkPolicyCommand(id, request.Name, request.DailyExpectedMinutes, request.WorkDaysPerWeek, request.IsActive), ct);
+        return result.IsSuccess ? Ok(result.Value) : Fail(result);
     }
 
     [HttpDelete("work-policies/{id:guid}")]
-    public async Task<IActionResult> DeleteWorkPolicy(Guid id)
+    public async Task<IActionResult> DeleteWorkPolicy(Guid id, CancellationToken ct)
     {
-        var policy = await dbContext.WorkPolicies.FindAsync(id);
-        if (policy is null) return NotFound();
-        dbContext.WorkPolicies.Remove(policy);
-        await dbContext.SaveChangesAsync();
+        var result = await mediator.Send(new DeleteWorkPolicyCommand(id), ct);
+        if (!result.IsSuccess) return Fail(result);
         return NoContent();
     }
+
+    private IActionResult Fail(Result result) => result.Status switch
+    {
+        ResultStatus.NotFound => NotFound(new { message = result.Error }),
+        ResultStatus.Forbidden => Forbid(),
+        ResultStatus.Conflict => Conflict(new { message = result.Error }),
+        ResultStatus.Validation => BadRequest(new { message = result.Error }),
+        _ => BadRequest(new { message = result.Error })
+    };
 }

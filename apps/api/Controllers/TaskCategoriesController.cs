@@ -1,97 +1,65 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using TimeSheet.Api.Dtos;
+using TimeSheet.Application.Common.Models;
+using TimeSheet.Application.ReferenceData.Commands;
+using TimeSheet.Application.ReferenceData.Queries;
 
 namespace TimeSheet.Api.Controllers;
 
 [ApiController]
 [Authorize]
 [Route("api/v1/task-categories")]
-public class TaskCategoriesController(TimeSheetDbContext dbContext) : ControllerBase
+public class TaskCategoriesController(ISender mediator) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<TaskCategoryResponse>>> GetAll()
+    public async Task<IActionResult> GetAll(CancellationToken ct)
     {
-        var categories = await dbContext.TaskCategories.AsNoTracking()
-            .Where(c => c.IsActive)
-            .OrderBy(c => c.Name)
-            .Select(c => new TaskCategoryResponse(c.Id, c.Name, c.IsActive, c.IsBillable))
-            .ToListAsync();
-
-        return Ok(categories);
+        var result = await mediator.Send(new GetTaskCategoriesQuery(AdminAll: false), ct);
+        return result.IsSuccess ? Ok(result.Value) : Fail(result);
     }
 
     [Authorize(Roles = "admin")]
     [HttpGet("admin")]
-    public async Task<ActionResult<IEnumerable<TaskCategoryResponse>>> GetAllForAdmin()
+    public async Task<IActionResult> GetAllForAdmin(CancellationToken ct)
     {
-        var categories = await dbContext.TaskCategories.AsNoTracking()
-            .OrderBy(c => c.Name)
-            .Select(c => new TaskCategoryResponse(c.Id, c.Name, c.IsActive, c.IsBillable))
-            .ToListAsync();
-
-        return Ok(categories);
+        var result = await mediator.Send(new GetTaskCategoriesQuery(AdminAll: true), ct);
+        return result.IsSuccess ? Ok(result.Value) : Fail(result);
     }
 
     [Authorize(Roles = "admin")]
     [HttpPost]
-    public async Task<ActionResult<TaskCategoryResponse>> Create([FromBody] UpsertTaskCategoryRequest request)
+    public async Task<IActionResult> Create([FromBody] UpsertTaskCategoryRequest request, CancellationToken ct)
     {
-        if (await dbContext.TaskCategories.AnyAsync(c => c.Name == request.Name))
-        {
-            return Conflict(new { message = "Task category already exists." });
-        }
-
-        var category = new TaskCategory
-        {
-            Id = Guid.NewGuid(),
-            Name = request.Name.Trim(),
-            IsActive = request.IsActive,
-            IsBillable = request.IsBillable
-        };
-
-        dbContext.TaskCategories.Add(category);
-        await dbContext.SaveChangesAsync();
-
-        return Ok(new TaskCategoryResponse(category.Id, category.Name, category.IsActive, category.IsBillable));
+        var result = await mediator.Send(new CreateTaskCategoryCommand(request.Name, request.IsActive, request.IsBillable), ct);
+        return result.IsSuccess ? Ok(result.Value) : Fail(result);
     }
 
     [Authorize(Roles = "admin")]
     [HttpPut("{id:guid}")]
-    public async Task<IActionResult> Update(Guid id, [FromBody] UpsertTaskCategoryRequest request)
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpsertTaskCategoryRequest request, CancellationToken ct)
     {
-        var category = await dbContext.TaskCategories.SingleOrDefaultAsync(c => c.Id == id);
-        if (category is null)
-        {
-            return NotFound();
-        }
-
-        var duplicate = await dbContext.TaskCategories.AnyAsync(c => c.Id != id && c.Name == request.Name);
-        if (duplicate)
-        {
-            return Conflict(new { message = "Task category already exists." });
-        }
-
-        category.Name = request.Name.Trim();
-        category.IsActive = request.IsActive;
-        category.IsBillable = request.IsBillable;
-        await dbContext.SaveChangesAsync();
+        var result = await mediator.Send(new UpdateTaskCategoryCommand(id, request.Name, request.IsActive, request.IsBillable), ct);
+        if (!result.IsSuccess) return Fail(result);
         return NoContent();
     }
 
     [Authorize(Roles = "admin")]
     [HttpDelete("{id:guid}")]
-    public async Task<IActionResult> Delete(Guid id)
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
-        var category = await dbContext.TaskCategories.SingleOrDefaultAsync(c => c.Id == id);
-        if (category is null)
-        {
-            return NotFound();
-        }
-
-        dbContext.TaskCategories.Remove(category);
-        await dbContext.SaveChangesAsync();
+        var result = await mediator.Send(new DeleteTaskCategoryCommand(id), ct);
+        if (!result.IsSuccess) return Fail(result);
         return NoContent();
     }
+
+    private IActionResult Fail(Result result) => result.Status switch
+    {
+        ResultStatus.NotFound => NotFound(new { message = result.Error }),
+        ResultStatus.Forbidden => Forbid(),
+        ResultStatus.Conflict => Conflict(new { message = result.Error }),
+        ResultStatus.Validation => BadRequest(new { message = result.Error }),
+        _ => BadRequest(new { message = result.Error })
+    };
 }

@@ -6,6 +6,8 @@ import { apiFetch } from "../api/client";
 import { NotificationBell } from "./Notifications";
 import type { Session } from "../types";
 import type { View } from "../types";
+import { CommandPalette } from "./CommandPalette";
+import { ShortcutsPanel } from "./ShortcutsPanel";
 
 interface NavItem {
   view: View;
@@ -55,6 +57,8 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const initials = session.username.slice(0, 2).toUpperCase();
 
   // Close mobile sidebar when resizing to tablet/desktop
@@ -73,6 +77,61 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
       .then(async r => { if (r.ok) { const d = await r.json() as unknown[]; setPendingCount(d.length); } })
       .catch(() => {});
   }, [nav]);
+
+  // Global keyboard shortcuts
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const target = e.target as HTMLElement;
+      const inInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+
+      // Cmd+K / Ctrl+K — toggle palette (always)
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setPaletteOpen(o => !o);
+        setShortcutsOpen(false);
+        return;
+      }
+
+      // Everything below only fires when NOT in an input and palette/shortcuts are closed
+      if (inInput || paletteOpen || shortcutsOpen) return;
+
+      if (e.key === "?") {
+        e.preventDefault();
+        setShortcutsOpen(true);
+        return;
+      }
+
+      // Context-aware shortcuts
+      if (e.key === "n" || e.key === "N") {
+        if (view === "timesheets") {
+          e.preventDefault();
+          window.dispatchEvent(new CustomEvent("cmd:new-entry"));
+        }
+        return;
+      }
+      if (e.key === "s" || e.key === "S") {
+        if (view === "timesheets") {
+          e.preventDefault();
+          window.dispatchEvent(new CustomEvent("cmd:submit-week"));
+        }
+        return;
+      }
+      if (e.key === "a" || e.key === "A") {
+        if (view === "approvals") {
+          e.preventDefault();
+          window.dispatchEvent(new CustomEvent("cmd:bulk-approve"));
+        }
+        return;
+      }
+      if (e.key === "/") {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent("cmd:focus-search"));
+        return;
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [view, paletteOpen, shortcutsOpen]);
 
   // Inject live badge count into Approvals item
   const withBadges = NAV_ITEMS.map(item =>
@@ -126,6 +185,32 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
           </nav>
         </div>
         <div className="shell-topnav__right">
+          <button
+            type="button"
+            onClick={() => setPaletteOpen(true)}
+            title="Command palette (⌘K)"
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              background: "var(--color-n-100, #f0f0f0)",
+              border: "1px solid var(--color-n-200, #e5e7eb)",
+              borderRadius: 7,
+              padding: "5px 10px",
+              cursor: "pointer",
+              fontSize: "0.78rem",
+              color: "#6b7280",
+            }}
+          >
+            <span style={{ fontSize: "0.80rem" }}>🔍</span>
+            <span>Search</span>
+            <kbd style={{
+              fontSize: "0.68rem",
+              background: "var(--color-n-0, #fff)",
+              border: "1px solid var(--color-n-200, #e5e7eb)",
+              borderRadius: 4,
+              padding: "1px 5px",
+              fontFamily: "inherit",
+            }}>⌘K</kbd>
+          </button>
           <NotificationBell />
           <div className="topbar-divider" />
           <div className="topbar-user" title="My Profile" onClick={onNavigateProfile}>
@@ -231,6 +316,22 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
           </div>
         </main>
       </div>
+
+      {/* ── Command Palette ───────────────────────────────────────── */}
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        onNavigate={onNavigate}
+        nav={nav}
+        role={session.role}
+        currentView={view}
+      />
+
+      {/* ── Keyboard Shortcuts Panel ──────────────────────────────── */}
+      <ShortcutsPanel
+        open={shortcutsOpen}
+        onClose={() => setShortcutsOpen(false)}
+      />
     </>
   );
 }

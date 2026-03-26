@@ -300,6 +300,18 @@ export function Timesheets() {
     return () => clearInterval(poll);
   }, [loadActiveTimer]);
 
+  // Global keyboard shortcut listeners
+  useEffect(() => {
+    function onNewEntry() { setShowForm(true); }
+    function onSubmitWeek() { setShowSubmitWeekModal(true); }
+    window.addEventListener("cmd:new-entry", onNewEntry);
+    window.addEventListener("cmd:submit-week", onSubmitWeek);
+    return () => {
+      window.removeEventListener("cmd:new-entry", onNewEntry);
+      window.removeEventListener("cmd:submit-week", onSubmitWeek);
+    };
+  }, []);
+
   /* ── Week navigation ─────────────────────────────────────────────────────── */
   function shiftWeek(days: number) {
     const d = new Date(selectedDate + "T00:00:00");

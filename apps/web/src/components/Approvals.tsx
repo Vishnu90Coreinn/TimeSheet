@@ -129,6 +129,16 @@ export function Approvals() {
 
   useEffect(() => { loadData(); void loadDelegation(); }, []);
 
+  // Global keyboard shortcut for bulk approve
+  useEffect(() => {
+    function onBulkApprove() {
+      if (selectedIds.size > 0) void bulkApprove();
+    }
+    window.addEventListener("cmd:bulk-approve", onBulkApprove);
+    return () => window.removeEventListener("cmd:bulk-approve", onBulkApprove);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedIds, tsPending]);
+
   async function approveTs(timesheetId: string) {
     const r = await apiFetch(`/approvals/timesheets/${timesheetId}/approve`, { method: "POST", body: JSON.stringify({ comment: "" }) });
     if (r.ok) loadData();

@@ -9,6 +9,7 @@ namespace TimeSheet.Application.Approvals.Commands;
 
 public class ApproveTimesheetCommandHandler(
     ITimesheetRepository timesheetRepository,
+    IApprovalDelegationRepository delegationRepository,
     IUnitOfWork unitOfWork,
     ICurrentUserService currentUser,
     IDateTimeProvider dateTimeProvider)
@@ -23,8 +24,23 @@ public class ApproveTimesheetCommandHandler(
         if (timesheet.Status != TimesheetStatus.Submitted)
             return Result.Conflict("Only submitted timesheets can be actioned.");
 
+        Guid? delegatedFromUserId = null;
         if (!currentUser.IsAdmin && timesheet.User?.ManagerId != currentUser.UserId)
-            return Result.Forbidden("You can only action timesheets for your direct reports.");
+        {
+            // Check if current user is an active delegate for this timesheet's manager
+            if (timesheet.User?.ManagerId is { } managerId)
+            {
+                var delegations = await delegationRepository.GetActiveDelegationsForDelegateAsync(currentUser.UserId, cancellationToken);
+                var delegation = delegations.FirstOrDefault(d => d.FromUserId == managerId);
+                if (delegation is null)
+                    return Result.Forbidden("You can only action timesheets for your direct reports.");
+                delegatedFromUserId = managerId;
+            }
+            else
+            {
+                return Result.Forbidden("You can only action timesheets for your direct reports.");
+            }
+        }
 
         timesheet.Approve(currentUser.UserId);
         timesheet.ManagerComment = request.Comment?.Trim();
@@ -36,7 +52,8 @@ public class ApproveTimesheetCommandHandler(
             ManagerUserId = currentUser.UserId,
             Action = ApprovalActionType.Approved,
             Comment = request.Comment?.Trim() ?? string.Empty,
-            ActionedAtUtc = dateTimeProvider.UtcNow
+            ActionedAtUtc = dateTimeProvider.UtcNow,
+            DelegatedFromUserId = delegatedFromUserId
         });
 
         await unitOfWork.SaveChangesAsync(cancellationToken);

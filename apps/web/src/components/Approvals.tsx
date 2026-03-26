@@ -8,6 +8,22 @@ import type { ApprovalItem, LeaveRequest } from "../types";
 // ─── Types ────────────────────────────────────────────────────
 type Tab = "all" | "timesheets" | "leave";
 
+interface ApprovalDelegation {
+  id: string;
+  fromUserId: string;
+  fromUsername: string;
+  toUserId: string;
+  toUsername: string;
+  fromDate: string;
+  toDate: string;
+  isActive: boolean;
+  createdAtUtc: string;
+}
+
+interface PendingTimesheetItem extends ApprovalItem {
+  delegatedFromUsername?: string;
+}
+
 interface ApprovalStats {
   approvedThisMonth: number | null;
   rejectedThisMonth: number | null;
@@ -77,7 +93,7 @@ const IconClock = () => (
 
 // ─── Component ────────────────────────────────────────────────
 export function Approvals() {
-  const [tsPending, setTsPending]     = useState<ApprovalItem[]>([]);
+  const [tsPending, setTsPending]     = useState<PendingTimesheetItem[]>([]);
   const [leavePending, setLeavePending] = useState<LeaveRequest[]>([]);
   const [stats, setStats]             = useState<ApprovalStats>({ approvedThisMonth: null, rejectedThisMonth: null, avgResponseHours: null });
   const [tab, setTab]                 = useState<Tab>("all");
@@ -85,6 +101,13 @@ export function Approvals() {
   const [rejectComment, setRejectComment] = useState("");
   const [bulkApproving, setBulkApproving] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [delegation, setDelegation] = useState<ApprovalDelegation | null>(null);
+  const [showDelegateModal, setShowDelegateModal] = useState(false);
+  const [delegateUsers, setDelegateUsers] = useState<{ id: string; username: string; displayName: string }[]>([]);
+  const [delegateToUserId, setDelegateToUserId] = useState("");
+  const [delegateFromDate, setDelegateFromDate] = useState("");
+  const [delegateToDate, setDelegateToDate] = useState("");
+  const [delegateSaving, setDelegateSaving] = useState(false);
 
   function loadData() {
     apiFetch("/approvals/pending-timesheets").then(async (r) => { if (r.ok) setTsPending(await r.json()); });
@@ -92,7 +115,19 @@ export function Approvals() {
     void apiFetch("/approvals/stats").then(async (r) => { if (r.ok) setStats(await r.json()); });
   }
 
-  useEffect(() => { loadData(); }, []);
+  const loadDelegation = async () => {
+    try {
+      const r = await apiFetch("/approvals/delegation");
+      if (r.ok) {
+        const data: ApprovalDelegation | null = await r.json();
+        setDelegation(data);
+      }
+    } catch {
+      // not critical
+    }
+  };
+
+  useEffect(() => { loadData(); void loadDelegation(); }, []);
 
   async function approveTs(timesheetId: string) {
     const r = await apiFetch(`/approvals/timesheets/${timesheetId}/approve`, { method: "POST", body: JSON.stringify({ comment: "" }) });
@@ -152,6 +187,52 @@ export function Approvals() {
     }
   }
 
+  const openDelegateModal = async () => {
+    try {
+      const r = await apiFetch("/users");
+      if (r.ok) {
+        const users: { id: string; username: string; displayName: string; role: string }[] = await r.json();
+        setDelegateUsers(users.filter(u => u.role === "manager" || u.role === "admin"));
+      }
+    } catch {
+      setDelegateUsers([]);
+    }
+    setDelegateToUserId("");
+    setDelegateFromDate("");
+    setDelegateToDate("");
+    setShowDelegateModal(true);
+  };
+
+  const handleSaveDelegate = async () => {
+    if (!delegateToUserId || !delegateFromDate || !delegateToDate) return;
+    setDelegateSaving(true);
+    try {
+      const r = await apiFetch("/approvals/delegation", {
+        method: "POST",
+        body: JSON.stringify({ toUserId: delegateToUserId, fromDate: delegateFromDate, toDate: delegateToDate }),
+      });
+      if (r.ok) {
+        const result: ApprovalDelegation = await r.json();
+        setDelegation(result);
+        setShowDelegateModal(false);
+      }
+    } catch {
+      // error handled by apiFetch
+    } finally {
+      setDelegateSaving(false);
+    }
+  };
+
+  const handleRevokeDelegate = async () => {
+    if (!delegation) return;
+    try {
+      await apiFetch(`/approvals/delegation/${delegation.id}`, { method: "DELETE" });
+      setDelegation(null);
+    } catch {
+      // error handled by apiFetch
+    }
+  };
+
   const pendingCount = tsPending.length + leavePending.length;
   const showTs    = tab !== "leave";
   const showLeave = tab !== "timesheets";
@@ -171,6 +252,21 @@ export function Approvals() {
           <div className="page-subtitle">Review and action pending requests</div>
         </div>
         <div className="page-actions">
+          <button className="btn btn-outline btn-sm" onClick={() => void openDelegateModal()}>
+            Delegate Approvals
+          </button>
+          {delegation && (
+            <span style={{ fontSize: "0.82rem", color: "#6b7280", marginLeft: 8 }}>
+              Delegated to <strong>{delegation.toUsername}</strong> until {delegation.toDate}{" "}
+              <button
+                className="btn btn-ghost btn-sm"
+                style={{ color: "#dc2626", padding: "0 6px", minHeight: "unset" }}
+                onClick={() => void handleRevokeDelegate()}
+              >
+                Revoke
+              </button>
+            </span>
+          )}
           <button
             className="btn btn-outline"
             onClick={() => void bulkApprove()}
@@ -227,6 +323,30 @@ export function Approvals() {
         ))}
       </div>
 
+      {/* Delegation banner — shown when current user is acting as a delegate */}
+      {tsPending.some(item => item.delegatedFromUsername) && (
+        <div style={{
+          background: "rgba(99,102,241,0.08)",
+          border: "1px solid rgba(99,102,241,0.25)",
+          borderRadius: 8,
+          padding: "10px 16px",
+          marginBottom: 16,
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          fontSize: "0.88rem",
+          color: "rgb(67,56,202)"
+        }}>
+          <span style={{ fontSize: "1.1rem" }}>🔁</span>
+          <span>
+            You are approving on behalf of{" "}
+            <strong>
+              {[...new Set(tsPending.filter(i => i.delegatedFromUsername).map(i => i.delegatedFromUsername))].join(", ")}
+            </strong>
+          </span>
+        </div>
+      )}
+
       {/* Card list */}
       <div className="apr3-list">
         {pendingCount === 0 && (
@@ -275,7 +395,21 @@ export function Approvals() {
                   {initials(a.username)}
                 </div>
                 <div className="apr3-meta">
-                  <div className="apr3-meta-title">{a.username} — Timesheet {a.workDate}</div>
+                  <div className="apr3-meta-title">
+                    {a.username} — Timesheet {a.workDate}
+                    {a.delegatedFromUsername && (
+                      <span style={{
+                        fontSize: "0.72rem",
+                        background: "rgba(99,102,241,0.1)",
+                        color: "rgb(67,56,202)",
+                        borderRadius: 4,
+                        padding: "1px 6px",
+                        marginLeft: 6
+                      }}>
+                        via {a.delegatedFromUsername}
+                      </span>
+                    )}
+                  </div>
                   <div className="apr3-meta-sub">
                     {a.workDate} — <strong>{fmtHours(a.enteredMinutes)} logged</strong>
                     {mismatch && <> — <span className="text-[#d97706]">⚠ {mismatch}</span></>}
@@ -368,6 +502,63 @@ export function Approvals() {
           </div>
         ))}
       </div>
+      {/* ── Delegate Approvals Modal ───────────────────────────────────────── */}
+      {showDelegateModal && (
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center" }}
+          onClick={e => { if (e.target === e.currentTarget) setShowDelegateModal(false); }}
+        >
+          <div style={{ background: "var(--color-n-0, #fff)", borderRadius: 12, padding: "28px 32px", width: "100%", maxWidth: 480, boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+              <span style={{ fontWeight: 700, fontSize: "1.05rem" }}>Delegate Approvals</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => setShowDelegateModal(false)} aria-label="Close">✕</button>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div>
+                <label style={{ fontSize: "0.82rem", fontWeight: 600, display: "block", marginBottom: 4 }}>Delegate to</label>
+                <select
+                  className="input"
+                  value={delegateToUserId}
+                  onChange={e => setDelegateToUserId(e.target.value)}
+                  style={{ width: "100%" }}
+                >
+                  <option value="">Select a manager or admin…</option>
+                  {delegateUsers.map(u => (
+                    <option key={u.id} value={u.id}>{u.displayName || u.username}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={{ fontSize: "0.82rem", fontWeight: 600, display: "block", marginBottom: 4 }}>From date</label>
+                  <input type="date" className="input" value={delegateFromDate} onChange={e => setDelegateFromDate(e.target.value)} style={{ width: "100%" }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: "0.82rem", fontWeight: 600, display: "block", marginBottom: 4 }}>To date</label>
+                  <input type="date" className="input" value={delegateToDate} onChange={e => setDelegateToDate(e.target.value)} style={{ width: "100%" }} />
+                </div>
+              </div>
+
+              <p style={{ fontSize: "0.80rem", color: "#6b7280", margin: 0 }}>
+                The selected manager will be able to approve, reject, and push back timesheets on your behalf during this period.
+              </p>
+            </div>
+
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 24 }}>
+              <button className="btn btn-ghost btn-sm" onClick={() => setShowDelegateModal(false)} disabled={delegateSaving}>Cancel</button>
+              <button
+                className="btn btn-primary"
+                onClick={() => void handleSaveDelegate()}
+                disabled={delegateSaving || !delegateToUserId || !delegateFromDate || !delegateToDate}
+              >
+                {delegateSaving ? "Saving…" : "Save Delegation"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

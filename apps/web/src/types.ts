@@ -46,6 +46,18 @@ export type NotificationPreferences = {
   inAppEnabled: boolean; emailEnabled: boolean;
 };
 
+export interface ApprovalDelegation {
+  id: string;
+  fromUserId: string;
+  fromUsername: string;
+  toUserId: string;
+  toUsername: string;
+  fromDate: string;
+  toDate: string;
+  isActive: boolean;
+  createdAtUtc: string;
+}
+
 export interface SavedReport {
   id: string;
   name: string;

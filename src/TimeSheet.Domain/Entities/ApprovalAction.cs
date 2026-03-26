@@ -12,4 +12,5 @@ public class ApprovalAction
     public ApprovalActionType Action { get; set; }
     public string Comment { get; set; } = string.Empty;
     public DateTime ActionedAtUtc { get; set; } = DateTime.UtcNow;
+    public Guid? DelegatedFromUserId { get; set; }
 }

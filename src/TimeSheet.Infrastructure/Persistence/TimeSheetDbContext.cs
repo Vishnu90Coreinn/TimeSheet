@@ -25,6 +25,7 @@ public class TimeSheetDbContext(DbContextOptions<TimeSheetDbContext> options) : 
     public DbSet<LeavePolicyAllocation> LeavePolicyAllocations { get; set; }
     public DbSet<LeaveBalance> LeaveBalances { get; set; }
     public DbSet<ApprovalAction> ApprovalActions => Set<ApprovalAction>();
+    public DbSet<ApprovalDelegation> ApprovalDelegations => Set<ApprovalDelegation>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<Holiday> Holidays => Set<Holiday>();
     public DbSet<UserNotificationPreferences> UserNotificationPreferences => Set<UserNotificationPreferences>();

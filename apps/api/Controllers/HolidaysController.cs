@@ -1,77 +1,56 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using TimeSheet.Api.Dtos;
+using TimeSheet.Application.Common.Models;
+using TimeSheet.Application.ReferenceData.Commands;
+using TimeSheet.Application.ReferenceData.Queries;
 
 namespace TimeSheet.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/holidays")]
-public class HolidaysController(TimeSheetDbContext dbContext, ILogger<HolidaysController> logger) : ControllerBase
+public class HolidaysController(ISender mediator) : ControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] int? year = null)
+    public async Task<IActionResult> GetAll([FromQuery] int? year, CancellationToken ct)
     {
-        var effectiveYear = year ?? DateTime.UtcNow.Year;
-        var from = new DateOnly(effectiveYear, 1, 1);
-        var to = new DateOnly(effectiveYear, 12, 31);
-
-        var holidays = await dbContext.Holidays.AsNoTracking()
-            .Where(h => h.Date >= from && h.Date <= to)
-            .OrderBy(h => h.Date)
-            .Select(h => new HolidayResponse(h.Id, h.Name, h.Date, h.IsRecurring, h.CreatedAtUtc))
-            .ToListAsync();
-
-        return Ok(holidays);
+        var result = await mediator.Send(new GetHolidaysQuery(year), ct);
+        return result.IsSuccess ? Ok(result.Value) : Fail(result);
     }
 
     [HttpPost]
     [Authorize(Roles = "admin")]
-    public async Task<IActionResult> Create([FromBody] UpsertHolidayRequest request)
+    public async Task<IActionResult> Create([FromBody] UpsertHolidayRequest request, CancellationToken ct)
     {
-        var holiday = new Holiday
-        {
-            Id = Guid.NewGuid(),
-            Name = request.Name.Trim(),
-            Date = request.Date,
-            IsRecurring = request.IsRecurring,
-            CreatedAtUtc = DateTime.UtcNow
-        };
-
-        dbContext.Holidays.Add(holiday);
-        await dbContext.SaveChangesAsync();
-        logger.LogInformation("Holiday created: {Name} on {Date}", holiday.Name, holiday.Date);
-
-        return CreatedAtAction(nameof(GetAll), new { year = holiday.Date.Year },
-            new HolidayResponse(holiday.Id, holiday.Name, holiday.Date, holiday.IsRecurring, holiday.CreatedAtUtc));
+        var result = await mediator.Send(new CreateHolidayCommand(request.Name, request.Date, request.IsRecurring), ct);
+        if (!result.IsSuccess) return Fail(result);
+        return CreatedAtAction(nameof(GetAll), new { year = result.Value!.Date.Year }, result.Value);
     }
 
     [HttpPut("{id:guid}")]
     [Authorize(Roles = "admin")]
-    public async Task<IActionResult> Update(Guid id, [FromBody] UpsertHolidayRequest request)
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpsertHolidayRequest request, CancellationToken ct)
     {
-        var holiday = await dbContext.Holidays.SingleOrDefaultAsync(h => h.Id == id);
-        if (holiday is null) return NotFound();
-
-        holiday.Name = request.Name.Trim();
-        holiday.Date = request.Date;
-        holiday.IsRecurring = request.IsRecurring;
-
-        await dbContext.SaveChangesAsync();
-        logger.LogInformation("Holiday updated: {Id}", id);
-        return Ok(new HolidayResponse(holiday.Id, holiday.Name, holiday.Date, holiday.IsRecurring, holiday.CreatedAtUtc));
+        var result = await mediator.Send(new UpdateHolidayCommand(id, request.Name, request.Date, request.IsRecurring), ct);
+        return result.IsSuccess ? Ok(result.Value) : Fail(result);
     }
 
     [HttpDelete("{id:guid}")]
     [Authorize(Roles = "admin")]
-    public async Task<IActionResult> Delete(Guid id)
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
-        var holiday = await dbContext.Holidays.SingleOrDefaultAsync(h => h.Id == id);
-        if (holiday is null) return NotFound();
-
-        dbContext.Holidays.Remove(holiday);
-        await dbContext.SaveChangesAsync();
-        logger.LogInformation("Holiday deleted: {Id}", id);
+        var result = await mediator.Send(new DeleteHolidayCommand(id), ct);
+        if (!result.IsSuccess) return Fail(result);
         return NoContent();
     }
+
+    private IActionResult Fail(Result result) => result.Status switch
+    {
+        ResultStatus.NotFound => NotFound(new { message = result.Error }),
+        ResultStatus.Forbidden => Forbid(),
+        ResultStatus.Conflict => Conflict(new { message = result.Error }),
+        ResultStatus.Validation => BadRequest(new { message = result.Error }),
+        _ => BadRequest(new { message = result.Error })
+    };
 }

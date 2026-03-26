@@ -32,6 +32,11 @@ public static class DependencyInjection
         services.AddScoped<IProjectRepository, ProjectRepository>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        services.AddScoped<IRoleRepository, RoleRepository>();
+        services.AddScoped<ITaskCategoryRepository, TaskCategoryRepository>();
+        services.AddScoped<IHolidayRepository, HolidayRepository>();
+        services.AddScoped<IDepartmentRepository, DepartmentRepository>();
+        services.AddScoped<IWorkPolicyRepository, WorkPolicyRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         // Core services — registered for Application interfaces (used by handlers)

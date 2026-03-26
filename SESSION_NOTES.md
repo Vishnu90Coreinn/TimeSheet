@@ -1199,26 +1199,80 @@ All work on `feature/clean-architecture`.
 
 ---
 
+## Session 26 — Clean Architecture Phase 7: Reference Data CQRS (2026-03-26)
+
+### What Was Done
+
+#### Branch
+All work on `feature/clean-architecture`.
+
+#### CA-097–103: Reference Data CQRS (Roles, TaskCategories, Holidays, Departments, WorkPolicies)
+
+**Domain interfaces (5 new):**
+- `IRoleRepository` — GetAll, ExistsAsync, Add
+- `ITaskCategoryRepository` — GetActive, GetAll, ExistsAsync, GetById, Add, Remove
+- `IHolidayRepository` — GetByYear, GetById, Add, Remove
+- `IDepartmentRepository` — GetAll, ExistsAsync, Add
+- `IWorkPolicyRepository` — GetAll, GetById, ExistsAsync, Add, Remove
+
+**Infrastructure repositories (5 new — NotificationRepository pattern, plain `DbSet<T>` field):**
+- `RoleRepository`, `TaskCategoryRepository`, `HolidayRepository`, `DepartmentRepository`, `WorkPolicyRepository`
+
+**Application/ReferenceData/Queries (10 files):**
+- `GetRolesQuery` + Handler
+- `GetTaskCategoriesQuery(AdminAll)` + Handler (single query handles both active-only and admin-all)
+- `GetHolidaysQuery(Year?)` + Handler (uses `IDateTimeProvider` for default year)
+- `GetDepartmentsQuery` + Handler
+- `GetWorkPoliciesQuery` + Handler
+
+**Application/ReferenceData/Commands (18 files):**
+- Role: `CreateRoleCommand` + Handler
+- TaskCategory: `CreateTaskCategoryCommand`, `UpdateTaskCategoryCommand`, `DeleteTaskCategoryCommand` + Handlers
+- Holiday: `CreateHolidayCommand`, `UpdateHolidayCommand`, `DeleteHolidayCommand` + Handlers
+- Department: `CreateDepartmentCommand` + Handler
+- WorkPolicy: `CreateWorkPolicyCommand`, `UpdateWorkPolicyCommand`, `DeleteWorkPolicyCommand` + Handlers
+
+**DI:** 5 new `AddScoped` in `AddInfrastructure()`
+
+**Slimmed controllers (4):**
+- `RolesController` — ISender only; removed DbContext
+- `TaskCategoriesController` — ISender only; removed DbContext
+- `HolidaysController` — ISender only; removed DbContext + ILogger
+- `MastersController` — ISender only; removed DbContext
+
+### Result
+- **74/74 tests passing** (52 integration + 22 domain), **0 build errors**
+
+### Commits
+- `cbc65eb` — feat(application): Phase 7 — Reference data CQRS (Roles, TaskCategories, Holidays, Masters)
+
+---
+
 ## Pending For Next Session
 
-> Last updated: Session 21 (2026-03-20).
+> Last updated: Session 26 (2026-03-26).
 
-### 🔴 Priority — Clean Architecture Phase 4: Application Layer (CQRS)
-Branch: `feature/clean-architecture` (all CA work stays here until user manually tests & raises PR to master)
+### 🔴 Priority — Manual QA + PR to master
+Branch: `feature/clean-architecture` is now ready for QA.
 
-**Phase 4 — High-value commands/queries (CA-050–063):**
-- CA-050–052: Auth commands (`LoginCommand`, `RefreshTokenCommand`, `LogoutCommand`) + slim `AuthController`
-- CA-054–059: Timesheet queries+commands (`GetDayTimesheet`, `GetWeekSummary`, `SubmitTimesheet`, `ApproveTimesheet`, `RejectTimesheet`) + slim `TimesheetsController`
-- CA-060–063: Leave commands (`SubmitLeaveRequest`, `ApproveLeaveRequest`, `RejectLeaveRequest`) + slim `LeaveController`
+**Remaining deferred work (acceptable before PR):**
+- `LeaveController`: calendar/team-calendar/conflicts/team-on-leave endpoints still use EF directly (complex queries)
+- `TimesheetsController.DeleteEntry`: minimal EF lookup still inline
+- CA-095: Final architecture review
+- CA-096: README update
+
+**To merge:**
+1. User runs the app manually and smoke-tests the 4 slimmed controller groups
+2. User raises PR: `feature/clean-architecture` → `master`
+3. User reviews and merges manually — **never auto-merge**
 
 ### Merge Policy
-- All phases (1–6) must be complete on `feature/clean-architecture`
-- User will manually test the running app
-- User will manually raise PR and merge to master
+- All CA work stays on `feature/clean-architecture`
+- User will manually test, raise PR, and merge
 - **Never auto-merge CA work to master**
 
 ### Sprint Roadmap (still on hold)
-Sprints 21–25 remain deferred until CA migration is complete.
+Sprints 21–25 remain deferred until CA migration is merged to master.
 
 ---
 

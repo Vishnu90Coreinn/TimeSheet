@@ -14,4 +14,5 @@ public record PendingTimesheetItem(
     string Status,
     DateTime? SubmittedAtUtc,
     bool HasMismatch,
-    string? MismatchReason);
+    string? MismatchReason,
+    string? DelegatedFromUsername = null);

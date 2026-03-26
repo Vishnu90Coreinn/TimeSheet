@@ -15,6 +15,8 @@ public record TimesheetApprovalListItem(
 
 public record TimesheetDecisionRequest([MaxLength(1000)] string? Comment);
 
+public record CreateDelegationRequest(Guid ToUserId, DateOnly FromDate, DateOnly ToDate);
+
 public record ApprovalActionResponse(
     Guid Id,
     Guid TimesheetId,

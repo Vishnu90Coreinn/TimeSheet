@@ -39,6 +39,7 @@ public static class DependencyInjection
         services.AddScoped<IWorkPolicyRepository, WorkPolicyRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<ISavedReportRepository, SavedReportRepository>();
+        services.AddScoped<IApprovalDelegationRepository, ApprovalDelegationRepository>();
 
         // Core services — registered for Application interfaces (used by handlers)
         services.AddSingleton<IDateTimeProvider, DateTimeProvider>();

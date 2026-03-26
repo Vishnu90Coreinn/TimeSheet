@@ -58,6 +58,29 @@ public class ApprovalsController(ISender mediator) : ControllerBase
         return Ok(new { v.ApprovedThisMonth, v.RejectedThisMonth, avgResponseHours = v.AvgResponseHours });
     }
 
+    [HttpGet("delegation")]
+    public async Task<IActionResult> GetDelegation(CancellationToken ct)
+    {
+        var result = await mediator.Send(new GetDelegationQuery(), ct);
+        return result.IsSuccess ? Ok(result.Value) : Fail(result);
+    }
+
+    [HttpPost("delegation")]
+    public async Task<IActionResult> CreateDelegation([FromBody] CreateDelegationRequest request, CancellationToken ct)
+    {
+        var result = await mediator.Send(new CreateDelegationCommand(
+            request.ToUserId, request.FromDate, request.ToDate), ct);
+        return result.IsSuccess ? Ok(result.Value) : Fail(result);
+    }
+
+    [HttpDelete("delegation/{id:guid}")]
+    public async Task<IActionResult> RevokeDelegation(Guid id, CancellationToken ct)
+    {
+        var result = await mediator.Send(new RevokeDelegationCommand(id), ct);
+        if (!result.IsSuccess) return Fail(result);
+        return NoContent();
+    }
+
     private IActionResult Fail(Result result) => result.Status switch
     {
         ResultStatus.NotFound => NotFound(new { message = result.Error }),

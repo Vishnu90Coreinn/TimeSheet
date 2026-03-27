@@ -5,9 +5,37 @@ import { useEffect, useState, type ReactNode } from "react";
 import { apiFetch } from "../../api/client";
 import type { WorkPolicy } from "../../types";
 
-type PolicyForm = { name: string; dailyHours: string; workDaysPerWeek: number; isActive: boolean };
-const BLANK: PolicyForm = { name: "", dailyHours: "8", workDaysPerWeek: 5, isActive: true };
+type PolicyForm = {
+  name: string;
+  dailyHours: string;
+  workDaysPerWeek: number;
+  isActive: boolean;
+  dailyOvertimeAfterHours: string;
+  weeklyOvertimeAfterHours: string;
+  overtimeMultiplier: string;
+  compOffEnabled: boolean;
+  compOffExpiryDays: string;
+};
+const BLANK: PolicyForm = {
+  name: "",
+  dailyHours: "8",
+  workDaysPerWeek: 5,
+  isActive: true,
+  dailyOvertimeAfterHours: "8",
+  weeklyOvertimeAfterHours: "40",
+  overtimeMultiplier: "1.5",
+  compOffEnabled: false,
+  compOffExpiryDays: "90",
+};
 type SortDir = "asc" | "desc";
+
+const FALLBACK_OVERTIME = {
+  dailyOvertimeAfterHours: 8,
+  weeklyOvertimeAfterHours: 40,
+  overtimeMultiplier: 1.5,
+  compOffEnabled: false,
+  compOffExpiryDays: 90,
+};
 
 function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
   if (!active) return <span className="opacity-40 text-[0.7rem] ml-[3px]">↕</span>;
@@ -56,6 +84,7 @@ export function WorkPolicies() {
   const [search, setSearch] = useState("");
   const [sortCol, setSortCol] = useState<"name" | "dailyExpectedMinutes" | "isActive">("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [overtimeRulesOpen, setOvertimeRulesOpen] = useState(true);
 
   function toggleSort(col: typeof sortCol) {
     if (sortCol === col) setSortDir(d => d === "asc" ? "desc" : "asc");
@@ -69,10 +98,21 @@ export function WorkPolicies() {
 
   useEffect(() => { void load(); }, []);
 
-  function openCreate() { setForm(BLANK); setError(""); setEditing("new"); }
+  function openCreate() { setForm(BLANK); setError(""); setEditing("new"); setOvertimeRulesOpen(true); }
   function openEdit(p: WorkPolicy) {
-    setForm({ name: p.name, dailyHours: String(p.dailyExpectedMinutes / 60), workDaysPerWeek: p.workDaysPerWeek ?? 5, isActive: p.isActive });
+    setForm({
+      name: p.name,
+      dailyHours: String(p.dailyExpectedMinutes / 60),
+      workDaysPerWeek: p.workDaysPerWeek ?? 5,
+      isActive: p.isActive,
+      dailyOvertimeAfterHours: String(p.dailyOvertimeAfterHours ?? FALLBACK_OVERTIME.dailyOvertimeAfterHours),
+      weeklyOvertimeAfterHours: String(p.weeklyOvertimeAfterHours ?? FALLBACK_OVERTIME.weeklyOvertimeAfterHours),
+      overtimeMultiplier: String(p.overtimeMultiplier ?? FALLBACK_OVERTIME.overtimeMultiplier),
+      compOffEnabled: p.compOffEnabled ?? FALLBACK_OVERTIME.compOffEnabled,
+      compOffExpiryDays: String(p.compOffExpiryDays ?? FALLBACK_OVERTIME.compOffExpiryDays),
+    });
     setError(""); setEditing(p);
+    setOvertimeRulesOpen(true);
   }
 
   async function save() {
@@ -80,12 +120,25 @@ export function WorkPolicies() {
     const hours = parseFloat(form.dailyHours);
     if (!form.name.trim()) { setError("Name is required."); return; }
     if (isNaN(hours) || hours <= 0 || hours > 24) { setError("Enter a valid daily hours (e.g. 2, 4, 8)."); return; }
+    const dailyOvertimeAfterHours = parseFloat(form.dailyOvertimeAfterHours);
+    const weeklyOvertimeAfterHours = parseFloat(form.weeklyOvertimeAfterHours);
+    const overtimeMultiplier = parseFloat(form.overtimeMultiplier);
+    const compOffExpiryDays = parseInt(form.compOffExpiryDays, 10);
+    if (isNaN(dailyOvertimeAfterHours) || dailyOvertimeAfterHours < 0) { setError("Enter a valid daily overtime threshold."); return; }
+    if (isNaN(weeklyOvertimeAfterHours) || weeklyOvertimeAfterHours < 0) { setError("Enter a valid weekly overtime threshold."); return; }
+    if (isNaN(overtimeMultiplier) || overtimeMultiplier <= 0) { setError("Enter a valid overtime multiplier."); return; }
+    if (isNaN(compOffExpiryDays) || compOffExpiryDays < 0) { setError("Enter a valid comp-off expiry in days."); return; }
     const body = {
       id: editing === "new" ? "00000000-0000-0000-0000-000000000000" : (editing as WorkPolicy).id,
       name: form.name.trim(),
       dailyExpectedMinutes: Math.round(hours * 60),
       workDaysPerWeek: form.workDaysPerWeek,
       isActive: form.isActive,
+      dailyOvertimeAfterHours,
+      weeklyOvertimeAfterHours,
+      overtimeMultiplier,
+      compOffEnabled: form.compOffEnabled,
+      compOffExpiryDays,
     };
     const r = editing === "new"
       ? await apiFetch("/masters/work-policies", { method: "POST", body: JSON.stringify(body) })
@@ -103,9 +156,28 @@ export function WorkPolicies() {
   const f = (k: keyof PolicyForm, v: string | boolean | number) => setForm((prev) => ({ ...prev, [k]: v }));
 
   const hours = parseFloat(form.dailyHours);
+  const dailyOvertimeAfterHours = parseFloat(form.dailyOvertimeAfterHours);
+  const weeklyOvertimeAfterHours = parseFloat(form.weeklyOvertimeAfterHours);
+  const overtimeMultiplier = parseFloat(form.overtimeMultiplier);
+  const compOffExpiryDays = parseInt(form.compOffExpiryDays, 10);
   const daysLabel = form.workDaysPerWeek === 6 ? "Mon–Sat" : "Mon–Fri";
   const weeklyHours = isNaN(hours) ? null : (hours * form.workDaysPerWeek).toFixed(1).replace(/\.0$/, "");
   const weeklyPreview = weeklyHours ? `= ${hours}h × ${form.workDaysPerWeek} / week (${daysLabel})` : "";
+  const overtimePreview = [
+    `Daily after ${isNaN(dailyOvertimeAfterHours) ? FALLBACK_OVERTIME.dailyOvertimeAfterHours : dailyOvertimeAfterHours}h`,
+    `Weekly after ${isNaN(weeklyOvertimeAfterHours) ? FALLBACK_OVERTIME.weeklyOvertimeAfterHours : weeklyOvertimeAfterHours}h`,
+    `${isNaN(overtimeMultiplier) ? FALLBACK_OVERTIME.overtimeMultiplier : overtimeMultiplier}x overtime`,
+    form.compOffEnabled ? `Comp-off expires in ${isNaN(compOffExpiryDays) ? FALLBACK_OVERTIME.compOffExpiryDays : compOffExpiryDays} days` : "Comp-off disabled",
+  ].join(" · ");
+
+  function formatOvertimeSummary(policy: WorkPolicy): string {
+    const dailyThreshold = policy.dailyOvertimeAfterHours ?? FALLBACK_OVERTIME.dailyOvertimeAfterHours;
+    const weeklyThreshold = policy.weeklyOvertimeAfterHours ?? FALLBACK_OVERTIME.weeklyOvertimeAfterHours;
+    const multiplier = policy.overtimeMultiplier ?? FALLBACK_OVERTIME.overtimeMultiplier;
+    const compOffExpiry = policy.compOffExpiryDays ?? FALLBACK_OVERTIME.compOffExpiryDays;
+    const compOff = policy.compOffEnabled ?? FALLBACK_OVERTIME.compOffEnabled;
+    return `OT after ${dailyThreshold}h/day, ${weeklyThreshold}h/week · ${multiplier}x · ${compOff ? `Comp-off ${compOffExpiry}d` : "No comp-off"}`;
+  }
 
   const filtered = policies.filter(p =>
     !search.trim() || p.name.toLowerCase().includes(search.toLowerCase())
@@ -133,11 +205,11 @@ export function WorkPolicies() {
         }
       >
         {error && <p className="text-danger text-[0.825rem] m-0">{error}</p>}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="form-field col-span-2">
-            <label className="form-label">Policy Name <span className="required">*</span></label>
-            <input className="input-field" placeholder="e.g. Standard 8h, Consultant 2h" value={form.name} onChange={(e) => f("name", e.target.value)} />
-          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="form-field col-span-2">
+              <label className="form-label">Policy Name <span className="required">*</span></label>
+              <input className="input-field" placeholder="e.g. Standard 8h, Consultant 2h" value={form.name} onChange={(e) => f("name", e.target.value)} />
+            </div>
           <div className="form-field">
             <label className="form-label">Daily Hours <span className="required">*</span></label>
             <input className="input-field" type="number" min="0.5" max="24" step="0.5" placeholder="e.g. 8" value={form.dailyHours} onChange={(e) => f("dailyHours", e.target.value)} />
@@ -150,15 +222,59 @@ export function WorkPolicies() {
               <option value={6}>6 days (Mon–Sat)</option>
             </select>
           </div>
-          <div className="form-field">
-            <label className="form-label">Status</label>
-            <label className="flex items-center gap-2 h-[38px] cursor-pointer text-[0.825rem] text-text-secondary">
-              <input type="checkbox" checked={form.isActive} onChange={(e) => f("isActive", e.target.checked)} className="[accent-color:var(--brand-600)]" />
-              Active
-            </label>
+            <div className="form-field">
+              <label className="form-label">Status</label>
+              <label className="flex items-center gap-2 h-[38px] cursor-pointer text-[0.825rem] text-text-secondary">
+                <input type="checkbox" checked={form.isActive} onChange={(e) => f("isActive", e.target.checked)} className="[accent-color:var(--brand-600)]" />
+                Active
+              </label>
+            </div>
           </div>
-        </div>
-      </Drawer>
+          <div className="mt-4 border border-border-subtle rounded-xl bg-n-50 overflow-hidden">
+            <button
+              type="button"
+              className="w-full flex items-center justify-between px-4 py-3 text-left"
+              onClick={() => setOvertimeRulesOpen((open) => !open)}
+            >
+              <div>
+                <div className="text-[0.85rem] font-semibold text-text-primary">Overtime Rules</div>
+                <div className="text-[0.75rem] text-text-tertiary mt-0.5">Set daily and weekly thresholds plus comp-off handling</div>
+              </div>
+              <span className="text-text-tertiary text-[0.9rem]">{overtimeRulesOpen ? "−" : "+"}</span>
+            </button>
+            {overtimeRulesOpen && (
+              <div className="px-4 pb-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="form-field">
+                    <label className="form-label">Daily OT After (hours)</label>
+                    <input className="input-field" type="number" min="0" step="0.5" value={form.dailyOvertimeAfterHours} onChange={(e) => f("dailyOvertimeAfterHours", e.target.value)} />
+                  </div>
+                  <div className="form-field">
+                    <label className="form-label">Weekly OT After (hours)</label>
+                    <input className="input-field" type="number" min="0" step="0.5" value={form.weeklyOvertimeAfterHours} onChange={(e) => f("weeklyOvertimeAfterHours", e.target.value)} />
+                  </div>
+                  <div className="form-field">
+                    <label className="form-label">Overtime Multiplier</label>
+                    <input className="input-field" type="number" min="1" step="0.1" value={form.overtimeMultiplier} onChange={(e) => f("overtimeMultiplier", e.target.value)} />
+                  </div>
+                  <div className="form-field">
+                    <label className="form-label">Comp-Off Expiry (days)</label>
+                    <input className="input-field" type="number" min="0" step="1" value={form.compOffExpiryDays} onChange={(e) => f("compOffExpiryDays", e.target.value)} />
+                  </div>
+                  <div className="form-field col-span-2">
+                    <label className="flex items-center gap-2 h-[38px] cursor-pointer text-[0.825rem] text-text-secondary">
+                      <input type="checkbox" checked={form.compOffEnabled} onChange={(e) => f("compOffEnabled", e.target.checked)} className="[accent-color:var(--brand-600)]" />
+                      Enable comp-off accrual
+                    </label>
+                  </div>
+                  <div className="col-span-2 text-[0.75rem] text-text-tertiary leading-5">
+                    {overtimePreview}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </Drawer>
 
       {/* Confirm delete */}
       <ConfirmModal
@@ -216,7 +332,8 @@ export function WorkPolicies() {
               {sorted.map((p) => (
                 <tr key={p.id}>
                   <td>
-                    <button className="btn-table-link" onClick={() => openEdit(p)}>{p.name}</button>
+                    <button className="btn-table-link text-left" onClick={() => openEdit(p)}>{p.name}</button>
+                    <div className="text-[0.75rem] text-text-tertiary mt-1 leading-5">{formatOvertimeSummary(p)}</div>
                   </td>
                   <td>{(p.dailyExpectedMinutes / 60).toFixed(1)}h / day</td>
                   <td>

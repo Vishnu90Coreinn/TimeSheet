@@ -9,3 +9,5 @@ obj/
 .vs/
 *.user
 apps/web/tsconfig.tsbuildinfo
+/.dotnet-cli
+/.dotnet-home

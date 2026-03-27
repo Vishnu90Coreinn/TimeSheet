@@ -13,4 +13,5 @@ public class WorkPolicy
     public int TimesheetBackdateWindowDays { get; set; } = 7;
     public bool RequireMismatchReason { get; set; } = true;
     public bool IsActive { get; set; } = true;
+    public OvertimePolicy? OvertimePolicy { get; set; }
 }

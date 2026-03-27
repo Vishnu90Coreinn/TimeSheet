@@ -11,6 +11,9 @@ public class TimesheetRepository(TimeSheetDbContext context)
     public async Task<Timesheet?> GetByIdAsync(Guid id, CancellationToken ct = default)
         => await _dbSet
             .Include(t => t.Entries)
+                .ThenInclude(e => e.Project)
+            .Include(t => t.Entries)
+                .ThenInclude(e => e.TaskCategory)
             .Include(t => t.ApprovalActions)
             .Include(t => t.User)
             .FirstOrDefaultAsync(t => t.Id == id, ct);

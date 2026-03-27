@@ -31,27 +31,23 @@ public class ApprovalQueryService(TimeSheetDbContext context) : AppInterfaces.IA
             .ToListAsync(ct);
 
     public async Task<AppInterfaces.ApprovalStatsResult> GetStatsAsync(
-        Guid managerId, CancellationToken ct = default)
+        Guid managerId, DateTime fromUtc, DateTime toUtc, CancellationToken ct = default)
     {
-        var now = DateTime.UtcNow;
-        var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-        var monthEnd = monthStart.AddMonths(1);
-
-        var monthActions = await context.ApprovalActions
+        var actionsInRange = await context.ApprovalActions
             .AsNoTracking()
             .Where(a => a.ManagerUserId == managerId
-                && a.ActionedAtUtc >= monthStart
-                && a.ActionedAtUtc < monthEnd)
+                && a.ActionedAtUtc >= fromUtc
+                && a.ActionedAtUtc < toUtc)
             .ToListAsync(ct);
 
-        var approved = monthActions.Count(a => a.Action == ApprovalActionType.Approved);
-        var rejected = monthActions.Count(a => a.Action == ApprovalActionType.Rejected);
+        var approved = actionsInRange.Count(a => a.Action == ApprovalActionType.Approved);
+        var rejected = actionsInRange.Count(a => a.Action == ApprovalActionType.Rejected);
 
         var actionWithTs = await context.ApprovalActions
             .AsNoTracking()
             .Where(a => a.ManagerUserId == managerId
-                && a.ActionedAtUtc >= monthStart
-                && a.ActionedAtUtc < monthEnd)
+                && a.ActionedAtUtc >= fromUtc
+                && a.ActionedAtUtc < toUtc)
             .Join(context.Timesheets, a => a.TimesheetId, t => t.Id,
                 (a, t) => new { a.ActionedAtUtc, t.SubmittedAtUtc })
             .Where(x => x.SubmittedAtUtc != null)

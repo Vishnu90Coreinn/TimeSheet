@@ -164,8 +164,29 @@ public static class DbInitializer
             db.LeaveTypes.AddRange(
                 new LeaveType { Id = Guid.NewGuid(), Name = "Annual Leave", IsActive = true },
                 new LeaveType { Id = Guid.NewGuid(), Name = "Sick Leave", IsActive = true },
-                new LeaveType { Id = Guid.NewGuid(), Name = "Casual Leave", IsActive = true }
+                new LeaveType { Id = Guid.NewGuid(), Name = "Casual Leave", IsActive = true },
+                new LeaveType { Id = Guid.NewGuid(), Name = "Comp-off", IsActive = true }
             );
+        }
+        else if (!await db.LeaveTypes.AnyAsync(x => x.Name == "Comp-off"))
+        {
+            db.LeaveTypes.Add(new LeaveType { Id = Guid.NewGuid(), Name = "Comp-off", IsActive = true });
+        }
+
+        var workPolicyIds = await db.WorkPolicies.Select(x => x.Id).ToListAsync();
+        var existingOvertimePolicyIds = await db.OvertimePolicies.Select(x => x.WorkPolicyId).ToListAsync();
+        foreach (var workPolicyId in workPolicyIds.Except(existingOvertimePolicyIds))
+        {
+            db.OvertimePolicies.Add(new OvertimePolicy
+            {
+                Id = Guid.NewGuid(),
+                WorkPolicyId = workPolicyId,
+                DailyOvertimeAfterHours = 8m,
+                WeeklyOvertimeAfterHours = 40m,
+                OvertimeMultiplier = 1.5m,
+                CompOffEnabled = false,
+                CompOffExpiryDays = 90
+            });
         }
 
         if (!await db.TaskCategories.AnyAsync())

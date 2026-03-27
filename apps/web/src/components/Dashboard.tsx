@@ -4,8 +4,8 @@ import { apiFetch } from "../api/client";
 import { AttendanceWidget } from "./AttendanceWidget";
 import { useConfirm } from "../hooks/useConfirm";
 import { SkeletonPage } from "./Skeleton";
+import type { LeaveBalance, OvertimeSummary, TeamLeaveEntry } from "../types";
 import { OnboardingChecklist } from "./OnboardingChecklist";
-import type { LeaveBalance, TeamLeaveEntry } from "../types";
 import { useTimezone } from "../hooks/useTimezone";
 
 interface DashboardProps { role: string; username: string; onboardingCompletedAt?: string | null; onNavigate?: (view: string) => void; }
@@ -34,7 +34,15 @@ interface TimesheetHealth { missing: number; pendingApprovals: number; }
 interface MismatchRow { username: string; workDate: string; mismatchReason: string; }
 interface Utilization { avgMinutes: number; }
 interface ContributionRow { project: string; minutes: number; }
-interface ManagerData { teamAttendance: TeamAttendance; timesheetHealth: TimesheetHealth; mismatches: MismatchRow[]; utilization: Utilization; contributions: ContributionRow[]; }
+interface ManagerData {
+  teamAttendance: TeamAttendance;
+  timesheetHealth: TimesheetHealth;
+  mismatches: MismatchRow[];
+  utilization: Utilization;
+  contributions: ContributionRow[];
+  overtimeHours?: number;
+  overtimeMinutes?: number;
+}
 
 // ── Admin interfaces ──────────────────────────────────────────────────────────
 interface AnomalyNotification { id: string; title: string; message: string; severity: "warning" | "critical"; createdAtUtc: string; }
@@ -123,6 +131,14 @@ function relativeTime(date: Date): string {
   const diffHr = Math.floor(diffMin / 60);
   if (diffHr < 24) return `Updated ${diffHr}h ago`;
   return `Updated ${date.toLocaleDateString()}`;
+}
+
+function currentWeekStartIso(reference = new Date()): string {
+  const d = new Date(reference);
+  const dow = (d.getDay() + 6) % 7;
+  const mon = new Date(d);
+  mon.setDate(d.getDate() - dow);
+  return `${mon.getFullYear()}-${String(mon.getMonth() + 1).padStart(2, "0")}-${String(mon.getDate()).padStart(2, "0")}`;
 }
 
 function anomalyRelativeTime(iso: string): string {
@@ -553,7 +569,7 @@ function DashboardSkeleton() {
       </div>
       <div className="dashboard-grid-2">
         {[1, 2].map(i => (
-          <div key={i} className="card p-[var(--space-5)] min-h-[200px]">
+          <div key={i} className="card p-[var(--space-4)] min-h-[168px]">
             <div className="skeleton skeleton-title w-[140px] h-[16px] mb-[20px]" />
             <div className="skeleton w-full h-[120px] rounded-[var(--r-md)]" />
           </div>
@@ -698,7 +714,7 @@ function EmployeeDashboard({ employee, week, leaveBalances, activeProjectCount, 
                 <p className="empty-state__sub">Log time to see your project split.</p>
               </div>
             ) : (
-              <div className="flex items-center gap-[var(--space-5)]">
+              <div className="flex items-center gap-[var(--space-3)]">
                 <DonutChart segments={donutSegs} centerLabel={`${totalEffortH}h`} centerSub="Total" size={110} />
                 <div className="kpi-list flex-1">
                   {projectEffort.slice(0, 4).map((r, i) => (
@@ -801,6 +817,11 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
   const maxContrib = Math.max(...contributions.map(r => r.minutes), 1);
   const totalContrib = contributions.reduce((a, r) => a + r.minutes, 0);
   const totalTeam = teamAttendance.present + teamAttendance.onLeave + teamAttendance.notCheckedIn;
+  const overtimeHours = typeof data.overtimeHours === "number"
+    ? data.overtimeHours
+    : typeof data.overtimeMinutes === "number"
+      ? data.overtimeMinutes / 60
+      : 0;
 
   // H4 — only render donut when there are 2+ projects
   const donutSegs = contributions.slice(0, 4).map((r, i) => ({
@@ -839,7 +860,7 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
   // H5 — confirmed approval handler
   const executeApprove = async (item: PendingApproval) => {
     setApprovingId(item.timesheetId);
-    const r = await apiFetch(`/approvals/${item.timesheetId}/approve`, {
+    const r = await apiFetch(`/approvals/timesheets/${item.timesheetId}/approve`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ comment: "" }),
@@ -892,7 +913,7 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
       <div className="stat-grid-4">
         {/* Present Today — C1: "↑ All in" only when allPresent */}
         <div
-          className="stat-card cursor-pointer min-h-[140px] hover:shadow-md"
+          className="stat-card cursor-pointer min-h-[122px] hover:shadow-md"
           onClick={() => onNavigate?.("team")}
           role="link"
           aria-label={`View ${teamAttendance.present} member${teamAttendance.present !== 1 ? "s" : ""} present today`}
@@ -913,7 +934,7 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
 
         {/* On Leave Today */}
         <div
-          className="stat-card cursor-pointer min-h-[140px] hover:shadow-md"
+          className="stat-card cursor-pointer min-h-[122px] hover:shadow-md"
           onClick={() => onNavigate?.("team")}
           role="link"
           aria-label={`View ${teamAttendance.onLeave} member${teamAttendance.onLeave !== 1 ? "s" : ""} on leave today`}
@@ -931,7 +952,7 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
 
         {/* Not Checked In — C1: no "↑ All in" here; neutral when 0 */}
         <div
-          className="stat-card cursor-pointer min-h-[140px] hover:shadow-md"
+          className="stat-card cursor-pointer min-h-[122px] hover:shadow-md"
           onClick={() => onNavigate?.("team")}
           role="link"
           aria-label={`View ${teamAttendance.notCheckedIn} member${teamAttendance.notCheckedIn !== 1 ? "s" : ""} not checked in`}
@@ -954,7 +975,7 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
 
         {/* Pending Approvals */}
         <div
-          className="stat-card cursor-pointer min-h-[140px] hover:shadow-md"
+          className="stat-card cursor-pointer min-h-[122px] hover:shadow-md"
           onClick={() => onNavigate?.("approvals")}
           role="link"
           aria-label={`View ${timesheetHealth.pendingApprovals} pending approval${timesheetHealth.pendingApprovals !== 1 ? "s" : ""}`}
@@ -972,6 +993,18 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
           <div className="stat-value">{timesheetHealth.pendingApprovals}</div>
           <h2 className="stat-label">Pending approvals</h2>
           <div className="stat-footer">Avg {fmtMinutes(Math.round(utilization.avgMinutes))} / person</div>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-card-top">
+            <div className="stat-icon" style={{ background: "var(--warning-light)" }}><IconClock color="#f59e0b" /></div>
+            <span className={`stat-trend ${overtimeHours > 0 ? "trend-up" : "trend-flat"}`}>
+              {overtimeHours > 0 ? "Above threshold" : "No overtime"}
+            </span>
+          </div>
+          <div className="stat-value">{overtimeHours.toFixed(1)}<span className="text-[1rem] text-[var(--text-tertiary)]">h</span></div>
+          <h2 className="stat-label">Overtime Hours</h2>
+          <div className="stat-footer">This week across direct reports</div>
         </div>
       </div>
 
@@ -1076,7 +1109,7 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
                 <div className="text-[0.72rem] text-[var(--text-tertiary)] mt-[4px]">this week</div>
               </div>
             ) : (
-              <div className="flex items-center gap-[var(--space-5)]">
+              <div className="flex items-center gap-[var(--space-3)]">
                 <DonutChart segments={donutSegs} centerLabel={`${(totalContrib / 60).toFixed(0)}h`} centerSub="Team" size={110} />
                 <div className="kpi-list flex-1">
                   {contributions.slice(0, 4).map((r, i) => (
@@ -1573,7 +1606,7 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
             <div><h2 className="card-title">Billable vs Non-Billable</h2><div className="card-subtitle">{PERIOD_LABELS[period]}</div></div>
           </div>
           <div className="card-body">
-            <div className="flex items-center gap-[var(--space-5)]">
+            <div className="flex items-center gap-[var(--space-3)]">
               {donutSegs.length > 0 && (
                 <DonutChart
                   segments={donutSegs}
@@ -1789,9 +1822,36 @@ export function Dashboard({ role, username, onboardingCompletedAt, onNavigate }:
           setError(true);
         }
       }).catch(() => setError(true)).finally(() => setLoading(false));
-    } else if (role === "manager") {
+  } else if (role === "manager") {
+      const weekStart = currentWeekStartIso();
       apiFetch("/dashboard/manager")
-        .then(async r => { if (r.ok) setMgrData(await r.json()); else setError(true); })
+        .then(async r => {
+          if (!r.ok) {
+            setError(true);
+            return;
+          }
+          const data = await r.json() as ManagerData;
+          if (typeof data.overtimeHours === "number" || typeof data.overtimeMinutes === "number") {
+            setMgrData(data);
+            return;
+          }
+          const overtimeRes = await apiFetch(`/overtime/team-summary?weekStart=${weekStart}`).catch(() => null);
+          if (overtimeRes?.ok) {
+            const overtime = await overtimeRes.json().catch(() => null) as OvertimeSummary | null;
+            const overtimeHours = typeof overtime?.overtimeHours === "number"
+              ? overtime.overtimeHours
+              : typeof overtime?.overtimeMinutes === "number"
+                ? overtime.overtimeMinutes / 60
+                : typeof overtime?.teamOvertimeHours === "number"
+                  ? overtime.teamOvertimeHours
+                  : typeof overtime?.teamOvertimeMinutes === "number"
+                    ? overtime.teamOvertimeMinutes / 60
+                    : 0;
+            setMgrData({ ...data, overtimeHours, overtimeMinutes: overtimeHours * 60 });
+          } else {
+            setMgrData({ ...data, overtimeHours: 0, overtimeMinutes: 0 });
+          }
+        })
         .catch(() => setError(true))
         .finally(() => setLoading(false));
     } else {
@@ -1802,7 +1862,7 @@ export function Dashboard({ role, username, onboardingCompletedAt, onNavigate }:
     }
   }, [role]);
 
-  if (loading) return <SkeletonPage kpis={4} rows={5} cols={5} />;
+  if (loading) return <SkeletonPage kpis={role === "manager" ? 5 : 4} rows={5} cols={5} />;
 
   if (error || (!empState && !mgrData && !adminData)) {
     return (

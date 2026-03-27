@@ -154,6 +154,35 @@ namespace TimeSheet.Infrastructure.Persistence.Migrations
                     b.ToTable("BreakEntries", (string)null);
                 });
 
+            modelBuilder.Entity("TimeSheet.Domain.Entities.CompOffBalance", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Credits")
+                        .HasPrecision(8, 2)
+                        .HasColumnType("decimal(8,2)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpiresAt");
+
+                    b.HasIndex("UserId", "ExpiresAt")
+                        .IsUnique();
+
+                    b.ToTable("CompOffBalances", (string)null);
+                });
+
             modelBuilder.Entity("TimeSheet.Domain.Entities.Department", b =>
                 {
                     b.Property<Guid>("Id")
@@ -404,6 +433,41 @@ namespace TimeSheet.Infrastructure.Persistence.Migrations
                     b.HasIndex("UserId", "IsRead");
 
                     b.ToTable("Notifications", (string)null);
+                });
+
+            modelBuilder.Entity("TimeSheet.Domain.Entities.OvertimePolicy", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("CompOffEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("CompOffExpiryDays")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("DailyOvertimeAfterHours")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<decimal>("OvertimeMultiplier")
+                        .HasPrecision(4, 2)
+                        .HasColumnType("decimal(4,2)");
+
+                    b.Property<decimal>("WeeklyOvertimeAfterHours")
+                        .HasPrecision(6, 2)
+                        .HasColumnType("decimal(6,2)");
+
+                    b.Property<Guid>("WorkPolicyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WorkPolicyId")
+                        .IsUnique();
+
+                    b.ToTable("OvertimePolicies", (string)null);
                 });
 
             modelBuilder.Entity("TimeSheet.Domain.Entities.Project", b =>
@@ -1045,6 +1109,17 @@ namespace TimeSheet.Infrastructure.Persistence.Migrations
                     b.Navigation("WorkSession");
                 });
 
+            modelBuilder.Entity("TimeSheet.Domain.Entities.CompOffBalance", b =>
+                {
+                    b.HasOne("TimeSheet.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("TimeSheet.Domain.Entities.LeaveBalance", b =>
                 {
                     b.HasOne("TimeSheet.Domain.Entities.LeaveType", "LeaveType")
@@ -1118,6 +1193,17 @@ namespace TimeSheet.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("TimeSheet.Domain.Entities.OvertimePolicy", b =>
+                {
+                    b.HasOne("TimeSheet.Domain.Entities.WorkPolicy", "WorkPolicy")
+                        .WithOne("OvertimePolicy")
+                        .HasForeignKey("TimeSheet.Domain.Entities.OvertimePolicy", "WorkPolicyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("WorkPolicy");
                 });
 
             modelBuilder.Entity("TimeSheet.Domain.Entities.ProjectMember", b =>
@@ -1373,6 +1459,11 @@ namespace TimeSheet.Infrastructure.Persistence.Migrations
                     b.Navigation("UserRoles");
 
                     b.Navigation("WorkSessions");
+                });
+
+            modelBuilder.Entity("TimeSheet.Domain.Entities.WorkPolicy", b =>
+                {
+                    b.Navigation("OvertimePolicy");
                 });
 
             modelBuilder.Entity("TimeSheet.Domain.Entities.WorkSession", b =>

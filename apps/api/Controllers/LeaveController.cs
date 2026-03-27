@@ -138,6 +138,16 @@ public class LeaveController(TimeSheetDbContext dbContext, ISender mediator) : C
         return balanceResult.IsSuccess ? Ok(balanceResult.Value) : balanceResult.ToActionResult();
     }
 
+    [HttpGet("comp-off-balance")]
+    public async Task<IActionResult> GetCompOffBalance(CancellationToken ct)
+    {
+        var result = await mediator.Send(new GetCompOffBalanceQuery(), ct);
+        if (!result.IsSuccess) return result.ToActionResult();
+
+        var v = result.Value!;
+        return Ok(new CompOffBalanceResponse(v.Credits, v.Hours, v.NextExpiryAtUtc));
+    }
+
     // ── Leave History (grouped) ───────────────────────────────────
 
     [HttpGet("requests/my/grouped")]

@@ -17,6 +17,13 @@ export interface AttendanceSummary {
   netMinutes: number;
 }
 
+interface WorkSession {
+  id: string;
+  checkInAtUtc: string;
+  checkOutAtUtc: string | null;
+  durationMinutes: number | null;
+}
+
 interface AttendanceWidgetProps {
   /** Called whenever the summary changes so Timesheets can refresh its cap. */
   onSummaryChange?: (summary: AttendanceSummary) => void;
@@ -30,6 +37,7 @@ export function AttendanceWidget({ onSummaryChange }: AttendanceWidgetProps) {
   const [error, setError] = useState("");
   const [elapsed, setElapsed] = useState(0); // seconds since last check-in
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [sessions, setSessions] = useState<WorkSession[]>([]);
 
   const loadSummary = useCallback(async () => {
     const r = await apiFetch("/attendance/summary/today");
@@ -40,6 +48,14 @@ export function AttendanceWidget({ onSummaryChange }: AttendanceWidgetProps) {
     }
     setLoading(false);
   }, [onSummaryChange]);
+
+  const loadSessions = useCallback(async () => {
+    const r = await apiFetch("/attendance/sessions/today");
+    if (r.ok) {
+      const data: WorkSession[] = await r.json();
+      setSessions(data);
+    }
+  }, []);
 
   // Start or stop the live elapsed timer based on active session.
   useEffect(() => {
@@ -55,7 +71,10 @@ export function AttendanceWidget({ onSummaryChange }: AttendanceWidgetProps) {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [summary?.activeSessionId, summary?.lastCheckInAtUtc]);
 
-  useEffect(() => { void loadSummary(); }, [loadSummary]);
+  useEffect(() => {
+    void loadSummary();
+    void loadSessions();
+  }, [loadSummary, loadSessions]);
 
   async function handleCheckIn() {
     setActionLoading(true);
@@ -68,6 +87,7 @@ export function AttendanceWidget({ onSummaryChange }: AttendanceWidgetProps) {
       const data: AttendanceSummary = await r.json();
       setSummary(data);
       onSummaryChange?.(data);
+      void loadSessions();
     } else {
       const body = await r.json().catch(() => ({}));
       setError((body as { message?: string }).message ?? "Check-in failed.");
@@ -86,6 +106,7 @@ export function AttendanceWidget({ onSummaryChange }: AttendanceWidgetProps) {
       const data: AttendanceSummary = await r.json();
       setSummary(data);
       onSummaryChange?.(data);
+      void loadSessions();
     } else {
       const body = await r.json().catch(() => ({}));
       setError((body as { message?: string }).message ?? "Check-out failed.");
@@ -95,6 +116,9 @@ export function AttendanceWidget({ onSummaryChange }: AttendanceWidgetProps) {
 
   const isCheckedIn = Boolean(summary?.activeSessionId);
   const netHours = summary ? formatMinutes(summary.netMinutes) : "—";
+  const netSeconds = (summary?.netMinutes ?? 0) * 60;
+  // Cumulative display: total time worked today
+  const cumulativeElapsed = isCheckedIn ? netSeconds + elapsed : netSeconds;
 
   return (
     <div className="aw-card">
@@ -112,7 +136,7 @@ export function AttendanceWidget({ onSummaryChange }: AttendanceWidgetProps) {
             In at {formatTime(summary.lastCheckInAtUtc, timeZoneId)}
           </div>
           <div className="aw-elapsed">
-            ⏱ {formatElapsed(elapsed)}
+            ⏱ {formatElapsed(cumulativeElapsed)}
           </div>
         </div>
       )}
@@ -125,7 +149,9 @@ export function AttendanceWidget({ onSummaryChange }: AttendanceWidgetProps) {
 
       <div className="aw-net">
         <span className="aw-net__label">Total today</span>
-        <span className="aw-net__value">{netHours}</span>
+        <span className="aw-net__value">
+          {isCheckedIn ? formatElapsed(cumulativeElapsed) : netHours}
+        </span>
       </div>
 
       {error && <p className="aw-error">{error}</p>}
@@ -148,6 +174,34 @@ export function AttendanceWidget({ onSummaryChange }: AttendanceWidgetProps) {
           >
             Check Out
           </button>
+        </div>
+      )}
+
+      {sessions.length > 0 && (
+        <div className="aw-sessions">
+          <div className="aw-sessions__label">TODAY&apos;S SESSIONS</div>
+          {sessions.map((s) => {
+            const isActive = s.checkOutAtUtc === null;
+            return (
+              <div key={s.id} className={`aw-session-row ${isActive ? "aw-session-row--active" : "aw-session-row--done"}`}>
+                <span className="aw-session-row__range">
+                  {formatTime(s.checkInAtUtc, timeZoneId)}
+                  {" → "}
+                  {isActive ? "now" : formatTime(s.checkOutAtUtc!, timeZoneId)}
+                </span>
+                {isActive ? (
+                  <span className="aw-session-row__badge">⏱ live</span>
+                ) : (
+                  <>
+                    <span className="aw-session-row__dur">
+                      {s.durationMinutes !== null ? formatMinutes(s.durationMinutes) : ""}
+                    </span>
+                    <span className="aw-session-row__check">✓</span>
+                  </>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

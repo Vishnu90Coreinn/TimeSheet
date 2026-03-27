@@ -167,9 +167,6 @@ export function Timesheets() {
   const { timeZoneId } = useTimezone();
   // Attendance state
   const [attendance, setAttendance] = useState<AttendanceSummary | null>(null);
-  const [elapsed, setElapsed] = useState(0);
-  const [checkLoading, setCheckLoading] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Data state
   const [projects, setProjects] = useState<Project[]>([]);
@@ -230,20 +227,6 @@ export function Timesheets() {
       setAttendance(data);
     }
   }, []);
-
-  // Live elapsed timer
-  useEffect(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (attendance?.activeSessionId && attendance.lastCheckInAtUtc) {
-      const checkIn = parseUtcLocal(attendance.lastCheckInAtUtc).getTime();
-      const tick = () => setElapsed(Math.floor((Date.now() - checkIn) / 1000));
-      tick();
-      timerRef.current = setInterval(tick, 1000);
-    } else {
-      setElapsed(0);
-    }
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [attendance?.activeSessionId, attendance?.lastCheckInAtUtc]);
 
   /* ── Data loading ─────────────────────────────────────────────────────────── */
   const loadWeek = useCallback(async (anyDate: string) => {
@@ -341,18 +324,6 @@ export function Timesheets() {
     setShowForm(false);
     setShowSubmitForm(false);
     setSubmitSuccess("");
-  }
-
-  /* ── Attendance actions ───────────────────────────────────────────────────── */
-  async function handleCheck() {
-    setCheckLoading(true);
-    const isCheckedIn = Boolean(attendance?.activeSessionId);
-    const r = await apiFetch(isCheckedIn ? "/attendance/check-out" : "/attendance/check-in", {
-      method: "POST",
-      body: JSON.stringify({}),
-    });
-    if (r.ok) setAttendance(await r.json() as AttendanceSummary);
-    setCheckLoading(false);
   }
 
   /* ── Entry form helpers ───────────────────────────────────────────────────── */
@@ -1145,47 +1116,17 @@ export function Timesheets() {
         {/* ── Sidebar ──────────────────────────────────────────────────────── */}
         <aside className="w-[280px] shrink-0 flex flex-col gap-4 sticky top-[calc(60px+24px)]">
 
-          {/* Attendance card */}
-          {(isCurrentWeek || isCheckedIn) && (
-            <div className="ts-sidebar-card">
-              <div className="ts-sidebar-section-label">
-                {isCheckedIn && <span className="ts-green-dot" />}
-                ATTENDANCE
-              </div>
-              {isCheckedIn ? (
-                <>
-                  <div className="text-[28px] font-bold [font-variant-numeric:tabular-nums] text-[var(--n-900,#111827)] tracking-[0.02em] leading-none">
-                    {fmtElapsed(elapsed)}
-                  </div>
-                  <div className="text-[12px] text-text-secondary -mt-[6px]">
-                    since {attendance?.lastCheckInAtUtc ? fmtTime(attendance.lastCheckInAtUtc, timeZoneId) : "—"}
-                    &nbsp;&middot;&nbsp;{fmtMins(attendance?.netMinutes ?? 0)} today
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      className="btn ts-btn-stop btn-sm"
-                      onClick={() => void handleCheck()}
-                      disabled={checkLoading}
-                    >
-                      Check Out
-                    </button>
-                    <button className="btn btn-primary btn-sm" onClick={openNew}>
-                      + Entry
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="text-[15px] text-[var(--n-400,#9ca3af)] italic">Not checked in</div>
-                  <button
-                    className="btn btn-primary btn-sm self-start"
-                    onClick={() => void handleCheck()}
-                    disabled={checkLoading}
-                  >
-                    Check In
-                  </button>
-                </>
-              )}
+          {/* Attendance status chip (read-only) */}
+          {isCheckedIn ? (
+            <div className="flex items-center gap-[6px] px-3 py-2 rounded-lg bg-[#f0fdf4] border border-[#bbf7d0] text-[12px]">
+              <span className="w-2 h-2 rounded-full bg-[#10b981] shrink-0" />
+              <span className="font-semibold text-[#065f46]">Checked in</span>
+              <span className="text-[#047857]">&middot; {fmtMins(attendance?.netMinutes ?? 0)} today</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-[6px] px-3 py-2 rounded-lg bg-[var(--n-50,#f9fafb)] border border-[var(--border-subtle)] text-[12px]">
+              <span className="w-2 h-2 rounded-full border-2 border-[var(--n-300,#d1d5db)] shrink-0" />
+              <span className="text-[var(--n-400,#9ca3af)]">Not checked in today</span>
             </div>
           )}
 

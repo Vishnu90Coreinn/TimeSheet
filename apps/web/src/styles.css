@@ -101,3 +101,11 @@ pre {
 .aw-btn--out:hover:not(:disabled) { background: rgba(239,68,68,0.12); }
 .aw-error   { font-size: 0.72rem; color: var(--danger); margin: 0; }
 .aw-loading { font-size: 0.775rem; color: var(--text-tertiary); margin: 0; }
+.aw-sessions { display: flex; flex-direction: column; gap: var(--space-1); border-top: 1px solid var(--border-subtle); padding-top: var(--space-3); margin-top: var(--space-1); }
+.aw-sessions__label { font-size: 0.65rem; font-weight: 700; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: var(--space-1); }
+.aw-session-row { display: flex; align-items: center; gap: var(--space-2); font-size: 0.75rem; padding: 2px 0; }
+.aw-session-row__range { flex: 1; font-variant-numeric: tabular-nums; color: var(--text-secondary); }
+.aw-session-row__dur { color: var(--text-secondary); white-space: nowrap; }
+.aw-session-row--done .aw-session-row__check { color: var(--success); font-size: 0.7rem; }
+.aw-session-row--active .aw-session-row__range { color: var(--brand-600); font-weight: 600; }
+.aw-session-row--active .aw-session-row__badge { font-size: 0.68rem; font-weight: 700; color: var(--brand-600); white-space: nowrap; }

@@ -116,9 +116,15 @@ export function AttendanceWidget({ onSummaryChange }: AttendanceWidgetProps) {
 
   const isCheckedIn = Boolean(summary?.activeSessionId);
   const netHours = summary ? formatMinutes(summary.netMinutes) : "—";
-  const netSeconds = (summary?.netMinutes ?? 0) * 60;
-  // Cumulative display: total time worked today
-  const cumulativeElapsed = isCheckedIn ? netSeconds + elapsed : netSeconds;
+  // Compute completed-session seconds from actual timestamps (not netMinutes)
+  // so sub-minute precision is preserved across multiple check-in/out cycles.
+  const completedSeconds = sessions
+    .filter(s => s.checkOutAtUtc !== null)
+    .reduce((total, s) => {
+      const ms = parseUtc(s.checkOutAtUtc!).getTime() - parseUtc(s.checkInAtUtc).getTime();
+      return total + Math.floor(ms / 1000);
+    }, 0);
+  const cumulativeElapsed = isCheckedIn ? completedSeconds + elapsed : completedSeconds;
 
   return (
     <div className="aw-card">

@@ -85,9 +85,11 @@ export function AttendanceWidget({ onSummaryChange }: AttendanceWidgetProps) {
     });
     if (r.ok) {
       const data: AttendanceSummary = await r.json();
+      // Load sessions BEFORE setSummary so completedSeconds is already
+      // populated when the elapsed timer starts (avoids 00:00 flash).
+      await loadSessions();
       setSummary(data);
       onSummaryChange?.(data);
-      void loadSessions();
     } else {
       const body = await r.json().catch(() => ({}));
       setError((body as { message?: string }).message ?? "Check-in failed.");
@@ -104,9 +106,11 @@ export function AttendanceWidget({ onSummaryChange }: AttendanceWidgetProps) {
     });
     if (r.ok) {
       const data: AttendanceSummary = await r.json();
+      // Load sessions before updating summary so the completed session
+      // is in state before the widget switches to checked-out view.
+      await loadSessions();
       setSummary(data);
       onSummaryChange?.(data);
-      void loadSessions();
     } else {
       const body = await r.json().catch(() => ({}));
       setError((body as { message?: string }).message ?? "Check-out failed.");

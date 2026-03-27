@@ -5,8 +5,10 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch } from "../api/client";
+import { useToast } from "../contexts/ToastContext";
 import { SkeletonPage } from "./Skeleton";
 import { EmptyTimesheets } from "./EmptyState";
+import { TimePickerInput } from "./TimePickerInput";
 import type { AttendanceSummary } from "./AttendanceWidget";
 import type { Project, TaskCategory, TimesheetDay, TimesheetEntry, WeekDayMeta, WeekSummary } from "../types";
 import { useTimezone } from "../hooks/useTimezone";
@@ -95,10 +97,10 @@ function getWeekDays(anyDate: string): string[] {
 
 function fmtWeekRange(weekDays: string[]): string {
   if (!weekDays.length) return "";
-  const opts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
-  const start = new Date(weekDays[0] + "T00:00:00").toLocaleDateString(undefined, opts);
-  const end = new Date(weekDays[6] + "T00:00:00").toLocaleDateString(undefined, opts);
-  return `${start}–${end}`;
+  const s = new Date(weekDays[0] + "T00:00:00");
+  const e = new Date(weekDays[6] + "T00:00:00");
+  const fmt = (d: Date) => d.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  return `${fmt(s)} – ${fmt(e)}, ${e.getFullYear()}`;
 }
 
 function fmtDateLabel(iso: string): string {
@@ -162,6 +164,7 @@ function computeDurationFromTimes(start: string, end: string): string {
 /* ─── Component ─────────────────────────────────────────────────────────────── */
 export function Timesheets() {
   const { timeZoneId } = useTimezone();
+  const toast = useToast();
   // Attendance state
   const [attendance, setAttendance] = useState<AttendanceSummary | null>(null);
   const [elapsed, setElapsed] = useState(0);
@@ -178,6 +181,7 @@ export function Timesheets() {
 
   // Entry form state
   const [showForm, setShowForm] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
   const [form, setForm] = useState<EntryForm>({ description: "", projectId: "", taskCategoryId: "", durationHours: "", startTime: "", endTime: "", editingId: null });
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -195,7 +199,6 @@ export function Timesheets() {
   // Bulk submit week modal
   const [showSubmitWeekModal, setShowSubmitWeekModal] = useState(false);
   const [submitWeekLoading, setSubmitWeekLoading] = useState(false);
-  const [submitWeekToast, setSubmitWeekToast] = useState<string | null>(null);
 
   // Task-level timer state
   const [activeTimer, setActiveTimer] = useState<TimerSessionData | null>(null);
@@ -209,7 +212,6 @@ export function Timesheets() {
   const [convertDate, setConvertDate] = useState(todayIso());
   const [convertLoading, setConvertLoading] = useState(false);
   const [timerHistory, setTimerHistory] = useState<TimerSessionData[]>([]);
-  const [timerToast, setTimerToast] = useState<string | null>(null);
 
   // Template modal state
   const [showTemplateModal, setShowTemplateModal] = useState(false);
@@ -382,6 +384,7 @@ export function Timesheets() {
       endTime: endTime ?? "",
       editingId: entry.id,
     });
+    setShowTimePicker(Boolean(startTime));
     setShowForm(true);
     setFormError("");
   }
@@ -389,6 +392,7 @@ export function Timesheets() {
   function openNew() {
     setForm(blankForm(projects, categories));
     setFormError("");
+    setShowTimePicker(false);
     setShowForm(true);
   }
 
@@ -500,18 +504,16 @@ export function Timesheets() {
     if (r.ok) {
       const result = await r.json() as { submitted: string[]; skipped: { date: string; reason: string }[]; errors: { date: string; message: string }[] };
       const n = result.submitted.length;
-      const toast = n > 0
+      const msg = n > 0
         ? `${n} day${n > 1 ? "s" : ""} submitted${result.skipped.length > 0 ? `, ${result.skipped.length} skipped` : ""}.`
         : `No days submitted — ${result.skipped.length} skipped.`;
-      setSubmitWeekToast(toast);
-      setTimeout(() => setSubmitWeekToast(null), 4000);
+      toast.success(msg);
       // Reload week + selected day
       void loadWeek(selectedDate);
       void loadDay(selectedDate);
     } else {
       const body = await r.json().catch(() => ({})) as { message?: string };
-      setSubmitWeekToast(body.message ?? "Week submission failed.");
-      setTimeout(() => setSubmitWeekToast(null), 4000);
+      toast.error(body.message ?? "Week submission failed.");
     }
   }
 
@@ -531,8 +533,7 @@ export function Timesheets() {
       localStorage.setItem("activeTimerStart", timer.startedAtUtc);
     } else {
       const body = await r.json().catch(() => ({})) as { message?: string };
-      setTimerToast(body.message ?? "Failed to start timer.");
-      setTimeout(() => setTimerToast(null), 4000);
+      toast.error(body.message ?? "Failed to start timer.");
     }
   }
 
@@ -561,8 +562,7 @@ export function Timesheets() {
     setConvertLoading(false);
     if (r.ok) {
       setStoppedTimer(null);
-      setTimerToast("Entry added to timesheet.");
-      setTimeout(() => setTimerToast(null), 3000);
+      toast.success("Entry added to timesheet.");
       void loadTimerHistory();
       if (convertDate === selectedDate) {
         void loadDay(selectedDate);
@@ -570,8 +570,7 @@ export function Timesheets() {
       }
     } else {
       const body = await r.json().catch(() => ({})) as { message?: string };
-      setTimerToast(body.message ?? "Failed to add entry.");
-      setTimeout(() => setTimerToast(null), 4000);
+      toast.error(body.message ?? "Failed to add entry.");
     }
   }
 
@@ -599,12 +598,10 @@ export function Timesheets() {
       const msg = result.entriesCreated > 0
         ? `${result.entriesCreated} entr${result.entriesCreated === 1 ? "y" : "ies"} added from template${result.entriesSkipped > 0 ? ` (${result.entriesSkipped} skipped)` : ""}.`
         : `No new entries added (${result.entriesSkipped} already existed).`;
-      setSubmitWeekToast(msg);
-      setTimeout(() => setSubmitWeekToast(null), 4000);
+      toast.success(msg);
     } else {
       const body = await r.json().catch(() => ({})) as { message?: string };
-      setTimerToast(body.message ?? "Failed to apply template.");
-      setTimeout(() => setTimerToast(null), 4000);
+      toast.error(body.message ?? "Failed to apply template.");
     }
   }
 
@@ -627,12 +624,30 @@ export function Timesheets() {
     if (r.ok) {
       setShowSaveTemplateModal(false);
       setSaveTemplateName("");
-      setSubmitWeekToast("Template saved.");
-      setTimeout(() => setSubmitWeekToast(null), 3000);
+      toast.success("Template saved.");
     } else {
       const body = await r.json().catch(() => ({})) as { message?: string };
-      setTimerToast(body.message ?? "Failed to save template.");
-      setTimeout(() => setTimerToast(null), 4000);
+      toast.error(body.message ?? "Failed to save template.");
+    }
+  }
+
+  /* ── Copy yesterday ──────────────────────────────────────────────────────── */
+  async function copyYesterday() {
+    const d = new Date(selectedDate + "T00:00:00");
+    d.setDate(d.getDate() - 1);
+    const prevDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const r = await apiFetch(`/timesheets/copy-day`, {
+      method: "POST",
+      body: JSON.stringify({ sourceDate: prevDate, targetDate: selectedDate }),
+    });
+    if (r.ok) {
+      const updated = await r.json() as TimesheetDay;
+      setDayData(updated);
+      void loadWeek(selectedDate);
+      toast.success("Yesterday's entries copied.");
+    } else {
+      const body = await r.json().catch(() => ({})) as { message?: string };
+      toast.error(body.message ?? "Nothing to copy from yesterday.");
     }
   }
 
@@ -656,6 +671,16 @@ export function Timesheets() {
   const weekDayMap = new Map<string, WeekDayMeta>(
     (weekData?.days ?? []).map((d) => [d.workDate, d])
   );
+
+  // Deficit is "alarming" only after the last expected workday has passed
+  const lastExpectedDayPassed = (() => {
+    const today = todayIso();
+    const lastWorkDay = [...weekDays].reverse().find((d) => {
+      const meta = weekDayMap.get(d);
+      return (meta?.expectedMinutes ?? 0) > 0;
+    });
+    return lastWorkDay ? today > lastWorkDay : false;
+  })();
 
   // Count days with draft status + entries for "Submit Week" button enablement
   const submittableCount = (weekData?.days ?? []).filter(d =>
@@ -699,14 +724,6 @@ export function Timesheets() {
             </div>
             <div className="flex gap-2 flex-wrap items-center">
               <button className="btn btn-outline btn-sm">Export</button>
-              {isDraft && !isLocked && (
-                <button
-                  className="btn btn-outline btn-sm"
-                  onClick={() => void openTemplateModal()}
-                >
-                  Use Template
-                </button>
-              )}
               {isDraft && dayEntries.length > 0 && (
                 <button
                   className="btn btn-outline btn-sm"
@@ -717,11 +734,11 @@ export function Timesheets() {
               )}
               {submittableCount > 0 && (
                 <button
-                  className="btn btn-outline btn-sm"
+                  className="btn btn-primary btn-sm"
                   onClick={() => setShowSubmitWeekModal(true)}
                   title={`Submit all ${submittableCount} draft day${submittableCount > 1 ? "s" : ""} this week`}
                 >
-                  Submit Week
+                  Submit Week ({submittableCount})
                 </button>
               )}
               {isDraft && dayEntries.length > 0 && (
@@ -763,10 +780,13 @@ export function Timesheets() {
               const pct = expected > 0
                 ? Math.min(100, Math.round((mins / expected) * 100))
                 : mins > 0 ? 100 : 0;
+              const isPastDay = date < todayIso();
               const fillColor = expected === 0 && mins > 0
-                ? "#a5b4fc"                              // light indigo — rest day, no target
-                : pct >= 100 ? "#10b981"                // green — target met
-                : pct > 0   ? "#6366f1"                 // indigo — in progress
+                ? "#a5b4fc"                                           // light indigo — rest day, no target
+                : pct >= 100 ? "#10b981"                             // green — target met
+                : pct > 0 && isPastDay ? "#f59e0b"                   // amber — partial, past day
+                : pct > 0 ? "#6366f1"                                // indigo — in progress (today/future)
+                : isPastDay && expected > 0 ? "#fca5a5"              // light red — no entries, missed past day
                 : "transparent";
               const isSelected = date === selectedDate;
               const isToday = date === todayIso();
@@ -838,7 +858,7 @@ export function Timesheets() {
                 />
               </div>
 
-              {/* Project + Category + Duration */}
+              {/* Project + Category */}
               <div className="flex gap-[10px] items-start flex-wrap">
                 <div className="flex flex-col gap-1 flex-1">
                   <label className="text-[12px] font-semibold text-[var(--n-600,#4b5563)]">Project</label>
@@ -865,41 +885,56 @@ export function Timesheets() {
                     ))}
                   </select>
                 </div>
-                <div className="flex flex-col gap-1 w-[110px] shrink-0">
-                  <label className="text-[12px] font-semibold text-[var(--n-600,#4b5563)]">Duration (h)</label>
-                  <input
-                    className="ts-form-input"
-                    placeholder="e.g. 1.5"
-                    value={form.durationHours}
-                    disabled={!!(form.startTime && form.endTime)}
-                    onChange={(e) => setFormField({ durationHours: e.target.value })}
-                    title={form.startTime && form.endTime ? "Auto-calculated from start/end times" : undefined}
-                  />
-                </div>
               </div>
 
-              {/* Start + End time */}
-              <div className="flex gap-[10px] items-start flex-wrap">
-                <div className="flex flex-col gap-1 w-[110px] shrink-0">
-                  <label className="text-[12px] font-semibold text-[var(--n-600,#4b5563)]">Start time</label>
-                  <input
-                    type="time"
-                    className="ts-form-input"
+              {/* Duration OR Start/End time — progressive disclosure */}
+              {!showTimePicker ? (
+                <div className="flex gap-[10px] items-end flex-wrap">
+                  <div className="flex flex-col gap-1 w-[140px] shrink-0">
+                    <label className="text-[12px] font-semibold text-[var(--n-600,#4b5563)]">Duration (h)</label>
+                    <input
+                      className="ts-form-input"
+                      placeholder="e.g. 1.5"
+                      value={form.durationHours}
+                      onChange={(e) => setFormField({ durationHours: e.target.value.replace(",", ".") })}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="text-[12px] text-brand-500 hover:underline pb-[7px] whitespace-nowrap"
+                    onClick={() => setShowTimePicker(true)}
+                  >
+                    Set start &amp; end time instead
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-[10px] items-end flex-wrap">
+                  <TimePickerInput
+                    label="Start time"
                     value={form.startTime}
-                    onChange={(e) => setFormField({ startTime: e.target.value })}
+                    onChange={(v) => setFormField({ startTime: v })}
                   />
-                </div>
-                <div className="flex flex-col gap-1 w-[110px] shrink-0">
-                  <label className="text-[12px] font-semibold text-[var(--n-600,#4b5563)]">End time</label>
-                  <input
-                    type="time"
-                    className="ts-form-input"
+                  <TimePickerInput
+                    label="End time"
                     value={form.endTime}
-                    onChange={(e) => setFormField({ endTime: e.target.value })}
+                    onChange={(v) => setFormField({ endTime: v })}
                   />
+                  {form.startTime && form.endTime && form.durationHours && (
+                    <div className="flex flex-col gap-1 justify-end pb-[7px]">
+                      <span className="text-[12px] font-semibold text-[#059669]">
+                        = {form.durationHours}h
+                      </span>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    className="text-[12px] text-[var(--n-400,#9ca3af)] hover:underline pb-[7px] whitespace-nowrap"
+                    onClick={() => { setShowTimePicker(false); setFormField({ startTime: "", endTime: "" }); }}
+                  >
+                    Enter duration instead
+                  </button>
                 </div>
-                <div className="flex flex-col gap-1 flex-1" />
-              </div>
+              )}
 
               {formError && <p className="text-[12px] text-danger m-0">{formError}</p>}
 
@@ -1004,8 +1039,26 @@ export function Timesheets() {
 
           {/* Entries list */}
           <div className="flex flex-col gap-2">
-            {dayEntries.length === 0 ? (
-              <EmptyTimesheets onAdd={isDraft && !isLocked ? () => setShowForm(true) : undefined} />
+            {dayEntries.length === 0 && !showForm ? (
+              <div className="flex flex-col gap-3">
+                <EmptyTimesheets onAdd={isDraft && !isLocked ? openNew : undefined} />
+                {isDraft && !isLocked && (
+                  <div className="flex items-center justify-center gap-3 flex-wrap">
+                    <button
+                      className="btn btn-outline btn-sm"
+                      onClick={() => void copyYesterday()}
+                    >
+                      Copy yesterday&apos;s entries
+                    </button>
+                    <button
+                      className="btn btn-outline btn-sm"
+                      onClick={() => void openTemplateModal()}
+                    >
+                      Use Template
+                    </button>
+                  </div>
+                )}
+              </div>
             ) : (
               dayEntries.map((entry) => {
                 const parsed = parseNotes(entry.notes);
@@ -1294,12 +1347,20 @@ export function Timesheets() {
               <div className="flex justify-between items-center text-[13px]">
                 <span className="text-text-secondary">
                   {weekOvertime >= 0 ? "Overtime" : "Deficit"}
+                  {weekOvertime < 0 && !lastExpectedDayPassed && (
+                    <span className="text-[10px] text-[var(--n-400,#9ca3af)] cursor-default ml-[2px]" title="Week still in progress">in progress</span>
+                  )}
                   <span
                     className="text-[10px] text-[var(--n-400,#9ca3af)] cursor-default ml-[2px] not-italic"
                     title={weekOvertime >= 0 ? "Hours logged above weekly target" : "Hours logged below weekly target"}
                   > ℹ</span>
                 </span>
-                <span className={`font-semibold ${weekOvertime > 0 ? "text-[#16a34a]" : weekOvertime < 0 ? "text-[#b45309]" : "text-[var(--n-900,#111827)]"}`}>
+                <span className={`font-semibold ${
+                  weekOvertime > 0 ? "text-[#16a34a]"
+                  : weekOvertime < 0 && lastExpectedDayPassed ? "text-[#dc2626]"
+                  : weekOvertime < 0 ? "text-[#b45309]"
+                  : "text-[var(--n-900,#111827)]"
+                }`}>
                   {weekOvertime > 0 ? "+" : weekOvertime < 0 ? "−" : ""}{fmtMins(Math.abs(weekOvertime))}
                 </span>
               </div>
@@ -1434,20 +1495,6 @@ export function Timesheets() {
               </button>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* ── Submit week toast ──────────────────────────────────────────────── */}
-      {submitWeekToast && (
-        <div className="fixed bottom-6 right-6 bg-[#111827] text-white rounded-lg px-[18px] py-[10px] text-[14px] font-semibold shadow-[0_4px_16px_rgba(0,0,0,0.2)] z-[9999] [animation:page-enter_0.2s_both]">
-          {submitWeekToast}
-        </div>
-      )}
-
-      {/* ── Timer toast ────────────────────────────────────────────────────── */}
-      {timerToast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[#111827] text-white rounded-lg px-[18px] py-[10px] text-[14px] font-semibold shadow-[0_4px_16px_rgba(0,0,0,0.2)] z-[9999] [animation:page-enter_0.2s_both]">
-          {timerToast}
         </div>
       )}
 

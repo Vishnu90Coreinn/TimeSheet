@@ -5,9 +5,10 @@ import { AttendanceWidget } from "./AttendanceWidget";
 import { useConfirm } from "../hooks/useConfirm";
 import { SkeletonPage } from "./Skeleton";
 import type { LeaveBalance, OvertimeSummary, TeamLeaveEntry } from "../types";
+import { OnboardingChecklist } from "./OnboardingChecklist";
 import { useTimezone } from "../hooks/useTimezone";
 
-interface DashboardProps { role: string; username: string; onNavigate?: (view: string) => void; }
+interface DashboardProps { role: string; username: string; onboardingCompletedAt?: string | null; onNavigate?: (view: string) => void; }
 
 // ── Employee interfaces ───────────────────────────────────────────────────────
 interface EmployeeSession { workDate: string; checkedIn: string | null; checkedOut: string | null; breakMinutes: number; attendanceMinutes: number; }
@@ -1784,7 +1785,7 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
 // ── Root ──────────────────────────────────────────────────────────────────────
 interface EmpState { employee: EmployeeData; week: WeekSummary; leaveBalances: LeaveBalance[]; activeProjectCount: number; }
 
-export function Dashboard({ role, username, onNavigate }: DashboardProps) {
+export function Dashboard({ role, username, onboardingCompletedAt, onNavigate }: DashboardProps) {
   const { timeZoneId } = useTimezone();
   const [empState, setEmpState] = useState<EmpState | null>(null);
   const [mgrData, setMgrData] = useState<ManagerData | null>(null);
@@ -1875,6 +1876,10 @@ export function Dashboard({ role, username, onNavigate }: DashboardProps) {
 
   return (
     <section>
+      <OnboardingChecklist
+        role={role}
+        onboardingCompletedAt={onboardingCompletedAt ?? null}
+      />
       {empState && <EmployeeDashboard {...empState} username={username} onNavigate={handleNavigate} timeZoneId={timeZoneId} />}
       {mgrData && <ManagerDashboard data={mgrData} username={username} onNavigate={handleNavigate} />}
       {adminData && <AdminDashboard data={adminData} username={username} onNavigate={handleNavigate} />}

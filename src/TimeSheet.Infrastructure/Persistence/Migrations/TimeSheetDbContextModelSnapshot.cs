@@ -401,6 +401,14 @@ namespace TimeSheet.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("ActionUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("GroupKey")
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
                     b.Property<bool>("IsRead")
                         .HasColumnType("bit");
 
@@ -868,6 +876,12 @@ namespace TimeSheet.Infrastructure.Persistence.Migrations
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
+
+                    b.Property<DateTime?>("OnboardingCompletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("LeaveWorkflowVisitedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<Guid?>("LeavePolicyId")
                         .HasColumnType("uniqueidentifier");

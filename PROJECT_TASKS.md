@@ -1047,7 +1047,7 @@ if (!data.length) return <EmptyTimesheets onAdd={openForm} />;
 
 ### Sprint 28 — Onboarding Flow 🎯
 **Branch:** `feature/sprint-28-onboarding`
-**Status:** `TODO`
+**Status:** `DONE`
 **Goal:** First-login wizard and setup checklist to reduce time-to-value for new users and admins.
 
 #### Backend
@@ -1075,7 +1075,7 @@ if (!data.length) return <EmptyTimesheets onAdd={openForm} />;
 
 ### Sprint 29 — Notification Centre 2.0 🔔
 **Branch:** `feature/sprint-29-notification-centre`
-**Status:** `TODO`
+**Status:** `DONE`
 **Goal:** Rich, grouped notification feed with preferences UI. Replace the basic notification bell.
 
 #### Backend
@@ -1413,9 +1413,9 @@ if (!data.length) return <EmptyTimesheets onAdd={openForm} />;
 | 25 | Dark Mode | ✅ DONE | merged |
 | 26 | UX Foundation (skeletons, toasts, empty states, error boundaries) | ✅ DONE | merged |
 | **26-F** | **Timesheets UX Feedback Overhaul** | ✅ DONE | merged |
-| 27 | Multi-Timezone | ✅ DONE | merged |
-| 28 | Onboarding Flow | 🔴 NEXT | `feature/sprint-28-onboarding` |
-| 29 | Notification Centre 2.0 | TODO | `feature/sprint-29-notification-centre` |
+| 27 | Multi-Timezone | DONE | merged |
+| 28 | Onboarding Flow | DONE | `feature/sprint-28-onboarding` |
+| 29 | Notification Centre 2.0 | DONE | `feature/sprint-29-notification-centre` |
 | 30 | SignalR Real-time | TODO | `feature/sprint-30-signalr-realtime` |
 | 31 | Billing & Subscription | TODO | `feature/sprint-31-billing` |
 | 32 | SSO / SAML | TODO | `feature/sprint-32-sso` |

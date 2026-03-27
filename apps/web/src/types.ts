@@ -1,4 +1,12 @@
-export type Session = { userId: string; accessToken: string; refreshToken: string; username: string; role: string };
+export type Session = {
+  userId: string;
+  accessToken: string;
+  refreshToken: string;
+  username: string;
+  role: string;
+  onboardingCompletedAt?: string | null;
+  leaveWorkflowVisitedAt?: string | null;
+};
 export type Project = { id: string; name: string; code: string; isActive: boolean; isArchived: boolean; budgetedHours: number };
 export type TaskCategory = { id: string; name: string; isActive: boolean; isBillable: boolean };
 export type LeaveType = { id: string; name: string; isActive: boolean };
@@ -25,7 +33,17 @@ export type TimesheetDay = { timesheetId: string; workDate: string; status: stri
 export type WeekDayMeta = { workDate: string; status: string; enteredMinutes: number; expectedMinutes: number; attendanceNetMinutes: number; hasMismatch: boolean };
 export type WeekSummary = { weekStartDate: string; weekEndDate: string; weekEnteredMinutes: number; weekExpectedMinutes: number; weekAttendanceNetMinutes: number; days: WeekDayMeta[] };
 export type TimesheetEntry = { id: string; projectId: string; taskCategoryId: string; projectName: string; taskCategoryName: string; minutes: number; notes: string | null };
-export type Notification = { id: string; title: string; message: string; type: string; isRead: boolean; createdAtUtc: string };
+export type Notification = {
+  id: string;
+  title: string;
+  message: string;
+  type: string | number;
+  isRead: boolean;
+  createdAtUtc: string;
+  actionUrl?: string | null;
+  groupKey?: string | null;
+};
+export type NotificationListResponse = { items: Notification[]; totalUnread: number; hasMore: boolean };
 export type User = { id: string; username: string; email: string; employeeId: string; role: string; isActive: boolean; departmentId: string | null; departmentName: string | null; workPolicyId: string | null; workPolicyName: string | null; leavePolicyId: string | null; leavePolicyName: string | null; managerId: string | null; managerUsername: string | null };
 export type Holiday = { id: string; name: string; date: string; isRecurring: boolean; createdAtUtc: string };
 export type Department = { id: string; name: string; isActive: boolean };

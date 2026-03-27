@@ -54,6 +54,63 @@ public class DashboardIntegrationTests : IClassFixture<CustomWebApplicationFacto
         return payload!.AccessToken;
     }
 
+    private async Task<string> CreateManagerWithOneEmployeeHavingManySessionsAsync(int sessionCount)
+    {
+        using var setupScope = _factory.Services.CreateScope();
+        var db = setupScope.ServiceProvider.GetRequiredService<TimeSheetDbContext>();
+        var hasher = setupScope.ServiceProvider.GetRequiredService<IPasswordHasher>();
+
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var managerUsername = $"dashboard.manager.{suffix}";
+        var employeeUsername = $"dashboard.employee.{suffix}";
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        var manager = new User
+        {
+            Id = Guid.NewGuid(),
+            Username = managerUsername,
+            Email = $"{managerUsername}@timesheet.local",
+            EmployeeId = $"MGR-{suffix.ToUpperInvariant()}",
+            PasswordHash = hasher.Hash("manager123"),
+            Role = "manager",
+            IsActive = true
+        };
+
+        var employee = new User
+        {
+            Id = Guid.NewGuid(),
+            Username = employeeUsername,
+            Email = $"{employeeUsername}@timesheet.local",
+            EmployeeId = $"EMP-{suffix.ToUpperInvariant()}",
+            PasswordHash = hasher.Hash("employee123"),
+            Role = "employee",
+            IsActive = true,
+            ManagerId = manager.Id
+        };
+
+        db.Users.AddRange(manager, employee);
+
+        var start = DateTime.UtcNow.Date.AddHours(9);
+        for (var i = 0; i < sessionCount; i++)
+        {
+            db.WorkSessions.Add(new WorkSession
+            {
+                UserId = employee.Id,
+                WorkDate = today,
+                CheckInAtUtc = start.AddMinutes(i * 30),
+                CheckOutAtUtc = start.AddMinutes(i * 30 + 20),
+                Status = WorkSessionStatus.Completed
+            });
+        }
+
+        await db.SaveChangesAsync();
+
+        using var client = _factory.CreateClient();
+        var login = await client.PostAsJsonAsync("/api/v1/auth/login", new LoginRequest(managerUsername, "manager123"));
+        var payload = await login.Content.ReadFromJsonAsync<LoginResponse>();
+        return payload!.AccessToken;
+    }
+
     [Fact]
     public async Task EmployeeDashboard_Unauthenticated_ReturnsUnauthorized()
     {

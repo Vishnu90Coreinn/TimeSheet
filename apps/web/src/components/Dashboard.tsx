@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../api/client";
 import { AttendanceWidget } from "./AttendanceWidget";
 import { useConfirm } from "../hooks/useConfirm";
+import { SkeletonPage } from "./Skeleton";
 import type { LeaveBalance, TeamLeaveEntry } from "../types";
 
 interface DashboardProps { role: string; username: string; onNavigate?: (view: string) => void; }
@@ -1797,7 +1798,7 @@ export function Dashboard({ role, username, onNavigate }: DashboardProps) {
     }
   }, [role]);
 
-  if (loading) return <DashboardSkeleton />;
+  if (loading) return <SkeletonPage kpis={4} rows={5} cols={5} />;
 
   if (error || (!empState && !mgrData && !adminData)) {
     return (

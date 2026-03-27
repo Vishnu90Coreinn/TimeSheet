@@ -3,6 +3,8 @@
  */
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { apiFetch } from "../api/client";
+import { SkeletonPage } from "./Skeleton";
+import { EmptyReports } from "./EmptyState";
 import type { ReportKey, SavedReport, SavedReportPayload } from "../types";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -566,6 +568,8 @@ export function Reports() {
     return `Updated ${Math.floor(diff / 3600)}h ago`;
   })() : "";
 
+  if (loading && data === null) return <SkeletonPage kpis={3} rows={8} cols={5} />;
+
   return (
     <section className="flex flex-col gap-6">
       {/* Page header */}
@@ -729,10 +733,7 @@ export function Reports() {
 
         {loading ? (
           <div className="card-body">
-            <div className="empty-state">
-              <div className="empty-state__icon">⏳</div>
-              <p className="empty-state__title">Loading report…</p>
-            </div>
+            <EmptyReports />
           </div>
         ) : (
           <>
@@ -769,7 +770,7 @@ export function Reports() {
                     })}
                     {sorted.length === 0 && (
                       <tr className="empty-row">
-                        <td colSpan={cols.length}>No data for this report.</td>
+                        <td colSpan={cols.length}><EmptyReports /></td>
                       </tr>
                     )}
                   </tbody>

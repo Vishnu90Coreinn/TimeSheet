@@ -5,6 +5,7 @@
  */
 import { FormEvent, useState } from "react";
 import { API_BASE } from "../api/client";
+import { useToast } from "../contexts/ToastContext";
 import type { Session } from "../types";
 
 interface LoginProps {
@@ -12,6 +13,7 @@ interface LoginProps {
 }
 
 export function Login({ onLogin }: LoginProps) {
+  const toast = useToast();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword]     = useState("");
   const [rememberMe, setRememberMe] = useState(false);
@@ -34,7 +36,9 @@ export function Login({ onLogin }: LoginProps) {
       });
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
-        setError((body as { detail?: string }).detail ?? "Invalid username/email or password.");
+        const msg = (body as { detail?: string }).detail ?? "Invalid username/email or password.";
+        setError(msg);
+        toast.error("Login failed", msg);
         return;
       }
       const data = await response.json();
@@ -46,7 +50,9 @@ export function Login({ onLogin }: LoginProps) {
         role:         data.role,
       });
     } catch {
-      setError("Connection error. Please try again.");
+      const msg = "Connection error. Please try again.";
+      setError(msg);
+      toast.error("Login failed", msg);
     } finally {
       setLoading(false);
     }

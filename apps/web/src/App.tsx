@@ -1,8 +1,12 @@
 import { useMemo } from "react";
 import { Navigate, Route, Routes, useNavigate, useLocation } from "react-router-dom";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { ToastProvider } from "./contexts/ToastContext";
 import { AppShell } from "./components/AppShell";
+import { ConfirmProvider } from "./components/ConfirmDialog";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { InstallPrompt } from "./components/InstallPrompt";
+import { ToastContainer } from "./components/ToastContainer";
 import { Approvals } from "./components/Approvals";
 import { TeamStatus } from "./components/TeamStatus";
 import { Profile } from "./components/Profile";
@@ -67,8 +71,11 @@ function AppRoutes() {
 
   if (loading) {
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
-        <p style={{ fontFamily: "var(--font-body)", color: "var(--color-text-muted)" }}>Loading…</p>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: "var(--surface-sunken, #f5f5f7)" }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
+          <div style={{ width: 40, height: 40, borderRadius: 10, background: "linear-gradient(135deg, var(--brand-500, #6366f1), var(--brand-700, #4338ca))", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: "1.1rem" }}>T</div>
+          <div style={{ fontSize: "0.82rem", color: "var(--text-secondary, #64647a)" }}>Loading…</div>
+        </div>
       </div>
     );
   }
@@ -89,19 +96,19 @@ function AppRoutes() {
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/login" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/dashboard"  element={<Dashboard role={session.role} username={session.username} />} />
-        <Route path="/timesheets" element={<Timesheets />} />
-        <Route path="/leave"      element={<Leave isManager={isManager} isAdmin={isAdmin} />} />
-        <Route path="/reports"    element={<Reports />} />
-        <Route path="/profile"    element={<Profile onBack={() => navigate(-1)} />} />
-        {isManager && <Route path="/approvals"  element={<Approvals />} />}
-        {isManager && <Route path="/team"       element={<TeamStatus />} />}
-        {isAdmin   && <Route path="/projects"   element={<Projects />} />}
-        {isAdmin   && <Route path="/categories" element={<Categories />} />}
-        {isAdmin   && <Route path="/users"      element={<Users />} />}
-        {isAdmin   && <Route path="/holidays"        element={<Holidays />} />}
-        {isAdmin   && <Route path="/leave-policies"  element={<LeavePolicies />} />}
-        {isAdmin   && <Route path="/work-policies"   element={<WorkPolicies />} />}
+        <Route path="/dashboard"  element={<ErrorBoundary><Dashboard role={session.role} username={session.username} /></ErrorBoundary>} />
+        <Route path="/timesheets" element={<ErrorBoundary><Timesheets /></ErrorBoundary>} />
+        <Route path="/leave"      element={<ErrorBoundary><Leave isManager={isManager} isAdmin={isAdmin} /></ErrorBoundary>} />
+        <Route path="/reports"    element={<ErrorBoundary><Reports /></ErrorBoundary>} />
+        <Route path="/profile"    element={<ErrorBoundary><Profile onBack={() => navigate(-1)} /></ErrorBoundary>} />
+        {isManager && <Route path="/approvals"  element={<ErrorBoundary><Approvals /></ErrorBoundary>} />}
+        {isManager && <Route path="/team"       element={<ErrorBoundary><TeamStatus /></ErrorBoundary>} />}
+        {isAdmin   && <Route path="/projects"   element={<ErrorBoundary><Projects /></ErrorBoundary>} />}
+        {isAdmin   && <Route path="/categories" element={<ErrorBoundary><Categories /></ErrorBoundary>} />}
+        {isAdmin   && <Route path="/users"      element={<ErrorBoundary><Users /></ErrorBoundary>} />}
+        {isAdmin   && <Route path="/holidays"        element={<ErrorBoundary><Holidays /></ErrorBoundary>} />}
+        {isAdmin   && <Route path="/leave-policies"  element={<ErrorBoundary><LeavePolicies /></ErrorBoundary>} />}
+        {isAdmin   && <Route path="/work-policies"   element={<ErrorBoundary><WorkPolicies /></ErrorBoundary>} />}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </AppShell>
@@ -111,8 +118,13 @@ function AppRoutes() {
 export function App() {
   return (
     <ThemeProvider>
-      <AppRoutes />
-      <InstallPrompt />
+      <ToastProvider>
+        <ConfirmProvider>
+          <AppRoutes />
+          <InstallPrompt />
+          <ToastContainer />
+        </ConfirmProvider>
+      </ToastProvider>
     </ThemeProvider>
   );
 }

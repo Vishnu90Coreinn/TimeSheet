@@ -3,6 +3,8 @@
  */
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { apiFetch } from "../api/client";
+import { SkeletonPage } from "./Skeleton";
+import { EmptyLeave } from "./EmptyState";
 import type { LeaveBalance, LeaveRequest, LeaveRequestGroup, LeaveType, TeamLeaveEntry, User } from "../types";
 
 // ─── Types ─────────────────────────────────────────────────────
@@ -203,6 +205,7 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
   const currentYear = new Date().getFullYear();
 
   // State
+  const [loading, setLoading]           = useState(true);
   const [leaveTypes, setLeaveTypes]     = useState<LeaveType[]>([]);
   const [balances, setBalances]         = useState<LeaveBalance[]>([]);
   const [history, setHistory]           = useState<LeaveRequestGroup[]>([]);
@@ -320,12 +323,15 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
   }, [leaveForm.fromDate, leaveForm.toDate]);
 
   useEffect(() => {
-    loadTypes();
-    loadBalances();
-    loadHistory();
-    loadTeamOnLeave();
-    loadPending();
-    loadUsers();
+    setLoading(true);
+    Promise.all([
+      new Promise<void>(res => { loadTypes(); res(); }),
+      new Promise<void>(res => { loadBalances(); res(); }),
+      new Promise<void>(res => { loadHistory(); res(); }),
+      new Promise<void>(res => { loadTeamOnLeave(); res(); }),
+      new Promise<void>(res => { loadPending(); res(); }),
+      new Promise<void>(res => { loadUsers(); res(); }),
+    ]).finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isManager, isAdmin]);
 
@@ -424,6 +430,8 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
   const filteredHistory  = history.filter((h) => h.fromDate.startsWith(String(histYear)));
   const filteredFallback = histFallback.filter((h) => h.leaveDate.startsWith(String(histYear)));
   const historyEmpty = (!useFallback && filteredHistory.length === 0) || (useFallback && filteredFallback.length === 0);
+
+  if (loading) return <SkeletonPage kpis={3} rows={5} cols={4} />;
 
   return (
     <section className="flex flex-col gap-[var(--space-6)]">
@@ -668,16 +676,7 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
             </div>
 
             {historyEmpty ? (
-              <div className="lv-hist-empty">
-                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" className="text-[var(--n-300,#d1d5db)]">
-                  <rect x="3" y="4" width="18" height="18" rx="2"/>
-                  <line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/>
-                  <line x1="3" y1="10" x2="21" y2="10"/>
-                  <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/>
-                </svg>
-                <div className="lv-hist-empty-title">No leave records for {histYear}</div>
-                <div className="lv-hist-empty-sub">Approved and pending leave for this year will appear here.</div>
-              </div>
+              <EmptyLeave />
             ) : (
               <div className="lv-hist-cards">
                 {!useFallback && filteredHistory.map((h) => (

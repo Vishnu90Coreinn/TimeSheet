@@ -5,6 +5,8 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch } from "../api/client";
+import { SkeletonPage } from "./Skeleton";
+import { EmptyTimesheets } from "./EmptyState";
 import type { AttendanceSummary } from "./AttendanceWidget";
 import type { Project, TaskCategory, TimesheetDay, TimesheetEntry, WeekDayMeta, WeekSummary } from "../types";
 
@@ -170,6 +172,7 @@ export function Timesheets() {
   const [selectedDate, setSelectedDate] = useState(todayIso());
   const [weekData, setWeekData] = useState<WeekSummary | null>(null);
   const [dayData, setDayData] = useState<TimesheetDay | null>(null);
+  const [loading, setLoading] = useState(true);
 
   // Entry form state
   const [showForm, setShowForm] = useState(false);
@@ -263,20 +266,22 @@ export function Timesheets() {
 
   // Init
   useEffect(() => {
-    void loadAttendance();
-    void loadWeek(selectedDate);
-    void loadDay(selectedDate);
-    void loadActiveTimer();
-    void loadTimerHistory();
-    apiFetch("/timesheets/entry-options").then(async (r) => {
-      if (!r.ok) return;
-      const d = await r.json() as { projects: Project[]; taskCategories: TaskCategory[] };
-      setProjects(d.projects);
-      setCategories(d.taskCategories);
-      setForm(blankForm(d.projects, d.taskCategories));
-      setTimerProjectId((prev) => prev || d.projects[0]?.id || "");
-      setTimerCategoryId((prev) => prev || d.taskCategories[0]?.id || "");
-    });
+    Promise.all([
+      loadAttendance(),
+      loadWeek(selectedDate),
+      loadDay(selectedDate),
+      loadActiveTimer(),
+      loadTimerHistory(),
+      apiFetch("/timesheets/entry-options").then(async (r) => {
+        if (!r.ok) return;
+        const d = await r.json() as { projects: Project[]; taskCategories: TaskCategory[] };
+        setProjects(d.projects);
+        setCategories(d.taskCategories);
+        setForm(blankForm(d.projects, d.taskCategories));
+        setTimerProjectId((prev) => prev || d.projects[0]?.id || "");
+        setTimerCategoryId((prev) => prev || d.taskCategories[0]?.id || "");
+      }),
+    ]).finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -672,6 +677,8 @@ export function Timesheets() {
   const todayExpectedMins = dayData?.expectedMinutes ?? 480;
 
   /* ── Render ───────────────────────────────────────────────────────────────── */
+  if (loading) return <SkeletonPage kpis={3} rows={6} cols={4} />;
+
   return (
     <section>
       {/* ts-page: two-column layout */}
@@ -996,13 +1003,7 @@ export function Timesheets() {
           {/* Entries list */}
           <div className="flex flex-col gap-2">
             {dayEntries.length === 0 ? (
-              <div className="flex flex-col items-center justify-center text-[13px] text-text-secondary text-center py-9 gap-[2px]">
-                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" className="text-[var(--n-300,#d1d5db)] mb-2">
-                  <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-                </svg>
-                <div>No entries for this day.</div>
-                <div className="text-[12px] text-[var(--n-400,#9ca3af)] mt-1">Click &ldquo;+ Add Entry&rdquo; to log your time.</div>
-              </div>
+              <EmptyTimesheets onAdd={isDraft && !isLocked ? () => setShowForm(true) : undefined} />
             ) : (
               dayEntries.map((entry) => {
                 const parsed = parseNotes(entry.notes);

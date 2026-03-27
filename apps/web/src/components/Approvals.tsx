@@ -3,6 +3,8 @@
  */
 import { useEffect, useState } from "react";
 import { apiFetch } from "../api/client";
+import { SkeletonPage } from "./Skeleton";
+import { EmptyApprovals } from "./EmptyState";
 import type { ApprovalItem, LeaveRequest } from "../types";
 
 // ─── Types ────────────────────────────────────────────────────
@@ -93,6 +95,7 @@ const IconClock = () => (
 
 // ─── Component ────────────────────────────────────────────────
 export function Approvals() {
+  const [loading, setLoading]         = useState(true);
   const [tsPending, setTsPending]     = useState<PendingTimesheetItem[]>([]);
   const [leavePending, setLeavePending] = useState<LeaveRequest[]>([]);
   const [stats, setStats]             = useState<ApprovalStats>({ approvedThisMonth: null, rejectedThisMonth: null, avgResponseHours: null });
@@ -110,9 +113,11 @@ export function Approvals() {
   const [delegateSaving, setDelegateSaving] = useState(false);
 
   function loadData() {
-    apiFetch("/approvals/pending-timesheets").then(async (r) => { if (r.ok) setTsPending(await r.json()); });
-    apiFetch("/leave/requests/pending").then(async (r) => { if (r.ok) setLeavePending(await r.json()); });
-    void apiFetch("/approvals/stats").then(async (r) => { if (r.ok) setStats(await r.json()); });
+    Promise.all([
+      apiFetch("/approvals/pending-timesheets").then(async (r) => { if (r.ok) setTsPending(await r.json()); }),
+      apiFetch("/leave/requests/pending").then(async (r) => { if (r.ok) setLeavePending(await r.json()); }),
+      apiFetch("/approvals/stats").then(async (r) => { if (r.ok) setStats(await r.json()); }),
+    ]).finally(() => setLoading(false));
   }
 
   const loadDelegation = async () => {
@@ -253,6 +258,8 @@ export function Approvals() {
     { key: "leave",      label: "Leave",       count: leavePending.length },
   ];
 
+  if (loading) return <SkeletonPage kpis={2} rows={5} cols={5} />;
+
   return (
     <section className="flex flex-col gap-6">
       {/* Page header */}
@@ -359,13 +366,7 @@ export function Approvals() {
 
       {/* Card list */}
       <div className="apr3-list">
-        {pendingCount === 0 && (
-          <div className="apr3-empty">
-            <div className="apr3-empty-icon">✓</div>
-            <div className="font-semibold">All clear</div>
-            <div className="text-[0.85rem]">No pending approvals at this time.</div>
-          </div>
-        )}
+        {pendingCount === 0 && <EmptyApprovals />}
 
         {/* Select all bar for timesheets */}
         {showTs && tsPending.length > 0 && (

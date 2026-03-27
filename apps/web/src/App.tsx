@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { Navigate, Route, Routes, useNavigate, useLocation } from "react-router-dom";
+import { ThemeProvider } from "./contexts/ThemeContext";
 import { AppShell } from "./components/AppShell";
 import { Approvals } from "./components/Approvals";
 import { TeamStatus } from "./components/TeamStatus";
@@ -107,5 +108,9 @@ function AppRoutes() {
 }
 
 export function App() {
-  return <AppRoutes />;
+  return (
+    <ThemeProvider>
+      <AppRoutes />
+    </ThemeProvider>
+  );
 }

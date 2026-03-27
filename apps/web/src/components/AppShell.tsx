@@ -8,6 +8,7 @@ import type { Session } from "../types";
 import type { View } from "../types";
 import { CommandPalette } from "./CommandPalette";
 import { ShortcutsPanel } from "./ShortcutsPanel";
+import { ThemeToggle } from "./ThemeToggle";
 
 interface NavItem {
   view: View;
@@ -211,6 +212,7 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
               fontFamily: "inherit",
             }}>⌘K</kbd>
           </button>
+          <ThemeToggle />
           <NotificationBell />
           <div className="topbar-divider" />
           <div className="topbar-user" title="My Profile" onClick={onNavigateProfile}>

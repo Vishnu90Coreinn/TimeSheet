@@ -6,6 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Serilog.Events;
 using TimeSheet.Api.Middleware;
+using TimeSheet.Api.Services;
 using TimeSheet.Application;
 using TimeSheet.Infrastructure;
 
@@ -24,6 +25,7 @@ try
     builder.Services.AddControllers();
     builder.Services.AddApplication();
     builder.Services.AddInfrastructure(builder.Configuration);
+    builder.Services.AddScoped<IWebPushService, WebPushService>();
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
     builder.Services.AddProblemDetails();

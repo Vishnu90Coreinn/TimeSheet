@@ -32,6 +32,7 @@ public class TimeSheetDbContext(DbContextOptions<TimeSheetDbContext> options) : 
     public DbSet<TimerSession> TimerSessions => Set<TimerSession>();
     public DbSet<TimesheetTemplate> TimesheetTemplates => Set<TimesheetTemplate>();
     public DbSet<SavedReport> SavedReports => Set<SavedReport>();
+    public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

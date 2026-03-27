@@ -9,6 +9,7 @@ import type { Session } from "../types";
 import type { View } from "../types";
 import { CommandPalette } from "./CommandPalette";
 import { ShortcutsPanel } from "./ShortcutsPanel";
+import { ThemeToggle } from "./ThemeToggle";
 
 /* ── Material Symbol helper ─────────────────────────────── */
 function Icon({ name, size = 22 }: { name: string; size?: number }) {
@@ -292,6 +293,21 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
           >
             {initials}
           </button>
+          <ThemeToggle />
+          <NotificationBell />
+          <div className="topbar-divider" />
+          <div className="topbar-user" title="My Profile" onClick={onNavigateProfile}>
+            <div
+              className="w-7 h-7 rounded-md flex items-center justify-center text-[0.65rem] font-bold text-white shrink-0"
+              style={{ background: "linear-gradient(135deg, var(--brand-500), var(--brand-700))" }}
+            >
+              {initials}
+            </div>
+            <div>
+              <div className="text-[0.8rem] font-semibold text-text-primary leading-[1.2]">{session.username}</div>
+              <div className="text-[0.68rem] text-text-tertiary capitalize">{session.role}</div>
+            </div>
+          </div>
         </div>
       </aside>
 

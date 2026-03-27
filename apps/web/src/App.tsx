@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { Navigate, Route, Routes, useNavigate, useLocation } from "react-router-dom";
+import { ThemeProvider } from "./contexts/ThemeContext";
 import { AppShell } from "./components/AppShell";
 import { InstallPrompt } from "./components/InstallPrompt";
 import { Approvals } from "./components/Approvals";
@@ -109,6 +110,9 @@ function AppRoutes() {
 
 export function App() {
   return (
+    <ThemeProvider>
+      <AppRoutes />
+    </ThemeProvider>
     <>
       <AppRoutes />
       <InstallPrompt />

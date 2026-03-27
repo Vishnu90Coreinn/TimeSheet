@@ -913,78 +913,554 @@ All Phase 2 tasks address findings from the Phase 1 audit above.
 
 ---
 
-### Sprint 24 — Mobile PWA 📱
-**Branch:** `feature/sprint-24-mobile-pwa`
-**Goal:** Core workflows (check in/out, quick timesheet entry) usable on a phone.
+### Sprint 24 — Mobile PWA 📱 ✅ DONE
+**Branch:** `feature/sprint-24-mobile-pwa` → **merged to master**
+**Commit:** `b3d64ae`
+
+#### Backend ✅
+- [x] `PushSubscription` entity + EF config (`PushSubscriptions` table, unique index on Endpoint)
+- [x] EF migration `Sprint24_PushSubscriptions`
+- [x] `PushController` — `GET /api/v1/push/vapid-key`, `POST /subscribe`, `POST /unsubscribe`
+- [x] `WebPushService` (stub — wire real VAPID library before production)
+- [x] VAPID config section in `appsettings.json` (replace placeholder keys before go-live)
+
+#### Frontend ✅
+- [x] `vite-plugin-pwa` configured with Workbox (NetworkFirst for `/api`, CacheFirst for fonts)
+- [x] Web App Manifest — standalone display, indigo theme, all icon sizes
+- [x] `InstallPrompt.tsx` — bottom banner, `beforeinstallprompt` event, localStorage dismissal
+- [x] `usePushNotifications.ts` — VAPID subscribe/unsubscribe hook
+- [x] `/public/offline.html` — offline fallback page
+- [x] PWA meta tags in `index.html` (theme-color, apple-mobile-web-app-capable, apple-touch-icon)
+- [x] `/public/icons/` — SVG + placeholder PNGs (replace with real icons before production)
+
+---
+
+### Sprint 25 — Dark Mode 🌙 ✅ DONE
+**Branch:** `feature/sprint-25-dark-mode` → **merged to master**
+**Commit:** `67e6c3c`
+
+#### Frontend ✅
+- [x] `[data-theme="dark"]` CSS block — full neutral/brand/semantic palette inversion
+- [x] Sidebar, topbar, card, modal, table, input, scrollbar dark overrides
+- [x] `ThemeContext.tsx` — `ThemeProvider`, `useTheme`, light/dark/system modes, localStorage persistence
+- [x] `ThemeToggle.tsx` — cycles ☀️/🌙/💻, placed in AppShell topbar
+- [x] Flash-prevention inline script in `index.html` (runs before React hydrates)
+- [x] Smooth 150ms color transitions on all elements
+
+---
+
+### Sprint 26 — UX Foundation ✅ DONE
+**Branch:** `feature/sprint-26-ux-foundation` → **merged to master**
+**Commit:** `483e3f1`
+
+#### Frontend ✅
+- [x] `ToastContext.tsx` — `ToastProvider`, `useToast()` with `success/error/warning/info`, auto-dismiss, max 5 stacked
+- [x] `ToastContainer.tsx` — fixed top-right, slide-in animation, colour-coded left border
+- [x] `Skeleton.tsx` — `Skeleton`, `SkeletonKPI`, `SkeletonTableRows`, `SkeletonListItem`, `SkeletonPage` with shimmer CSS animation
+- [x] `EmptyState.tsx` — `EmptyState` + presets: `EmptyTimesheets`, `EmptyLeave`, `EmptyApprovals`, `EmptyReports`, `EmptySearch`, `EmptyNotifications`
+- [x] `ErrorBoundary.tsx` — class-based per-route isolation + `SectionErrorBoundary`
+- [x] `ConfirmDialog.tsx` — `ConfirmProvider`, promise-based `useConfirm()`, danger/warning/default variants
+- [x] Shimmer + modal entry animations in `design-system.css`
+- [x] `App.tsx` — all providers wired: `ThemeProvider > ToastProvider > ConfirmProvider`; `ErrorBoundary` on every route
+- [x] Skeleton loading states on Dashboard, Timesheets, Leave, Approvals, Reports
+- [x] Empty states on Timesheets, Leave, Approvals, Reports
+- [x] Login errors fire `toast.error()`
+
+#### Usage patterns for agents
+```tsx
+// Toast
+const toast = useToast();
+toast.success("Saved!", "Timesheet submitted.");
+toast.error("Failed", "Could not connect.");
+
+// Confirm
+const confirm = useConfirm();
+const ok = await confirm({ title: "Delete?", message: "Cannot be undone.", variant: "danger", confirmLabel: "Delete" });
+if (ok) deleteItem(id);
+
+// Skeleton (in loading state)
+if (loading) return <SkeletonPage kpis={4} rows={6} cols={4} />;
+
+// Empty state
+if (!data.length) return <EmptyTimesheets onAdd={openForm} />;
+```
+
+---
+
+## Phase 4 — International SaaS UX Sprints
+
+> **Context for agents:** The app is a multi-role workforce management SaaS (employee / manager / admin).
+> Stack: React 18 + TypeScript + Vite + Tailwind v4 + CSS custom properties in `design-system.css`.
+> Backend: .NET 10, Clean Architecture, CQRS/MediatR, EF Core 9, SQL Server.
+> Base branch for all new work: `master`.
+> Branch naming: `feature/sprint-<N>-<slug>`.
+> After each sprint: `npx tsc --noEmit` must pass before committing.
+
+---
+
+### Sprint 27 — Multi-Timezone Support 🌍
+**Branch:** `feature/sprint-27-multi-timezone`
+**Status:** `TODO`
+**Goal:** Every user can set their local timezone; all time displays respect it. Foundation for global teams.
 
 #### Backend
-- No changes — the existing API is already mobile-compatible.
+- [ ] **TZ-001** Add `TimeZoneId` (string, IANA format e.g. `"Asia/Kolkata"`) to `User` entity in `src/TimeSheet.Domain/Entities/User.cs`
+- [ ] **TZ-002** EF migration `Sprint27_UserTimezone` — nullable column with default `"UTC"`
+- [ ] **TZ-003** `GET /api/v1/profile` — include `timeZoneId` in response DTO
+- [ ] **TZ-004** `PUT /api/v1/profile` — accept and save `timeZoneId`
+- [ ] **TZ-005** `GET /api/v1/timezones` — return list of all IANA timezone IDs with display names (use `TimeZoneInfo.GetSystemTimeZones()`)
+- [ ] **TZ-006** All datetime fields returned by API must include UTC offset or be explicitly UTC — audit `TimesheetsController`, `LeaveController`, `AttendanceController` response DTOs
 
 #### Frontend
-- [ ] **TSK-MOB-001** `manifest.json` + `vite-plugin-pwa` — add PWA manifest (name, icons, theme color, display: standalone).
-- [ ] **TSK-MOB-002** Service worker: cache app shell + static assets for offline load; network-first for API calls.
-- [ ] **TSK-MOB-003** Responsive sidebar: `@media (max-width: 768px)` — sidebar hidden by default, hamburger button in topbar toggles it as a slide-over drawer.
-- [ ] **TSK-MOB-004** Mobile-optimized `AttendanceWidget` — large check-in/out tap targets (min 48px), simplified layout.
-- [ ] **TSK-MOB-005** Mobile timesheet entry form — full-width fields, native date/time pickers, bottom sheet pattern instead of inline form.
-- [ ] **TSK-MOB-006** Touch-friendly table rows — tap row to open detail/edit instead of requiring small button targets.
+- [ ] **TZ-007** `useTimezone` hook — reads user's `timeZoneId` from session; exposes `toLocal(utcDate)` and `toUtc(localDate)` helpers using `Intl.DateTimeFormat`
+- [ ] **TZ-008** `TimezoneSelect.tsx` — searchable dropdown of IANA zones; used in Profile settings
+- [ ] **TZ-009** Update `Profile.tsx` — add Timezone section with `TimezoneSelect`; save via `PUT /api/v1/profile`; show `toast.success()` on save
+- [ ] **TZ-010** Update `Timesheets.tsx` — display entry times in user's local timezone via `useTimezone`
+- [ ] **TZ-011** Update `AttendanceWidget.tsx` — show clock-in/out times in local timezone
+- [ ] **TZ-012** Update `Dashboard.tsx` — all time displays use `useTimezone`
+- [ ] **TZ-013** Topbar clock (optional): small live clock showing user's local time
+
+#### Acceptance criteria
+- User in `Asia/Kolkata` sees IST times; user in `America/New_York` sees EST/EDT times
+- Changing timezone in Profile immediately updates all displayed times
+- All API calls still send/receive UTC; conversion is client-side only
+- `npx tsc --noEmit` passes
 
 ---
 
-### Sprint 25 — Dark Mode 🌙
-**Branch:** `feature/sprint-25-dark-mode`
-**Goal:** Full dark theme using existing CSS variable architecture.
+### Sprint 28 — Onboarding Flow 🎯
+**Branch:** `feature/sprint-28-onboarding`
+**Status:** `TODO`
+**Goal:** First-login wizard and setup checklist to reduce time-to-value for new users and admins.
 
 #### Backend
-- No changes.
+- [ ] **ON-001** Add `OnboardingCompletedAt` (DateTime?, nullable) to `User` entity
+- [ ] **ON-002** EF migration `Sprint28_Onboarding`
+- [ ] **ON-003** `POST /api/v1/onboarding/complete` — sets `OnboardingCompletedAt = UtcNow` for current user
+- [ ] **ON-004** `GET /api/v1/onboarding/checklist` — returns checklist state: `{ hasSubmittedTimesheet, hasAppliedLeave, hasSetTimezone, hasSetNotificationPrefs }` derived from existing data
 
 #### Frontend
-- [ ] **TSK-DRK-001** `[data-theme="dark"]` override block in `design-system.css` — map all `--n-*`, `--brand-*`, `--text-*`, `--border-*` tokens to dark equivalents.
-- [ ] **TSK-DRK-002** `useTheme` hook — stores preference in `localStorage`; applies `data-theme` on `<html>`.
-- [ ] **TSK-DRK-003** Respects `prefers-color-scheme` media query on first load if no preference saved.
-- [ ] **TSK-DRK-004** Theme toggle in `Profile.tsx` notification preferences + topbar icon shortcut.
-- [ ] **TSK-DRK-005** Audit all inline `style={{ background: ... }}` hardcoded values in components — replace with CSS variable equivalents so dark mode applies correctly.
+- [ ] **ON-005** `OnboardingWizard.tsx` — multi-step modal (3 steps: Welcome → Set timezone → Set notifications → Done). Shown only when `session.onboardingCompletedAt` is null
+- [ ] **ON-006** Step 1 — Welcome: app overview, role explanation (employee/manager/admin)
+- [ ] **ON-007** Step 2 — Timezone: embed `TimezoneSelect` from Sprint 27; auto-detect from `Intl.DateTimeFormat().resolvedOptions().timeZone`
+- [ ] **ON-008** Step 3 — Notifications: toggle push notifications (use `usePushNotifications` hook from Sprint 24)
+- [ ] **ON-009** `OnboardingChecklist.tsx` — collapsible panel on Dashboard for users who haven't done all steps. Shows progress (e.g. "3/5 complete"). Each item links to the relevant page
+- [ ] **ON-010** Mount `OnboardingWizard` in `App.tsx` inside `AppRoutes` — only renders when `session && !session.onboardingCompletedAt`
+- [ ] **ON-011** Admin checklist items: Add first project, Add leave policies, Add holidays, Add first user
+
+#### Acceptance criteria
+- New user sees wizard on first login; sees nothing on subsequent logins
+- Wizard can be dismissed (skips onboarding, marks complete)
+- Checklist disappears once all items are done
+- `npx tsc --noEmit` passes
 
 ---
 
-## Phase 3 Branch Naming Convention
+### Sprint 29 — Notification Centre 2.0 🔔
+**Branch:** `feature/sprint-29-notification-centre`
+**Status:** `TODO`
+**Goal:** Rich, grouped notification feed with preferences UI. Replace the basic notification bell.
 
-```
-feature/sprint-13-user-profile
-feature/sprint-14-bulk-submit
-feature/sprint-15-team-status
-feature/sprint-16-task-timer
-feature/sprint-17-project-budget
-feature/sprint-18-entry-templates
-feature/sprint-19-leave-team-calendar
-feature/sprint-20-anomaly-alerts
-feature/sprint-21-saved-reports
-feature/sprint-22-approval-delegation
-feature/sprint-23-command-palette
-feature/sprint-24-mobile-pwa
-feature/sprint-25-dark-mode
-```
+#### Backend
+- [ ] **NC-001** Add `GroupKey` (string, nullable) and `ActionUrl` (string, nullable) to `Notification` entity — EF migration `Sprint29_NotificationEnhancements`
+- [ ] **NC-002** `GET /api/v1/notifications` — add `?page=1&pageSize=20` pagination; return `{ items, totalUnread, hasMore }`
+- [ ] **NC-003** `POST /api/v1/notifications/mark-all-read` — mark all unread as read for current user
+- [ ] **NC-004** `DELETE /api/v1/notifications/{id}` — delete a single notification
+- [ ] **NC-005** `DELETE /api/v1/notifications` — clear all notifications for current user
 
-## Phase 3 Delivery Order (Recommended)
+#### Frontend
+- [ ] **NC-006** Redesign `Notifications.tsx` — replace simple dropdown with a slide-over panel (right side, 380px wide)
+- [ ] **NC-007** Group notifications by day: "Today", "Yesterday", "Earlier this week", "Older"
+- [ ] **NC-008** Each notification item: icon (based on type), title, message, relative time, unread dot, click to dismiss + navigate to `actionUrl`
+- [ ] **NC-009** "Mark all read" button in panel header
+- [ ] **NC-010** "Clear all" button with `useConfirm()` confirm dialog
+- [ ] **NC-011** Infinite scroll / "Load more" for pagination
+- [ ] **NC-012** `EmptyNotifications` empty state (already exists in `EmptyState.tsx`)
+- [ ] **NC-013** Notification preferences page in `Profile.tsx` — toggles per notification type (timesheet approved/rejected, leave approved/rejected, anomaly alerts)
+- [ ] **NC-014** Unread count badge on bell — animate when count changes (CSS keyframe pulse)
 
-| Priority | Sprint | Why first |
-|----------|--------|-----------|
-| 1 | ~~13 — User Profile~~ ✅ | Foundational — needed before notification prefs in later sprints |
-| 2 | ~~14 — Bulk Submit~~ ✅ | Highest daily-friction fix; pure backend extension, low risk |
-| 3 | ~~15 — Team Status~~ ✅ | Highest manager value; new endpoint, no schema change |
-| 4 | ~~16 — Task Timer~~ ✅ | New table + persistent widget; biggest engagement driver |
-| 5 | ~~17 — Budget Burn~~ ✅ | Uses existing `budgetedHours` field; low backend effort |
-| 6 | ~~18 — Templates~~ ✅ | Comfort feature; reduces daily friction |
-| 7 | ~~19 — Leave Team Cal~~ ✅ | Extend existing leave endpoints |
-| 8 | ~~20 — Anomaly Alerts~~ ✅ DONE | Background service; builds on existing notification infra |
-| 9 | **21 — Saved Reports** 🔴 NEXT | Persistence layer for reports; needs email service |
-| 10 | 22 — Approval Delegation | Schema change + routing logic; test thoroughly |
-| 11 | 23 — Command Palette | Pure frontend; do after all pages are stable |
-| 12 | 24 — Mobile PWA | Layout overhaul; needs all features settled first |
-| 13 | 25 — Dark Mode | Last; needs all inline styles cleaned up first |
+#### Acceptance criteria
+- Panel opens/closes smoothly
+- Grouped by date, newest first
+- Mark all read clears the badge instantly
+- Preferences saved and respected
+- `npx tsc --noEmit` passes
 
 ---
 
-## Initial Issue Creation Template (Optional)
+### Sprint 30 — SignalR Real-time 📡
+**Branch:** `feature/sprint-30-signalr-realtime`
+**Status:** `TODO`
+**Goal:** Live updates without polling — approval status changes, team clock-in feed, dashboard counters.
+
+#### Backend
+- [ ] **SR-001** Install `Microsoft.AspNetCore.SignalR` (already included in .NET 10 ASP.NET Core)
+- [ ] **SR-002** `TimeSheetHub.cs` in `apps/api/Hubs/` — hub with groups: `user-{userId}`, `manager-{managerId}`, `all`
+- [ ] **SR-003** Map hub in `Program.cs`: `app.MapHub<TimeSheetHub>("/hubs/timesheet")`
+- [ ] **SR-004** Add CORS policy to allow SignalR WebSocket upgrade
+- [ ] **SR-005** Publish `TimesheetStatusChanged` event from `UnitOfWork` domain event dispatcher → `IHubContext<TimeSheetHub>` → send to `user-{userId}` group
+- [ ] **SR-006** Publish `LeaveStatusChanged` event similarly
+- [ ] **SR-007** Publish `TeamClockIn` event from `AttendanceController.CheckIn` → send to `manager-{managerId}` group
+- [ ] **SR-008** `GET /api/v1/notifications/count` — lightweight endpoint for initial unread count
+
+#### Frontend
+- [ ] **SR-009** Install `@microsoft/signalr`: `npm install @microsoft/signalr -w apps/web`
+- [ ] **SR-010** `useSignalR.ts` hook — manages connection lifecycle, auto-reconnect, typed message handlers
+- [ ] **SR-011** `SignalRProvider.tsx` — context that establishes connection after login; exposes `useSignalR()` hook. Add to `App.tsx` inside `AppRoutes` (after session is confirmed)
+- [ ] **SR-012** Dashboard — subscribe to `DashboardUpdated` event; refresh KPI counters without full page reload
+- [ ] **SR-013** Approvals page — subscribe to `TimesheetSubmitted`; show `toast.info()` "New timesheet submitted by [name]" + auto-refresh list
+- [ ] **SR-014** Timesheets page — subscribe to `TimesheetStatusChanged` for own timesheets; update status badges live; show `toast.success/error()`
+- [ ] **SR-015** Leave page — subscribe to `LeaveStatusChanged`; update status live
+- [ ] **SR-016** Notification bell — subscribe to `NewNotification` event; increment unread count + pulse animation; add new item to panel if open
+- [ ] **SR-017** Connection status indicator in topbar (small dot: green = connected, yellow = reconnecting, hidden when connected)
+
+#### Acceptance criteria
+- Manager sees approval badge increment in real time when employee submits timesheet
+- Employee sees status change (Approved/Rejected) without refresh
+- Connection recovers automatically after network interruption
+- `npx tsc --noEmit` passes
+
+---
+
+### Sprint 31 — Billing & Subscription 💳
+**Branch:** `feature/sprint-31-billing`
+**Status:** `TODO`
+**Goal:** Plan/subscription management page for SaaS monetization. UI-only initially (no payment processor integration required in this sprint).
+
+#### Backend
+- [ ] **BL-001** `Subscription` entity: `Id`, `TenantId` (string), `Plan` (enum: Free/Starter/Pro/Enterprise), `Status` (Active/Cancelled/PastDue), `UserLimit`, `CurrentUserCount`, `BillingCycleEnd` (DateTime)
+- [ ] **BL-002** EF migration `Sprint31_Billing`
+- [ ] **BL-003** `GET /api/v1/billing/subscription` — returns current subscription for org (admin only)
+- [ ] **BL-004** `GET /api/v1/billing/invoices` — returns mock invoice history array
+- [ ] **BL-005** `GET /api/v1/billing/usage` — returns `{ activeUsers, userLimit, timesheetCount, storageUsedMb }`
+
+#### Frontend
+- [ ] **BL-006** Add `"billing"` to `View` type in `types.ts`; add route `/billing` (admin only) in `App.tsx` and `AppShell` nav
+- [ ] **BL-007** `Billing.tsx` — page with three sections: Current Plan card, Usage meters, Invoice history table
+- [ ] **BL-008** Plan card: show plan name, status badge, renewal date, user count vs limit progress bar. "Upgrade Plan" button (links to pricing — no-op for now)
+- [ ] **BL-009** Usage meters: animated progress bars for active users, timesheet entries, storage. Red warning at 80%+ usage
+- [ ] **BL-010** Invoice table: date, amount, status (Paid/Pending), download link (stub)
+- [ ] **BL-011** Upgrade prompt banner: shown on Dashboard when user count > 80% of limit. Dismissible via `localStorage`
+
+#### Acceptance criteria
+- `/billing` accessible to admin only; redirect non-admins to dashboard
+- Plan card, usage meters, and invoice table all render from API data
+- Skeleton loading state while data fetches
+- Empty state for invoices
+- `npx tsc --noEmit` passes
+
+---
+
+### Sprint 32 — SSO / SAML 🔐
+**Branch:** `feature/sprint-32-sso`
+**Status:** `TODO`
+**Goal:** Google Workspace and Microsoft 365 login for enterprise customers.
+
+#### Backend
+- [ ] **SSO-001** Install `Microsoft.AspNetCore.Authentication.Google` and `Microsoft.AspNetCore.Authentication.MicrosoftAccount`
+- [ ] **SSO-002** Add SSO config to `appsettings.json`: `"Sso": { "Google": { "ClientId": "", "ClientSecret": "" }, "Microsoft": { "ClientId": "", "ClientSecret": "" } }`
+- [ ] **SSO-003** `GET /api/v1/auth/sso/google` — redirects to Google OAuth consent screen
+- [ ] **SSO-004** `GET /api/v1/auth/sso/google/callback` — handles OAuth callback; finds or creates `User` by email; returns same JWT + refresh token as regular login
+- [ ] **SSO-005** Same pattern for Microsoft (`/sso/microsoft`, `/sso/microsoft/callback`)
+- [ ] **SSO-006** Add `SsoProvider` (enum: None/Google/Microsoft) and `SsoSubject` (string) to `User` entity — EF migration `Sprint32_SsoFields`
+- [ ] **SSO-007** `GET /api/v1/auth/sso/providers` — returns which providers are configured (so frontend shows/hides buttons)
+
+#### Frontend
+- [ ] **SSO-008** Update `Login.tsx` — fetch `/auth/sso/providers` on mount; conditionally show "Continue with Google" and/or "Continue with Microsoft" buttons below the form divider
+- [ ] **SSO-009** SSO buttons: branded (Google blue, Microsoft blue), SVG logos, full-width, above the email/password form
+- [ ] **SSO-010** Handle OAuth redirect return: detect `?token=...&refresh=...` query params in URL after SSO callback; call `login()` with the session; redirect to dashboard
+- [ ] **SSO-011** Admin panel: SSO configuration page under Settings — shows connected providers, enable/disable toggles, domain restriction field (only allow `@company.com` emails)
+
+#### Acceptance criteria
+- "Continue with Google" button visible only when Google SSO is configured
+- OAuth flow completes and user lands on Dashboard with valid session
+- SSO users can't change password (show "Managed by SSO" instead)
+- `npx tsc --noEmit` passes
+
+---
+
+### Sprint 33 — Public API + Webhooks 🔗
+**Branch:** `feature/sprint-33-public-api`
+**Status:** `TODO`
+**Goal:** Let enterprise customers integrate TimeSheet with their own systems.
+
+#### Backend
+- [ ] **API-001** `ApiKey` entity: `Id`, `UserId`, `Name`, `KeyHash` (bcrypt), `Prefix` (first 8 chars, shown to user), `Scopes` (string array), `LastUsedAt`, `ExpiresAt` (nullable), `CreatedAt`
+- [ ] **API-002** EF migration `Sprint33_ApiKeys`
+- [ ] **API-003** `ApiKeyAuthenticationHandler` — reads `X-Api-Key` header; validates against hashed keys; sets `ClaimsPrincipal`
+- [ ] **API-004** Register API key auth scheme alongside JWT in `Program.cs`
+- [ ] **API-005** `ApiKeysController` — `GET /api/v1/developer/keys`, `POST /api/v1/developer/keys` (generate + return full key once), `DELETE /api/v1/developer/keys/{id}`
+- [ ] **API-006** `Webhook` entity: `Id`, `UserId`, `Url`, `Events` (string array), `Secret`, `IsActive`, `LastTriggeredAt`
+- [ ] **API-007** EF migration `Sprint33_Webhooks`
+- [ ] **API-008** `WebhooksController` — CRUD endpoints for webhook registrations
+- [ ] **API-009** `WebhookDispatchService` — sends signed `POST` requests (HMAC-SHA256 `X-Signature` header) on events: `timesheet.submitted`, `timesheet.approved`, `leave.approved`, `user.created`
+- [ ] **API-010** `WebhookLog` entity + `GET /api/v1/developer/webhooks/{id}/deliveries` — last 50 delivery attempts with status/response
+
+#### Frontend
+- [ ] **API-011** Add `"developer"` to `View` type; add `/developer` route (admin only)
+- [ ] **API-012** `Developer.tsx` — tabbed page: "API Keys" tab + "Webhooks" tab
+- [ ] **API-013** API Keys tab: table of keys (name, prefix, scopes, last used, expiry); "Create Key" button → modal with name + scope checkboxes → show full key once in a copy-to-clipboard box with warning "Store this key securely"
+- [ ] **API-014** Webhooks tab: table of webhooks (url, events, status, last triggered); "Add Webhook" modal — URL input, event checkboxes, auto-generate secret; delivery log expandable row
+- [ ] **API-015** Use `useConfirm()` for key deletion and webhook deletion
+
+#### Acceptance criteria
+- Full key shown only at creation time; only prefix shown thereafter
+- Webhook delivery log shows success/failure per delivery
+- `npx tsc --noEmit` passes
+
+---
+
+### Sprint 34 — Overtime & Comp-off Rules Engine ⏱️
+**Branch:** `feature/sprint-34-overtime-rules`
+**Status:** `TODO`
+**Goal:** Policy-driven overtime detection and automatic comp-off credit.
+
+#### Backend
+- [ ] **OT-001** `OvertimePolicy` entity: `Id`, `WorkPolicyId` (FK), `DailyOvertimeAfterHours` (decimal), `WeeklyOvertimeAfterHours` (decimal), `OvertimeMultiplier` (decimal, e.g. 1.5), `CompOffEnabled` (bool), `CompOffExpiryDays` (int)
+- [ ] **OT-002** EF migration `Sprint34_OvertimePolicy`
+- [ ] **OT-003** `OvertimeCalculationService` — given a user's week of `TimesheetEntry` rows, returns `{ regularHours, overtimeHours, compOffCredits }`
+- [ ] **OT-004** `CompOffBalance` entity: `UserId`, `Credits` (decimal), `ExpiresAt` (DateTime)
+- [ ] **OT-005** Background job: run weekly, calculate overtime for approved timesheets, credit comp-off balances
+- [ ] **OT-006** `GET /api/v1/overtime/summary?userId=&weekStart=` — returns overtime breakdown for a week
+- [ ] **OT-007** `GET /api/v1/leave/comp-off-balance` — returns current comp-off credits for user
+
+#### Frontend
+- [ ] **OT-008** `WorkPolicies.tsx` — add "Overtime Rules" collapsible section inside each policy card: daily/weekly threshold inputs, multiplier input, comp-off toggle
+- [ ] **OT-009** `Timesheets.tsx` — weekly summary sidebar: add "Overtime" row when hours exceed policy threshold (highlight in amber)
+- [ ] **OT-010** `Leave.tsx` — add "Comp-off" as a leave type option; show available comp-off balance in the balance cards
+- [ ] **OT-011** `Dashboard.tsx` (manager view) — add "Overtime Hours" KPI card showing team overtime for current week
+
+#### Acceptance criteria
+- Overtime highlighted in timesheets when daily/weekly thresholds exceeded
+- Comp-off balance visible in leave page
+- Policy changes take effect from next calculation cycle
+- `npx tsc --noEmit` passes
+
+---
+
+### Sprint 35 — Slack / Teams Integration 💬
+**Branch:** `feature/sprint-35-slack-teams`
+**Status:** `TODO`
+**Goal:** Approval actions directly from Slack/Teams; daily digest notifications.
+
+#### Backend
+- [ ] **SL-001** `SlackIntegration` entity: `Id`, `WorkspaceId`, `AccessToken` (encrypted), `BotUserId`, `WebhookUrl`, `IsActive`
+- [ ] **SL-002** EF migration `Sprint35_Integrations`
+- [ ] **SL-003** `POST /api/v1/integrations/slack/oauth` — handles Slack OAuth callback; stores token
+- [ ] **SL-004** `POST /api/v1/integrations/slack/actions` — handles Slack interactive payload (approve/reject buttons)
+- [ ] **SL-005** `SlackNotificationService` — sends Block Kit messages: timesheet submitted (with Approve/Reject buttons for managers), leave approved (for employees)
+- [ ] **SL-006** Background job: daily digest at 9am per user timezone — sends pending approvals summary to manager's Slack DM
+- [ ] **SL-007** Same pattern for Microsoft Teams (`TeamsIntegration`, Adaptive Cards, webhook-based)
+
+#### Frontend
+- [ ] **SL-008** `Integrations.tsx` — admin page (`/integrations` route): cards for Slack and Teams, each with "Connect" button and status (Connected/Not connected)
+- [ ] **SL-009** Slack card: "Connect with Slack" OAuth button; when connected shows workspace name, bot user, disconnect button, and toggle for digest notifications
+- [ ] **SL-010** Teams card: same pattern with Teams branding
+- [ ] **SL-011** `Profile.tsx` — "Connected Apps" section: user can link their personal Slack account for direct message notifications
+- [ ] **SL-012** Add `"integrations"` to `View` type and admin nav in `AppShell`
+
+#### Acceptance criteria
+- Admin can connect Slack workspace via OAuth
+- Manager receives Slack message with Approve/Reject buttons when timesheet submitted
+- Clicking Approve in Slack calls `/api/v1/integrations/slack/actions` and updates status
+- `npx tsc --noEmit` passes
+
+---
+
+### Sprint 36 — AI Smart Fill 🤖
+**Branch:** `feature/sprint-36-ai-smart-fill`
+**Status:** `TODO`
+**Goal:** AI-powered timesheet pre-fill and anomaly explanation using Claude API.
+
+#### Backend
+- [ ] **AI-001** Install `Anthropic` NuGet (or use HTTP client) — store `ANTHROPIC_API_KEY` in environment / Key Vault
+- [ ] **AI-002** `AiService.cs` — `SuggestTimesheetEntries(userId, weekStart)`: fetches last 4 weeks of entries, builds prompt, calls Claude claude-sonnet-4-6, returns suggested entries JSON
+- [ ] **AI-003** `POST /api/v1/ai/suggest-entries` — calls `AiService`; returns array of suggested `{ projectId, taskCategoryId, hours, description }`
+- [ ] **AI-004** `POST /api/v1/ai/explain-anomaly` — given an anomaly alert ID, returns a plain-English explanation and suggested action
+
+#### Frontend
+- [ ] **AI-005** `Timesheets.tsx` — "Smart Fill" button in the weekly header: calls `/ai/suggest-entries`, shows suggestions in a modal with checkboxes, "Apply selected" adds them as draft entries
+- [ ] **AI-006** Suggestions modal: each row shows project, category, hours, description + editable hours field; "Apply All" and "Apply Selected" buttons
+- [ ] **AI-007** `Dashboard.tsx` — anomaly alert cards: add "Explain" button that calls `/ai/explain-anomaly` and shows explanation in a tooltip/popover
+- [ ] **AI-008** Loading states for AI calls (skeleton + "Thinking…" text)
+- [ ] **AI-009** Error handling: if AI call fails, `toast.error("Smart Fill unavailable", "Try again later.")`
+
+#### Acceptance criteria
+- Smart Fill button visible only when user has at least 2 weeks of history
+- Suggestions are pre-filled but user must confirm before entries are saved
+- AI anomaly explanation is plain English, under 100 words
+- `npx tsc --noEmit` passes
+
+---
+
+### Sprint 37 — Capacity Planning 📊
+**Branch:** `feature/sprint-37-capacity-planning`
+**Status:** `TODO`
+**Goal:** Team workload heatmap and project allocation view for managers.
+
+#### Backend
+- [ ] **CP-001** `GET /api/v1/capacity/team?weekStart=&weeks=4` — returns per-user, per-week allocated hours vs available hours
+- [ ] **CP-002** `GET /api/v1/capacity/projects?month=` — returns per-project hours breakdown across team
+- [ ] **CP-003** `GET /api/v1/capacity/overallocated` — returns users with allocated > 100% for current/next week
+
+#### Frontend
+- [ ] **CP-004** Add `"capacity"` to `View` type; route `/capacity` (manager + admin)
+- [ ] **CP-005** `CapacityPlanning.tsx` — two-tab page: "Team Heatmap" + "Project Allocation"
+- [ ] **CP-006** Team Heatmap tab: grid of users × weeks; each cell is colour-coded: green (<80%), amber (80-100%), red (>100%); hover shows hours detail
+- [ ] **CP-007** Project Allocation tab: horizontal stacked bar per project — allocated hours vs budget
+- [ ] **CP-008** Overallocation banner: if any user is overallocated next week, show warning banner at top with names
+- [ ] **CP-009** Week navigator: prev/next week controls; default to current week
+
+#### Acceptance criteria
+- Heatmap renders correctly with colour coding
+- Clicking a cell shows a popover with the user's entries for that week
+- `npx tsc --noEmit` passes
+
+---
+
+### Sprint 38 — GDPR / Compliance Toolkit 🔒
+**Branch:** `feature/sprint-38-gdpr`
+**Status:** `TODO`
+**Goal:** Data subject rights, consent logging, and retention policies for EU compliance.
+
+#### Backend
+- [ ] **GD-001** `DataExportRequest` entity: `Id`, `UserId`, `RequestedAt`, `CompletedAt`, `DownloadUrl`
+- [ ] **GD-002** EF migration `Sprint38_GdprEntities`
+- [ ] **GD-003** `POST /api/v1/privacy/export-request` — queues a data export job for the requesting user
+- [ ] **GD-004** Background job: generates JSON/CSV export of all user data (timesheets, leave, profile), stores as downloadable file, notifies user
+- [ ] **GD-005** `POST /api/v1/privacy/delete-account` — anonymises all user PII (name → "Deleted User", email → `deleted-{id}@anon.local`); keeps aggregate data for reports
+- [ ] **GD-006** `ConsentLog` entity: `UserId`, `ConsentType`, `Granted` (bool), `Timestamp`, `IpAddress`
+- [ ] **GD-007** `POST /api/v1/privacy/consent` — logs consent grant/revoke
+- [ ] **GD-008** `GET /api/v1/admin/retention-policy` / `PUT` — configure how long to keep data per type (timesheets: 7 years, logs: 1 year, etc.)
+- [ ] **GD-009** Retention enforcement background job: purge records older than policy
+
+#### Frontend
+- [ ] **GD-010** `Profile.tsx` — "Privacy & Data" section: "Download my data" button (calls export request, shows `toast.info("Export queued. You'll receive a notification when ready.")`), "Delete my account" (uses `useConfirm()` with danger variant)
+- [ ] **GD-011** Cookie/consent banner: shown on first visit (before login); stores consent in localStorage + logs to backend on login
+- [ ] **GD-012** Admin — `RetentionPolicy.tsx` panel under Settings: configure retention periods per data type with number inputs + "Save" button
+- [ ] **GD-013** Admin — audit log viewer: searchable, paginated table of `AuditLog` entries (already exists in backend)
+
+#### Acceptance criteria
+- Data export request creates a downloadable file within 60 seconds (background job)
+- Account deletion anonymises PII but retains aggregate report data
+- Consent banner shown once; not shown again after acceptance
+- `npx tsc --noEmit` passes
+
+---
+
+### Sprint 39 — White-label & Theming 🎨
+**Branch:** `feature/sprint-39-white-label`
+**Status:** `TODO`
+**Goal:** Organisations can upload their logo, set brand colours, and use a custom domain.
+
+#### Backend
+- [ ] **WL-001** `TenantSettings` entity: `Id`, `TenantId`, `LogoUrl`, `PrimaryColor` (hex), `AppName`, `CustomDomain` (nullable), `FaviconUrl`
+- [ ] **WL-002** EF migration `Sprint39_TenantSettings`
+- [ ] **WL-003** `GET /api/v1/tenant/settings` — public endpoint (no auth) used at app load to fetch branding
+- [ ] **WL-004** `PUT /api/v1/tenant/settings` — admin only; accepts `multipart/form-data` for logo upload
+- [ ] **WL-005** Logo stored in `wwwroot/uploads/` (or blob storage); resized to max 200×60px on upload
+
+#### Frontend
+- [ ] **WL-006** `useTenantSettings` hook — fetches `/tenant/settings` once on app load; stores in context
+- [ ] **WL-007** `TenantSettingsProvider.tsx` — context; injects `--brand-primary` CSS variable override on `<html>` when `primaryColor` is set
+- [ ] **WL-008** `AppShell.tsx` — replace hardcoded "T" logo with `<img src={tenantSettings.logoUrl} />` if set; fallback to "T" monogram
+- [ ] **WL-009** `index.html` — title and favicon updated dynamically via `document.title = tenantSettings.appName`
+- [ ] **WL-010** Admin — `TenantBranding.tsx` page under Settings: logo upload (drag-and-drop), colour picker for primary colour (live preview), app name input, custom domain input
+- [ ] **WL-011** Live preview panel: shows the sidebar + topbar with the selected branding before saving
+
+#### Acceptance criteria
+- Logo appears in sidebar within 1 second of page load
+- Primary colour override immediately updates all brand-colour elements (buttons, active states, badges)
+- Custom domain config is stored but actual DNS routing is out of scope for this sprint
+- `npx tsc --noEmit` passes
+
+---
+
+## Sprint Delivery Order (Full Roadmap)
+
+| # | Sprint | Status | Branch |
+|---|--------|--------|--------|
+| 1–12 | Foundation + CQRS + Core Features | ✅ DONE | merged to master |
+| 13 | User Profile | ✅ DONE | merged |
+| 14 | Bulk Submit | ✅ DONE | merged |
+| 15 | Team Status | ✅ DONE | merged |
+| 16 | Task Timer | ✅ DONE | merged |
+| 17 | Project Budget Burn | ✅ DONE | merged |
+| 18 | Entry Templates | ✅ DONE | merged |
+| 19 | Leave Team Calendar | ✅ DONE | merged |
+| 20 | Anomaly Alerts | ✅ DONE | merged |
+| 21 | Saved Reports | ✅ DONE | merged |
+| 22 | Approval Delegation | ✅ DONE | merged |
+| 23 | Command Palette | ✅ DONE | merged |
+| 24 | Mobile PWA | ✅ DONE | merged |
+| 25 | Dark Mode | ✅ DONE | merged |
+| 26 | UX Foundation (skeletons, toasts, empty states, error boundaries) | ✅ DONE | merged |
+| **27** | **Multi-Timezone** | 🔴 **NEXT** | `feature/sprint-27-multi-timezone` |
+| 28 | Onboarding Flow | TODO | `feature/sprint-28-onboarding` |
+| 29 | Notification Centre 2.0 | TODO | `feature/sprint-29-notification-centre` |
+| 30 | SignalR Real-time | TODO | `feature/sprint-30-signalr-realtime` |
+| 31 | Billing & Subscription | TODO | `feature/sprint-31-billing` |
+| 32 | SSO / SAML | TODO | `feature/sprint-32-sso` |
+| 33 | Public API + Webhooks | TODO | `feature/sprint-33-public-api` |
+| 34 | Overtime & Comp-off Rules | TODO | `feature/sprint-34-overtime-rules` |
+| 35 | Slack / Teams Integration | TODO | `feature/sprint-35-slack-teams` |
+| 36 | AI Smart Fill | TODO | `feature/sprint-36-ai-smart-fill` |
+| 37 | Capacity Planning | TODO | `feature/sprint-37-capacity-planning` |
+| 38 | GDPR / Compliance Toolkit | TODO | `feature/sprint-38-gdpr` |
+| 39 | White-label & Theming | TODO | `feature/sprint-39-white-label` |
+
+---
+
+## Agent Quickstart Guide
+
+Any AI agent picking up a sprint task should follow this sequence:
+
+```
+1. git checkout master && git pull origin master
+2. git checkout -b feature/sprint-<N>-<slug>
+3. Read this file for the sprint's full task list
+4. Read relevant existing files before modifying them
+5. Implement backend tasks first (entity → migration → controller)
+6. Implement frontend tasks (hook → component → page → wire into App.tsx/AppShell)
+7. Use existing patterns:
+   - toast.success/error/warning/info via useToast()
+   - useConfirm() for destructive actions
+   - SkeletonPage for loading states
+   - EmptyState presets for empty lists
+   - ErrorBoundary already wraps all routes
+8. cd apps/web && npx tsc --noEmit   ← must pass before commit
+9. git add <specific files> && git commit -m "feat(sprint-N): ..."
+10. git push origin feature/sprint-<N>-<slug>
+```
+
+### Key file locations
+| What | Where |
+|------|-------|
+| Frontend entry | `apps/web/src/App.tsx` |
+| Design tokens | `apps/web/src/styles/design-system.css` |
+| Route views enum | `apps/web/src/types.ts` |
+| AppShell nav items | `apps/web/src/components/AppShell.tsx` (NAV_ITEMS array) |
+| API client | `apps/web/src/api/client.ts` |
+| Toast hook | `apps/web/src/contexts/ToastContext.tsx` |
+| Confirm hook | `apps/web/src/components/ConfirmDialog.tsx` |
+| Skeleton components | `apps/web/src/components/Skeleton.tsx` |
+| Empty states | `apps/web/src/components/EmptyState.tsx` |
+| Backend controllers | `apps/api/Controllers/` |
+| Domain entities | `src/TimeSheet.Domain/Entities/` |
+| EF DbContext | `src/TimeSheet.Infrastructure/Persistence/TimeSheetDbContext.cs` |
+| EF migrations dir | `src/TimeSheet.Infrastructure/Persistence/Migrations/` |
+| EF migration cmd | `dotnet ef migrations add <Name> --project src/TimeSheet.Infrastructure --startup-project apps/api` |
+
+### Adding a new page (standard pattern)
+1. Add view key to `type View` in `apps/web/src/types.ts`
+2. Add entry to `VIEW_PATHS` and `NAV_ITEMS` (with group: main/manager/admin) in `AppShell.tsx`
+3. Add `<Route>` wrapped in `<ErrorBoundary>` in `App.tsx`
+4. Create `apps/web/src/components/YourPage.tsx` with skeleton + empty state
+5. Restrict access in `hasViewAccess()` in `App.tsx` if needed
+
+---
+
+## Initial Issue Creation Template
 Use this for each task when opening tracker issues.
 
 ```md

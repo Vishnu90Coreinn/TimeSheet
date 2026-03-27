@@ -664,6 +664,12 @@ export function Timesheets() {
   const weekExpectedMins = weekData?.weekExpectedMinutes ?? 0;
   const weekAttendanceMins = weekData?.weekAttendanceNetMinutes ?? 0;
   const weekOvertime = weekTotalMins - weekExpectedMins;
+
+  // Build a map from workDate -> WeekDayMeta for the strip
+  const weekDayMap = new Map<string, WeekDayMeta>(
+    (weekData?.days ?? []).map((d) => [d.workDate, d])
+  );
+
   // Deficit is "alarming" only after the last expected workday has passed
   const lastExpectedDayPassed = (() => {
     const today = todayIso();
@@ -673,11 +679,6 @@ export function Timesheets() {
     });
     return lastWorkDay ? today > lastWorkDay : false;
   })();
-
-  // Build a map from workDate -> WeekDayMeta for the strip
-  const weekDayMap = new Map<string, WeekDayMeta>(
-    (weekData?.days ?? []).map((d) => [d.workDate, d])
-  );
 
   // Count days with draft status + entries for "Submit Week" button enablement
   const submittableCount = (weekData?.days ?? []).filter(d =>

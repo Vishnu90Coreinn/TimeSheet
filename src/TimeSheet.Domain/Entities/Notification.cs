@@ -9,6 +9,8 @@ public class Notification
     public User User { get; set; } = null!;
     public string Title { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
+    public string? GroupKey { get; set; }
+    public string? ActionUrl { get; set; }
     public bool IsRead { get; set; }
     public NotificationType Type { get; set; }
     public DateTime CreatedAtUtc { get; set; }

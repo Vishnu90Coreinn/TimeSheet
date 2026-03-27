@@ -576,28 +576,28 @@ export function Profile({ onBack }: { onBack: () => void }) {
                   <div className="flex flex-col gap-2">
                     <ToggleRow
                       label="Timesheet approved"
-                      sub="When a manager approves your timesheet"
+                      sub="When a manager approves your timesheet."
                       checked={prefs.onApproval}
                       disabled={savingPrefs}
                       onChange={v => void savePrefs({ ...prefs, onApproval: v })}
                     />
                     <ToggleRow
                       label="Timesheet rejected"
-                      sub="When a manager rejects or pushes back"
+                      sub="When a manager rejects your timesheet or asks for changes."
                       checked={prefs.onRejection}
                       disabled={savingPrefs}
                       onChange={v => void savePrefs({ ...prefs, onRejection: v })}
                     />
                     <ToggleRow
-                      label="Leave status updates"
-                      sub="When your leave request is approved or rejected"
+                      label="Leave approved or rejected"
+                      sub="When your leave request is approved or rejected."
                       checked={prefs.onLeaveStatus}
                       disabled={savingPrefs}
                       onChange={v => void savePrefs({ ...prefs, onLeaveStatus: v })}
                     />
                     <ToggleRow
-                      label="Reminders"
-                      sub="Missing timesheet, pending approvals"
+                      label="Anomaly alerts"
+                      sub="Missing timesheets, unusual attendance patterns, and other reminders."
                       checked={prefs.onReminder}
                       disabled={savingPrefs}
                       onChange={v => void savePrefs({ ...prefs, onReminder: v })}

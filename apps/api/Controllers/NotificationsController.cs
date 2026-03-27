@@ -1,52 +1,80 @@
-using System.Security.Claims;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TimeSheet.Api.Dtos;
+using TimeSheet.Api.Extensions;
+using TimeSheet.Application.Notifications.Commands;
+using TimeSheet.Application.Notifications.Queries;
 
 namespace TimeSheet.Api.Controllers;
 
 [ApiController]
 [Authorize]
 [Route("api/v1/notifications")]
-public class NotificationsController(INotificationService notificationService, ILogger<NotificationsController> logger) : ControllerBase
+public class NotificationsController(ISender mediator, ILogger<NotificationsController> logger) : ControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> GetUnread()
+    public async Task<IActionResult> Get([FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     {
-        var userId = GetUserId();
-        if (userId is null) return Unauthorized();
+        var result = await mediator.Send(new GetNotificationsQuery(page, pageSize), ct);
+        if (!result.IsSuccess) return result.ToActionResult();
 
-        var notifications = await notificationService.GetUnreadAsync(userId.Value);
-        var response = notifications.Select(n => new NotificationResponse(n.Id, n.Title, n.Message, n.Type.ToString(), n.IsRead, n.CreatedAtUtc)).ToList();
-        return Ok(response);
+        var v = result.Value!;
+        return Ok(new NotificationPageResponse(
+            v.Items.Select(item => new NotificationResponse(
+                item.Id,
+                item.Title,
+                item.Message,
+                item.Type,
+                item.IsRead,
+                item.CreatedAtUtc,
+                item.GroupKey,
+                item.ActionUrl)).ToList(),
+            v.TotalUnread,
+            v.HasMore));
     }
 
     [HttpPut("{id:guid}/read")]
-    public async Task<IActionResult> MarkRead(Guid id)
+    public async Task<IActionResult> MarkRead(Guid id, CancellationToken ct)
     {
-        var userId = GetUserId();
-        if (userId is null) return Unauthorized();
+        var result = await mediator.Send(new MarkNotificationReadCommand(id), ct);
+        if (!result.IsSuccess) return result.ToActionResult();
 
-        await notificationService.MarkReadAsync(id, userId.Value);
-        logger.LogInformation("User {UserId} marked notification {NotificationId} as read", userId, id);
+        logger.LogInformation("Marked notification {NotificationId} as read", id);
+        return NoContent();
+    }
+
+    [HttpPost("mark-all-read")]
+    public async Task<IActionResult> MarkAllRead(CancellationToken ct)
+    {
+        var result = await mediator.Send(new MarkAllNotificationsReadCommand(), ct);
+        if (!result.IsSuccess) return result.ToActionResult();
+
+        logger.LogInformation("Marked all notifications as read");
         return NoContent();
     }
 
     [HttpPut("read-all")]
-    public async Task<IActionResult> MarkAllRead()
-    {
-        var userId = GetUserId();
-        if (userId is null) return Unauthorized();
+    public Task<IActionResult> MarkAllReadLegacy(CancellationToken ct) => MarkAllRead(ct);
 
-        await notificationService.MarkAllReadAsync(userId.Value);
-        logger.LogInformation("User {UserId} marked all notifications as read", userId);
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        var result = await mediator.Send(new DeleteNotificationCommand(id), ct);
+        if (!result.IsSuccess) return result.ToActionResult();
+
+        logger.LogInformation("Deleted notification {NotificationId}", id);
         return NoContent();
     }
 
-    private Guid? GetUserId()
+    [HttpDelete]
+    public async Task<IActionResult> Clear(CancellationToken ct)
     {
-        var sub = User.FindFirstValue(ClaimTypes.NameIdentifier)
-                  ?? User.FindFirstValue(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub);
-        return Guid.TryParse(sub, out var id) ? id : null;
+        var result = await mediator.Send(new ClearNotificationsCommand(), ct);
+        if (!result.IsSuccess) return result.ToActionResult();
+
+        logger.LogInformation("Cleared notifications for current user");
+        return NoContent();
     }
+
 }

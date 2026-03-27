@@ -172,9 +172,9 @@ public class OnboardingIntegrationTests : IClassFixture<CustomWebApplicationFact
         Assert.True(payload.HasAppliedLeave);
         Assert.True(payload.HasSetTimezone);
         Assert.True(payload.HasSetNotificationPrefs);
-        Assert.False(payload.AdminHasProject);
-        Assert.False(payload.AdminHasLeavePolicy);
-        Assert.False(payload.AdminHasHoliday);
+        Assert.True(payload.AdminHasProject);
+        Assert.True(payload.AdminHasLeavePolicy);
+        Assert.True(payload.AdminHasHoliday);
         Assert.True(payload.AdminHasUser);
     }
 

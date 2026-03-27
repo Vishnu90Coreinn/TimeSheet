@@ -39,7 +39,7 @@ export type ReportKey = "attendance-summary" | "timesheet-summary" | "project-ef
 export type MyProfile = {
   id: string; username: string; displayName: string; email: string; employeeId: string; role: string;
   departmentName: string | null; workPolicyName: string | null; leavePolicyName: string | null; managerUsername: string | null;
-  avatarDataUrl: string | null;
+  avatarDataUrl: string | null; timeZoneId: string;
 };
 export type NotificationPreferences = {
   onApproval: boolean; onRejection: boolean; onLeaveStatus: boolean; onReminder: boolean;

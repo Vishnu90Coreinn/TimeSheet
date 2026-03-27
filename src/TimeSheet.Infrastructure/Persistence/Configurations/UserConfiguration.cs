@@ -18,6 +18,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(x => x.EmployeeId).HasMaxLength(50).IsRequired();
         builder.Property(x => x.PasswordHash).HasMaxLength(500).IsRequired();
         builder.Property(x => x.Role).HasMaxLength(30).IsRequired();
+        builder.Property(x => x.TimeZoneId).HasMaxLength(100).IsRequired().HasDefaultValue("UTC");
 
         builder.HasOne(x => x.Department)
             .WithMany()

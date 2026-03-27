@@ -11,6 +11,7 @@ import { EmptyTimesheets } from "./EmptyState";
 import { TimePickerInput } from "./TimePickerInput";
 import type { AttendanceSummary } from "./AttendanceWidget";
 import type { Project, TaskCategory, TimesheetDay, TimesheetEntry, WeekDayMeta, WeekSummary } from "../types";
+import { useTimezone } from "../hooks/useTimezone";
 
 /* ─── Constants ────────────────────────────────────────────────────────────── */
 const DAY_LABELS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
@@ -58,8 +59,8 @@ function parseUtcLocal(iso: string): Date {
   return new Date(iso);
 }
 
-function fmtTime(iso: string): string {
-  return parseUtcLocal(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+function fmtTime(iso: string, timeZoneId?: string): string {
+  return parseUtcLocal(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: timeZoneId });
 }
 
 function fmtElapsed(seconds: number): string {
@@ -164,6 +165,8 @@ function computeDurationFromTimes(start: string, end: string): string {
 export function Timesheets() {
   const toast = useToast();
 
+  const { timeZoneId } = useTimezone();
+  const toast = useToast();
   // Attendance state
   const [attendance, setAttendance] = useState<AttendanceSummary | null>(null);
   const [elapsed, setElapsed] = useState(0);
@@ -624,6 +627,28 @@ export function Timesheets() {
       setShowSaveTemplateModal(false);
       setSaveTemplateName("");
       toast.success("Template saved.");
+    } else {
+      const body = await r.json().catch(() => ({})) as { message?: string };
+      toast.error(body.message ?? "Failed to save template.");
+    }
+  }
+
+  /* ── Copy yesterday ──────────────────────────────────────────────────────── */
+  async function copyYesterday() {
+    const d = new Date(selectedDate + "T00:00:00");
+    d.setDate(d.getDate() - 1);
+    const prevDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const r = await apiFetch(`/timesheets/copy-day`, {
+      method: "POST",
+      body: JSON.stringify({ sourceDate: prevDate, targetDate: selectedDate }),
+    });
+    if (r.ok) {
+      const updated = await r.json() as TimesheetDay;
+      setDayData(updated);
+      void loadWeek(selectedDate);
+      toast.success("Yesterday's entries copied.");
+    } else {
+      const body = await r.json().catch(() => ({})) as { message?: string };
     } else {
       const body = await r.json().catch(() => ({})) as { message?: string };
       toast.error(body.message ?? "Failed to save template.");
@@ -1157,7 +1182,7 @@ export function Timesheets() {
                     {fmtElapsed(elapsed)}
                   </div>
                   <div className="text-[12px] text-text-secondary -mt-[6px]">
-                    since {attendance?.lastCheckInAtUtc ? fmtTime(attendance.lastCheckInAtUtc) : "—"}
+                    since {attendance?.lastCheckInAtUtc ? fmtTime(attendance.lastCheckInAtUtc, timeZoneId) : "—"}
                     &nbsp;&middot;&nbsp;{fmtMins(attendance?.netMinutes ?? 0)} today
                   </div>
                   <div className="flex gap-2">

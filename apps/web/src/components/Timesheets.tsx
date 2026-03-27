@@ -8,6 +8,7 @@ import { apiFetch } from "../api/client";
 import { useToast } from "../contexts/ToastContext";
 import { SkeletonPage } from "./Skeleton";
 import { EmptyTimesheets } from "./EmptyState";
+import { TimePickerInput } from "./TimePickerInput";
 import type { AttendanceSummary } from "./AttendanceWidget";
 import type { Project, TaskCategory, TimesheetDay, TimesheetEntry, WeekDayMeta, WeekSummary } from "../types";
 
@@ -907,26 +908,18 @@ export function Timesheets() {
                 </div>
               ) : (
                 <div className="flex gap-[10px] items-end flex-wrap">
-                  <div className="flex flex-col gap-1 w-[110px] shrink-0">
-                    <label className="text-[12px] font-semibold text-[var(--n-600,#4b5563)]">Start time</label>
-                    <input
-                      type="time"
-                      className="ts-form-input"
-                      value={form.startTime}
-                      onChange={(e) => setFormField({ startTime: e.target.value })}
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1 w-[110px] shrink-0">
-                    <label className="text-[12px] font-semibold text-[var(--n-600,#4b5563)]">End time</label>
-                    <input
-                      type="time"
-                      className="ts-form-input"
-                      value={form.endTime}
-                      onChange={(e) => setFormField({ endTime: e.target.value })}
-                    />
-                  </div>
-                  {form.startTime && form.endTime && (
-                    <div className="flex flex-col gap-1 pb-[2px]">
+                  <TimePickerInput
+                    label="Start time"
+                    value={form.startTime}
+                    onChange={(v) => setFormField({ startTime: v })}
+                  />
+                  <TimePickerInput
+                    label="End time"
+                    value={form.endTime}
+                    onChange={(v) => setFormField({ endTime: v })}
+                  />
+                  {form.startTime && form.endTime && form.durationHours && (
+                    <div className="flex flex-col gap-1 justify-end pb-[7px]">
                       <span className="text-[12px] font-semibold text-[#059669]">
                         = {form.durationHours}h
                       </span>

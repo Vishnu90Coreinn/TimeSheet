@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TimeSheet.Api.Dtos;
+using TimeSheet.Api.Utilities;
 using AppInterfaces = TimeSheet.Application.Common.Interfaces;
 
 namespace TimeSheet.Api.Controllers;
@@ -12,11 +13,6 @@ namespace TimeSheet.Api.Controllers;
 [Route("api/v1/profile")]
 public class ProfileController(TimeSheetDbContext dbContext, AppInterfaces.IPasswordHasher passwordHasher) : ControllerBase
 {
-    private static readonly HashSet<string> ValidTimeZoneIds = TimeZoneInfo
-        .GetSystemTimeZones()
-        .Select(tz => tz.Id)
-        .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
     private Guid? GetUserId()
     {
         var raw = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -52,7 +48,7 @@ public class ProfileController(TimeSheetDbContext dbContext, AppInterfaces.IPass
             user.LeavePolicy?.Name,
             user.Manager?.Username,
             user.AvatarDataUrl,
-            user.TimeZoneId
+            TimeZoneIdMapper.NormalizeForClient(user.TimeZoneId)
         ));
     }
 
@@ -76,8 +72,7 @@ public class ProfileController(TimeSheetDbContext dbContext, AppInterfaces.IPass
         user.Username = request.Username.Trim();
         user.DisplayName = request.DisplayName?.Trim() ?? string.Empty;
         user.Email = request.Email.Trim();
-        var requestedTimeZoneId = request.TimeZoneId.Trim();
-        if (!ValidTimeZoneIds.Contains(requestedTimeZoneId))
+        if (!TimeZoneIdMapper.TryNormalize(request.TimeZoneId, out var requestedTimeZoneId))
             return BadRequest(new { message = "Invalid timeZoneId." });
         user.TimeZoneId = requestedTimeZoneId;
 

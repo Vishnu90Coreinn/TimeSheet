@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TimeSheet.Api.Utilities;
 
 namespace TimeSheet.Api.Controllers;
 
@@ -15,9 +16,11 @@ public class TimezonesController : ControllerBase
             .GetSystemTimeZones()
             .Select(tz => new
             {
-                id = tz.Id,
+                id = TimeZoneIdMapper.NormalizeForClient(tz.Id),
                 displayName = tz.DisplayName
             })
+            .GroupBy(tz => tz.id)
+            .Select(group => group.First())
             .OrderBy(tz => tz.id)
             .ToList();
 

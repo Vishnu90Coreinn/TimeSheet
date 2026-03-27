@@ -1412,9 +1412,9 @@ if (!data.length) return <EmptyTimesheets onAdd={openForm} />;
 | 24 | Mobile PWA | ✅ DONE | merged |
 | 25 | Dark Mode | ✅ DONE | merged |
 | 26 | UX Foundation (skeletons, toasts, empty states, error boundaries) | ✅ DONE | merged |
-| **26-F** | **Timesheets UX Feedback Overhaul** | 🔴 **NEXT** | `feature/sprint-26-feedback-timesheets` |
-| 27 | Multi-Timezone | TODO | `feature/sprint-27-multi-timezone` |
-| 28 | Onboarding Flow | TODO | `feature/sprint-28-onboarding` |
+| **26-F** | **Timesheets UX Feedback Overhaul** | ✅ DONE | merged |
+| 27 | Multi-Timezone | ✅ DONE | merged |
+| 28 | Onboarding Flow | 🔴 NEXT | `feature/sprint-28-onboarding` |
 | 29 | Notification Centre 2.0 | TODO | `feature/sprint-29-notification-centre` |
 | 30 | SignalR Real-time | TODO | `feature/sprint-30-signalr-realtime` |
 | 31 | Billing & Subscription | TODO | `feature/sprint-31-billing` |

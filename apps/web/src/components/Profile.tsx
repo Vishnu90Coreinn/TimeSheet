@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { Eye, EyeOff, Lock, Camera } from "lucide-react";
 import { apiFetch } from "../api/client";
 import type { MyProfile, NotificationPreferences } from "../types";
+import { TimezoneSelect, type TimezoneOption } from "./TimezoneSelect";
 
 // ── Template types ─────────────────────────────────────────────────────────────
 interface TemplateEntryRow { projectId: string; categoryId: string; minutes: number; note: string; }
@@ -114,6 +115,8 @@ export function Profile({ onBack }: { onBack: () => void }) {
   const [username, setUsername]       = useState("");
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail]             = useState("");
+  const [timeZoneId, setTimeZoneId]   = useState("UTC");
+  const [timezones, setTimezones] = useState<TimezoneOption[]>([]);
   const [savingProfile, setSavingProfile] = useState(false);
 
   // Touched states for inline validation
@@ -154,7 +157,12 @@ export function Profile({ onBack }: { onBack: () => void }) {
         setUsername(d.username);
         setDisplayName(d.displayName ?? "");
         setEmail(d.email);
+        setTimeZoneId(d.timeZoneId ?? "UTC");
+        localStorage.setItem("timeZoneId", d.timeZoneId ?? "UTC");
       }
+    });
+    apiFetch("/timezones").then(async r => {
+      if (r.ok) setTimezones(await r.json() as TimezoneOption[]);
     });
     apiFetch("/profile/notification-preferences").then(async r => {
       if (r.ok) setPrefs(await r.json() as NotificationPreferences);
@@ -175,10 +183,11 @@ export function Profile({ onBack }: { onBack: () => void }) {
     setSavingProfile(true);
     const r = await apiFetch("/profile", {
       method: "PUT",
-      body: JSON.stringify({ username: username.trim(), displayName: displayName.trim(), email: email.trim() }),
+      body: JSON.stringify({ username: username.trim(), displayName: displayName.trim(), email: email.trim(), timeZoneId }),
     });
     if (r.ok || r.status === 204) {
-      setProfile(p => p ? { ...p, username: username.trim(), displayName: displayName.trim(), email: email.trim() } : p);
+      setProfile(p => p ? { ...p, username: username.trim(), displayName: displayName.trim(), email: email.trim(), timeZoneId } : p);
+      localStorage.setItem("timeZoneId", timeZoneId);
       showToast(true, "Profile updated successfully.");
     } else {
       const d = await r.json().catch(() => ({})) as { message?: string };
@@ -427,6 +436,15 @@ export function Profile({ onBack }: { onBack: () => void }) {
                       onBlur={() => setTouchedEmail(true)}
                     />
                     {emailError && <div className="text-[0.72rem] text-danger mt-[2px]">{emailError}</div>}
+                  </div>
+                  <div className="form-field">
+                    <label className="form-label">Timezone</label>
+                    <TimezoneSelect
+                      value={timeZoneId}
+                      options={timezones}
+                      onChange={setTimeZoneId}
+                      disabled={savingProfile || timezones.length === 0}
+                    />
                   </div>
                 </div>
 

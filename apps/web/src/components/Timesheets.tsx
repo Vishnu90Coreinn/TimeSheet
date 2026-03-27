@@ -9,6 +9,7 @@ import { SkeletonPage } from "./Skeleton";
 import { EmptyTimesheets } from "./EmptyState";
 import type { AttendanceSummary } from "./AttendanceWidget";
 import type { Project, TaskCategory, TimesheetDay, TimesheetEntry, WeekDayMeta, WeekSummary } from "../types";
+import { useTimezone } from "../hooks/useTimezone";
 
 /* ─── Constants ────────────────────────────────────────────────────────────── */
 const DAY_LABELS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
@@ -56,8 +57,8 @@ function parseUtcLocal(iso: string): Date {
   return new Date(iso);
 }
 
-function fmtTime(iso: string): string {
-  return parseUtcLocal(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+function fmtTime(iso: string, timeZoneId?: string): string {
+  return parseUtcLocal(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: timeZoneId });
 }
 
 function fmtElapsed(seconds: number): string {
@@ -160,6 +161,7 @@ function computeDurationFromTimes(start: string, end: string): string {
 
 /* ─── Component ─────────────────────────────────────────────────────────────── */
 export function Timesheets() {
+  const { timeZoneId } = useTimezone();
   // Attendance state
   const [attendance, setAttendance] = useState<AttendanceSummary | null>(null);
   const [elapsed, setElapsed] = useState(0);
@@ -1103,7 +1105,7 @@ export function Timesheets() {
                     {fmtElapsed(elapsed)}
                   </div>
                   <div className="text-[12px] text-text-secondary -mt-[6px]">
-                    since {attendance?.lastCheckInAtUtc ? fmtTime(attendance.lastCheckInAtUtc) : "—"}
+                    since {attendance?.lastCheckInAtUtc ? fmtTime(attendance.lastCheckInAtUtc, timeZoneId) : "—"}
                     &nbsp;&middot;&nbsp;{fmtMins(attendance?.netMinutes ?? 0)} today
                   </div>
                   <div className="flex gap-2">

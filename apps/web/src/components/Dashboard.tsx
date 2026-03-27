@@ -5,6 +5,7 @@ import { AttendanceWidget } from "./AttendanceWidget";
 import { useConfirm } from "../hooks/useConfirm";
 import { SkeletonPage } from "./Skeleton";
 import type { LeaveBalance, TeamLeaveEntry } from "../types";
+import { useTimezone } from "../hooks/useTimezone";
 
 interface DashboardProps { role: string; username: string; onNavigate?: (view: string) => void; }
 
@@ -52,10 +53,10 @@ function fmtMinutes(m: number): string {
   if (h === 0) return `${min}m`;
   return min === 0 ? `${h}h` : `${h}h ${min}m`;
 }
-function fmtTime(iso: string | null): string {
+function fmtTime(iso: string | null, timeZoneId?: string): string {
   if (!iso) return "—";
   const d = new Date(iso.endsWith("Z") || iso.includes("+") ? iso : iso + "Z");
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: timeZoneId });
 }
 function fmtDateHuman(iso: string | null | undefined): string {
   if (!iso) return "—";
@@ -562,13 +563,14 @@ function DashboardSkeleton() {
 }
 
 // ── Employee View ─────────────────────────────────────────────────────────────
-function EmployeeDashboard({ employee, week, leaveBalances, activeProjectCount, username, onNavigate }: {
+function EmployeeDashboard({ employee, week, leaveBalances, activeProjectCount, username, onNavigate, timeZoneId }: {
   employee: EmployeeData;
   week: WeekSummary;
   leaveBalances: LeaveBalance[];
   activeProjectCount: number;
   username: string;
   onNavigate?: (view: string) => void;
+  timeZoneId: string;
 }) {
   const { todaySession, todayTimesheet, projectEffort, monthlyComplianceTrend } = employee;
 
@@ -592,8 +594,8 @@ function EmployeeDashboard({ employee, week, leaveBalances, activeProjectCount, 
   }));
 
   const activities: Array<{ icon: string; iconBg: string; text: string; sub: string; ts: string; view?: string }> = [];
-  if (todaySession.checkedIn) activities.push({ icon: "✓", iconBg: "var(--success-light)", text: "Checked in", sub: `At ${fmtTime(todaySession.checkedIn)}`, ts: "Today" });
-  if (todaySession.checkedOut) activities.push({ icon: "○", iconBg: "var(--n-100)", text: "Checked out", sub: `At ${fmtTime(todaySession.checkedOut)}`, ts: "Today" });
+  if (todaySession.checkedIn) activities.push({ icon: "✓", iconBg: "var(--success-light)", text: "Checked in", sub: `At ${fmtTime(todaySession.checkedIn, timeZoneId)}`, ts: "Today" });
+  if (todaySession.checkedOut) activities.push({ icon: "○", iconBg: "var(--n-100)", text: "Checked out", sub: `At ${fmtTime(todaySession.checkedOut, timeZoneId)}`, ts: "Today" });
   activities.push({ icon: "◈", iconBg: "var(--brand-50)", text: `Timesheet: ${todayTimesheet.status}`, sub: todayTimesheet.enteredMinutes > 0 ? `${fmtMinutes(todayTimesheet.enteredMinutes)} entered today` : "No entries yet", ts: "Today", view: "timesheets" });
   projectEffort.slice(0, 2).forEach(r => {
     activities.push({ icon: "⏱", iconBg: "var(--info-light)", text: `Time on ${r.project}`, sub: `${fmtMinutes(r.minutes)} this week`, ts: "This week" });
@@ -1750,6 +1752,7 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
 interface EmpState { employee: EmployeeData; week: WeekSummary; leaveBalances: LeaveBalance[]; activeProjectCount: number; }
 
 export function Dashboard({ role, username, onNavigate }: DashboardProps) {
+  const { timeZoneId } = useTimezone();
   const [empState, setEmpState] = useState<EmpState | null>(null);
   const [mgrData, setMgrData] = useState<ManagerData | null>(null);
   const [adminData, setAdminData] = useState<AdminData | null>(null);
@@ -1812,7 +1815,7 @@ export function Dashboard({ role, username, onNavigate }: DashboardProps) {
 
   return (
     <section>
-      {empState && <EmployeeDashboard {...empState} username={username} onNavigate={handleNavigate} />}
+      {empState && <EmployeeDashboard {...empState} username={username} onNavigate={handleNavigate} timeZoneId={timeZoneId} />}
       {mgrData && <ManagerDashboard data={mgrData} username={username} onNavigate={handleNavigate} />}
       {adminData && <AdminDashboard data={adminData} username={username} onNavigate={handleNavigate} />}
     </section>

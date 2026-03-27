@@ -6,6 +6,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch } from "../api/client";
+import { useTimezone } from "../hooks/useTimezone";
 
 export interface AttendanceSummary {
   activeSessionId: string | null;
@@ -22,6 +23,7 @@ interface AttendanceWidgetProps {
 }
 
 export function AttendanceWidget({ onSummaryChange }: AttendanceWidgetProps) {
+  const { timeZoneId } = useTimezone();
   const [summary, setSummary] = useState<AttendanceSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -107,7 +109,7 @@ export function AttendanceWidget({ onSummaryChange }: AttendanceWidgetProps) {
       {isCheckedIn && summary?.lastCheckInAtUtc && (
         <div className="aw-timer-row">
           <div className="aw-check-time">
-            In at {formatTime(summary.lastCheckInAtUtc)}
+            In at {formatTime(summary.lastCheckInAtUtc, timeZoneId)}
           </div>
           <div className="aw-elapsed">
             ⏱ {formatElapsed(elapsed)}
@@ -117,7 +119,7 @@ export function AttendanceWidget({ onSummaryChange }: AttendanceWidgetProps) {
 
       {!isCheckedIn && summary?.lastCheckOutAtUtc && (
         <div className="aw-check-time">
-          Checked out at {formatTime(summary.lastCheckOutAtUtc)}
+          Checked out at {formatTime(summary.lastCheckOutAtUtc, timeZoneId)}
         </div>
       )}
 
@@ -166,8 +168,8 @@ function parseUtc(iso: string): Date {
   return new Date(iso);
 }
 
-function formatTime(iso: string) {
-  return parseUtc(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+function formatTime(iso: string, timeZoneId?: string) {
+  return parseUtc(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: timeZoneId });
 }
 
 function formatElapsed(seconds: number) {

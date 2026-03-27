@@ -112,10 +112,7 @@ export function App() {
   return (
     <ThemeProvider>
       <AppRoutes />
-    </ThemeProvider>
-    <>
-      <AppRoutes />
       <InstallPrompt />
-    </>
+    </ThemeProvider>
   );
 }

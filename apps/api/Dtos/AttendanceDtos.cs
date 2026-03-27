@@ -42,3 +42,9 @@ public record SessionHistoryResponse(
     string Status,
     bool HasAttendanceException,
     IReadOnlyCollection<BreakEntryResponse> Breaks);
+
+public record WorkSessionDto(
+    Guid Id,
+    DateTime CheckInAtUtc,
+    DateTime? CheckOutAtUtc,
+    int? DurationMinutes);

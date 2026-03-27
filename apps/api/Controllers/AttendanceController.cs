@@ -283,6 +283,28 @@ public class AttendanceController(TimeSheetDbContext dbContext, IAttendanceCalcu
         return Ok(new { fromDate = start, toDate = end, totalBreakMinutes, daysWithBreaks });
     }
 
+    [HttpGet("sessions/today")]
+    public async Task<ActionResult<IEnumerable<WorkSessionDto>>> GetTodaySessions()
+    {
+        var userId = TryGetUserId();
+        if (userId is null) return Unauthorized();
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var sessions = await dbContext.WorkSessions.AsNoTracking()
+            .Where(s => s.UserId == userId && s.WorkDate == today)
+            .OrderBy(s => s.CheckInAtUtc)
+            .Select(s => new WorkSessionDto(
+                s.Id,
+                s.CheckInAtUtc,
+                s.CheckOutAtUtc,
+                s.CheckOutAtUtc.HasValue
+                    ? (int?)(int)(s.CheckOutAtUtc.Value - s.CheckInAtUtc).TotalMinutes
+                    : null))
+            .ToListAsync();
+
+        return Ok(sessions);
+    }
+
     private async Task<AttendanceSummaryResponse> BuildSummary(Guid userId, DateOnly workDate)
     {
         await FlagMissingCheckoutSessions(userId, workDate);

@@ -1,7 +1,7 @@
 /**
- * Login.tsx — Pulse SaaS design v3.0
- * Left: gradient brand panel with features + testimonial
- * Right: clean sign-in form
+ * Login.tsx — Precision Atelier UI-2.0
+ * Left: dark brand panel (40%) with logo, features
+ * Right: clean centered form card (60%)
  */
 import { FormEvent, useState } from "react";
 import { API_BASE } from "../api/client";
@@ -15,6 +15,7 @@ export function Login({ onLogin }: LoginProps) {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword]     = useState("");
   const [rememberMe, setRememberMe] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError]           = useState("");
   const [loading, setLoading]       = useState(false);
 
@@ -53,134 +54,115 @@ export function Login({ onLogin }: LoginProps) {
   }
 
   return (
-    <>
-      {/* Background */}
-      <div className="lp-bg">
-        <div className="lp-pattern" />
-        <div className="lp-dots" />
+    <div className="lp-root">
 
-        <div className="lp-wrapper">
-          <div className="lp-card">
+      {/* ── Left panel (40%) ── */}
+      <div className="lp-left">
+        {/* Logo mark */}
+        <div className="lp-logo-wrap">
+          <span className="lp-logo-mark">T</span>
+          <span className="lp-logo-name">Temporal</span>
+        </div>
 
-            {/* ── Left panel ── */}
-            <div className="lp-left">
-              <div className="lp-left-pattern" />
-              <div className="lp-left-orb1" />
-              <div className="lp-left-orb2" />
+        {/* Tagline */}
+        <p className="lp-tagline">Precision time tracking for modern teams.</p>
 
-              {/* Brand */}
-              <div className="lp-brand">
-                <div className="lp-brand-icon">⏱</div>
-                <span className="lp-brand-name">TimeSheet</span>
-              </div>
+        {/* Feature list */}
+        <ul className="lp-features">
+          <li className="lp-feature">
+            <span className="material-symbols-outlined lp-feat-icon">schedule</span>
+            <span className="lp-feat-text">One-click time entry with smart suggestions</span>
+          </li>
+          <li className="lp-feature">
+            <span className="material-symbols-outlined lp-feat-icon">insert_chart</span>
+            <span className="lp-feat-text">Real-time project budget analytics</span>
+          </li>
+          <li className="lp-feature">
+            <span className="material-symbols-outlined lp-feat-icon">groups</span>
+            <span className="lp-feat-text">Multi-level team approval workflows</span>
+          </li>
+        </ul>
+      </div>
 
-              {/* Headline */}
-              <div className="lp-headline">
-                <h1>Time tracking<br /><span>that actually</span><br />works.</h1>
-                <p>Precise timesheet management, smart approvals, and team visibility — built for modern enterprises.</p>
-                <div className="lp-features">
-                  <div className="lp-feature"><div className="lp-feat-icon">⚡</div>One-click time entry with AI-suggested tasks</div>
-                  <div className="lp-feature"><div className="lp-feat-icon">✓</div>Multi-level approval workflows</div>
-                  <div className="lp-feature"><div className="lp-feat-icon">📊</div>Real-time project budget tracking</div>
-                  <div className="lp-feature"><div className="lp-feat-icon">🔒</div>Enterprise SSO &amp; SAML 2.0 ready</div>
-                </div>
-              </div>
-
-              {/* Testimonial */}
-              <div className="lp-testimonial">
-                <div className="lp-quote">"TimeSheet cut our timesheet processing time by 70%. Our entire team loves it."</div>
-                <div className="lp-author">
-                  <div className="lp-author-av">TS</div>
-                  Team Lead — Enterprise Workforce Management
-                </div>
-              </div>
-            </div>
-
-            {/* ── Right panel ── */}
-            <div className="lp-right">
-              <div className="lp-right-header">
-                <h2>Welcome back</h2>
-                <p>Sign in to your organization's workspace</p>
-              </div>
-
-              <form onSubmit={handleSubmit} noValidate>
-                {/* Username */}
-                <div className="lp-field">
-                  <label className="lp-label" htmlFor="lp-user">Username or Email</label>
-                  <div className="lp-input-wrap">
-                    <div className="lp-input-icon">
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                    </div>
-                    <input
-                      id="lp-user"
-                      type="text"
-                      className={`lp-input${error ? " lp-input--err" : ""}`}
-                      placeholder="admin or admin@timesheet.local"
-                      value={identifier}
-                      onChange={(e) => setIdentifier(e.target.value)}
-                      autoComplete="username"
-                    />
-                  </div>
-                </div>
-
-                {/* Password */}
-                <div className="lp-field">
-                  <div className="lp-label-row">
-                    <label className="lp-label" htmlFor="lp-pass">Password</label>
-                    <button type="button" className="lp-forgot" onClick={() => setError("Contact your admin to reset password.")}>
-                      Forgot password?
-                    </button>
-                  </div>
-                  <div className="lp-input-wrap">
-                    <div className="lp-input-icon">
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                    </div>
-                    <input
-                      id="lp-pass"
-                      type="password"
-                      className={`lp-input${error ? " lp-input--err" : ""}`}
-                      placeholder="Enter your password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      autoComplete="current-password"
-                    />
-                  </div>
-                </div>
-
-                {/* Remember me */}
-                <div className="lp-row2">
-                  <label className="lp-checkbox-label">
-                    <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="[accent-color:var(--brand-500)] cursor-pointer" />
-                    Keep me signed in
-                  </label>
-                </div>
-
-                {/* Error */}
-                {error && (
-                  <div className="lp-error" role="alert">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                    {error}
-                  </div>
-                )}
-
-                {/* Submit */}
-                <button type="submit" className="lp-submit" disabled={loading}>
-                  {loading ? <span className="lp-spinner" /> : "Sign in to TimeSheet →"}
-                </button>
-              </form>
-
-              {/* Trust bar */}
-              <div className="lp-trust">
-                <div className="lp-trust-item"><span>🔒</span> SOC 2 Type II</div>
-                <div className="lp-trust-item"><span>✓</span> GDPR Compliant</div>
-                <div className="lp-trust-item"><span>🛡</span> 256-bit SSL</div>
-              </div>
-            </div>
-
+      {/* ── Right panel (60%) ── */}
+      <div className="lp-right">
+        <div className="lp-card">
+          {/* Heading */}
+          <div className="lp-card-header">
+            <h1 className="lp-heading">Welcome back</h1>
+            <p className="lp-subtext">Sign in to your organization's workspace</p>
           </div>
+
+          <form onSubmit={handleSubmit} noValidate>
+            {/* Email / Username */}
+            <div className="lp-field">
+              <label className="lp-label" htmlFor="lp-user">Username or Email</label>
+              <input
+                id="lp-user"
+                type="text"
+                className="lp-input"
+                placeholder="admin or admin@timesheet.local"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                autoComplete="username"
+              />
+            </div>
+
+            {/* Password */}
+            <div className="lp-field">
+              <label className="lp-label" htmlFor="lp-pass">Password</label>
+              <div className="lp-pass-wrap">
+                <input
+                  id="lp-pass"
+                  type={showPassword ? "text" : "password"}
+                  className="lp-input lp-input--pass"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  className="lp-vis-toggle"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  onClick={() => setShowPassword((v) => !v)}
+                >
+                  <span className="material-symbols-outlined">
+                    {showPassword ? "visibility_off" : "visibility"}
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Remember me */}
+            <div className="lp-remember-row">
+              <label className="lp-checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  style={{ accentColor: "var(--primary)" }}
+                />
+                Keep me signed in
+              </label>
+            </div>
+
+            {/* Error */}
+            {error && (
+              <div className="lp-error" role="alert">
+                <span className="material-symbols-outlined lp-error-icon">error</span>
+                {error}
+              </div>
+            )}
+
+            {/* Submit */}
+            <button type="submit" className="lp-submit" disabled={loading}>
+              {loading ? <span className="lp-spinner" /> : "Sign In"}
+            </button>
+          </form>
         </div>
       </div>
-    </>
+
+    </div>
   );
 }
-

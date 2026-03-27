@@ -1286,3 +1286,175 @@ Sprints 21–25 remain deferred until CA migration is merged to master.
 - **Tailwind v4 CSS layers:** All custom CSS resets must stay inside `@layer base`.
 - **MediatR 12.x pipeline behavior signature:** `RequestHandlerDelegate<TResponse>` is a zero-arg delegate — call `next()` not `next(cancellationToken)`.
 - **CA branch policy:** All Clean Architecture work (Phases 1–6) stays on `feature/clean-architecture`. User tests manually and raises PR to master themselves.
+- **QuestPDF namespace gotchas:** `PageDescriptor` is in `QuestPDF.Fluent`, `PageSizes` is in `QuestPDF.Helpers`. All extension methods (Column, PaddingTop, AlignCenter, FontSize, etc.) require `using QuestPDF.Fluent;`. `table.Header()` takes a callback `Action<TableCellDescriptor>`, not a chained call. `Colors.Grey` has `Lighten1–5`/`Medium`/`Darken1–4` — there is no `Light`.
+- **QuestPDF vs ASP.NET conflict:** `container.Page()` conflicts with `UrlHelperExtensions.Page` from `Microsoft.AspNetCore.Mvc`. Fix: extract page body to a separate `private static void BuildPdfPage(QuestPDF.Fluent.PageDescriptor page, ...)` method.
+
+---
+
+## Session 27 — Sprint 21: Saved & Scheduled Reports + True Export (2026-03-26)
+
+### What Was Done
+
+#### Branch
+All Sprint 21 work on `feature/sprint-21-saved-reports`.
+
+#### TSK-RPT-008/009: True Excel and PDF export (ReportsController)
+- Added ClosedXML 0.102.3 and QuestPDF 2025.1.0 packages to both `TimeSheet.Api.csproj` and `TimeSheet.Infrastructure.csproj`
+- `ReportsController.ExportReport()`: replaced stub CSV-only response with real Excel (ClosedXML) and PDF (QuestPDF Community) generation
+  - `BuildCsv()` — streams RFC-4180 CSV via `StringBuilder`
+  - `BuildExcel()` — ClosedXML workbook with bold header row, auto-width columns, returns `.xlsx`
+  - `BuildPdf()` / `BuildPdfPage()` — QuestPDF Community; A4 Landscape, styled header + alternating-row table, page footer
+
+#### TSK-SVR-001–007: SavedReports CQRS backend
+**Domain:**
+- `SavedReport` entity (inherits `Entity`, `ScheduleType` enum, `RecipientEmailsJson`, `LastRunAt`, nav prop to `User`)
+- `ScheduleType` enum: `None=0`, `Weekly=1`, `Monthly=2`
+- `ISavedReportRepository`: `GetByUserAsync`, `GetByIdAsync`, `Add`, `Remove`
+
+**Application (CQRS):**
+- `GetSavedReportsQuery` + Handler — returns `IReadOnlyList<SavedReportDto>` for current user
+- `CreateSavedReportCommand` + Handler
+- `UpdateSavedReportCommand` + Handler — ownership check (`Forbidden` if not owner)
+- `DeleteSavedReportCommand` + Handler — ownership check
+
+**Infrastructure:**
+- `SavedReportRepository` (NotificationRepository pattern — plain `DbSet<SavedReport>` field)
+- `SavedReportConfiguration` — `SavedReports` table, index on `UserId`
+- `TimeSheetDbContext`: `public DbSet<SavedReport> SavedReports => Set<SavedReport>();`
+- `ReportSchedulerService` (`IHostedService`) — hourly background job, Weekly (matching DayOfWeek) and Monthly (1st of month) schedule logic, stub email delivery
+- EF migration: `20260326182503_Sprint21_SavedReports`
+- DI: `ISavedReportRepository → SavedReportRepository`, `ReportSchedulerService` hosted service
+
+**API:**
+- `SavedReportsController` — GET/POST/PUT/DELETE `/api/v1/reports/saved`
+- `SavedReportRequest` DTO added to `ReportDtos.cs`
+
+#### TSK-SVR-008–010: Saved Reports UI (Reports.tsx)
+- "Save Report" button in filter bar — opens Save/Edit modal
+- Save modal: name, schedule type (None/Weekly/Monthly), day of week (if Weekly), hour, recipient emails
+- "Manage Saved Reports" button — opens manage modal with list, edit, inline delete-confirm
+- `SavedReport`, `SavedReportPayload` TypeScript interfaces added to `types.ts`
+- Full CRUD wired to `/api/v1/reports/saved`
+
+### Result
+- **74/74 tests passing** (52 integration + 22 domain), **0 build errors**
+
+### Commits
+- `07bfaa5` — feat(sprint-21): Saved & Scheduled Reports + true Excel/PDF export
+
+---
+
+---
+
+## Session 28 — Sprint 22: Approval Delegation (2026-03-27)
+
+### What Was Done
+
+#### Branch
+All Sprint 22 work on `feature/sprint-22-approval-delegation`.
+
+#### TSK-DEL-001: Domain
+- `ApprovalDelegation` entity: `FromUserId`, `ToUserId`, `FromDate`, `ToDate`, `IsActive`, `CreatedAtUtc`
+- `IApprovalDelegationRepository`: GetActiveForUser, GetActiveDelegationsForDelegate, GetById, HasOverlap, Add
+- `ApprovalAction.DelegatedFromUserId` (nullable) — records when a delegate acted
+
+#### TSK-DEL-002–004: Application CQRS
+- `GetDelegationQuery` + Handler — returns current user's active outgoing delegation
+- `CreateDelegationCommand` + Handler — validates toUser is manager/admin, checks date overlap
+- `RevokeDelegationCommand` + Handler — ownership check, sets `IsActive = false`
+- `DelegationDto` record
+
+#### TSK-DEL-005: Modified GetPendingTimesheetsQueryHandler
+- Also fetches active delegations for current user as delegate
+- For each delegation, fetches pending timesheets of the `fromUser` (delegating manager)
+- Returns `PendingTimesheetItem` with `DelegatedFromUsername` set
+
+#### TSK-DEL-006: Modified Approve/Reject/PushBack handlers
+- If current user is not direct manager/admin, checks active delegations
+- If delegate match found, action is allowed and `DelegatedFromUserId` recorded in `ApprovalAction`
+
+#### Infrastructure
+- `ApprovalDelegationRepository` (plain DbSet pattern)
+- `ApprovalDelegationConfiguration` (EF config, FK to User×2, indexes)
+- `TimeSheetDbContext`: `ApprovalDelegations` DbSet
+- EF migration: `Sprint22_ApprovalDelegation`
+- DI registered
+
+#### API
+- `ApprovalsController`: GET/POST `delegation`, DELETE `delegation/{id}`
+- `CreateDelegationRequest` DTO
+
+#### TSK-DEL-007–009: Frontend
+- `Approvals.tsx`: Delegate Approvals modal (delegate-to select, date range, save/cancel), active delegation banner (shows when user is acting as delegate), "via [manager]" badge on each delegated item, Revoke inline button
+- `types.ts`: `ApprovalDelegation` interface added
+
+### Result
+- **74/74 tests passing**, **0 build errors**
+
+### Commits
+- `af2c41a` — feat(sprint-22): Approval Delegation — delegate, revoke, enforce in actions
+
+---
+
+## Pending For Next Session
+
+> Last updated: Session 28 (2026-03-27).
+
+### Sprint 22 — complete on `feature/sprint-22-approval-delegation`
+All Sprint 22 tasks are done. Branch is ready to raise a PR to master.
+
+**To merge:**
+1. User smoke-tests: create delegation, see delegated items with "via" badge, approve as delegate, revoke
+2. User raises PR: `feature/sprint-22-approval-delegation` → `master`
+3. User reviews and merges manually
+
+### Sprint Roadmap
+| Sprint | Feature |
+|--------|---------|
+| 23 | Command Palette |
+| 24 | Mobile PWA |
+| 25 | Dark Mode |
+
+---
+
+## Session 29 — Sprint 23: Command Palette (2026-03-27)
+
+### What Was Done
+
+#### Branch
+`feature/sprint-23-command-palette`
+
+#### TSK-CMD-001–007: Command Palette (pure frontend, no backend)
+
+**New files:**
+- `CommandPalette.tsx` — Cmd+K overlay; search input; grouped Navigate/Actions commands; role-aware (admin: New User, New Project; manager/admin: Bulk Approve); ↑/↓ keyboard navigation; Enter to execute; Esc to close; footer hint bar
+- `ShortcutsPanel.tsx` — `?` key opens shortcut reference showing all 9 shortcuts with Global/view-name scope labels
+
+**Modified files:**
+- `AppShell.tsx` — Search button in topbar (`⌘K` hint); global keydown handler: Cmd+K (palette), `?` (shortcuts), `N`/`S` (timesheets only), `A` (approvals only), `/` (focus search); mounts `<CommandPalette>` and `<ShortcutsPanel>`
+- `Timesheets.tsx` — listens `cmd:new-entry` → open entry form, `cmd:submit-week` → open submit modal
+- `Approvals.tsx` — listens `cmd:bulk-approve` → trigger bulk approve when items selected
+
+### Result
+- 0 TypeScript errors, 0 build errors
+
+### Commits
+- `585e20b` — feat(sprint-23): Command Palette + keyboard shortcuts
+
+---
+
+## Pending For Next Session
+
+> Last updated: Session 29 (2026-03-27).
+
+### Sprint 23 — complete on `feature/sprint-23-command-palette`
+
+**To merge:**
+1. User smoke-tests: Cmd+K opens palette, ?, N/S/A shortcuts, navigate between views
+2. User raises PR: `feature/sprint-23-command-palette` → `master`
+
+### Sprint Roadmap
+| Sprint | Feature |
+|--------|---------|
+| 24 | Mobile PWA |
+| 25 | Dark Mode |

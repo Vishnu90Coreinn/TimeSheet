@@ -613,6 +613,8 @@ function EmployeeDashboard({ employee, week, leaveBalances, activeProjectCount, 
         </div>
       </div>
 
+      <AttendanceWidget />
+
       <div className="stat-grid-4">
         <div className="stat-card">
           <div className="stat-card-top">
@@ -735,10 +737,6 @@ function EmployeeDashboard({ employee, week, leaveBalances, activeProjectCount, 
               ))}
             </div>
           </div>
-        </div>
-
-        <div className="flex flex-col">
-          <AttendanceWidget />
         </div>
 
         <div className="card">
@@ -874,6 +872,8 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
           </button>
         </div>
       </div>
+
+      <AttendanceWidget />
 
       {/* M4 — Data freshness indicator */}
       <div className="dash-freshness-bar">

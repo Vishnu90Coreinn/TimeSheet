@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Navigate, Route, Routes, useNavigate, useLocation } from "react-router-dom";
 import { AppShell } from "./components/AppShell";
+import { InstallPrompt } from "./components/InstallPrompt";
 import { Approvals } from "./components/Approvals";
 import { TeamStatus } from "./components/TeamStatus";
 import { Profile } from "./components/Profile";
@@ -107,5 +108,10 @@ function AppRoutes() {
 }
 
 export function App() {
-  return <AppRoutes />;
+  return (
+    <>
+      <AppRoutes />
+      <InstallPrompt />
+    </>
+  );
 }

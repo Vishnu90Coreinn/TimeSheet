@@ -1233,19 +1233,19 @@ if (!data.length) return <EmptyTimesheets onAdd={openForm} />;
 **Goal:** Policy-driven overtime detection and automatic comp-off credit.
 
 #### Backend
-- [ ] **OT-001** `OvertimePolicy` entity: `Id`, `WorkPolicyId` (FK), `DailyOvertimeAfterHours` (decimal), `WeeklyOvertimeAfterHours` (decimal), `OvertimeMultiplier` (decimal, e.g. 1.5), `CompOffEnabled` (bool), `CompOffExpiryDays` (int)
-- [ ] **OT-002** EF migration `Sprint34_OvertimePolicy`
-- [ ] **OT-003** `OvertimeCalculationService` — given a user's week of `TimesheetEntry` rows, returns `{ regularHours, overtimeHours, compOffCredits }`
-- [ ] **OT-004** `CompOffBalance` entity: `UserId`, `Credits` (decimal), `ExpiresAt` (DateTime)
-- [ ] **OT-005** Background job: run weekly, calculate overtime for approved timesheets, credit comp-off balances
-- [ ] **OT-006** `GET /api/v1/overtime/summary?userId=&weekStart=` — returns overtime breakdown for a week
-- [ ] **OT-007** `GET /api/v1/leave/comp-off-balance` — returns current comp-off credits for user
+- [x] **OT-001** `OvertimePolicy` entity: `Id`, `WorkPolicyId` (FK), `DailyOvertimeAfterHours` (decimal), `WeeklyOvertimeAfterHours` (decimal), `OvertimeMultiplier` (decimal, e.g. 1.5), `CompOffEnabled` (bool), `CompOffExpiryDays` (int)
+- [x] **OT-002** EF migration `Sprint34_OvertimePolicy`
+- [x] **OT-003** `OvertimeCalculationService` — given a user's week of `TimesheetEntry` rows, returns `{ regularHours, overtimeHours, compOffCredits }`
+- [x] **OT-004** `CompOffBalance` entity: `UserId`, `Credits` (decimal), `ExpiresAt` (DateTime)
+- [x] **OT-005** Background job: run weekly, calculate overtime for approved timesheets, credit comp-off balances
+- [x] **OT-006** `GET /api/v1/overtime/summary?userId=&weekStart=` — returns overtime breakdown for a week
+- [x] **OT-007** `GET /api/v1/leave/comp-off-balance` — returns current comp-off credits for user
 
 #### Frontend
-- [ ] **OT-008** `WorkPolicies.tsx` — add "Overtime Rules" collapsible section inside each policy card: daily/weekly threshold inputs, multiplier input, comp-off toggle
-- [ ] **OT-009** `Timesheets.tsx` — weekly summary sidebar: add "Overtime" row when hours exceed policy threshold (highlight in amber)
-- [ ] **OT-010** `Leave.tsx` — add "Comp-off" as a leave type option; show available comp-off balance in the balance cards
-- [ ] **OT-011** `Dashboard.tsx` (manager view) — add "Overtime Hours" KPI card showing team overtime for current week
+- [x] **OT-008** `WorkPolicies.tsx` — add "Overtime Rules" collapsible section inside each policy card: daily/weekly threshold inputs, multiplier input, comp-off toggle
+- [x] **OT-009** `Timesheets.tsx` — weekly summary sidebar: add "Overtime" row when hours exceed policy threshold (highlight in amber)
+- [x] **OT-010** `Leave.tsx` — add "Comp-off" as a leave type option; show available comp-off balance in the balance cards
+- [x] **OT-011** `Dashboard.tsx` (manager view) — add "Overtime Hours" KPI card showing team overtime for current week
 
 #### Acceptance criteria
 - Overtime highlighted in timesheets when daily/weekly thresholds exceeded
@@ -1420,7 +1420,7 @@ if (!data.length) return <EmptyTimesheets onAdd={openForm} />;
 | 31 | Billing & Subscription | TODO | `feature/sprint-31-billing` |
 | 32 | SSO / SAML | TODO | `feature/sprint-32-sso` |
 | 33 | Public API + Webhooks | TODO | `feature/sprint-33-public-api` |
-| 34 | Overtime & Comp-off Rules | TODO | `feature/sprint-34-overtime-rules` |
+| 34 | Overtime & Comp-off Rules | DONE | `feature/sprint-34-overtime-rules` |
 | 35 | Slack / Teams Integration | TODO | `feature/sprint-35-slack-teams` |
 | 36 | AI Smart Fill | TODO | `feature/sprint-36-ai-smart-fill` |
 | 37 | Capacity Planning | TODO | `feature/sprint-37-capacity-planning` |

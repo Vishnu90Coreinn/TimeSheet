@@ -998,96 +998,50 @@ if (!data.length) return <EmptyTimesheets onAdd={openForm} />;
 
 ---
 
-### Sprint 26-Feedback — Timesheets UX Overhaul 🖊️
-**Branch:** `feature/sprint-26-feedback-timesheets`
-**Status:** `TODO`
-**Goal:** Address all UX issues identified in the Timesheets page audit. Fixes are contained to the frontend only — no backend changes required.
+### Sprint 26-Feedback — Timesheets UX Overhaul ✅ DONE
+**Branch:** `feature/sprint-26-feedback-timesheets` → **merged to master**
+**Commits:** `e9f36ff`, `5bf9c3c`, `238819a` · **PR:** #55 + #58 (conflict fix)
+**Status:** `DONE`
 
 > **Source:** UX Analysis: TimeSheet — Workforce Management (2026-03-27)
-> **Scope:** `apps/web/src/components/Timesheets.tsx` + `apps/web/src/styles/design-system.css` only.
-> **Note:** Issue 14 from the audit (Admin nav visibility) is a false positive — already role-gated in `App.tsx`.
+> **Note:** TSH-F-005 (sidebar description text) deferred — cards already visually distinct. TSH-F-012 (week start day) deferred — requires WorkPolicy backend field.
+
+- [x] **TSH-F-001** Consolidate entry points — `EmptyTimesheets` hidden when form is open; header `+ Add Entry` is sole primary CTA ✅
+- [x] **TSH-F-002** Smart Duration ↔ Start/End toggle — progressive disclosure with `showTimePicker` state; `TimePickerInput` component (HH:MM dropdowns with Clock icon) ✅
+- [x] **TSH-F-003** Contextualise deficit — amber + "in progress" mid-week; red only after last workday passes (`lastExpectedDayPassed`) ✅
+- [x] **TSH-F-004** Inline form vs empty state resolved — `EmptyTimesheets` conditionally rendered on `!showForm` ✅
+- [ ] **TSH-F-005** Separate Attendance/Timer descriptions — deferred (cards already distinct)
+- [x] **TSH-F-006** Submit Week promoted to `btn-primary` with live day-count badge ✅
+- [x] **TSH-F-007** Day card colour coding — amber (partial past), light-red (missed past) ✅
+- [x] **TSH-F-008** "Use Template" moved to empty-state discovery zone ✅
+- [x] **TSH-F-009** "Copy yesterday's entries" shortcut in empty state ✅
+- [x] **TSH-F-010** Locale-aware duration input (comma → period normalisation) ✅
+- [x] **TSH-F-011** Date format → `23 Mar – 29 Mar, 2026` ✅
+- [ ] **TSH-F-012** Configurable week start day — deferred (needs `WorkPolicy.weekStartDay` backend field)
 
 ---
 
-#### 🔴 Critical fixes
-
-- [ ] **TSH-F-001** **Consolidate entry points** — Remove the duplicate "Add entry" button from the empty state (replace with `EmptyTimesheets` preset which already has a single CTA). Visually distinguish the Task Timer as "Live Tracking" mode with a header label and separator, not as an entry creation tool. The header `+ Add Entry` button is the sole primary CTA.
-
-- [ ] **TSH-F-002** **Smart Duration ↔ Start/End toggle** — Replace the three always-visible fields (Duration, Start time, End time) with a toggle: `"Enter duration" | "Enter time range"`. Default to "Enter duration". When "Enter time range" is selected, show Start/End fields and auto-calculate Duration via the existing `computeDurationFromTimes()`. Show duration as read-only computed value. Add field-level validation: if duration is 0 or negative after calculation, show inline error "End time must be after start time".
-
-- [ ] **TSH-F-003** **Contextualise deficit display** — In the Week Summary panel, when `weekOvertime < 0` and today is not Friday/the last working day of the week, replace the bare deficit number with a projected label: show "−Xh Ym remaining" with a sub-label "Based on X days left this week". Only show a red/alarming colour on the final day of the work week or after the week has passed. Mid-week: use amber.
-
----
-
-#### 🟠 Significant fixes
-
-- [ ] **TSH-F-004** **Resolve inline form vs empty state contradiction** — When `showForm` is true but `dayEntries.length === 0`, hide the "No timesheet entries yet" empty state entirely. Add a clearly labelled drop zone / placeholder row below the day header: "Saved entries will appear here" (subtle dashed border, no icon) so the user can spatially anticipate where entries land after saving.
-
-- [ ] **TSH-F-005** **Separate Attendance and Task Timer panels** — In the right sidebar, wrap Check In/Out and the Task Timer in two distinct `card` containers with clear headers: "Attendance" (with a building/clock-in icon) and "Task Timer" (with a play icon). Add a one-line description under each header: "Track your arrival time" vs "Track time spent on a task". Current vertical stack with only a heading label is insufficient.
-
-- [ ] **TSH-F-006** **Promote Submit Timesheet action** — The submit week modal is fully built but the trigger is not prominent. Add a `Submit for Approval` button directly in the Week Summary card, styled as a primary button, visible only when `weekStatus === "draft"`. Show the status workflow inline: `Draft → Submitted → Approved` as a 3-step pill indicator above the button.
-
----
-
-#### 🟡 Moderate fixes
-
-- [ ] **TSH-F-007** **Day card colour coding — complete set** — Day cards currently turn green at ≥100% target. Add the missing states:
-  - **Amber** (`#f59e0b` bg tint) — partial: logged > 0 but < 100% target
-  - **Red tint** (`#fef2f2`) — missed: past day with 0 hours logged and it was a working day
-  - **Grey/muted** — rest day (already handled)
-  - Add a mini progress bar inside each day card (height: 3px, full width, colour matches state)
-
-- [ ] **TSH-F-008** **Relocate "Use Template" to discovery zone** — Move the "Use Template" button from the top-right header (where users look for export/admin actions) to inside the day card area, as a ghost button: `"Copy from last week"` shown only when the current day has no entries. Also keep it in the header but relabel as `Templates` with a bookmark icon.
-
-- [ ] **TSH-F-009** **Empty state onboarding nudge** — When `dayEntries.length === 0` and it is the user's first week (no entries in any prior week), show an enhanced empty state with 3 short tips: "① Pick a project  ② Log your hours  ③ Submit at week-end". For returning users with empty day, show a `"Copy yesterday's entries"` shortcut button that pre-fills the form with yesterday's entries.
-
----
-
-#### 🔵 Globalisation fixes
-
-- [ ] **TSH-F-010** **Locale-aware duration input** — The Duration field placeholder `e.g. 1.5` uses decimal notation. Detect `navigator.language` and adapt: for locales using comma decimals (e.g. `de`, `fr`, `es`, `pt`), accept both `.` and `,` as decimal separators by normalising the input on blur (`value.replace(",", ".")`). Update placeholder to `e.g. 1h 30m` which is unambiguous across all locales.
-
-- [ ] **TSH-F-011** **Unambiguous date format in week header** — Change `Week of Mar 23–Mar 29` to `23 Mar – 29 Mar, 2026` (day-first, full year). Update all `date.toLocaleDateString()` calls in Timesheets to use `{ day: "numeric", month: "short", year: "numeric" }` options. For day cards, show `Mon 23` instead of `MON` + `23` on separate lines.
-
-- [ ] **TSH-F-012** **Configurable week start day** — Add a `weekStartDay` field (`0` = Sunday, `1` = Monday) to the org's `WorkPolicy`. Default `1` (Monday, ISO standard). Read it from the `workPolicy` API response already fetched in Timesheets. Adjust the week strip render order accordingly. Show a note in `WorkPolicies.tsx` admin form: "Week start day affects Timesheets calendar view for all users".
-
----
-
-#### Acceptance criteria
-- `npx tsc --noEmit` passes
-- No regression on existing submit, timer, or template workflows
-- All 3 critical issues (TSH-F-001 to 003) resolved before merging
-- Tested on both light and dark mode
-
----
-
-### Sprint 27 — Multi-Timezone Support 🌍
-**Branch:** `feature/sprint-27-multi-timezone`
-**Status:** `TODO`
-**Goal:** Every user can set their local timezone; all time displays respect it. Foundation for global teams.
+### Sprint 27 — Multi-Timezone Support ✅ DONE
+**Branch:** `codex/review-project_tasks.md-for-phase27-details` → **merged to master**
+**Commits:** `1098ac7`, `b8effa8` (hydration fix) · **PRs:** #56, #57
+**Status:** `DONE`
 
 #### Backend
-- [ ] **TZ-001** Add `TimeZoneId` (string, IANA format e.g. `"Asia/Kolkata"`) to `User` entity in `src/TimeSheet.Domain/Entities/User.cs`
-- [ ] **TZ-002** EF migration `Sprint27_UserTimezone` — nullable column with default `"UTC"`
-- [ ] **TZ-003** `GET /api/v1/profile` — include `timeZoneId` in response DTO
-- [ ] **TZ-004** `PUT /api/v1/profile` — accept and save `timeZoneId`
-- [ ] **TZ-005** `GET /api/v1/timezones` — return list of all IANA timezone IDs with display names (use `TimeZoneInfo.GetSystemTimeZones()`)
-- [ ] **TZ-006** All datetime fields returned by API must include UTC offset or be explicitly UTC — audit `TimesheetsController`, `LeaveController`, `AttendanceController` response DTOs
+- [x] **TZ-001** `TimeZoneId` (IANA string) added to `User` entity ✅
+- [x] **TZ-002** EF migration `20260327120000_Sprint27_UserTimezone` ✅
+- [x] **TZ-003** `GET /api/v1/profile` includes `timeZoneId` ✅
+- [x] **TZ-004** `PUT /api/v1/profile` saves `timeZoneId` ✅
+- [x] **TZ-005** `GET /api/v1/timezones` returns IANA zones via `TimeZoneInfo.GetSystemTimeZones()` ✅
+- [ ] **TZ-006** DateTime UTC audit across all controllers — deferred to Sprint 27b
 
 #### Frontend
-- [ ] **TZ-007** `useTimezone` hook — reads user's `timeZoneId` from session; exposes `toLocal(utcDate)` and `toUtc(localDate)` helpers using `Intl.DateTimeFormat`
-- [ ] **TZ-008** `TimezoneSelect.tsx` — searchable dropdown of IANA zones; used in Profile settings
-- [ ] **TZ-009** Update `Profile.tsx` — add Timezone section with `TimezoneSelect`; save via `PUT /api/v1/profile`; show `toast.success()` on save
-- [ ] **TZ-010** Update `Timesheets.tsx` — display entry times in user's local timezone via `useTimezone`
-- [ ] **TZ-011** Update `AttendanceWidget.tsx` — show clock-in/out times in local timezone
-- [ ] **TZ-012** Update `Dashboard.tsx` — all time displays use `useTimezone`
-- [ ] **TZ-013** Topbar clock (optional): small live clock showing user's local time
-
-#### Acceptance criteria
-- User in `Asia/Kolkata` sees IST times; user in `America/New_York` sees EST/EDT times
-- Changing timezone in Profile immediately updates all displayed times
-- All API calls still send/receive UTC; conversion is client-side only
-- `npx tsc --noEmit` passes
+- [x] **TZ-007** `useTimezone` hook — `timeZoneId` from session, `toLocal()`/`toUtc()` helpers ✅
+- [x] **TZ-008** `TimezoneSelect.tsx` — searchable IANA zone dropdown ✅
+- [x] **TZ-009** `Profile.tsx` — Timezone section with `TimezoneSelect`, saved via PUT ✅
+- [x] **TZ-010** `Timesheets.tsx` — entry times display in local timezone ✅
+- [x] **TZ-011** `AttendanceWidget.tsx` — clock-in/out times in local timezone ✅
+- [x] **TZ-012** `Dashboard.tsx` — time displays use `useTimezone` ✅
+- [ ] **TZ-013** Topbar live clock — deferred (optional)
 
 ---
 

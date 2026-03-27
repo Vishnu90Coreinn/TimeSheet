@@ -164,9 +164,7 @@ function computeDurationFromTimes(start: string, end: string): string {
 /* ─── Component ─────────────────────────────────────────────────────────────── */
 export function Timesheets() {
   const toast = useToast();
-
   const { timeZoneId } = useTimezone();
-  const toast = useToast();
   // Attendance state
   const [attendance, setAttendance] = useState<AttendanceSummary | null>(null);
   const [elapsed, setElapsed] = useState(0);
@@ -627,28 +625,6 @@ export function Timesheets() {
       setShowSaveTemplateModal(false);
       setSaveTemplateName("");
       toast.success("Template saved.");
-    } else {
-      const body = await r.json().catch(() => ({})) as { message?: string };
-      toast.error(body.message ?? "Failed to save template.");
-    }
-  }
-
-  /* ── Copy yesterday ──────────────────────────────────────────────────────── */
-  async function copyYesterday() {
-    const d = new Date(selectedDate + "T00:00:00");
-    d.setDate(d.getDate() - 1);
-    const prevDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    const r = await apiFetch(`/timesheets/copy-day`, {
-      method: "POST",
-      body: JSON.stringify({ sourceDate: prevDate, targetDate: selectedDate }),
-    });
-    if (r.ok) {
-      const updated = await r.json() as TimesheetDay;
-      setDayData(updated);
-      void loadWeek(selectedDate);
-      toast.success("Yesterday's entries copied.");
-    } else {
-      const body = await r.json().catch(() => ({})) as { message?: string };
     } else {
       const body = await r.json().catch(() => ({})) as { message?: string };
       toast.error(body.message ?? "Failed to save template.");

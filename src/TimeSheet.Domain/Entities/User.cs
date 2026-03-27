@@ -11,6 +11,7 @@ public class User
     public string Role { get; set; } = "employee";
     public bool IsActive { get; set; } = true;
     public string? AvatarDataUrl { get; set; }
+    public string TimeZoneId { get; set; } = "UTC";
 
     public Guid? DepartmentId { get; set; }
     public Department? Department { get; set; }

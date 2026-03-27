@@ -12,6 +12,11 @@ namespace TimeSheet.Api.Controllers;
 [Route("api/v1/profile")]
 public class ProfileController(TimeSheetDbContext dbContext, AppInterfaces.IPasswordHasher passwordHasher) : ControllerBase
 {
+    private static readonly HashSet<string> ValidTimeZoneIds = TimeZoneInfo
+        .GetSystemTimeZones()
+        .Select(tz => tz.Id)
+        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
     private Guid? GetUserId()
     {
         var raw = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -46,7 +51,8 @@ public class ProfileController(TimeSheetDbContext dbContext, AppInterfaces.IPass
             user.WorkPolicy?.Name,
             user.LeavePolicy?.Name,
             user.Manager?.Username,
-            user.AvatarDataUrl
+            user.AvatarDataUrl,
+            user.TimeZoneId
         ));
     }
 
@@ -70,6 +76,10 @@ public class ProfileController(TimeSheetDbContext dbContext, AppInterfaces.IPass
         user.Username = request.Username.Trim();
         user.DisplayName = request.DisplayName?.Trim() ?? string.Empty;
         user.Email = request.Email.Trim();
+        var requestedTimeZoneId = request.TimeZoneId.Trim();
+        if (!ValidTimeZoneIds.Contains(requestedTimeZoneId))
+            return BadRequest(new { message = "Invalid timeZoneId." });
+        user.TimeZoneId = requestedTimeZoneId;
 
         await dbContext.SaveChangesAsync();
         return NoContent();

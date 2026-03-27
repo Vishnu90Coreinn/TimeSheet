@@ -57,13 +57,15 @@ public record MyProfileResponse(
     string? WorkPolicyName,
     string? LeavePolicyName,
     string? ManagerUsername,
-    string? AvatarDataUrl
+    string? AvatarDataUrl,
+    string TimeZoneId
 );
 
 public record UpdateMyProfileRequest(
     [Required][MaxLength(100)] string Username,
     [MaxLength(150)] string DisplayName,
-    [Required][EmailAddress][MaxLength(200)] string Email
+    [Required][EmailAddress][MaxLength(200)] string Email,
+    [Required][MaxLength(100)] string TimeZoneId
 );
 
 public record UpdateAvatarRequest(

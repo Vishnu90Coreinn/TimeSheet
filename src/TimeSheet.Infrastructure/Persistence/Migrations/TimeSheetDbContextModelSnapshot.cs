@@ -821,6 +821,12 @@ namespace TimeSheet.Infrastructure.Persistence.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
 
+                    b.Property<string>("TimeZoneId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasDefaultValue("UTC");
+
                     b.Property<string>("Username")
                         .IsRequired()
                         .HasMaxLength(100)

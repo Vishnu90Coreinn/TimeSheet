@@ -47,6 +47,14 @@ public class LoginCommandHandler(
         await refreshTokenRepo.AddAsync(newRefreshToken, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return Result<LoginResult>.Success(new LoginResult(accessToken, refreshToken, user.Id, user.Username, user.Email, roleName));
+        return Result<LoginResult>.Success(new LoginResult(
+            accessToken,
+            refreshToken,
+            user.Id,
+            user.Username,
+            user.Email,
+            roleName,
+            user.OnboardingCompletedAt,
+            user.LeaveWorkflowVisitedAt));
     }
 }

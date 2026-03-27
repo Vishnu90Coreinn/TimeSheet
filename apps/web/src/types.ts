@@ -1,4 +1,12 @@
-export type Session = { userId: string; accessToken: string; refreshToken: string; username: string; role: string };
+export type Session = {
+  userId: string;
+  accessToken: string;
+  refreshToken: string;
+  username: string;
+  role: string;
+  onboardingCompletedAt?: string | null;
+  leaveWorkflowVisitedAt?: string | null;
+};
 export type Project = { id: string; name: string; code: string; isActive: boolean; isArchived: boolean; budgetedHours: number };
 export type TaskCategory = { id: string; name: string; isActive: boolean; isBillable: boolean };
 export type LeaveType = { id: string; name: string; isActive: boolean };

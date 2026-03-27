@@ -19,6 +19,8 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(x => x.PasswordHash).HasMaxLength(500).IsRequired();
         builder.Property(x => x.Role).HasMaxLength(30).IsRequired();
         builder.Property(x => x.TimeZoneId).HasMaxLength(100).IsRequired().HasDefaultValue("UTC");
+        builder.Property(x => x.OnboardingCompletedAt).HasColumnType("datetime2");
+        builder.Property(x => x.LeaveWorkflowVisitedAt).HasColumnType("datetime2");
 
         builder.HasOne(x => x.Department)
             .WithMany()

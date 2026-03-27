@@ -19,4 +19,6 @@ public record CurrentUserResult(
     Guid? LeavePolicyId,
     string? LeavePolicyName,
     Guid? ManagerId,
-    string? ManagerUsername);
+    string? ManagerUsername,
+    DateTime? OnboardingCompletedAt,
+    DateTime? LeaveWorkflowVisitedAt);

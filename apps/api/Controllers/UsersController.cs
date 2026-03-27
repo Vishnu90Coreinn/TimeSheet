@@ -47,7 +47,9 @@ public class UsersController(TimeSheetDbContext dbContext, AppInterfaces.IPasswo
                 u.LeavePolicyId,
                 u.LeavePolicy != null ? u.LeavePolicy.Name : null,
                 u.ManagerId,
-                u.Manager != null ? u.Manager.Username : null))
+                u.Manager != null ? u.Manager.Username : null,
+                u.OnboardingCompletedAt,
+                u.LeaveWorkflowVisitedAt))
             .ToListAsync();
 
         return Ok(users);
@@ -71,7 +73,7 @@ public class UsersController(TimeSheetDbContext dbContext, AppInterfaces.IPasswo
         return Ok(new UserResponse(
             user.Id, user.Username, user.Email, user.EmployeeId, user.Role, user.IsActive,
             user.DepartmentId, user.Department?.Name, user.WorkPolicyId, user.WorkPolicy?.Name,
-            user.LeavePolicyId, user.LeavePolicy?.Name, user.ManagerId, user.Manager?.Username));
+            user.LeavePolicyId, user.LeavePolicy?.Name, user.ManagerId, user.Manager?.Username, user.OnboardingCompletedAt, user.LeaveWorkflowVisitedAt));
     }
 
     [HttpPost]
@@ -116,7 +118,7 @@ public class UsersController(TimeSheetDbContext dbContext, AppInterfaces.IPasswo
 
         return CreatedAtAction(nameof(GetById), new { id = user.Id },
             new UserResponse(user.Id, user.Username, user.Email, user.EmployeeId, user.Role, user.IsActive,
-                user.DepartmentId, null, user.WorkPolicyId, null, user.LeavePolicyId, null, user.ManagerId, null));
+                user.DepartmentId, null, user.WorkPolicyId, null, user.LeavePolicyId, null, user.ManagerId, null, user.OnboardingCompletedAt, user.LeaveWorkflowVisitedAt));
     }
 
     [HttpPut("{id:guid}")]
@@ -198,7 +200,7 @@ public class UsersController(TimeSheetDbContext dbContext, AppInterfaces.IPasswo
             .OrderBy(u => u.Username)
             .Select(u => new UserResponse(
                 u.Id, u.Username, u.Email, u.EmployeeId, u.Role, u.IsActive,
-                u.DepartmentId, null, u.WorkPolicyId, null, u.LeavePolicyId, null, u.ManagerId, null))
+                u.DepartmentId, null, u.WorkPolicyId, null, u.LeavePolicyId, null, u.ManagerId, null, u.OnboardingCompletedAt, u.LeaveWorkflowVisitedAt))
             .ToListAsync();
 
         return Ok(reportees);

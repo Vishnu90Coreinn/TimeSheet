@@ -813,6 +813,12 @@ namespace TimeSheet.Infrastructure.Persistence.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
+                    b.Property<DateTime?>("OnboardingCompletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("LeaveWorkflowVisitedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<Guid?>("LeavePolicyId")
                         .HasColumnType("uniqueidentifier");
 

@@ -52,6 +52,8 @@ public class RefreshTokenCommandHandler(
             savedToken.UserId,
             savedToken.User.Username,
             savedToken.User.Email,
-            roleName));
+            roleName,
+            savedToken.User.OnboardingCompletedAt,
+            savedToken.User.LeaveWorkflowVisitedAt));
     }
 }

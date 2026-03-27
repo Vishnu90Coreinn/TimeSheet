@@ -41,7 +41,9 @@ public record UserResponse(
     Guid? LeavePolicyId,
     string? LeavePolicyName,
     Guid? ManagerId,
-    string? ManagerUsername
+    string? ManagerUsername,
+    DateTime? OnboardingCompletedAt,
+    DateTime? LeaveWorkflowVisitedAt
 );
 
 // ── Profile (self-service) ──────────────────────────────────────────────────

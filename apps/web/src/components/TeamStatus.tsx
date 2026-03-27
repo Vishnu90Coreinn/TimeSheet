@@ -232,7 +232,7 @@ function DatePicker({ value, onChange }: { value: string; onChange: (d: string) 
         <div
           role="dialog"
           aria-label="Date picker"
-          className="absolute top-[calc(100%+6px)] right-0 z-[200] bg-[var(--surface)] border border-border-subtle rounded-md shadow-md p-3"
+          className="absolute top-[calc(100%+6px)] right-0 z-[200] ts-date-popover border border-border-subtle rounded-md shadow-md p-3"
         >
           <MiniCalendar value={value} onChange={onChange} onClose={() => setOpen(false)} />
         </div>
@@ -248,7 +248,7 @@ function Avatar({ member }: { member: TeamMemberStatus }) {
   if (member.avatarDataUrl) {
     return (
       <div
-        className="w-9 h-9 rounded-md shrink-0 border border-border-subtle"
+        className="w-8 h-8 rounded-md shrink-0 border border-border-subtle"
         style={{
           backgroundImage: `url(${member.avatarDataUrl})`,
           backgroundSize: "cover", backgroundPosition: "center",
@@ -258,7 +258,7 @@ function Avatar({ member }: { member: TeamMemberStatus }) {
   }
   return (
     <div
-      className="w-9 h-9 rounded-md shrink-0 flex items-center justify-center text-[0.75rem] font-bold text-white"
+      className="w-8 h-8 rounded-md shrink-0 flex items-center justify-center text-[0.68rem] font-bold text-white"
       style={{ background: "linear-gradient(135deg, var(--brand-500), var(--brand-700))" }}
     >
       {initials}
@@ -421,7 +421,7 @@ export function TeamStatus() {
         </div>
       )}
 
-      <section className="flex flex-col gap-4">
+      <section className="flex flex-col gap-3">
 
         {/* Page header */}
         <div className="page-header">
@@ -437,7 +437,7 @@ export function TeamStatus() {
         </div>
 
         {/* C3 + NEW-2 — Filter bar: ALL four tabs always show their count badge */}
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-1 flex-wrap">
           {(Object.keys(FILTER_LABELS) as Filter[]).map(f => {
             const isActive = filter === f;
             return (
@@ -469,12 +469,12 @@ export function TeamStatus() {
         {/* Table */}
         <div className="card overflow-auto">
           {loading ? (
-            <div className="p-8 text-text-tertiary text-center">
+            <div className="p-6 text-text-tertiary text-center">
               Loading…
             </div>
           ) : filtered.length === 0 && members.length === 0 ? (
             /* H5 — Full empty state for 0 members */
-            <div className="py-10 px-6 flex flex-col items-center gap-3 text-center">
+            <div className="py-8 px-5 flex flex-col items-center gap-2 text-center">
               <EmptyTeamIcon />
               <div className="text-[0.95rem] font-bold text-text-primary">
                 No direct reports assigned
@@ -484,7 +484,7 @@ export function TeamStatus() {
               </div>
             </div>
           ) : filtered.length === 0 ? (
-            <div className="p-8 text-text-tertiary text-center">
+            <div className="p-6 text-text-tertiary text-center">
               No team members match this filter.
             </div>
           ) : (
@@ -526,18 +526,18 @@ export function TeamStatus() {
                     <tr key={m.userId}>
                       {/* Member — title tooltip for truncated names */}
                       <td>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
                           <Avatar member={m} />
                           <div className="min-w-0">
                             <div
-                              className="font-semibold text-[0.875rem] text-text-primary overflow-hidden text-ellipsis whitespace-nowrap"
+                              className="font-semibold text-[0.82rem] text-text-primary overflow-hidden text-ellipsis whitespace-nowrap"
                               title={m.displayName || m.username}
                             >
                               {m.displayName || m.username}
                             </div>
                             {m.displayName && (
                               <div
-                                className="text-[0.75rem] text-text-tertiary overflow-hidden text-ellipsis whitespace-nowrap"
+                                className="text-[0.7rem] text-text-tertiary overflow-hidden text-ellipsis whitespace-nowrap"
                                 title={`@${m.username}`}
                               >
                                 @{m.username}
@@ -576,7 +576,7 @@ export function TeamStatus() {
 
                       {/* Pending Actions — sticky right */}
                       <td className={stickyTdCls}>
-                        <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           {m.pendingApprovalCount > 0 && (
                             <button
                               type="button"
@@ -625,7 +625,7 @@ export function TeamStatus() {
 
           {/* H5 — Contextual message for very small teams (1 member) */}
           {!loading && members.length === 1 && (
-            <div className="px-5 py-3 border-t border-border-subtle text-[0.78rem] text-text-tertiary text-center">
+            <div className="px-4 py-2 border-t border-border-subtle text-[0.74rem] text-text-tertiary text-center">
               You're viewing all 1 direct report. Add more team members to see richer data here.
             </div>
           )}

@@ -1047,7 +1047,7 @@ if (!data.length) return <EmptyTimesheets onAdd={openForm} />;
 
 ### Sprint 28 — Onboarding Flow 🎯
 **Branch:** `feature/sprint-28-onboarding`
-**Status:** `TODO`
+**Status:** `IN_PROGRESS` — implementation complete, PR pending to `master`
 **Goal:** First-login wizard and setup checklist to reduce time-to-value for new users and admins.
 
 #### Backend
@@ -1414,8 +1414,8 @@ if (!data.length) return <EmptyTimesheets onAdd={openForm} />;
 | 26 | UX Foundation (skeletons, toasts, empty states, error boundaries) | ✅ DONE | merged |
 | **26-F** | **Timesheets UX Feedback Overhaul** | ✅ DONE | merged |
 | 27 | Multi-Timezone | ✅ DONE | merged |
-| 28 | Onboarding Flow | 🔴 NEXT | `feature/sprint-28-onboarding` |
-| 29 | Notification Centre 2.0 | TODO | `feature/sprint-29-notification-centre` |
+| 28 | Onboarding Flow | 🟡 IN_PROGRESS | `feature/sprint-28-onboarding` |
+| 29 | Notification Centre 2.0 | 🔴 NEXT | `feature/sprint-29-notification-centre` |
 | 30 | SignalR Real-time | TODO | `feature/sprint-30-signalr-realtime` |
 | 31 | Billing & Subscription | TODO | `feature/sprint-31-billing` |
 | 32 | SSO / SAML | TODO | `feature/sprint-32-sso` |

@@ -15,6 +15,7 @@ import { Dashboard } from "./components/Dashboard";
 import { Holidays } from "./components/Admin/Holidays";
 import { Leave } from "./components/Leave";
 import { Login } from "./components/Login";
+import { OnboardingWizard } from "./components/OnboardingWizard";
 import { LeavePolicies } from "./components/Admin/LeavePolicies";
 import { WorkPolicies } from "./components/Admin/WorkPolicies";
 import { Projects } from "./components/Admin/Projects";
@@ -55,12 +56,14 @@ const PATH_VIEWS: Record<string, View> = Object.fromEntries(
 );
 
 function AppRoutes() {
-  const { session, loading, login, logout } = useSession();
+  const { session, loading, login, logout, updateSession } = useSession();
   const navigate = useNavigate();
   const location = useLocation();
 
   const isAdmin   = session?.role === "admin";
   const isManager = session?.role === "manager" || isAdmin;
+  const onboardingCompletedAt = session?.onboardingCompletedAt ?? null;
+  const showOnboarding = Boolean(session && !onboardingCompletedAt);
 
   const nav = useMemo(
     () => ["dashboard", "timesheets", "leave", "reports", ...(isManager ? ["approvals", "team"] : []), ...(isAdmin ? ["projects", "categories", "users", "holidays", "leave-policies", "work-policies"] : [])] as View[],
@@ -85,33 +88,41 @@ function AppRoutes() {
   }
 
   return (
-    <AppShell
-      session={session}
-      view={currentView}
-      nav={nav}
-      onNavigate={(v) => navigate(VIEW_PATHS[v])}
-      onNavigateProfile={() => navigate("/profile")}
-      onLogout={() => { logout(); navigate("/login"); }}
-    >
-      <Routes>
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/login" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/dashboard"  element={<ErrorBoundary><Dashboard role={session.role} username={session.username} /></ErrorBoundary>} />
-        <Route path="/timesheets" element={<ErrorBoundary><Timesheets /></ErrorBoundary>} />
-        <Route path="/leave"      element={<ErrorBoundary><Leave isManager={isManager} isAdmin={isAdmin} /></ErrorBoundary>} />
-        <Route path="/reports"    element={<ErrorBoundary><Reports /></ErrorBoundary>} />
-        <Route path="/profile"    element={<ErrorBoundary><Profile onBack={() => navigate(-1)} /></ErrorBoundary>} />
-        {isManager && <Route path="/approvals"  element={<ErrorBoundary><Approvals /></ErrorBoundary>} />}
-        {isManager && <Route path="/team"       element={<ErrorBoundary><TeamStatus /></ErrorBoundary>} />}
-        {isAdmin   && <Route path="/projects"   element={<ErrorBoundary><Projects /></ErrorBoundary>} />}
-        {isAdmin   && <Route path="/categories" element={<ErrorBoundary><Categories /></ErrorBoundary>} />}
-        {isAdmin   && <Route path="/users"      element={<ErrorBoundary><Users /></ErrorBoundary>} />}
-        {isAdmin   && <Route path="/holidays"        element={<ErrorBoundary><Holidays /></ErrorBoundary>} />}
-        {isAdmin   && <Route path="/leave-policies"  element={<ErrorBoundary><LeavePolicies /></ErrorBoundary>} />}
-        {isAdmin   && <Route path="/work-policies"   element={<ErrorBoundary><WorkPolicies /></ErrorBoundary>} />}
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
-    </AppShell>
+    <>
+      <OnboardingWizard
+        open={showOnboarding}
+        role={session.role}
+        username={session.username}
+        onComplete={(completedAt) => updateSession({ onboardingCompletedAt: completedAt })}
+      />
+      <AppShell
+        session={session}
+        view={currentView}
+        nav={nav}
+        onNavigate={(v) => navigate(VIEW_PATHS[v])}
+        onNavigateProfile={() => navigate("/profile")}
+        onLogout={() => { logout(); navigate("/login"); }}
+      >
+        <Routes>
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/login" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard"  element={<ErrorBoundary><Dashboard role={session.role} username={session.username} onboardingCompletedAt={onboardingCompletedAt} /></ErrorBoundary>} />
+          <Route path="/timesheets" element={<ErrorBoundary><Timesheets /></ErrorBoundary>} />
+          <Route path="/leave"      element={<ErrorBoundary><Leave isManager={isManager} isAdmin={isAdmin} /></ErrorBoundary>} />
+          <Route path="/reports"    element={<ErrorBoundary><Reports /></ErrorBoundary>} />
+          <Route path="/profile"    element={<ErrorBoundary><Profile onBack={() => navigate(-1)} /></ErrorBoundary>} />
+          {isManager && <Route path="/approvals"  element={<ErrorBoundary><Approvals /></ErrorBoundary>} />}
+          {isManager && <Route path="/team"       element={<ErrorBoundary><TeamStatus /></ErrorBoundary>} />}
+          {isAdmin   && <Route path="/projects"   element={<ErrorBoundary><Projects /></ErrorBoundary>} />}
+          {isAdmin   && <Route path="/categories" element={<ErrorBoundary><Categories /></ErrorBoundary>} />}
+          {isAdmin   && <Route path="/users"      element={<ErrorBoundary><Users /></ErrorBoundary>} />}
+          {isAdmin   && <Route path="/holidays"        element={<ErrorBoundary><Holidays /></ErrorBoundary>} />}
+          {isAdmin   && <Route path="/leave-policies"  element={<ErrorBoundary><LeavePolicies /></ErrorBoundary>} />}
+          {isAdmin   && <Route path="/work-policies"   element={<ErrorBoundary><WorkPolicies /></ErrorBoundary>} />}
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </AppShell>
+    </>
   );
 }
 

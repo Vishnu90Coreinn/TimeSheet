@@ -12,6 +12,8 @@ public class User
     public bool IsActive { get; set; } = true;
     public string? AvatarDataUrl { get; set; }
     public string TimeZoneId { get; set; } = "UTC";
+    public DateTime? OnboardingCompletedAt { get; set; }
+    public DateTime? LeaveWorkflowVisitedAt { get; set; }
 
     public Guid? DepartmentId { get; set; }
     public Department? Department { get; set; }

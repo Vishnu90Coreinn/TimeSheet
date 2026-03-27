@@ -22,7 +22,7 @@ public class AuthController(ISender mediator) : ControllerBase
             return Unauthorized(new { message = result.Error });
 
         var v = result.Value!;
-        return Ok(new LoginResponse(v.AccessToken, v.RefreshToken, v.UserId, v.Username, v.Email, v.Role));
+        return Ok(new LoginResponse(v.AccessToken, v.RefreshToken, v.UserId, v.Username, v.Email, v.Role, v.OnboardingCompletedAt, v.LeaveWorkflowVisitedAt));
     }
 
     [HttpPost("refresh")]
@@ -33,7 +33,7 @@ public class AuthController(ISender mediator) : ControllerBase
             return Fail(result);
 
         var v = result.Value!;
-        return Ok(new LoginResponse(v.AccessToken, v.RefreshToken, v.UserId, v.Username, v.Email, v.Role));
+        return Ok(new LoginResponse(v.AccessToken, v.RefreshToken, v.UserId, v.Username, v.Email, v.Role, v.OnboardingCompletedAt, v.LeaveWorkflowVisitedAt));
     }
 
     [Authorize]
@@ -53,7 +53,7 @@ public class AuthController(ISender mediator) : ControllerBase
         var u = result.Value!;
         return Ok(new UserResponse(u.Id, u.Username, u.Email, u.EmployeeId, u.Role, u.IsActive,
             u.DepartmentId, u.DepartmentName, u.WorkPolicyId, u.WorkPolicyName,
-            u.LeavePolicyId, u.LeavePolicyName, u.ManagerId, u.ManagerUsername));
+            u.LeavePolicyId, u.LeavePolicyName, u.ManagerId, u.ManagerUsername, u.OnboardingCompletedAt, u.LeaveWorkflowVisitedAt));
     }
 
     private IActionResult Fail(Result result) => result.Status switch

@@ -35,6 +35,8 @@ public class GetCurrentUserQueryHandler(
             user.LeavePolicyId,
             user.LeavePolicy?.Name,
             user.ManagerId,
-            user.Manager?.Username));
+            user.Manager?.Username,
+            user.OnboardingCompletedAt,
+            user.LeaveWorkflowVisitedAt));
     }
 }

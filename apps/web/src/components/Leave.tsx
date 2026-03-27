@@ -17,6 +17,8 @@ interface LeaveProps {
   isAdmin: boolean;
 }
 
+const LEAVE_WORKFLOW_VISITED_KEY = "leaveWorkflowVisited";
+
 // ─── Helpers ───────────────────────────────────────────────────
 const AVATAR_PALETTE = ["#818cf8","#a78bfa","#34d399","#60a5fa","#f472b6","#fb923c","#facc15","#4ade80","#38bdf8","#f87171"];
 function avatarColor(name: string): string {
@@ -202,6 +204,11 @@ function MiniCalendar() {
 
 // ─── Main Component ────────────────────────────────────────────
 export function Leave({ isManager, isAdmin }: LeaveProps) {
+  useEffect(() => {
+    localStorage.setItem(LEAVE_WORKFLOW_VISITED_KEY, "true");
+    void apiFetch("/onboarding/leave-workflow", { method: "POST" }).catch(() => {});
+  }, []);
+
   const currentYear = new Date().getFullYear();
 
   // State

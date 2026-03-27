@@ -42,13 +42,15 @@ export function Login({ onLogin }: LoginProps) {
         return;
       }
       const data = await response.json();
-      onLogin({
-        userId:       data.userId ?? "",
-        accessToken:  data.accessToken,
-        refreshToken: data.refreshToken,
-        username:     data.username,
-        role:         data.role,
-      });
+        onLogin({
+          userId:       data.userId ?? "",
+          accessToken:  data.accessToken,
+          refreshToken: data.refreshToken,
+          username:     data.username,
+          role:         data.role,
+          onboardingCompletedAt: data.onboardingCompletedAt ?? null,
+          leaveWorkflowVisitedAt: data.leaveWorkflowVisitedAt ?? null,
+        });
     } catch {
       const msg = "Connection error. Please try again.";
       setError(msg);

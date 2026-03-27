@@ -56,6 +56,7 @@ public static class DependencyInjection
         services.AddScoped<AppInterfaces.ITimesheetQueryService, TimesheetQueryService>();
         services.AddScoped<AppInterfaces.IApprovalQueryService, ApprovalQueryService>();
         services.AddScoped<AppInterfaces.ILeaveQueryService, LeaveQueryService>();
+        services.AddScoped<AppInterfaces.IOnboardingQueryService, OnboardingQueryService>();
 
         // CurrentUserService (requires IHttpContextAccessor)
         services.AddHttpContextAccessor();

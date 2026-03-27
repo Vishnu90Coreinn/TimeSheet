@@ -6,7 +6,9 @@ public record LoginResponse(
     Guid UserId,
     string Username,
     string Email,
-    string Role
+    string Role,
+    DateTime? OnboardingCompletedAt,
+    DateTime? LeaveWorkflowVisitedAt
 );
 
 public record RefreshTokenRequest(string RefreshToken);

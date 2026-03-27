@@ -10,7 +10,7 @@ import { SkeletonPage } from "./Skeleton";
 import { EmptyTimesheets } from "./EmptyState";
 import { TimePickerInput } from "./TimePickerInput";
 import type { AttendanceSummary } from "./AttendanceWidget";
-import type { Project, TaskCategory, TimesheetDay, TimesheetEntry, WeekDayMeta, WeekSummary } from "../types";
+import type { OvertimeSummary, Project, TaskCategory, TimesheetDay, TimesheetEntry, WeekDayMeta, WeekSummary } from "../types";
 import { useTimezone } from "../hooks/useTimezone";
 
 /* ─── Constants ────────────────────────────────────────────────────────────── */
@@ -95,6 +95,10 @@ function getWeekDays(anyDate: string): string[] {
   });
 }
 
+function getWeekStart(anyDate: string): string {
+  return getWeekDays(anyDate)[0];
+}
+
 function fmtWeekRange(weekDays: string[]): string {
   if (!weekDays.length) return "";
   const s = new Date(weekDays[0] + "T00:00:00");
@@ -173,6 +177,7 @@ export function Timesheets() {
   const [categories, setCategories] = useState<TaskCategory[]>([]);
   const [selectedDate, setSelectedDate] = useState(todayIso());
   const [weekData, setWeekData] = useState<WeekSummary | null>(null);
+  const [overtimeSummary, setOvertimeSummary] = useState<OvertimeSummary | null>(null);
   const [dayData, setDayData] = useState<TimesheetDay | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -234,6 +239,16 @@ export function Timesheets() {
     if (r.ok) setWeekData(await r.json() as WeekSummary);
   }, []);
 
+  const loadOvertimeSummary = useCallback(async (weekStart: string) => {
+    const r = await apiFetch(`/overtime/summary?weekStart=${weekStart}`);
+    if (!r.ok) {
+      setOvertimeSummary(null);
+      return;
+    }
+    const data = await r.json().catch(() => null) as OvertimeSummary | null;
+    setOvertimeSummary(data);
+  }, []);
+
   const loadDay = useCallback(async (date: string) => {
     const r = await apiFetch(`/timesheets/day?workDate=${date}`);
     if (r.ok) setDayData(await r.json() as TimesheetDay);
@@ -256,6 +271,7 @@ export function Timesheets() {
     Promise.all([
       loadAttendance(),
       loadWeek(selectedDate),
+      loadOvertimeSummary(getWeekStart(selectedDate)),
       loadDay(selectedDate),
       loadActiveTimer(),
       loadTimerHistory(),
@@ -320,6 +336,7 @@ export function Timesheets() {
     void loadDay(date);
     if (oldWeekDays[0] !== newWeekDays[0]) {
       void loadWeek(date);
+      void loadOvertimeSummary(newWeekDays[0]);
     }
     setShowForm(false);
     setShowSubmitForm(false);
@@ -637,6 +654,16 @@ export function Timesheets() {
   const weekExpectedMins = weekData?.weekExpectedMinutes ?? 0;
   const weekAttendanceMins = weekData?.weekAttendanceNetMinutes ?? 0;
   const weekOvertime = weekTotalMins - weekExpectedMins;
+  const overtimeMinutes = (() => {
+    if (typeof overtimeSummary?.overtimeMinutes === "number") return Math.max(0, overtimeSummary.overtimeMinutes);
+    if (typeof overtimeSummary?.overtimeHours === "number") return Math.max(0, Math.round(overtimeSummary.overtimeHours * 60));
+    return Math.max(0, weekOvertime);
+  })();
+  const overtimeThresholdMinutes = (() => {
+    if (typeof overtimeSummary?.thresholdMinutes === "number") return overtimeSummary.thresholdMinutes;
+    if (typeof overtimeSummary?.thresholdHours === "number") return Math.round(overtimeSummary.thresholdHours * 60);
+    return weekExpectedMins;
+  })();
 
   // Build a map from workDate -> WeekDayMeta for the strip
   const weekDayMap = new Map<string, WeekDayMeta>(
@@ -1281,28 +1308,28 @@ export function Timesheets() {
                 <span className="text-text-secondary">Weekly target</span>
                 <span className="font-semibold text-[var(--n-900,#111827)]">{fmtMins(weekExpectedMins)}</span>
               </div>
-              <div className="flex justify-between items-center text-[13px]">
+              <div className={`flex justify-between items-center text-[13px] rounded-[10px] px-3 py-2 ${overtimeMinutes > 0 ? "bg-[#fffbeb] border border-[#fde68a]" : ""}`}>
                 <span className="text-text-secondary">Attendance</span>
                 <span className="font-semibold text-[var(--n-900,#111827)]">{fmtMins(weekAttendanceMins)}</span>
               </div>
               <div className="flex justify-between items-center text-[13px]">
                 <span className="text-text-secondary">
-                  {weekOvertime >= 0 ? "Overtime" : "Deficit"}
+                  {overtimeMinutes > 0 ? "Overtime" : "Deficit"}
                   {weekOvertime < 0 && !lastExpectedDayPassed && (
                     <span className="text-[10px] text-[var(--n-400,#9ca3af)] cursor-default ml-[2px]" title="Week still in progress">in progress</span>
                   )}
                   <span
                     className="text-[10px] text-[var(--n-400,#9ca3af)] cursor-default ml-[2px] not-italic"
-                    title={weekOvertime >= 0 ? "Hours logged above weekly target" : "Hours logged below weekly target"}
+                    title={overtimeMinutes > 0 ? `Hours logged above overtime threshold (${fmtMins(overtimeThresholdMinutes)})` : "Hours logged below weekly target"}
                   > ℹ</span>
                 </span>
                 <span className={`font-semibold ${
-                  weekOvertime > 0 ? "text-[#16a34a]"
+                  overtimeMinutes > 0 ? "text-[#b45309]"
                   : weekOvertime < 0 && lastExpectedDayPassed ? "text-[#dc2626]"
                   : weekOvertime < 0 ? "text-[#b45309]"
                   : "text-[var(--n-900,#111827)]"
                 }`}>
-                  {weekOvertime > 0 ? "+" : weekOvertime < 0 ? "−" : ""}{fmtMins(Math.abs(weekOvertime))}
+                  {overtimeMinutes > 0 ? "+" : weekOvertime < 0 ? "−" : ""}{fmtMins(overtimeMinutes > 0 ? overtimeMinutes : Math.abs(weekOvertime))}
                 </span>
               </div>
               <div className="flex justify-between items-center text-[13px]">

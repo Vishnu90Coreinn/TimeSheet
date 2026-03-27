@@ -20,6 +20,33 @@ public class ApprovalsController(ISender mediator) : ControllerBase
         return result.IsSuccess ? Ok(result.Value) : Fail(result);
     }
 
+    [HttpGet("timesheets/{timesheetId:guid}")]
+    public async Task<IActionResult> GetPendingTimesheetDetail(Guid timesheetId, CancellationToken ct)
+    {
+        var result = await mediator.Send(new GetPendingTimesheetDetailQuery(timesheetId), ct);
+        if (!result.IsSuccess) return Fail(result);
+
+        var v = result.Value!;
+        return Ok(new PendingTimesheetDetailResponse(
+            v.TimesheetId,
+            v.UserId,
+            v.Username,
+            v.DisplayName,
+            v.WorkDate,
+            v.Status,
+            v.EnteredMinutes,
+            v.MismatchReason,
+            v.SubmittedAtUtc,
+            v.Entries.Select(e => new PendingTimesheetDetailEntryResponse(
+                e.Id,
+                e.ProjectId,
+                e.ProjectName,
+                e.TaskCategoryId,
+                e.TaskCategoryName,
+                e.Minutes,
+                e.Notes)).ToList()));
+    }
+
     [HttpGet("history/{timesheetId:guid}")]
     [Authorize]
     public async Task<IActionResult> GetApprovalHistory(Guid timesheetId, CancellationToken ct)
@@ -50,12 +77,16 @@ public class ApprovalsController(ISender mediator) : ControllerBase
     }
 
     [HttpGet("stats")]
-    public async Task<IActionResult> GetStats(CancellationToken ct)
+    public async Task<IActionResult> GetStats(
+        [FromQuery] ApprovalStatsPeriod period = ApprovalStatsPeriod.ThisMonth,
+        [FromQuery] DateOnly? fromDate = null,
+        [FromQuery] DateOnly? toDate = null,
+        CancellationToken ct = default)
     {
-        var result = await mediator.Send(new GetApprovalStatsQuery(), ct);
+        var result = await mediator.Send(new GetApprovalStatsQuery(period, fromDate, toDate), ct);
         if (!result.IsSuccess) return Fail(result);
         var v = result.Value!;
-        return Ok(new { v.ApprovedThisMonth, v.RejectedThisMonth, avgResponseHours = v.AvgResponseHours });
+        return Ok(new { v.ApprovedThisMonth, v.RejectedThisMonth, avgResponseHours = v.AvgResponseHours, period, fromDate, toDate });
     }
 
     [HttpGet("delegation")]

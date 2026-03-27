@@ -86,9 +86,20 @@ public class DashboardController(TimeSheetDbContext dbContext) : ControllerBase
         if (teamIds.Count == 0) return Ok(new ManagerDashboardResponse(new { Present = 0, OnLeave = 0, NotCheckedIn = 0 }, new { Missing = 0, PendingApprovals = 0 }, [], new { AvgMinutes = 0 }, []));
 
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var present = await dbContext.WorkSessions.CountAsync(x => teamIds.Contains(x.UserId) && x.WorkDate == today);
-        var onLeave = await dbContext.LeaveRequests.CountAsync(x => teamIds.Contains(x.UserId) && x.LeaveDate == today && x.Status == LeaveRequestStatus.Approved);
-        var notCheckedIn = Math.Max(0, teamIds.Count - present - onLeave);
+        var presentUserIds = await dbContext.WorkSessions.AsNoTracking()
+            .Where(x => teamIds.Contains(x.UserId) && x.WorkDate == today)
+            .Select(x => x.UserId)
+            .Distinct()
+            .ToListAsync();
+        var onLeaveUserIds = await dbContext.LeaveRequests.AsNoTracking()
+            .Where(x => teamIds.Contains(x.UserId) && x.LeaveDate == today && x.Status == LeaveRequestStatus.Approved)
+            .Select(x => x.UserId)
+            .Distinct()
+            .ToListAsync();
+
+        var present = presentUserIds.Except(onLeaveUserIds).Count();
+        var onLeave = onLeaveUserIds.Count;
+        var notCheckedIn = teamIds.Except(presentUserIds).Except(onLeaveUserIds).Count();
 
         var missing = await dbContext.Users.CountAsync(x => teamIds.Contains(x.Id) && !x.Timesheets.Any(t => t.WorkDate == today));
         var pendingApprovals = await dbContext.Timesheets.CountAsync(x => teamIds.Contains(x.UserId) && x.Status == TimesheetStatus.Submitted);

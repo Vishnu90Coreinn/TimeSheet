@@ -37,14 +37,33 @@ public class MastersController(ISender mediator) : ControllerBase
     [HttpPost("work-policies")]
     public async Task<IActionResult> CreateWorkPolicy([FromBody] WorkPolicyResponse request, CancellationToken ct)
     {
-        var result = await mediator.Send(new CreateWorkPolicyCommand(request.Name, request.DailyExpectedMinutes, request.WorkDaysPerWeek, request.IsActive), ct);
+        var result = await mediator.Send(new CreateWorkPolicyCommand(
+            request.Name,
+            request.DailyExpectedMinutes,
+            request.WorkDaysPerWeek,
+            request.IsActive,
+            request.DailyOvertimeAfterHours,
+            request.WeeklyOvertimeAfterHours,
+            request.OvertimeMultiplier,
+            request.CompOffEnabled,
+            request.CompOffExpiryDays), ct);
         return result.IsSuccess ? Ok(result.Value) : Fail(result);
     }
 
     [HttpPut("work-policies/{id:guid}")]
     public async Task<IActionResult> UpdateWorkPolicy(Guid id, [FromBody] WorkPolicyResponse request, CancellationToken ct)
     {
-        var result = await mediator.Send(new UpdateWorkPolicyCommand(id, request.Name, request.DailyExpectedMinutes, request.WorkDaysPerWeek, request.IsActive), ct);
+        var result = await mediator.Send(new UpdateWorkPolicyCommand(
+            id,
+            request.Name,
+            request.DailyExpectedMinutes,
+            request.WorkDaysPerWeek,
+            request.IsActive,
+            request.DailyOvertimeAfterHours,
+            request.WeeklyOvertimeAfterHours,
+            request.OvertimeMultiplier,
+            request.CompOffEnabled,
+            request.CompOffExpiryDays), ct);
         return result.IsSuccess ? Ok(result.Value) : Fail(result);
     }
 

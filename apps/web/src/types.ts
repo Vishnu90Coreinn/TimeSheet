@@ -8,7 +8,18 @@ export type LeavePolicyAlloc = { leaveTypeId: string; leaveTypeName: string; day
 export type LeavePolicy = { id: string; name: string; isActive: boolean; allocations: LeavePolicyAlloc[] };
 export type LeaveRequestGroup = { id: string; fromDate: string; toDate: string; days: number; leaveTypeName: string; appliedOnDate: string; approvedByUsername: string | null; status: string; comment: string | null };
 export type TeamLeaveEntry = { userId: string; username: string; fromDate: string; toDate: string; leaveTypeName: string; status: string };
-export type ApprovalItem = { timesheetId: string; username: string; workDate: string; enteredMinutes: number; status: string; mismatchReason: string | null };
+export type ApprovalItem = {
+  timesheetId: string;
+  userId?: string;
+  username: string;
+  displayName?: string;
+  workDate: string;
+  enteredMinutes: number;
+  status: string;
+  submittedAtUtc?: string | null;
+  hasMismatch?: boolean;
+  mismatchReason: string | null;
+};
 export type ApprovalAction = { id: string; managerUsername: string; action: string; comment: string; actionedAtUtc: string };
 export type TimesheetDay = { timesheetId: string; workDate: string; status: string; attendanceNetMinutes: number; expectedMinutes: number; enteredMinutes: number; remainingMinutes: number; hasMismatch: boolean; mismatchReason?: string | null; entries: TimesheetEntry[] };
 export type WeekDayMeta = { workDate: string; status: string; enteredMinutes: number; expectedMinutes: number; attendanceNetMinutes: number; hasMismatch: boolean };
@@ -18,7 +29,60 @@ export type Notification = { id: string; title: string; message: string; type: s
 export type User = { id: string; username: string; email: string; employeeId: string; role: string; isActive: boolean; departmentId: string | null; departmentName: string | null; workPolicyId: string | null; workPolicyName: string | null; leavePolicyId: string | null; leavePolicyName: string | null; managerId: string | null; managerUsername: string | null };
 export type Holiday = { id: string; name: string; date: string; isRecurring: boolean; createdAtUtc: string };
 export type Department = { id: string; name: string; isActive: boolean };
-export type WorkPolicy = { id: string; name: string; dailyExpectedMinutes: number; workDaysPerWeek: number; isActive: boolean };
+export type WorkPolicy = {
+  id: string;
+  name: string;
+  dailyExpectedMinutes: number;
+  workDaysPerWeek: number;
+  isActive: boolean;
+  dailyOvertimeAfterHours?: number | null;
+  weeklyOvertimeAfterHours?: number | null;
+  overtimeMultiplier?: number | null;
+  compOffEnabled?: boolean | null;
+  compOffExpiryDays?: number | null;
+};
+export type WorkPolicyOvertimeRules = {
+  dailyOvertimeAfterHours: number;
+  weeklyOvertimeAfterHours: number;
+  overtimeMultiplier: number;
+  compOffEnabled: boolean;
+  compOffExpiryDays: number;
+};
+export type OvertimeSummary = {
+  weekStartDate?: string;
+  weekEndDate?: string;
+  overtimeMinutes?: number;
+  overtimeHours?: number;
+  teamOvertimeMinutes?: number;
+  teamOvertimeHours?: number;
+  thresholdMinutes?: number;
+  thresholdHours?: number;
+  overtimeMultiplier?: number;
+  compOffMinutes?: number;
+  compOffHours?: number;
+  compOffCredits?: number;
+};
+export type TeamOvertimeSummary = {
+  weekStartDate?: string;
+  weekEndDate?: string;
+  overtimeMinutes?: number;
+  overtimeHours?: number;
+  teamOvertimeMinutes?: number;
+  teamOvertimeHours?: number;
+};
+export type CompOffBalance = {
+  availableCredits?: number;
+  availableHours?: number;
+  availableMinutes?: number;
+  balanceCredits?: number;
+  balanceHours?: number;
+  balanceMinutes?: number;
+  remainingCredits?: number;
+  remainingHours?: number;
+  remainingMinutes?: number;
+  expiresInDays?: number;
+  expiryDays?: number;
+};
 export type View = "dashboard" | "reports" | "timesheets" | "leave" | "approvals" | "team" | "projects" | "categories" | "users" | "holidays" | "leave-policies" | "work-policies" | "profile";
 
 export type TeamMemberStatus = {

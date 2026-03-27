@@ -11,10 +11,11 @@ vi.mock("../api/client", () => ({
 }));
 
 describe("Approvals", () => {
-  it("renders Approvals heading", () => {
+  it("renders Approvals heading", async () => {
     render(<Approvals />);
-    // Approvals.tsx renders <h2>Timesheet Approvals</h2>
-    expect(document.querySelector(".page-title")).toBeTruthy();
+    await waitFor(() => {
+      expect(document.querySelector(".page-title")).toBeTruthy();
+    });
   });
 
   it("fetches pending approvals on mount", async () => {

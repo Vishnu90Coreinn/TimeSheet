@@ -11,6 +11,9 @@ public class TimesheetRepository(TimeSheetDbContext context)
     public async Task<Timesheet?> GetByIdAsync(Guid id, CancellationToken ct = default)
         => await _dbSet
             .Include(t => t.Entries)
+                .ThenInclude(e => e.Project)
+            .Include(t => t.Entries)
+                .ThenInclude(e => e.TaskCategory)
             .Include(t => t.ApprovalActions)
             .Include(t => t.User)
             .FirstOrDefaultAsync(t => t.Id == id, ct);
@@ -40,11 +43,11 @@ public class TimesheetRepository(TimeSheetDbContext context)
 
     public void Remove(Timesheet timesheet) => _dbSet.Remove(timesheet);
 
-    public void AddEntry(TimesheetEntry entry) => context.Set<TimesheetEntry>().Add(entry);
+    public void AddEntry(TimesheetEntry entry) => _context.Set<TimesheetEntry>().Add(entry);
 
-    public void RemoveEntry(TimesheetEntry entry) => context.Set<TimesheetEntry>().Remove(entry);
+    public void RemoveEntry(TimesheetEntry entry) => _context.Set<TimesheetEntry>().Remove(entry);
 
-    public void AddApprovalAction(ApprovalAction action) => context.Set<ApprovalAction>().Add(action);
+    public void AddApprovalAction(ApprovalAction action) => _context.Set<ApprovalAction>().Add(action);
 
     public async Task<IReadOnlyList<Timesheet>> GetByUserAndWeekTrackedAsync(
         Guid userId, DateOnly weekStart, DateOnly weekEnd, CancellationToken ct = default)

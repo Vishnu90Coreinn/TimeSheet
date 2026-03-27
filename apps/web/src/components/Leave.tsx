@@ -5,7 +5,7 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { apiFetch } from "../api/client";
 import { SkeletonPage } from "./Skeleton";
 import { EmptyLeave } from "./EmptyState";
-import type { LeaveBalance, LeaveRequest, LeaveRequestGroup, LeaveType, TeamLeaveEntry, User } from "../types";
+import type { CompOffBalance, LeaveBalance, LeaveRequest, LeaveRequestGroup, LeaveType, TeamLeaveEntry, User } from "../types";
 
 // ─── Types ─────────────────────────────────────────────────────
 interface CalendarEntry { date: string; type: "pending" | "approved" | "rejected" }
@@ -57,6 +57,25 @@ function balanceBarColor(remaining: number, total: number): string {
   if (pct >= 50) return "#10b981";
   if (pct >= 20) return "#f59e0b";
   return "#ef4444";
+}
+
+function firstNumber(...values: Array<number | undefined | null>): number {
+  for (const value of values) {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+  }
+  return 0;
+}
+
+function compOffCredits(balance: CompOffBalance | null): number {
+  if (!balance) return 0;
+  return firstNumber(balance.availableCredits, balance.balanceCredits, balance.remainingCredits);
+}
+
+function compOffHours(balance: CompOffBalance | null): number {
+  if (!balance) return 0;
+  const minutes = firstNumber(balance.availableMinutes, balance.balanceMinutes, balance.remainingMinutes);
+  if (minutes > 0) return minutes / 60;
+  return firstNumber(balance.availableHours, balance.balanceHours, balance.remainingHours);
 }
 
 function statusBadge(status: string) {
@@ -208,6 +227,7 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
   const [loading, setLoading]           = useState(true);
   const [leaveTypes, setLeaveTypes]     = useState<LeaveType[]>([]);
   const [balances, setBalances]         = useState<LeaveBalance[]>([]);
+  const [compOffBalance, setCompOffBalance] = useState<CompOffBalance | null>(null);
   const [history, setHistory]           = useState<LeaveRequestGroup[]>([]);
   const [histFallback, setHistFallback] = useState<LeaveRequest[]>([]);
   const [useFallback, setUseFallback]   = useState(false);
@@ -244,6 +264,23 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
     apiFetch("/leave/balance/my")
       .then(async (r) => { if (r.ok) setBalances(await r.json()); else setBalances([]); })
       .catch(() => setBalances([]));
+  }
+
+  function loadCompOffBalance() {
+    apiFetch("/leave/comp-off-balance")
+      .then(async (r) => {
+        if (!r.ok) {
+          setCompOffBalance(null);
+          return;
+        }
+        const data = await r.json().catch(() => null);
+        if (typeof data === "number") {
+          setCompOffBalance({ availableHours: data });
+        } else {
+          setCompOffBalance(data as CompOffBalance);
+        }
+      })
+      .catch(() => setCompOffBalance(null));
   }
 
   function loadHistory() {
@@ -327,6 +364,7 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
     Promise.all([
       new Promise<void>(res => { loadTypes(); res(); }),
       new Promise<void>(res => { loadBalances(); res(); }),
+      new Promise<void>(res => { loadCompOffBalance(); res(); }),
       new Promise<void>(res => { loadHistory(); res(); }),
       new Promise<void>(res => { loadTeamOnLeave(); res(); }),
       new Promise<void>(res => { loadPending(); res(); }),
@@ -362,6 +400,7 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
       setLeaveForm({ leaveTypeId: leaveTypes[0]?.id ?? "", fromDate: today(), toDate: today(), isHalfDay: false, comment: "", onBehalfOfUserId: "" });
       setApplySuccess("Leave request submitted successfully.");
       loadBalances();
+      loadCompOffBalance();
       loadHistory();
     } else {
       const body2 = await r.json().catch(() => ({})) as { message?: string; detail?: string };
@@ -380,6 +419,7 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
     if (r.ok) {
       loadHistory();
       loadBalances();
+      loadCompOffBalance();
     } else {
       const body = await r.json().catch(() => ({})) as { message?: string };
       alert(body.message ?? "Could not cancel this request.");
@@ -466,8 +506,34 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
         <div className="lv-main">
 
           {/* Balance cards */}
-          {balances.length > 0 && (
+          {(balances.length > 0 || compOffHours(compOffBalance) > 0 || compOffCredits(compOffBalance) > 0) && (
             <div className="lv-balances">
+              {(compOffHours(compOffBalance) > 0 || compOffCredits(compOffBalance) > 0) && (
+                <div
+                  className="lv-bal-card"
+                  key="comp-off-balance"
+                  style={{ background: "linear-gradient(180deg, #fffbeb 0%, #fff7ed 100%)", borderColor: "#fbbf24" }}
+                >
+                  <div className="lv-bal-type">Comp-off balance</div>
+                  <div className="text-[1.8rem] font-semibold leading-none mt-1 text-[#b45309]">
+                    {compOffHours(compOffBalance) > 0
+                      ? `${compOffHours(compOffBalance).toFixed(compOffHours(compOffBalance) % 1 === 0 ? 0 : 1)}h`
+                      : `${compOffCredits(compOffBalance).toFixed(compOffCredits(compOffBalance) % 1 === 0 ? 0 : 1)} credits`}
+                  </div>
+                  <div className="lv-bal-of">
+                    {compOffCredits(compOffBalance) > 0 && compOffHours(compOffBalance) > 0
+                      ? `${compOffCredits(compOffBalance).toFixed(compOffCredits(compOffBalance) % 1 === 0 ? 0 : 1)} credits available`
+                      : compOffCredits(compOffBalance) > 0
+                        ? `${compOffCredits(compOffBalance).toFixed(compOffCredits(compOffBalance) % 1 === 0 ? 0 : 1)} credits available`
+                        : "Available comp-off hours"}
+                  </div>
+                  {(compOffBalance?.expiresInDays ?? compOffBalance?.expiryDays) !== undefined && (
+                    <div className="text-[0.75rem] text-text-tertiary mt-1">
+                      Expires in {compOffBalance?.expiresInDays ?? compOffBalance?.expiryDays} days
+                    </div>
+                  )}
+                </div>
+              )}
               {balances.map((b) => {
                 const barColor = balanceBarColor(b.remainingDays, b.totalDays);
                 const pct = b.totalDays > 0 ? Math.max(0, Math.min(100, (b.remainingDays / b.totalDays) * 100)) : 0;

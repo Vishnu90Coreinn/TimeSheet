@@ -37,6 +37,7 @@ public static class DependencyInjection
         services.AddScoped<IHolidayRepository, HolidayRepository>();
         services.AddScoped<IDepartmentRepository, DepartmentRepository>();
         services.AddScoped<IWorkPolicyRepository, WorkPolicyRepository>();
+        services.AddScoped<IOvertimePolicyRepository, OvertimePolicyRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<ISavedReportRepository, SavedReportRepository>();
         services.AddScoped<IApprovalDelegationRepository, ApprovalDelegationRepository>();
@@ -51,6 +52,8 @@ public static class DependencyInjection
 
         services.AddScoped<AppInterfaces.IAuditService, AuditService>();
         services.AddScoped<AppInterfaces.INotificationService, NotificationService>();
+        services.AddScoped<AppInterfaces.IOvertimeCalculationService, OvertimeCalculationService>();
+        services.AddScoped<AppInterfaces.ICompOffBalanceService, CompOffBalanceService>();
         services.AddSingleton<AppInterfaces.IJwtSettings, JwtSettings>();
 
         services.AddScoped<AppInterfaces.ITimesheetQueryService, TimesheetQueryService>();
@@ -65,6 +68,7 @@ public static class DependencyInjection
         services.AddHostedService<RefreshTokenCleanupService>();
         services.AddHostedService<NotificationSchedulerService>();
         services.AddHostedService<AnomalyDetectionService>();
+        services.AddHostedService<OvertimeCompOffSchedulerService>();
         services.AddHostedService<ReportSchedulerService>();
 
         return services;

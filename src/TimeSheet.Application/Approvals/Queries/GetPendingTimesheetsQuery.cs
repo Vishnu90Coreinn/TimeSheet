@@ -9,6 +9,7 @@ public record PendingTimesheetItem(
     Guid TimesheetId,
     Guid UserId,
     string Username,
+    string DisplayName,
     DateOnly WorkDate,
     int EnteredMinutes,
     string Status,

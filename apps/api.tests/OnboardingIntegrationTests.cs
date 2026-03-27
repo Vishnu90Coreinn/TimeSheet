@@ -102,7 +102,10 @@ public class OnboardingIntegrationTests : IClassFixture<CustomWebApplicationFact
         var completeResponse = await client.PostAsync("/api/v1/onboarding/complete", null);
         Assert.Equal(HttpStatusCode.NoContent, completeResponse.StatusCode);
 
-        var refreshedUser = await db.Users.SingleAsync(u => u.Id == user.Id);
+        setupScope.Dispose();
+        using var verifyScope = _factory.Services.CreateScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<TimeSheetDbContext>();
+        var refreshedUser = await verifyDb.Users.AsNoTracking().SingleAsync(u => u.Id == user.Id);
         Assert.NotNull(refreshedUser.OnboardingCompletedAt);
     }
 

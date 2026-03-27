@@ -1,5 +1,6 @@
 /**
- * AppShell.tsx — v3.0 exact Pulse reference layout
+ * AppShell.tsx — v4.0 Precision Atelier
+ * Fixed 72px dark sidebar, glassmorphism topbar, Material Symbols Outlined icons
  */
 import { useEffect, useState, type ReactNode } from "react";
 import { apiFetch } from "../api/client";
@@ -9,28 +10,41 @@ import type { View } from "../types";
 import { CommandPalette } from "./CommandPalette";
 import { ShortcutsPanel } from "./ShortcutsPanel";
 
+/* ── Material Symbol helper ─────────────────────────────── */
+function Icon({ name, size = 22 }: { name: string; size?: number }) {
+  return (
+    <span
+      className="material-symbols-outlined"
+      style={{ fontSize: size, fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}
+      aria-hidden="true"
+    >
+      {name}
+    </span>
+  );
+}
+
 interface NavItem {
   view: View;
   label: string;
-  icon: ReactNode;
+  icon: string;   // Material Symbol name
   group: "main" | "manager" | "admin";
   badge?: number;
   badgeVariant?: "danger" | "warning" | "brand";
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { view: "dashboard",       label: "Dashboard",      icon: <DashboardIcon />,   group: "main" },
-  { view: "timesheets",      label: "Timesheets",     icon: <ClockIcon />,       group: "main" },
-  { view: "leave",           label: "Leave",          icon: <CalendarIcon />,    group: "main" },
-  { view: "reports",         label: "Reports",        icon: <ChartIcon />,       group: "main" },
-  { view: "approvals",       label: "Approvals",      icon: <CheckIcon />,       group: "manager", badgeVariant: "danger" },
-  { view: "team",            label: "Team Status",    icon: <TeamIcon />,        group: "manager" },
-  { view: "projects",        label: "Projects",       icon: <FolderIcon />,      group: "admin" },
-  { view: "categories",      label: "Categories",     icon: <TagIcon />,         group: "admin" },
-  { view: "users",           label: "Users",          icon: <UsersIcon />,       group: "admin" },
-  { view: "holidays",        label: "Holidays",       icon: <StarIcon />,        group: "admin" },
-  { view: "leave-policies",  label: "Leave Policies", icon: <LeavePolicyIcon />, group: "admin" },
-  { view: "work-policies",   label: "Work Policies",  icon: <BriefcaseIcon />,   group: "admin" },
+  { view: "dashboard",      label: "Dashboard",      icon: "grid_view",       group: "main" },
+  { view: "timesheets",     label: "Timesheets",      icon: "timer",           group: "main" },
+  { view: "leave",          label: "Leave",           icon: "event_available", group: "main" },
+  { view: "reports",        label: "Reports",         icon: "insert_chart",    group: "main" },
+  { view: "approvals",      label: "Approvals",       icon: "rule",            group: "manager", badgeVariant: "danger" },
+  { view: "team",           label: "Team Status",     icon: "groups",          group: "manager" },
+  { view: "projects",       label: "Projects",        icon: "folder_open",     group: "admin" },
+  { view: "categories",     label: "Categories",      icon: "label",           group: "admin" },
+  { view: "users",          label: "Users",           icon: "manage_accounts", group: "admin" },
+  { view: "holidays",       label: "Holidays",        icon: "celebration",     group: "admin" },
+  { view: "leave-policies", label: "Leave Policies",  icon: "policy",          group: "admin" },
+  { view: "work-policies",  label: "Work Policies",   icon: "work",            group: "admin" },
 ];
 
 interface AppShellProps {
@@ -54,7 +68,6 @@ const VIEW_LABELS: Record<View, string> = {
 };
 
 export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, onLogout, children }: AppShellProps) {
-  const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -84,7 +97,6 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
       const target = e.target as HTMLElement;
       const inInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
 
-      // Cmd+K / Ctrl+K — toggle palette (always)
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
         setPaletteOpen(o => !o);
@@ -92,41 +104,21 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
         return;
       }
 
-      // Everything below only fires when NOT in an input and palette/shortcuts are closed
       if (inInput || paletteOpen || shortcutsOpen) return;
 
-      if (e.key === "?") {
-        e.preventDefault();
-        setShortcutsOpen(true);
-        return;
-      }
+      if (e.key === "?") { e.preventDefault(); setShortcutsOpen(true); return; }
 
-      // Context-aware shortcuts
-      if (e.key === "n" || e.key === "N") {
-        if (view === "timesheets") {
-          e.preventDefault();
-          window.dispatchEvent(new CustomEvent("cmd:new-entry"));
-        }
-        return;
+      if ((e.key === "n" || e.key === "N") && view === "timesheets") {
+        e.preventDefault(); window.dispatchEvent(new CustomEvent("cmd:new-entry")); return;
       }
-      if (e.key === "s" || e.key === "S") {
-        if (view === "timesheets") {
-          e.preventDefault();
-          window.dispatchEvent(new CustomEvent("cmd:submit-week"));
-        }
-        return;
+      if ((e.key === "s" || e.key === "S") && view === "timesheets") {
+        e.preventDefault(); window.dispatchEvent(new CustomEvent("cmd:submit-week")); return;
       }
-      if (e.key === "a" || e.key === "A") {
-        if (view === "approvals") {
-          e.preventDefault();
-          window.dispatchEvent(new CustomEvent("cmd:bulk-approve"));
-        }
-        return;
+      if ((e.key === "a" || e.key === "A") && view === "approvals") {
+        e.preventDefault(); window.dispatchEvent(new CustomEvent("cmd:bulk-approve")); return;
       }
       if (e.key === "/") {
-        e.preventDefault();
-        window.dispatchEvent(new CustomEvent("cmd:focus-search"));
-        return;
+        e.preventDefault(); window.dispatchEvent(new CustomEvent("cmd:focus-search")); return;
       }
     }
     window.addEventListener("keydown", onKey);
@@ -138,186 +130,280 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
     item.view === "approvals" ? { ...item, badge: pendingCount } : item
   );
 
-  const mainItems    = withBadges.filter(i => i.group === "main"    && nav.includes(i.view));
-  const managerItems = withBadges.filter(i => i.group === "manager" && nav.includes(i.view));
-  const adminItems   = withBadges.filter(i => i.group === "admin"   && nav.includes(i.view));
+  const visibleItems = withBadges.filter(i => nav.includes(i.view));
 
   function renderNavItem(item: typeof withBadges[0]) {
+    const isActive = view === item.view;
     return (
-      <button
-        key={item.view}
-        type="button"
-        className={`nav-item${view === item.view ? " active" : ""}`}
-        onClick={() => { onNavigate(item.view); setMobileOpen(false); }}
-        data-tooltip={item.label}
-      >
-        {item.icon}
-        <span className="flex-1">{item.label}</span>
-        {(item.badge ?? 0) > 0 && (
-          <span
-            className={`nav-badge nav-badge-${item.badgeVariant ?? "brand"}`}
-            aria-label={`${item.badge} pending`}
-          >
-            {(item.badge ?? 0) > 99 ? "99+" : item.badge}
-          </span>
-        )}
-      </button>
+      <div key={item.view} className="relative group">
+        <button
+          type="button"
+          className={`nav-item${isActive ? " active" : ""}`}
+          onClick={() => { onNavigate(item.view); setMobileOpen(false); }}
+          aria-label={item.label}
+          aria-current={isActive ? "page" : undefined}
+        >
+          <Icon name={item.icon} />
+          {/* Badge dot on icon */}
+          {(item.badge ?? 0) > 0 && (
+            <span
+              aria-label={`${item.badge} pending`}
+              style={{
+                position: "absolute",
+                top: 8,
+                right: 8,
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                background: "var(--tertiary)",
+                border: "2px solid var(--inverse-surface)",
+              }}
+            />
+          )}
+        </button>
+        {/* Tooltip */}
+        <span style={{
+          position: "absolute",
+          left: "calc(100% + 12px)",
+          top: "50%",
+          transform: "translateY(-50%)",
+          background: "var(--on-surface)",
+          color: "#fff",
+          fontSize: "0.75rem",
+          fontWeight: 500,
+          whiteSpace: "nowrap",
+          padding: "4px 10px",
+          borderRadius: "var(--r-md)",
+          pointerEvents: "none",
+          opacity: 0,
+          transition: "opacity 0.15s",
+          zIndex: 200,
+          boxShadow: "var(--shadow-float)",
+        }} className="group-hover:opacity-100">
+          {item.label}
+          {(item.badge ?? 0) > 0 && (
+            <span style={{ marginLeft: 6, background: "var(--tertiary)", color: "#fff", borderRadius: "9999px", padding: "1px 5px", fontSize: "0.65rem", fontWeight: 700 }}>
+              {(item.badge ?? 0) > 99 ? "99+" : item.badge}
+            </span>
+          )}
+        </span>
+      </div>
     );
   }
 
   return (
     <>
-      {/* ── Topbar ── */}
-      <header className="shell-topnav">
-        <div className="shell-topnav__left">
-          <button
-            type="button"
-            className="shell-topnav-hamburger icon-btn mr-1"
-            onClick={() => setMobileOpen(o => !o)}
-            aria-label="Toggle navigation"
-          >
-            <HamburgerIcon />
-          </button>
-          <nav className="breadcrumb">
-            <span>TimeSheet</span>
-            <span className="breadcrumb-sep">/</span>
-            <span className="breadcrumb-current">{VIEW_LABELS[view] ?? view}</span>
-          </nav>
+      {/* ── Fixed Sidebar (72px) ─────────────────────────────── */}
+      <aside
+        className={`shell-sidebar${mobileOpen ? " mobile-open" : ""}`}
+        style={{
+          position: "fixed",
+          left: 0,
+          top: 0,
+          height: "100vh",
+          width: "var(--sidebar-width)",
+          zIndex: 50,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          paddingTop: "var(--space-6)",
+          paddingBottom: "var(--space-6)",
+          gap: "var(--space-1)",
+        }}
+      >
+        {/* Logo mark */}
+        <div
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: "var(--r-lg)",
+            background: "rgba(192, 193, 255, 0.15)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "var(--inverse-primary)",
+            fontWeight: 700,
+            fontSize: "1rem",
+            marginBottom: "var(--space-4)",
+            flexShrink: 0,
+          }}
+        >
+          T
         </div>
-        <div className="shell-topnav__right">
+
+        {/* Nav items */}
+        <nav style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "var(--space-1)", flex: 1, width: "100%" }}>
+          {visibleItems.map(renderNavItem)}
+        </nav>
+
+        {/* Bottom: Settings + Avatar */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "var(--space-3)", marginTop: "auto" }}>
+          <div className="relative group">
+            <button
+              type="button"
+              className="nav-item"
+              onClick={onLogout}
+              aria-label="Sign Out"
+            >
+              <Icon name="logout" />
+            </button>
+            <span style={{
+              position: "absolute",
+              left: "calc(100% + 12px)",
+              top: "50%",
+              transform: "translateY(-50%)",
+              background: "var(--on-surface)",
+              color: "#fff",
+              fontSize: "0.75rem",
+              fontWeight: 500,
+              whiteSpace: "nowrap",
+              padding: "4px 10px",
+              borderRadius: "var(--r-md)",
+              pointerEvents: "none",
+              opacity: 0,
+              transition: "opacity 0.15s",
+              zIndex: 200,
+            }} className="group-hover:opacity-100">
+              Sign Out
+            </span>
+          </div>
+
+          {/* Avatar — opens profile */}
           <button
             type="button"
-            onClick={() => setPaletteOpen(true)}
-            title="Command palette (⌘K)"
+            onClick={onNavigateProfile}
+            aria-label="My Profile"
             style={{
-              display: "flex", alignItems: "center", gap: 6,
-              background: "var(--color-n-100, #f0f0f0)",
-              border: "1px solid var(--color-n-200, #e5e7eb)",
-              borderRadius: 7,
-              padding: "5px 10px",
+              width: 40,
+              height: 40,
+              borderRadius: "var(--r-lg)",
+              background: "linear-gradient(135deg, var(--primary), var(--primary-container))",
+              border: "2px solid var(--primary-fixed)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#fff",
+              fontWeight: 700,
+              fontSize: "0.75rem",
               cursor: "pointer",
-              fontSize: "0.78rem",
-              color: "#6b7280",
+              flexShrink: 0,
+              overflow: "hidden",
             }}
           >
-            <span style={{ fontSize: "0.80rem" }}>🔍</span>
-            <span>Search</span>
-            <kbd style={{
-              fontSize: "0.68rem",
-              background: "var(--color-n-0, #fff)",
-              border: "1px solid var(--color-n-200, #e5e7eb)",
-              borderRadius: 4,
-              padding: "1px 5px",
-              fontFamily: "inherit",
-            }}>⌘K</kbd>
+            {initials}
           </button>
-          <NotificationBell />
-          <div className="topbar-divider" />
-          <div className="topbar-user" title="My Profile" onClick={onNavigateProfile}>
-            <div
-              className="w-7 h-7 rounded-md flex items-center justify-center text-[0.65rem] font-bold text-white shrink-0"
-              style={{ background: "linear-gradient(135deg, var(--brand-500), var(--brand-700))" }}
-            >
-              {initials}
-            </div>
-            <div>
-              <div className="text-[0.8rem] font-semibold text-text-primary leading-[1.2]">{session.username}</div>
-              <div className="text-[0.68rem] text-text-tertiary capitalize">{session.role}</div>
-            </div>
-          </div>
         </div>
-      </header>
+      </aside>
 
-      {/* ── Shell body ── */}
-      <div className="shell-layout">
-        {/* Mobile backdrop */}
+      {/* Mobile sidebar backdrop */}
+      {mobileOpen && (
         <div
-          className={`shell-sidebar-backdrop${mobileOpen ? " mobile-open" : ""}`}
+          className="shell-sidebar-backdrop mobile-open"
           onClick={() => setMobileOpen(false)}
           aria-hidden="true"
         />
+      )}
 
-        {/* Sidebar */}
-        <aside className={`shell-sidebar${collapsed ? " collapsed" : ""}${mobileOpen ? " mobile-open" : ""}`}>
+      {/* ── Main Stage ──────────────────────────────────────── */}
+      <div style={{ paddingLeft: "var(--sidebar-width)", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
 
-          {/* Brand header */}
-          <div className="sidebar-header">
-            <div className="sidebar-brand">
-              <div className="flex items-center gap-3">
-                <div className="sidebar-brand-icon" aria-hidden="true">T</div>
-                <span className="sidebar-brand-name">TimeSheet</span>
-              </div>
-              <button
-                type="button"
-                className="sidebar-collapse-btn"
-                onClick={() => setCollapsed(c => !c)}
-                aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-                title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-              >
-                <CollapseIcon collapsed={collapsed} />
-              </button>
-            </div>
-          </div>
-
-          {/* User profile section */}
-          <div className="sidebar-user-section">
-            <div className="sidebar-user-row">
-              <div className="relative">
-                <div className="sidebar-user-avatar">{initials}</div>
-                <span className="sidebar-user-online" aria-hidden="true" />
-              </div>
-              <div className="sidebar-user-info">
-                <div className="sidebar-user-name">{session.username}</div>
-                <div className="sidebar-user-role capitalize">{session.role}</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Nav */}
-          <div className="sidebar-nav-area">
-            <div className="nav-section">
-              <span className="nav-section-label">My Work</span>
-              {mainItems.map(renderNavItem)}
-            </div>
-
-            {managerItems.length > 0 && (
-              <div className="nav-section">
-                <span className="nav-section-label">My Team</span>
-                {managerItems.map(renderNavItem)}
-              </div>
-            )}
-
-            {adminItems.length > 0 && (
-              <div className="nav-section">
-                <span className="nav-section-label">Admin</span>
-                {adminItems.map(renderNavItem)}
-              </div>
-            )}
-          </div>
-
-          {/* Footer — logout */}
-          <div className="sidebar-footer">
+        {/* Topbar */}
+        <header className="shell-topnav">
+          <div className="shell-topnav__left">
+            {/* Mobile hamburger */}
             <button
               type="button"
-              className="nav-item nav-item--danger"
-              onClick={onLogout}
-              data-tooltip="Sign Out"
+              className="shell-topnav-hamburger icon-btn mr-1"
+              onClick={() => setMobileOpen(o => !o)}
+              aria-label="Toggle navigation"
             >
-              <LogoutIcon />
-              <span>Sign Out</span>
+              <Icon name="menu" />
+            </button>
+
+            {/* Page title */}
+            <h1 style={{
+              fontSize: "1.125rem",
+              fontWeight: 700,
+              color: "var(--inverse-surface)",
+              letterSpacing: "-0.015em",
+            }}>
+              {VIEW_LABELS[view] ?? view}
+            </h1>
+
+            {/* Inline search trigger */}
+            <button
+              type="button"
+              onClick={() => setPaletteOpen(true)}
+              title="Command palette (⌘K)"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                background: "var(--surface-container-low)",
+                border: "none",
+                borderRadius: "var(--r-lg)",
+                padding: "6px 14px",
+                cursor: "pointer",
+                fontSize: "0.875rem",
+                color: "var(--on-surface-variant)",
+                marginLeft: "var(--space-5)",
+              }}
+            >
+              <Icon name="search" size={18} />
+              <span>Search</span>
+              <kbd style={{
+                fontSize: "0.7rem",
+                background: "var(--surface-container)",
+                border: "none",
+                borderRadius: "var(--r-sm)",
+                padding: "1px 6px",
+                fontFamily: "inherit",
+                color: "var(--on-surface-variant)",
+              }}>⌘K</kbd>
             </button>
           </div>
-        </aside>
 
-        {/* Content */}
-        <main className="shell-content page-enter">
+          <div className="shell-topnav__right">
+            <NotificationBell />
+            <div className="topbar-divider" />
+            <div className="topbar-user" title={session.username} onClick={onNavigateProfile}>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--on-surface)", lineHeight: 1.3 }}>
+                  {session.username}
+                </div>
+                <div style={{ fontSize: "0.68rem", color: "var(--on-surface-variant)", textTransform: "capitalize" }}>
+                  {session.role}
+                </div>
+              </div>
+              <div style={{
+                width: 36,
+                height: 36,
+                borderRadius: "var(--r-lg)",
+                background: "linear-gradient(135deg, var(--primary), var(--primary-container))",
+                border: "2px solid var(--primary-fixed)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#fff",
+                fontWeight: 700,
+                fontSize: "0.72rem",
+                flexShrink: 0,
+              }}>
+                {initials}
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Page content */}
+        <main className="shell-content page-enter" style={{ flex: 1 }}>
           <div className="page-content">
             {children}
           </div>
         </main>
       </div>
 
-      {/* ── Command Palette ───────────────────────────────────────── */}
+      {/* ── Command Palette ─────────────────────────────────── */}
       <CommandPalette
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
@@ -327,146 +413,11 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
         currentView={view}
       />
 
-      {/* ── Keyboard Shortcuts Panel ──────────────────────────────── */}
+      {/* ── Keyboard Shortcuts Panel ─────────────────────────── */}
       <ShortcutsPanel
         open={shortcutsOpen}
         onClose={() => setShortcutsOpen(false)}
       />
     </>
-  );
-}
-
-/* ─── Inline SVG icons (18×18) ────────────────────────────── */
-function HamburgerIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <line x1="3" y1="6" x2="21" y2="6"/>
-      <line x1="3" y1="12" x2="21" y2="12"/>
-      <line x1="3" y1="18" x2="21" y2="18"/>
-    </svg>
-  );
-}
-function CollapseIcon({ collapsed }: { collapsed: boolean }) {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      {collapsed
-        ? <polyline points="9 18 15 12 9 6" />
-        : <polyline points="15 18 9 12 15 6" />
-      }
-    </svg>
-  );
-}
-function DashboardIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-      <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
-    </svg>
-  );
-}
-function ClockIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-    </svg>
-  );
-}
-function CalendarIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
-      <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-    </svg>
-  );
-}
-function ChartIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
-      <line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/>
-    </svg>
-  );
-}
-function CheckIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-      <polyline points="22 4 12 14.01 9 11.01"/>
-    </svg>
-  );
-}
-function FolderIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-    </svg>
-  );
-}
-function TagIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
-      <line x1="7" y1="7" x2="7.01" y2="7"/>
-    </svg>
-  );
-}
-function UsersIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-      <circle cx="9" cy="7" r="4"/>
-      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-    </svg>
-  );
-}
-function StarIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-    </svg>
-  );
-}
-function LogoutIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-      <polyline points="16 17 21 12 16 7"/>
-      <line x1="21" y1="12" x2="9" y2="12"/>
-    </svg>
-  );
-}
-/** Leave Policies — calendar with an X mark (distinct from CalendarIcon) */
-function LeavePolicyIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="3" y="4" width="18" height="18" rx="2"/>
-      <line x1="16" y1="2" x2="16" y2="6"/>
-      <line x1="8" y1="2" x2="8" y2="6"/>
-      <line x1="3" y1="10" x2="21" y2="10"/>
-      <line x1="9" y1="16" x2="15" y2="16"/>
-      <line x1="12" y1="13" x2="12" y2="19"/>
-    </svg>
-  );
-}
-/** Team Status — group of people with activity pulse */
-function TeamIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-      <circle cx="9" cy="7" r="4"/>
-      <polyline points="16 11 18 13 22 9"/>
-    </svg>
-  );
-}
-/** Work Policies — briefcase icon (distinct from any clock) */
-function BriefcaseIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="2" y="7" width="20" height="14" rx="2"/>
-      <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
-      <line x1="12" y1="12" x2="12" y2="12"/>
-      <line x1="8" y1="12" x2="16" y2="12"/>
-    </svg>
   );
 }

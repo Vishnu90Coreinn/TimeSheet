@@ -1004,7 +1004,7 @@ if (!data.length) return <EmptyTimesheets onAdd={openForm} />;
 **Status:** `DONE`
 
 > **Source:** UX Analysis: TimeSheet — Workforce Management (2026-03-27)
-> **Note:** TSH-F-005 (sidebar description text) deferred — cards already visually distinct. TSH-F-012 (week start day) deferred — requires WorkPolicy backend field.
+> **Note:** TSH-F-005 (sidebar description text) deferred — cards already visually distinct. TSH-F-012 week start day — Monday fixed by design, no config needed.
 
 - [x] **TSH-F-001** Consolidate entry points — `EmptyTimesheets` hidden when form is open; header `+ Add Entry` is sole primary CTA ✅
 - [x] **TSH-F-002** Smart Duration ↔ Start/End toggle — progressive disclosure with `showTimePicker` state; `TimePickerInput` component (HH:MM dropdowns with Clock icon) ✅
@@ -1032,7 +1032,7 @@ if (!data.length) return <EmptyTimesheets onAdd={openForm} />;
 - [x] **TZ-003** `GET /api/v1/profile` includes `timeZoneId` ✅
 - [x] **TZ-004** `PUT /api/v1/profile` saves `timeZoneId` ✅
 - [x] **TZ-005** `GET /api/v1/timezones` returns IANA zones via `TimeZoneInfo.GetSystemTimeZones()` ✅
-- [ ] **TZ-006** DateTime UTC audit across all controllers — deferred to Sprint 27b
+- [x] **TZ-006** DateTime UTC audit across all controllers ✅ — global `UtcDateTimeConverter` + `UtcNullableDateTimeConverter` registered in `Program.cs`; EF Core `DateTimeKind.Unspecified` values now always serialised with `Z` suffix
 
 #### Frontend
 - [x] **TZ-007** `useTimezone` hook — `timeZoneId` from session, `toLocal()`/`toUtc()` helpers ✅
@@ -1051,19 +1051,19 @@ if (!data.length) return <EmptyTimesheets onAdd={openForm} />;
 **Goal:** First-login wizard and setup checklist to reduce time-to-value for new users and admins.
 
 #### Backend
-- [ ] **ON-001** Add `OnboardingCompletedAt` (DateTime?, nullable) to `User` entity
-- [ ] **ON-002** EF migration `Sprint28_Onboarding`
-- [ ] **ON-003** `POST /api/v1/onboarding/complete` — sets `OnboardingCompletedAt = UtcNow` for current user
-- [ ] **ON-004** `GET /api/v1/onboarding/checklist` — returns checklist state: `{ hasSubmittedTimesheet, hasAppliedLeave, hasSetTimezone, hasSetNotificationPrefs }` derived from existing data
+- [x] **ON-001** Add `OnboardingCompletedAt` (DateTime?, nullable) to `User` entity ✅
+- [x] **ON-002** EF migration `Sprint28_Onboarding` ✅
+- [x] **ON-003** `POST /api/v1/onboarding/complete` — sets `OnboardingCompletedAt = UtcNow` for current user ✅
+- [x] **ON-004** `GET /api/v1/onboarding/checklist` — returns checklist state: `{ hasSubmittedTimesheet, hasAppliedLeave, hasSetTimezone, hasSetNotificationPrefs }` derived from existing data ✅
 
 #### Frontend
-- [ ] **ON-005** `OnboardingWizard.tsx` — multi-step modal (3 steps: Welcome → Set timezone → Set notifications → Done). Shown only when `session.onboardingCompletedAt` is null
-- [ ] **ON-006** Step 1 — Welcome: app overview, role explanation (employee/manager/admin)
-- [ ] **ON-007** Step 2 — Timezone: embed `TimezoneSelect` from Sprint 27; auto-detect from `Intl.DateTimeFormat().resolvedOptions().timeZone`
-- [ ] **ON-008** Step 3 — Notifications: toggle push notifications (use `usePushNotifications` hook from Sprint 24)
-- [ ] **ON-009** `OnboardingChecklist.tsx` — collapsible panel on Dashboard for users who haven't done all steps. Shows progress (e.g. "3/5 complete"). Each item links to the relevant page
-- [ ] **ON-010** Mount `OnboardingWizard` in `App.tsx` inside `AppRoutes` — only renders when `session && !session.onboardingCompletedAt`
-- [ ] **ON-011** Admin checklist items: Add first project, Add leave policies, Add holidays, Add first user
+- [x] **ON-005** `OnboardingWizard.tsx` — multi-step modal (3 steps: Welcome → Set timezone → Set notifications → Done). Shown only when `session.onboardingCompletedAt` is null ✅
+- [x] **ON-006** Step 1 — Welcome: app overview, role explanation (employee/manager/admin) ✅
+- [x] **ON-007** Step 2 — Timezone: embed `TimezoneSelect` from Sprint 27; auto-detect from `Intl.DateTimeFormat().resolvedOptions().timeZone` ✅
+- [x] **ON-008** Step 3 — Notifications: toggle push notifications (use `usePushNotifications` hook from Sprint 24) ✅
+- [x] **ON-009** `OnboardingChecklist.tsx` — collapsible panel on Dashboard for users who haven't done all steps. Shows progress (e.g. "3/5 complete"). Each item links to the relevant page ✅
+- [x] **ON-010** Mount `OnboardingWizard` in `App.tsx` inside `AppRoutes` — only renders when `session && !session.onboardingCompletedAt` ✅
+- [x] **ON-011** Admin checklist items: Add first project, Add leave policies, Add holidays, Add first user ✅
 
 #### Acceptance criteria
 - New user sees wizard on first login; sees nothing on subsequent logins
@@ -1079,22 +1079,22 @@ if (!data.length) return <EmptyTimesheets onAdd={openForm} />;
 **Goal:** Rich, grouped notification feed with preferences UI. Replace the basic notification bell.
 
 #### Backend
-- [ ] **NC-001** Add `GroupKey` (string, nullable) and `ActionUrl` (string, nullable) to `Notification` entity — EF migration `Sprint29_NotificationEnhancements`
-- [ ] **NC-002** `GET /api/v1/notifications` — add `?page=1&pageSize=20` pagination; return `{ items, totalUnread, hasMore }`
-- [ ] **NC-003** `POST /api/v1/notifications/mark-all-read` — mark all unread as read for current user
-- [ ] **NC-004** `DELETE /api/v1/notifications/{id}` — delete a single notification
-- [ ] **NC-005** `DELETE /api/v1/notifications` — clear all notifications for current user
+- [x] **NC-001** Add `GroupKey` (string, nullable) and `ActionUrl` (string, nullable) to `Notification` entity — EF migration `Sprint29_NotificationEnhancements` ✅
+- [x] **NC-002** `GET /api/v1/notifications` — add `?page=1&pageSize=20` pagination; return `{ items, totalUnread, hasMore }` ✅
+- [x] **NC-003** `POST /api/v1/notifications/mark-all-read` — mark all unread as read for current user ✅
+- [x] **NC-004** `DELETE /api/v1/notifications/{id}` — delete a single notification ✅
+- [x] **NC-005** `DELETE /api/v1/notifications` — clear all notifications for current user ✅
 
 #### Frontend
-- [ ] **NC-006** Redesign `Notifications.tsx` — replace simple dropdown with a slide-over panel (right side, 380px wide)
-- [ ] **NC-007** Group notifications by day: "Today", "Yesterday", "Earlier this week", "Older"
-- [ ] **NC-008** Each notification item: icon (based on type), title, message, relative time, unread dot, click to dismiss + navigate to `actionUrl`
-- [ ] **NC-009** "Mark all read" button in panel header
-- [ ] **NC-010** "Clear all" button with `useConfirm()` confirm dialog
-- [ ] **NC-011** Infinite scroll / "Load more" for pagination
-- [ ] **NC-012** `EmptyNotifications` empty state (already exists in `EmptyState.tsx`)
-- [ ] **NC-013** Notification preferences page in `Profile.tsx` — toggles per notification type (timesheet approved/rejected, leave approved/rejected, anomaly alerts)
-- [ ] **NC-014** Unread count badge on bell — animate when count changes (CSS keyframe pulse)
+- [x] **NC-006** Redesign `Notifications.tsx` — replace simple dropdown with a slide-over panel (right side, 380px wide) ✅
+- [x] **NC-007** Group notifications by day: "Today", "Yesterday", "Earlier this week", "Older" ✅
+- [x] **NC-008** Each notification item: icon (based on type), title, message, relative time, unread dot, click to dismiss + navigate to `actionUrl` ✅
+- [x] **NC-009** "Mark all read" button in panel header ✅
+- [x] **NC-010** "Clear all" button with `useConfirm()` confirm dialog ✅
+- [x] **NC-011** Infinite scroll / "Load more" for pagination ✅
+- [x] **NC-012** `EmptyNotifications` empty state (already exists in `EmptyState.tsx`) ✅
+- [x] **NC-013** Notification preferences page in `Profile.tsx` — toggles per notification type (timesheet approved/rejected, leave approved/rejected, anomaly alerts) ✅
+- [x] **NC-014** Unread count badge on bell — animate when count changes (CSS keyframe pulse) ✅
 
 #### Acceptance criteria
 - Panel opens/closes smoothly
@@ -1227,9 +1227,9 @@ if (!data.length) return <EmptyTimesheets onAdd={openForm} />;
 
 ---
 
-### Sprint 34 — Overtime & Comp-off Rules Engine ⏱️
+### Sprint 34 — Overtime & Comp-off Rules Engine ⏱️ ✅ DONE
 **Branch:** `feature/sprint-34-overtime-rules`
-**Status:** `TODO`
+**Status:** `DONE`
 **Goal:** Policy-driven overtime detection and automatic comp-off credit.
 
 #### Backend
@@ -1413,14 +1413,14 @@ if (!data.length) return <EmptyTimesheets onAdd={openForm} />;
 | 25 | Dark Mode | ✅ DONE | merged |
 | 26 | UX Foundation (skeletons, toasts, empty states, error boundaries) | ✅ DONE | merged |
 | **26-F** | **Timesheets UX Feedback Overhaul** | ✅ DONE | merged |
-| 27 | Multi-Timezone | DONE | merged |
-| 28 | Onboarding Flow | DONE | `feature/sprint-28-onboarding` |
-| 29 | Notification Centre 2.0 | DONE | `feature/sprint-29-notification-centre` |
+| 27 | Multi-Timezone | ✅ DONE | merged |
+| 28 | Onboarding Flow | ✅ DONE | merged |
+| 29 | Notification Centre 2.0 | ✅ DONE | merged |
 | 30 | SignalR Real-time | TODO | `feature/sprint-30-signalr-realtime` |
 | 31 | Billing & Subscription | TODO | `feature/sprint-31-billing` |
 | 32 | SSO / SAML | TODO | `feature/sprint-32-sso` |
 | 33 | Public API + Webhooks | TODO | `feature/sprint-33-public-api` |
-| 34 | Overtime & Comp-off Rules | DONE | `feature/sprint-34-overtime-rules` |
+| 34 | Overtime & Comp-off Rules | ✅ DONE | merged |
 | 35 | Slack / Teams Integration | TODO | `feature/sprint-35-slack-teams` |
 | 36 | AI Smart Fill | TODO | `feature/sprint-36-ai-smart-fill` |
 | 37 | Capacity Planning | TODO | `feature/sprint-37-capacity-planning` |

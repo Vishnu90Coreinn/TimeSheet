@@ -7,6 +7,7 @@ using Serilog;
 using Serilog.Events;
 using TimeSheet.Api.Middleware;
 using TimeSheet.Api.Services;
+using TimeSheet.Api.Utilities;
 using TimeSheet.Application;
 using TimeSheet.Infrastructure;
 
@@ -22,7 +23,12 @@ try
     var builder = WebApplication.CreateBuilder(args);
     builder.Host.UseSerilog();
 
-    builder.Services.AddControllers();
+    builder.Services.AddControllers()
+        .AddJsonOptions(options =>
+        {
+            options.JsonSerializerOptions.Converters.Add(new UtcDateTimeConverter());
+            options.JsonSerializerOptions.Converters.Add(new UtcNullableDateTimeConverter());
+        });
     builder.Services.AddApplication();
     builder.Services.AddInfrastructure(builder.Configuration);
     builder.Services.AddScoped<IWebPushService, WebPushService>();

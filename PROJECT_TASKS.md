@@ -1365,25 +1365,25 @@ if (!data.length) return <EmptyTimesheets onAdd={openForm} />;
 
 ---
 
-### Sprint 39 — White-label & Theming 🎨
-**Branch:** `feature/sprint-39-white-label`
-**Status:** `TODO`
+### Sprint 39 — White-label & Theming 🎨 ✅ DONE
+**Branch:** `feature/sprint-39-white-label` → **merged to master** · **PR:** #63
+**Status:** `DONE`
 **Goal:** Organisations can upload their logo, set brand colours, and use a custom domain.
 
 #### Backend
-- [ ] **WL-001** `TenantSettings` entity: `Id`, `TenantId`, `LogoUrl`, `PrimaryColor` (hex), `AppName`, `CustomDomain` (nullable), `FaviconUrl`
-- [ ] **WL-002** EF migration `Sprint39_TenantSettings`
-- [ ] **WL-003** `GET /api/v1/tenant/settings` — public endpoint (no auth) used at app load to fetch branding
-- [ ] **WL-004** `PUT /api/v1/tenant/settings` — admin only; accepts `multipart/form-data` for logo upload
-- [ ] **WL-005** Logo stored in `wwwroot/uploads/` (or blob storage); resized to max 200×60px on upload
+- [x] **WL-001** `TenantSettings` entity: `Id`, `LogoUrl`, `PrimaryColor` (hex), `AppName`, `CustomDomain` (nullable), `FaviconUrl` ✅
+- [x] **WL-002** EF migration `Sprint39_TenantSettings` ✅
+- [x] **WL-003** `GET /api/v1/tenant/settings` — public endpoint (no auth) used at app load to fetch branding ✅
+- [x] **WL-004** `PUT /api/v1/tenant/settings` — admin only; accepts `multipart/form-data` for logo/favicon upload ✅
+- [x] **WL-005** Logo/favicon stored in `wwwroot/uploads/`; served via `UseStaticFiles` ✅
 
 #### Frontend
-- [ ] **WL-006** `useTenantSettings` hook — fetches `/tenant/settings` once on app load; stores in context
-- [ ] **WL-007** `TenantSettingsProvider.tsx` — context; injects `--brand-primary` CSS variable override on `<html>` when `primaryColor` is set
-- [ ] **WL-008** `AppShell.tsx` — replace hardcoded "T" logo with `<img src={tenantSettings.logoUrl} />` if set; fallback to "T" monogram
-- [ ] **WL-009** `index.html` — title and favicon updated dynamically via `document.title = tenantSettings.appName`
-- [ ] **WL-010** Admin — `TenantBranding.tsx` page under Settings: logo upload (drag-and-drop), colour picker for primary colour (live preview), app name input, custom domain input
-- [ ] **WL-011** Live preview panel: shows the sidebar + topbar with the selected branding before saving
+- [x] **WL-006** `TenantSettingsContext.tsx` — fetches `/tenant/settings` once on app load; stores in context ✅
+- [x] **WL-007** `TenantSettingsProvider.tsx` — injects full 9-stop HSL `--brand-*` + `--color-brand-*` scale + derived aliases on `<html>` ✅
+- [x] **WL-008** `AppShell.tsx` — shows uploaded logo if set; fallback to "T" monogram + app name ✅
+- [x] **WL-009** `document.title` and favicon updated dynamically from settings ✅
+- [x] **WL-010** `TenantBranding.tsx` admin page: logo/favicon upload, colour picker, app name, custom domain ✅
+- [x] **WL-011** Live preview panel: sidebar + content mockup updates in real time ✅
 
 #### Acceptance criteria
 - Logo appears in sidebar within 1 second of page load
@@ -1425,7 +1425,7 @@ if (!data.length) return <EmptyTimesheets onAdd={openForm} />;
 | 36 | AI Smart Fill | TODO | `feature/sprint-36-ai-smart-fill` |
 | 37 | Capacity Planning | TODO | `feature/sprint-37-capacity-planning` |
 | 38 | GDPR / Compliance Toolkit | TODO | `feature/sprint-38-gdpr` |
-| 39 | White-label & Theming | TODO | `feature/sprint-39-white-label` |
+| 39 | White-label & Theming | ✅ DONE | merged |
 
 ---
 

@@ -9,6 +9,8 @@ import type { View } from "../types";
 import { CommandPalette } from "./CommandPalette";
 import { ShortcutsPanel } from "./ShortcutsPanel";
 import { ThemeToggle } from "./ThemeToggle";
+import { useTenantSettings } from "../contexts/TenantSettingsContext";
+import { Palette as PaletteIcon } from "lucide-react";
 
 interface NavItem {
   view: View;
@@ -32,6 +34,7 @@ const NAV_ITEMS: NavItem[] = [
   { view: "holidays",        label: "Holidays",       icon: <StarIcon />,        group: "admin" },
   { view: "leave-policies",  label: "Leave Policies", icon: <LeavePolicyIcon />, group: "admin" },
   { view: "work-policies",   label: "Work Policies",  icon: <BriefcaseIcon />,   group: "admin" },
+  { view: "branding",        label: "Branding",       icon: <PaletteIcon size={18} />, group: "admin" },
 ];
 
 interface AppShellProps {
@@ -52,6 +55,7 @@ const VIEW_LABELS: Record<View, string> = {
   "work-policies": "Work Policies",
   profile: "My Profile",
   team: "Team Status",
+  branding: "Branding",
 };
 
 export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, onLogout, children }: AppShellProps) {
@@ -61,6 +65,7 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const initials = session.username.slice(0, 2).toUpperCase();
+  const tenantSettings = useTenantSettings();
 
   // Close mobile sidebar when resizing to tablet/desktop
   useEffect(() => {
@@ -246,8 +251,18 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
           <div className="sidebar-header">
             <div className="sidebar-brand">
               <div className="flex items-center gap-3">
-                <div className="sidebar-brand-icon" aria-hidden="true">T</div>
-                <span className="sidebar-brand-name">TimeSheet</span>
+                {tenantSettings.logoUrl ? (
+                  <img
+                    src={`http://localhost:5000${tenantSettings.logoUrl}`}
+                    alt={tenantSettings.appName}
+                    className="h-8 w-auto object-contain"
+                  />
+                ) : (
+                  <div className="sidebar-brand-icon" aria-hidden="true">T</div>
+                )}
+                {!tenantSettings.logoUrl && (
+                  <span className="sidebar-brand-name">{tenantSettings.appName}</span>
+                )}
               </div>
               <button
                 type="button"

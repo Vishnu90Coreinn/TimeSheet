@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
-export { applyBrandColor } from "../utils/colorUtils";
 import { applyBrandColor } from "../utils/colorUtils";
+export { applyBrandColor } from "../utils/colorUtils";
 
 export interface TenantSettings {
   appName: string;
@@ -36,7 +36,7 @@ export function TenantSettingsProvider({ children }: { children: React.ReactNode
         if (data.faviconUrl) {
           let link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
           if (!link) { link = document.createElement("link"); link.rel = "icon"; document.head.appendChild(link); }
-          link.href = `http://localhost:5000${data.faviconUrl}`;
+          link.href = `${API_BASE}${data.faviconUrl}`;
         }
       })
       .catch(() => {});

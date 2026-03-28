@@ -4,6 +4,7 @@
 
 /** Converts a 6-digit hex colour (#rrggbb) to [h°(0-360), s(0-1), v(0-1)]. */
 export function hexToHsv(hex: string): [number, number, number] {
+  if (!/^#[0-9a-fA-F]{6}$/.test(hex)) throw new Error(`Invalid hex colour: ${hex}`);
   const n = parseInt(hex.replace("#", ""), 16);
   const r = ((n >> 16) & 0xff) / 255;
   const g = ((n >> 8) & 0xff) / 255;
@@ -24,6 +25,7 @@ export function hexToHsv(hex: string): [number, number, number] {
 
 /** Converts [h°(0-360), s(0-1), v(0-1)] to a 6-digit hex colour. */
 export function hsvToHex(h: number, s: number, v: number): string {
+  h = h % 360;
   const c = v * s;
   const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
   const m = v - c;
@@ -42,6 +44,7 @@ export function hsvToHex(h: number, s: number, v: number): string {
 
 /** Converts a hex colour to [h(0-1), s(0-1), l(0-1)]. */
 export function hexToHsl(hex: string): [number, number, number] {
+  if (!/^#[0-9a-fA-F]{6}$/.test(hex)) throw new Error(`Invalid hex colour: ${hex}`);
   const n = parseInt(hex.replace("#", ""), 16);
   const r = ((n >> 16) & 0xff) / 255;
   const g = ((n >> 8) & 0xff) / 255;

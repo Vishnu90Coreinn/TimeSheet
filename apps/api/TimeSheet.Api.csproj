@@ -9,8 +9,8 @@
 
   <ItemGroup>
     <PackageReference Include="ClosedXML" Version="0.102.3" />
-    <!-- Override vulnerable transitive dependency pulled in by ClosedXML -->
-    <PackageReference Include="System.IO.Packaging" Version="6.0.1" />
+    <!-- Keep aligned with Infrastructure to avoid NU1605 downgrade -->
+    <PackageReference Include="System.IO.Packaging" Version="10.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.0" />
     <PackageReference Include="QuestPDF" Version="2025.1.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.0" />

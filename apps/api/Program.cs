@@ -114,6 +114,7 @@ try
 
     app.UseMiddleware<CorrelationIdMiddleware>();
     app.UseHttpsRedirection();
+    app.UseStaticFiles();
     app.UseCors("WebClient");
     app.UseRateLimiter();
     app.UseAuthentication();

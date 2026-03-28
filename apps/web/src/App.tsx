@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Navigate, Route, Routes, useNavigate, useLocation } from "react-router-dom";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { ToastProvider } from "./contexts/ToastContext";
+import { TenantSettingsProvider } from "./contexts/TenantSettingsContext";
 import { AppShell } from "./components/AppShell";
 import { ConfirmProvider } from "./components/ConfirmDialog";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -22,11 +23,12 @@ import { Projects } from "./components/Admin/Projects";
 import { Reports } from "./components/Reports";
 import { Timesheets } from "./components/Timesheets";
 import { Users } from "./components/Admin/Users";
+import { TenantBranding } from "./components/Admin/TenantBranding";
 import { useSession } from "./hooks/useSession";
 import type { View } from "./types";
 
 export function hasViewAccess(role: string, view: View | "admin"): boolean {
-  if (view === "admin" || view === "projects" || view === "categories" || view === "users" || view === "holidays" || view === "leave-policies" || view === "work-policies") return role === "admin";
+  if (view === "admin" || view === "projects" || view === "categories" || view === "users" || view === "holidays" || view === "leave-policies" || view === "work-policies" || view === "branding") return role === "admin";
   if (view === "approvals") return role === "manager" || role === "admin";
   return true;
 }
@@ -49,6 +51,7 @@ const VIEW_PATHS: Record<View, string> = {
   "leave-policies": "/leave-policies",
   "work-policies":  "/work-policies",
   profile:          "/profile",
+  branding:         "/branding",
 };
 
 const PATH_VIEWS: Record<string, View> = Object.fromEntries(
@@ -66,7 +69,7 @@ function AppRoutes() {
   const showOnboarding = Boolean(session && !onboardingCompletedAt);
 
   const nav = useMemo(
-    () => ["dashboard", "timesheets", "leave", "reports", ...(isManager ? ["approvals", "team"] : []), ...(isAdmin ? ["projects", "categories", "users", "holidays", "leave-policies", "work-policies"] : [])] as View[],
+    () => ["dashboard", "timesheets", "leave", "reports", ...(isManager ? ["approvals", "team"] : []), ...(isAdmin ? ["projects", "categories", "users", "holidays", "leave-policies", "work-policies", "branding"] : [])] as View[],
     [isAdmin, isManager]
   );
 
@@ -119,6 +122,7 @@ function AppRoutes() {
           {isAdmin   && <Route path="/holidays"        element={<ErrorBoundary><Holidays /></ErrorBoundary>} />}
           {isAdmin   && <Route path="/leave-policies"  element={<ErrorBoundary><LeavePolicies /></ErrorBoundary>} />}
           {isAdmin   && <Route path="/work-policies"   element={<ErrorBoundary><WorkPolicies /></ErrorBoundary>} />}
+          {isAdmin   && <Route path="/branding"        element={<ErrorBoundary><TenantBranding /></ErrorBoundary>} />}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </AppShell>
@@ -128,14 +132,16 @@ function AppRoutes() {
 
 export function App() {
   return (
-    <ThemeProvider>
-      <ToastProvider>
-        <ConfirmProvider>
-          <AppRoutes />
-          <InstallPrompt />
-          <ToastContainer />
-        </ConfirmProvider>
-      </ToastProvider>
-    </ThemeProvider>
+    <TenantSettingsProvider>
+      <ThemeProvider>
+        <ToastProvider>
+          <ConfirmProvider>
+            <AppRoutes />
+            <InstallPrompt />
+            <ToastContainer />
+          </ConfirmProvider>
+        </ToastProvider>
+      </ThemeProvider>
+    </TenantSettingsProvider>
   );
 }

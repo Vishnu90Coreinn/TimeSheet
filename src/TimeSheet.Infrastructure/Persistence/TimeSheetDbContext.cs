@@ -36,6 +36,9 @@ public class TimeSheetDbContext(DbContextOptions<TimeSheetDbContext> options) : 
     public DbSet<SavedReport> SavedReports => Set<SavedReport>();
     public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
     public DbSet<TenantSettings> TenantSettings => Set<TenantSettings>();
+    public DbSet<DataExportRequest> DataExportRequests => Set<DataExportRequest>();
+    public DbSet<ConsentLog> ConsentLogs => Set<ConsentLog>();
+    public DbSet<RetentionPolicy> RetentionPolicies => Set<RetentionPolicy>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

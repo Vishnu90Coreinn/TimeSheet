@@ -71,6 +71,7 @@ public static class DependencyInjection
         services.AddHostedService<AnomalyDetectionService>();
         services.AddHostedService<OvertimeCompOffSchedulerService>();
         services.AddHostedService<ReportSchedulerService>();
+        services.AddHostedService<RetentionEnforcementService>();
 
         return services;
     }

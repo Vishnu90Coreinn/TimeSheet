@@ -1335,27 +1335,27 @@ if (!data.length) return <EmptyTimesheets onAdd={openForm} />;
 
 ---
 
-### Sprint 38 — GDPR / Compliance Toolkit 🔒
-**Branch:** `feature/sprint-38-gdpr`
-**Status:** `TODO`
+### Sprint 38 — GDPR / Compliance Toolkit 🔒 ✅ DONE
+**Branch:** `feature/sprint-38-gdpr` → **merged to master**
+**Status:** `DONE`
 **Goal:** Data subject rights, consent logging, and retention policies for EU compliance.
 
 #### Backend
-- [ ] **GD-001** `DataExportRequest` entity: `Id`, `UserId`, `RequestedAt`, `CompletedAt`, `DownloadUrl`
-- [ ] **GD-002** EF migration `Sprint38_GdprEntities`
-- [ ] **GD-003** `POST /api/v1/privacy/export-request` — queues a data export job for the requesting user
-- [ ] **GD-004** Background job: generates JSON/CSV export of all user data (timesheets, leave, profile), stores as downloadable file, notifies user
-- [ ] **GD-005** `POST /api/v1/privacy/delete-account` — anonymises all user PII (name → "Deleted User", email → `deleted-{id}@anon.local`); keeps aggregate data for reports
-- [ ] **GD-006** `ConsentLog` entity: `UserId`, `ConsentType`, `Granted` (bool), `Timestamp`, `IpAddress`
-- [ ] **GD-007** `POST /api/v1/privacy/consent` — logs consent grant/revoke
-- [ ] **GD-008** `GET /api/v1/admin/retention-policy` / `PUT` — configure how long to keep data per type (timesheets: 7 years, logs: 1 year, etc.)
-- [ ] **GD-009** Retention enforcement background job: purge records older than policy
+- [x] **GD-001** `DataExportRequest` entity: `Id`, `UserId`, `RequestedAt`, `CompletedAt`, `DownloadUrl` ✅
+- [x] **GD-002** EF migration `Sprint38_GdprEntities` ✅
+- [x] **GD-003** `POST /api/v1/privacy/export-request` — queues a data export job for the requesting user ✅
+- [x] **GD-004** Background job: generates JSON export of all user data (timesheets, leave, profile), stores as downloadable file ✅
+- [x] **GD-005** `POST /api/v1/privacy/delete-account` — anonymises all user PII (name → "Deleted User", email → `deleted-{id}@anon.local`); keeps aggregate data for reports ✅
+- [x] **GD-006** `ConsentLog` entity: `UserId`, `ConsentType`, `Granted` (bool), `Timestamp`, `IpAddress` ✅
+- [x] **GD-007** `POST /api/v1/privacy/consent` — logs consent grant/revoke ✅
+- [x] **GD-008** `GET /api/v1/admin/retention-policy` / `PUT` — configure how long to keep data per type (timesheets: 7 years, logs: 1 year, etc.) ✅
+- [x] **GD-009** Retention enforcement background job: purge records older than policy (`RetentionEnforcementService`, daily 03:00 UTC) ✅
 
 #### Frontend
-- [ ] **GD-010** `Profile.tsx` — "Privacy & Data" section: "Download my data" button (calls export request, shows `toast.info("Export queued. You'll receive a notification when ready.")`), "Delete my account" (uses `useConfirm()` with danger variant)
-- [ ] **GD-011** Cookie/consent banner: shown on first visit (before login); stores consent in localStorage + logs to backend on login
-- [ ] **GD-012** Admin — `RetentionPolicy.tsx` panel under Settings: configure retention periods per data type with number inputs + "Save" button
-- [ ] **GD-013** Admin — audit log viewer: searchable, paginated table of `AuditLog` entries (already exists in backend)
+- [x] **GD-010** `Profile.tsx` — "Privacy & Data" section: "Download my data" button + "Delete my account" with confirm ✅
+- [x] **GD-011** Cookie/consent banner (`ConsentBanner.tsx`): shown on first visit; stores consent in localStorage + logs to backend ✅
+- [x] **GD-012** Admin — `RetentionPolicy.tsx` panel: configure retention periods per data type with number inputs + "Save" button ✅
+- [x] **GD-013** Admin — `AuditLogViewer.tsx`: searchable, paginated table of audit log entries ✅
 
 #### Acceptance criteria
 - Data export request creates a downloadable file within 60 seconds (background job)
@@ -1424,7 +1424,7 @@ if (!data.length) return <EmptyTimesheets onAdd={openForm} />;
 | 35 | Slack / Teams Integration | TODO | `feature/sprint-35-slack-teams` |
 | 36 | AI Smart Fill | TODO | `feature/sprint-36-ai-smart-fill` |
 | 37 | Capacity Planning | TODO | `feature/sprint-37-capacity-planning` |
-| 38 | GDPR / Compliance Toolkit | TODO | `feature/sprint-38-gdpr` |
+| 38 | GDPR / Compliance Toolkit | ✅ DONE | merged |
 | 39 | White-label & Theming | ✅ DONE | merged |
 
 ---

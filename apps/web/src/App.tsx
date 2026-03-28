@@ -23,7 +23,7 @@ import { Projects } from "./components/Admin/Projects";
 import { Reports } from "./components/Reports";
 import { Timesheets } from "./components/Timesheets";
 import { Users } from "./components/Admin/Users";
-import { TenantBranding } from "./components/Admin/TenantBranding";
+import { TenantBranding } from "./components/Admin/Branding/TenantBranding";
 import { RetentionPolicy } from "./components/Admin/RetentionPolicy";
 import { AuditLogViewer } from "./components/Admin/AuditLogViewer";
 import { ConsentBanner } from "./components/ConsentBanner";

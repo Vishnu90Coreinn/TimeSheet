@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from "react";
 import { apiFetch, API_BASE } from "../../api/client";
 import { useToast } from "../../contexts/ToastContext";
+import { applyBrandColor } from "../../contexts/TenantSettingsContext";
 
 interface BrandingForm {
   appName: string;
@@ -20,13 +21,6 @@ interface TenantSettingsResponse {
   customDomain: string | null;
 }
 
-function darken(hex: string, amount: number): string {
-  const n = parseInt(hex.replace("#", ""), 16);
-  const r = Math.max(0, Math.round(((n >> 16) & 0xff) * (1 - amount)));
-  const g = Math.max(0, Math.round(((n >> 8) & 0xff) * (1 - amount)));
-  const b = Math.max(0, Math.round((n & 0xff) * (1 - amount)));
-  return `#${[r, g, b].map(v => v.toString(16).padStart(2, "0")).join("")}`;
-}
 
 export function TenantBranding() {
   const toast = useToast();
@@ -134,9 +128,8 @@ export function TenantBranding() {
         setLogoPreview(null);
         setFaviconPreview(null);
 
-        // Apply CSS variable override immediately
-        document.documentElement.style.setProperty("--color-brand-500", form.primaryColor);
-        document.documentElement.style.setProperty("--color-brand-700", darken(form.primaryColor, 0.15));
+        // Apply CSS variable overrides immediately
+        applyBrandColor(form.primaryColor);
         document.title = form.appName;
 
         toast.success("Branding saved");

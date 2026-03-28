@@ -10,7 +10,7 @@ import { CommandPalette } from "./CommandPalette";
 import { ShortcutsPanel } from "./ShortcutsPanel";
 import { ThemeToggle } from "./ThemeToggle";
 import { useTenantSettings } from "../contexts/TenantSettingsContext";
-import { Palette as PaletteIcon } from "lucide-react";
+import { Palette as PaletteIcon, Shield as ShieldIcon, ScrollText as ScrollTextIcon } from "lucide-react";
 
 interface NavItem {
   view: View;
@@ -34,7 +34,9 @@ const NAV_ITEMS: NavItem[] = [
   { view: "holidays",        label: "Holidays",       icon: <StarIcon />,        group: "admin" },
   { view: "leave-policies",  label: "Leave Policies", icon: <LeavePolicyIcon />, group: "admin" },
   { view: "work-policies",   label: "Work Policies",  icon: <BriefcaseIcon />,   group: "admin" },
-  { view: "branding",        label: "Branding",       icon: <PaletteIcon size={18} />, group: "admin" },
+  { view: "branding",          label: "Branding",         icon: <PaletteIcon size={18} />,    group: "admin" },
+  { view: "retention-policy",  label: "Data Retention",   icon: <ShieldIcon size={18} />,     group: "admin" },
+  { view: "audit-logs",        label: "Audit Logs",       icon: <ScrollTextIcon size={18} />, group: "admin" },
 ];
 
 interface AppShellProps {
@@ -56,6 +58,8 @@ const VIEW_LABELS: Record<View, string> = {
   profile: "My Profile",
   team: "Team Status",
   branding: "Branding",
+  "retention-policy": "Data Retention",
+  "audit-logs": "Audit Logs",
 };
 
 export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, onLogout, children }: AppShellProps) {

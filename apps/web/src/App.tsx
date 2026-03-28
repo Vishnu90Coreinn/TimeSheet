@@ -24,11 +24,14 @@ import { Reports } from "./components/Reports";
 import { Timesheets } from "./components/Timesheets";
 import { Users } from "./components/Admin/Users";
 import { TenantBranding } from "./components/Admin/TenantBranding";
+import { RetentionPolicy } from "./components/Admin/RetentionPolicy";
+import { AuditLogViewer } from "./components/Admin/AuditLogViewer";
+import { ConsentBanner } from "./components/ConsentBanner";
 import { useSession } from "./hooks/useSession";
 import type { View } from "./types";
 
 export function hasViewAccess(role: string, view: View | "admin"): boolean {
-  if (view === "admin" || view === "projects" || view === "categories" || view === "users" || view === "holidays" || view === "leave-policies" || view === "work-policies" || view === "branding") return role === "admin";
+  if (view === "admin" || view === "projects" || view === "categories" || view === "users" || view === "holidays" || view === "leave-policies" || view === "work-policies" || view === "branding" || view === "retention-policy" || view === "audit-logs") return role === "admin";
   if (view === "approvals") return role === "manager" || role === "admin";
   return true;
 }
@@ -51,7 +54,9 @@ const VIEW_PATHS: Record<View, string> = {
   "leave-policies": "/leave-policies",
   "work-policies":  "/work-policies",
   profile:          "/profile",
-  branding:         "/branding",
+  branding:           "/branding",
+  "retention-policy": "/retention-policy",
+  "audit-logs":       "/audit-logs",
 };
 
 const PATH_VIEWS: Record<string, View> = Object.fromEntries(
@@ -69,7 +74,7 @@ function AppRoutes() {
   const showOnboarding = Boolean(session && !onboardingCompletedAt);
 
   const nav = useMemo(
-    () => ["dashboard", "timesheets", "leave", "reports", ...(isManager ? ["approvals", "team"] : []), ...(isAdmin ? ["projects", "categories", "users", "holidays", "leave-policies", "work-policies", "branding"] : [])] as View[],
+    () => ["dashboard", "timesheets", "leave", "reports", ...(isManager ? ["approvals", "team"] : []), ...(isAdmin ? ["projects", "categories", "users", "holidays", "leave-policies", "work-policies", "branding", "retention-policy", "audit-logs"] : [])] as View[],
     [isAdmin, isManager]
   );
 
@@ -122,7 +127,9 @@ function AppRoutes() {
           {isAdmin   && <Route path="/holidays"        element={<ErrorBoundary><Holidays /></ErrorBoundary>} />}
           {isAdmin   && <Route path="/leave-policies"  element={<ErrorBoundary><LeavePolicies /></ErrorBoundary>} />}
           {isAdmin   && <Route path="/work-policies"   element={<ErrorBoundary><WorkPolicies /></ErrorBoundary>} />}
-          {isAdmin   && <Route path="/branding"        element={<ErrorBoundary><TenantBranding /></ErrorBoundary>} />}
+          {isAdmin   && <Route path="/branding"          element={<ErrorBoundary><TenantBranding /></ErrorBoundary>} />}
+          {isAdmin   && <Route path="/retention-policy" element={<ErrorBoundary><RetentionPolicy /></ErrorBoundary>} />}
+          {isAdmin   && <Route path="/audit-logs"       element={<ErrorBoundary><AuditLogViewer /></ErrorBoundary>} />}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </AppShell>
@@ -137,6 +144,7 @@ export function App() {
         <ToastProvider>
           <ConfirmProvider>
             <AppRoutes />
+            <ConsentBanner />
             <InstallPrompt />
             <ToastContainer />
           </ConfirmProvider>

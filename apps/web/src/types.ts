@@ -101,7 +101,7 @@ export type CompOffBalance = {
   expiresInDays?: number;
   expiryDays?: number;
 };
-export type View = "dashboard" | "reports" | "timesheets" | "leave" | "approvals" | "team" | "projects" | "categories" | "users" | "holidays" | "leave-policies" | "work-policies" | "profile" | "branding";
+export type View = "dashboard" | "reports" | "timesheets" | "leave" | "approvals" | "team" | "projects" | "categories" | "users" | "holidays" | "leave-policies" | "work-policies" | "profile" | "branding" | "retention-policy" | "audit-logs";
 
 export type TeamMemberStatus = {
   userId: string;

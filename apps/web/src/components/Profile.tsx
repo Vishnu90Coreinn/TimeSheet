@@ -3,7 +3,7 @@
  * All roles. Accessible from topbar avatar.
  */
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Eye, EyeOff, Lock, Camera } from "lucide-react";
+import { Eye, EyeOff, Lock, Camera, Download, Trash2 } from "lucide-react";
 import { apiFetch } from "../api/client";
 import type { MyProfile, NotificationPreferences } from "../types";
 import { TimezoneSelect, type TimezoneOption } from "./TimezoneSelect";
@@ -304,6 +304,41 @@ export function Profile({ onBack }: { onBack: () => void }) {
     } else {
       showToast(false, "Failed to delete template.");
     }
+  }
+
+  // ── Privacy & Data ──────────────────────────────────────────────────────────
+
+  const [exportStatus, setExportStatus] = useState<string | null>(null);
+  const [exportUrl, setExportUrl] = useState<string | null>(null);
+  const [requestingExport, setRequestingExport] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+
+  async function handleRequestExport() {
+    setRequestingExport(true);
+    const r = await apiFetch("/privacy/export-request", { method: "POST" });
+    if (r.ok) {
+      const data = await r.json() as { status: string; downloadUrl?: string | null };
+      setExportStatus(data.status);
+      setExportUrl(data.downloadUrl ?? null);
+      showToast(true, "Export queued. You'll receive a notification when ready.");
+    } else {
+      showToast(false, "Failed to request export.");
+    }
+    setRequestingExport(false);
+  }
+
+  async function handleDeleteAccount() {
+    setDeletingAccount(true);
+    const r = await apiFetch("/privacy/delete-account", { method: "POST" });
+    setDeletingAccount(false);
+    if (r.ok || r.status === 204) {
+      showToast(true, "Account anonymised. You will be signed out.");
+      setTimeout(() => window.location.href = "/", 2000);
+    } else {
+      showToast(false, "Failed to delete account.");
+    }
+    setConfirmDelete(false);
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -756,6 +791,76 @@ export function Profile({ onBack }: { onBack: () => void }) {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+
+        {/* ── Privacy & Data card ── */}
+        <div className="card">
+          <div className="card-header">
+            <div className="card-title">Privacy &amp; Data</div>
+            <div className="card-subtitle">Manage your personal data and account</div>
+          </div>
+          <div className="card-body flex flex-col gap-4">
+
+            {/* Download my data */}
+            <div className="flex items-start justify-between gap-4 py-3 border-b border-border-subtle">
+              <div>
+                <div className="text-[0.85rem] font-semibold text-text-primary">Download my data</div>
+                <div className="text-[0.75rem] text-text-tertiary mt-[2px]">
+                  Export all your timesheets, leave records and profile as a JSON file.
+                </div>
+                {exportStatus === "Completed" && exportUrl && (
+                  <a
+                    href={`http://localhost:5000${exportUrl}`}
+                    download
+                    className="inline-flex items-center gap-1 text-[0.75rem] text-brand-600 hover:underline mt-1"
+                  >
+                    <Download size={12} /> Download export
+                  </a>
+                )}
+                {exportStatus === "Pending" && (
+                  <span className="text-[0.75rem] text-text-tertiary mt-1 block">Processing… check back shortly.</span>
+                )}
+              </div>
+              <button
+                className="btn btn-secondary btn-sm shrink-0"
+                onClick={() => void handleRequestExport()}
+                disabled={requestingExport || exportStatus === "Pending"}
+              >
+                {requestingExport ? "Requesting…" : "Request export"}
+              </button>
+            </div>
+
+            {/* Delete account */}
+            <div className="flex items-start justify-between gap-4 py-2">
+              <div>
+                <div className="text-[0.85rem] font-semibold text-danger">Delete my account</div>
+                <div className="text-[0.75rem] text-text-tertiary mt-[2px]">
+                  Anonymises your name and email. Timesheet data is retained for reporting.
+                </div>
+              </div>
+              {!confirmDelete ? (
+                <button
+                  className="btn btn-sm border border-danger text-danger bg-transparent hover:bg-danger-light shrink-0"
+                  onClick={() => setConfirmDelete(true)}
+                >
+                  <Trash2 size={13} className="mr-1" /> Delete account
+                </button>
+              ) : (
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[0.75rem] text-text-tertiary">Are you sure?</span>
+                  <button
+                    className="btn btn-sm [background:var(--color-danger)] text-white border-0"
+                    disabled={deletingAccount}
+                    onClick={() => void handleDeleteAccount()}
+                  >
+                    {deletingAccount ? "Deleting…" : "Yes, delete"}
+                  </button>
+                  <button className="btn btn-outline btn-sm" onClick={() => setConfirmDelete(false)}>Cancel</button>
+                </div>
+              )}
+            </div>
+
           </div>
         </div>
 

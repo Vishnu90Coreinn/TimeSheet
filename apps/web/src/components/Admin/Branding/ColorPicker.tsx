@@ -1,5 +1,6 @@
 /**
  * ColorPicker.tsx — Saturation/brightness square + hue strip + hex input + WCAG badge.
+ * The gradient canvas and hue slider are collapsible under "Custom Colour" toggle.
  * No external library — all colour math is in colorUtils.ts.
  */
 import { useEffect, useRef, useState } from "react";
@@ -11,6 +12,7 @@ interface ColorPickerProps {
 }
 
 export function ColorPicker({ value, onChange }: ColorPickerProps) {
+  const [isOpen, setIsOpen] = useState(false);
   const [hsv, setHsv] = useState<[number, number, number]>(() => hexToHsv(value));
   const [hexInput, setHexInput] = useState(value);
   const hsvRef = useRef(hsv);
@@ -55,66 +57,15 @@ export function ColorPicker({ value, onChange }: ColorPickerProps) {
 
   const hueColour = hsvToHex(hsv[0], 1, 1);
   const contrast = wcagContrastRatio(value);
-  const wcagLabel = contrast >= 7 ? "AAA ✓" : contrast >= 4.5 ? "AA ✓" : contrast >= 3 ? "AA ✗" : "Fail";
-  const wcagBg = contrast >= 4.5
-    ? "bg-green-100 text-green-800 border border-green-200"
-    : contrast >= 3
-    ? "bg-yellow-100 text-yellow-800 border border-yellow-200"
-    : "bg-red-100 text-red-800 border border-red-200";
-  const wcagExplain = contrast >= 4.5
-    ? `Contrast ${contrast.toFixed(1)}:1 — passes WCAG AA for white text`
-    : contrast >= 3
-    ? `Contrast ${contrast.toFixed(1)}:1 — fails WCAG AA (needs 4.5:1). Consider a darker shade.`
-    : `Contrast ${contrast.toFixed(1)}:1 — fails WCAG AA. White text will be hard to read on this colour.`;
-  const wcagExplainBg = contrast >= 4.5 ? "bg-green-50 text-green-700" : contrast >= 3 ? "bg-yellow-50 text-yellow-700" : "bg-red-50 text-red-700";
+  const passes = contrast >= 4.5;
 
   return (
     <div className="flex flex-col gap-3 select-none w-full max-w-xs">
-      {/* Saturation / brightness square */}
-      <div
-        ref={squareRef}
-        className="relative h-32 w-full rounded-lg cursor-crosshair overflow-hidden"
-        style={{ background: `linear-gradient(to right, #ffffff, ${hueColour})` }}
-        onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); updateFromSquare(e); }}
-        onPointerMove={e => { if (e.buttons > 0) updateFromSquare(e); }}
-      >
-        <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, transparent, #000000)" }} />
-        <div
-          className="absolute w-3 h-3 rounded-full border-2 border-white shadow pointer-events-none"
-          style={{
-            left: `${hsv[1] * 100}%`,
-            top: `${(1 - hsv[2]) * 100}%`,
-            transform: "translate(-50%, -50%)",
-            boxShadow: "0 0 0 1px rgba(0,0,0,0.3)",
-          }}
-        />
-      </div>
-
-      {/* Hue strip */}
-      <div
-        ref={hueRef}
-        className="relative h-3 w-full rounded-full cursor-pointer overflow-visible"
-        style={{ background: "linear-gradient(to right, hsl(0,100%,50%), hsl(60,100%,50%), hsl(120,100%,50%), hsl(180,100%,50%), hsl(240,100%,50%), hsl(300,100%,50%), hsl(360,100%,50%))" }}
-        onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); updateFromHue(e); }}
-        onPointerMove={e => { if (e.buttons > 0) updateFromHue(e); }}
-      >
-        <div
-          className="absolute w-4 h-4 rounded-full border-2 border-white shadow pointer-events-none"
-          style={{
-            left: `${(hsv[0] / 360) * 100}%`,
-            top: "50%",
-            transform: "translate(-50%, -50%)",
-            background: hueColour,
-            boxShadow: "0 0 0 1px rgba(0,0,0,0.2)",
-          }}
-        />
-      </div>
-
-      {/* Hex input + swatch + WCAG badge */}
+      {/* Hex input + swatch + WCAG badge — always visible */}
       <div className="flex items-center gap-2">
         <div
-          className="h-8 w-8 rounded-md border border-[var(--border-default)] flex-shrink-0"
-          style={{ background: value }}
+          className="h-8 w-8 rounded-md border flex-shrink-0"
+          style={{ background: value, borderColor: "var(--border-default)" }}
         />
         <input
           type="text"
@@ -132,16 +83,88 @@ export function ColorPicker({ value, onChange }: ColorPickerProps) {
               setHexInput(value);
             }
           }}
+          aria-label="Hex colour value"
         />
-        <span className={`text-[0.7rem] font-bold px-2 py-0.5 rounded-md flex-shrink-0 ${wcagBg}`}>
-          {wcagLabel}
+        {/* Contrast status chip */}
+        <span
+          className="flex items-center gap-1 text-[0.7rem] font-bold px-2 py-0.5 rounded-full flex-shrink-0 border"
+          style={passes
+            ? { background: "#dcfce7", color: "#15803d", borderColor: "#bbf7d0" }
+            : { background: "#fee2e2", color: "#dc2626", borderColor: "#fecaca" }
+          }
+          aria-label={passes ? "Passes WCAG AA contrast" : "Fails WCAG AA contrast"}
+        >
+          {passes ? "✓" : "✗"} AA {passes ? "Pass" : "Fail"}
         </span>
       </div>
 
-      {/* WCAG explanation */}
-      <p className={`text-[0.72rem] rounded-md px-3 py-2 ${wcagExplainBg}`}>
-        {wcagExplain}
-      </p>
+      {/* Inline WCAG message — shown only when failing */}
+      {!passes && (
+        <p className="text-[0.72rem]" style={{ color: "var(--danger, #dc2626)" }}>
+          Contrast {contrast.toFixed(1)}:1 — needs 4.5:1 for white text. Consider a darker shade.
+        </p>
+      )}
+
+      {/* Collapsible gradient canvas + hue slider */}
+      <div className="border rounded-lg overflow-hidden" style={{ borderColor: "var(--border-default)" }}>
+        <button
+          type="button"
+          className="w-full flex items-center justify-between px-3 py-2 text-[0.78rem] font-medium transition-colors"
+          style={{ color: "var(--text-secondary)", background: "var(--surface-secondary, #f8fafc)" }}
+          onClick={() => setIsOpen(o => !o)}
+          aria-expanded={isOpen}
+          aria-controls="custom-colour-picker"
+        >
+          <span>Custom Colour</span>
+          <span aria-hidden="true" style={{ transition: "transform 0.15s", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", display: "inline-block" }}>▾</span>
+        </button>
+
+        {isOpen && (
+          <div id="custom-colour-picker" className="flex flex-col gap-3 p-3">
+            {/* Saturation / brightness square */}
+            <div
+              ref={squareRef}
+              className="relative h-32 w-full rounded-lg cursor-crosshair overflow-hidden"
+              style={{ background: `linear-gradient(to right, #ffffff, ${hueColour})` }}
+              onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); updateFromSquare(e); }}
+              onPointerMove={e => { if (e.buttons > 0) updateFromSquare(e); }}
+              role="presentation"
+            >
+              <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, transparent, #000000)" }} />
+              <div
+                className="absolute w-3 h-3 rounded-full border-2 border-white pointer-events-none"
+                style={{
+                  left: `${hsv[1] * 100}%`,
+                  top: `${(1 - hsv[2]) * 100}%`,
+                  transform: "translate(-50%, -50%)",
+                  boxShadow: "0 0 0 1px rgba(0,0,0,0.3)",
+                }}
+              />
+            </div>
+
+            {/* Hue strip */}
+            <div
+              ref={hueRef}
+              className="relative h-3 w-full rounded-full cursor-pointer overflow-visible"
+              style={{ background: "linear-gradient(to right, hsl(0,100%,50%), hsl(60,100%,50%), hsl(120,100%,50%), hsl(180,100%,50%), hsl(240,100%,50%), hsl(300,100%,50%), hsl(360,100%,50%))" }}
+              onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); updateFromHue(e); }}
+              onPointerMove={e => { if (e.buttons > 0) updateFromHue(e); }}
+              role="presentation"
+            >
+              <div
+                className="absolute w-4 h-4 rounded-full border-2 border-white pointer-events-none"
+                style={{
+                  left: `${(hsv[0] / 360) * 100}%`,
+                  top: "50%",
+                  transform: "translate(-50%, -50%)",
+                  background: hueColour,
+                  boxShadow: "0 0 0 1px rgba(0,0,0,0.2)",
+                }}
+              />
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

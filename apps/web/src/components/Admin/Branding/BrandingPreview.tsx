@@ -17,35 +17,44 @@ export function BrandingPreview({ appName, primaryColor, logoPreviewUrl }: Brand
   const [screen, setScreen] = useState<PreviewScreen>("sidebar");
 
   const monogram = appName.charAt(0).toUpperCase() || "T";
-  const btnBase = "px-3 py-1 rounded-full text-[0.72rem] font-medium transition-colors cursor-pointer border-0";
-  const btnActive = { background: primaryColor, color: "#ffffff" };
-  const btnInactive = { background: "var(--surface-secondary, #f1f5f9)", color: "var(--text-secondary, #64748b)" };
+  const btnBase = "px-3 py-1 rounded-full text-[0.72rem] font-medium transition-colors border-0";
 
   return (
     <div className="flex flex-col gap-3 h-full">
       {/* Screen switcher */}
-      <div className="flex gap-1">
-        {(["sidebar", "dashboard", "login"] as PreviewScreen[]).map(s => (
-          <button
-            key={s}
-            className={btnBase}
-            style={screen === s ? btnActive : btnInactive}
-            onClick={() => setScreen(s)}
-          >
-            {s.charAt(0).toUpperCase() + s.slice(1)}
-          </button>
-        ))}
+      <div className="flex gap-1" role="tablist" aria-label="Preview screen">
+        {(["sidebar", "dashboard", "login"] as PreviewScreen[]).map(s => {
+          const isDisabled = s === "login";
+          const isActive = screen === s;
+          return (
+            <button
+              key={s}
+              role="tab"
+              aria-selected={isActive}
+              disabled={isDisabled}
+              title={isDisabled ? "Login preview coming soon" : undefined}
+              className={[btnBase, isDisabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer"].join(" ")}
+              style={isActive && !isDisabled
+                ? { background: primaryColor, color: "#ffffff" }
+                : { background: "var(--surface-secondary, #f1f5f9)", color: "var(--text-secondary, #64748b)" }
+              }
+              onClick={() => { if (!isDisabled) setScreen(s); }}
+            >
+              {s.charAt(0).toUpperCase() + s.slice(1)}
+            </button>
+          );
+        })}
       </div>
 
       {/* Preview frame */}
       <div className="rounded-lg overflow-hidden border border-[var(--border-default)] flex-1" style={{ minHeight: 280 }}>
-        {screen === "sidebar" && <SidebarScreen appName={appName} primaryColor={primaryColor} logoUrl={logoPreviewUrl} monogram={monogram} />}
+        {screen === "sidebar"   && <SidebarScreen appName={appName} primaryColor={primaryColor} logoUrl={logoPreviewUrl} monogram={monogram} />}
         {screen === "dashboard" && <DashboardScreen primaryColor={primaryColor} />}
-        {screen === "login" && <LoginScreen appName={appName} primaryColor={primaryColor} logoUrl={logoPreviewUrl} monogram={monogram} />}
+        {screen === "login"     && <LoginScreen appName={appName} primaryColor={primaryColor} logoUrl={logoPreviewUrl} monogram={monogram} />}
       </div>
 
-      <p className="text-[0.72rem] text-[var(--text-tertiary)]">
-        Preview updates live. Colour + logo applied on Save.
+      <p className="text-[0.72rem]" style={{ color: "var(--text-tertiary)" }}>
+        Colours and name update live. Logo changes apply after Save.
       </p>
     </div>
   );
@@ -92,7 +101,12 @@ function SidebarScreen({ appName, primaryColor, logoUrl, monogram }: { appName: 
         <div className="h-4 w-28 rounded mb-3" style={{ background: "var(--border-default, #e2e8f0)" }} />
         <div className="grid grid-cols-2 gap-2 mb-3">
           {[1, 2].map(i => (
-            <div key={i} className="rounded-lg p-3 bg-white border" style={{ borderColor: "var(--border-default, #e2e8f0)" }}>
+            <div
+              key={i}
+              className="rounded-lg p-3 bg-white border"
+              style={{ borderColor: "var(--border-default, #e2e8f0)" }}
+              title={i === 1 ? "Pending approvals" : "Active timesheets"}
+            >
               <div className="h-2.5 w-12 rounded mb-2" style={{ background: "var(--border-default, #e2e8f0)" }} />
               <div className="h-5 w-10 rounded text-xs font-bold flex items-center justify-center text-white" style={{ background: primaryColor }}>{i * 12}</div>
             </div>

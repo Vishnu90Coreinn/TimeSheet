@@ -1,8 +1,8 @@
 /**
  * TenantBranding.tsx — Page shell for the Branding admin page.
- * Owns the tab bar, dirty banner, Save button, and wires all sub-components.
+ * Owns the tab bar, sticky save footer, beforeunload guard, and wires all sub-components.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useBrandingForm } from "./useBrandingForm";
 import { BrandingPreview } from "./BrandingPreview";
 import { IdentityTab } from "./tabs/IdentityTab";
@@ -16,19 +16,28 @@ import { API_BASE } from "../../../api/client";
 
 type Tab = "identity" | "colors" | "assets" | "login" | "emails" | "advanced";
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: "identity",  label: "Identity"  },
-  { id: "colors",    label: "Colors"    },
-  { id: "assets",    label: "Assets"    },
-  { id: "login",     label: "Login"     },
-  { id: "emails",    label: "Emails"    },
-  { id: "advanced",  label: "Advanced"  },
+const TABS: { id: Tab; label: string; disabled?: boolean }[] = [
+  { id: "identity", label: "Identity" },
+  { id: "colors",   label: "Colours" },
+  { id: "assets",   label: "Assets" },
+  { id: "login",    label: "Login",   disabled: true },
+  { id: "emails",   label: "Emails",  disabled: true },
+  { id: "advanced", label: "Advanced" },
 ];
 
 export function TenantBranding() {
   const toast = useToast();
   const { form, loading, saving, isDirty, setField, setLogoFile, setFaviconFile, setCurrentLogoUrl, setCurrentFaviconUrl, reset, save } = useBrandingForm();
   const [activeTab, setActiveTab] = useState<Tab>("identity");
+
+  // Warn browser before unloading with unsaved changes
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isDirty) { e.preventDefault(); e.returnValue = ""; }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isDirty]);
 
   async function handleSave() {
     const ok = await save();
@@ -56,31 +65,7 @@ export function TenantBranding() {
           <h1 className="page-title">Branding</h1>
           <p className="page-subtitle">Customise your organisation&apos;s appearance</p>
         </div>
-        <button
-          type="button"
-          className="btn btn-primary"
-          disabled={saving || !isDirty}
-          onClick={() => void handleSave()}
-        >
-          {saving ? "Saving…" : "Save Branding"}
-        </button>
       </div>
-
-      {/* Unsaved changes banner */}
-      {isDirty && (
-        <div className="flex items-center justify-between rounded-lg px-4 py-2.5 mb-4 border" style={{ background: "#fefce8", borderColor: "#fde047" }}>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full" style={{ background: "#eab308" }} />
-            <span className="text-[0.82rem] font-medium" style={{ color: "#854d0e" }}>You have unsaved changes</span>
-          </div>
-          <div className="flex gap-2">
-            <button type="button" className="btn btn-ghost btn-sm" onClick={reset}>Discard</button>
-            <button type="button" className="btn btn-primary btn-sm" disabled={saving} onClick={() => void handleSave()}>
-              {saving ? "Saving…" : "Save Branding"}
-            </button>
-          </div>
-        </div>
-      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 items-start">
         {/* Left: tab card */}
@@ -91,12 +76,17 @@ export function TenantBranding() {
               <button
                 key={tab.id}
                 type="button"
-                className="px-4 py-3 text-[0.82rem] font-medium whitespace-nowrap border-b-2 transition-colors"
-                style={activeTab === tab.id
+                title={tab.disabled ? "Coming soon — available in a future release." : undefined}
+                aria-label={tab.disabled ? `${tab.label} — coming soon` : tab.label}
+                className={[
+                  "px-4 py-3 text-[0.82rem] font-medium whitespace-nowrap border-b-2 transition-colors",
+                  tab.disabled ? "opacity-40 cursor-not-allowed" : "",
+                ].join(" ")}
+                style={!tab.disabled && activeTab === tab.id
                   ? { borderBottomColor: "var(--color-primary, #6366f1)", color: "var(--color-primary, #6366f1)" }
                   : { borderBottomColor: "transparent", color: "var(--text-secondary, #64748b)" }
                 }
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => { if (!tab.disabled) setActiveTab(tab.id); }}
               >
                 {tab.label}
               </button>
@@ -141,6 +131,36 @@ export function TenantBranding() {
           />
         </div>
       </div>
+
+      {/* Sticky save footer — visible only when there are unsaved changes */}
+      {isDirty && (
+        <div
+          className="sticky bottom-0 z-20 mt-6 flex items-center justify-between border-t"
+          style={{
+            background: "var(--n-0, white)",
+            borderColor: "var(--border-default)",
+            margin: "1.5rem calc(-1 * var(--space-5)) 0",
+            padding: "0.75rem var(--space-5)",
+          }}
+        >
+          <span className="text-[0.82rem] font-medium" style={{ color: "var(--text-secondary)" }}>
+            You have unsaved changes
+          </span>
+          <div className="flex gap-2">
+            <button type="button" className="btn btn-secondary btn-sm" onClick={reset}>
+              Discard Changes
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              disabled={saving}
+              onClick={() => void handleSave()}
+            >
+              {saving ? "Saving…" : "Save Branding"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

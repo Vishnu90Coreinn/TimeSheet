@@ -7,6 +7,7 @@ import { SkeletonPage } from "./Skeleton";
 import type { LeaveBalance, OvertimeSummary, TeamLeaveEntry } from "../types";
 import { OnboardingChecklist } from "./OnboardingChecklist";
 import { useTimezone } from "../hooks/useTimezone";
+import { AppButton } from "./ui";
 
 interface DashboardProps { role: string; username: string; onboardingCompletedAt?: string | null; onNavigate?: (view: string) => void; }
 
@@ -626,7 +627,7 @@ function EmployeeDashboard({ employee, week, leaveBalances, activeProjectCount, 
           <div className="page-subtitle">Here's what's happening with your work today — {todayStr()}</div>
         </div>
         <div className="page-actions">
-          <button className="btn btn-primary btn-sm" onClick={() => onNavigate?.("timesheets")}>+ Log Time</button>
+          <AppButton variant="primary" size="sm" onClick={() => onNavigate?.("timesheets")}>+ Log Time</AppButton>
         </div>
       </div>
 
@@ -889,9 +890,9 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
         </div>
         {/* C2 — SVG icon instead of emoji; Reports accessible via sidebar nav too */}
         <div className="page-actions">
-          <button className="btn btn-outline btn-sm flex items-center gap-[6px]" onClick={() => onNavigate?.("reports")}>
+          <AppButton variant="outline" size="sm" className="flex items-center gap-[6px]" onClick={() => onNavigate?.("reports")}>
             <IconBarChart size={14} /> Reports
-          </button>
+          </AppButton>
         </div>
       </div>
 
@@ -1156,13 +1157,15 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
                           </div>
                         )}
                         {/* C3 — review action link */}
-                        <button
+                        <AppButton
                           type="button"
-                          className="mt-[4px] bg-none border-none p-0 text-[var(--brand-600)] text-[0.72rem] font-semibold cursor-pointer bg-transparent"
+                          variant="ghost"
+                          size="sm"
+                          className="mt-[4px] px-0 h-auto text-[var(--brand-600)] text-[0.72rem] font-semibold"
                           onClick={e => { e.stopPropagation(); onNavigate?.("approvals"); }}
                         >
                           Review →
-                        </button>
+                        </AppButton>
                       </div>
                       <div className="activity-ts">{fmtDateShort(r.workDate)}</div>
                     </div>
@@ -1194,14 +1197,18 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
                       Approve {formatDisplayName(confirmPayload.username)}'s timesheet for {fmtDateShort(confirmPayload.workDate)}?
                     </div>
                     <div className="flex gap-[var(--space-2)]">
-                      <button
-                        className="btn btn-primary btn-sm text-[0.75rem]"
+                      <AppButton
+                        variant="primary"
+                        size="sm"
+                        className="text-[0.75rem]"
                         onClick={() => { const item = doConfirm(); if (item) void executeApprove(item); }}
-                      >Confirm</button>
-                      <button
-                        className="btn btn-ghost btn-sm text-[0.75rem]"
+                      >Confirm</AppButton>
+                      <AppButton
+                        variant="ghost"
+                        size="sm"
+                        className="text-[0.75rem]"
                         onClick={cancelConfirm}
-                      >Cancel</button>
+                      >Cancel</AppButton>
                     </div>
                   </div>
                 )}
@@ -1219,13 +1226,15 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
                         <div className="text-[0.7rem] text-[var(--text-tertiary)]">{fmtDateShort(a.workDate)} · {fmtMinutes(a.enteredMinutes)}</div>
                       </div>
                       {/* H5 — requests confirmation instead of immediate approve */}
-                      <button
-                        className="btn btn-outline-success btn-sm [padding:3px_8px] h-[26px] text-[0.72rem] min-w-[28px]"
+                      <AppButton
+                        variant="outline"
+                        size="sm"
+                        className="[padding:3px_8px] h-[26px] text-[0.72rem] min-w-[28px]"
                         onClick={() => requestConfirm(a)}
                         disabled={approvingId === a.timesheetId || (confirming && confirmPayload?.timesheetId !== a.timesheetId)}
                         title={`Approve ${formatDisplayName(a.username)}'s timesheet`}
                         aria-label={`Approve ${formatDisplayName(a.username)}'s timesheet for ${fmtDateShort(a.workDate)}`}
-                      >✓</button>
+                      >✓</AppButton>
                     </div>
                   ))}
                 </div>
@@ -1233,11 +1242,11 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
                 {/* M1 — Fix grammatically awkward pending CTA */}
                 {timesheetHealth.pendingApprovals > 0 && (
                   <div className="mt-[var(--space-3)]">
-                    <button className="btn btn-outline w-full btn-sm" onClick={() => onNavigate?.("approvals")}>
+                    <AppButton variant="outline" size="sm" className="w-full" onClick={() => onNavigate?.("approvals")}>
                       {timesheetHealth.pendingApprovals === 1
                         ? "View 1 pending approval →"
                         : `View all ${timesheetHealth.pendingApprovals} pending approvals →`}
-                    </button>
+                    </AppButton>
                   </div>
                 )}
               </div>
@@ -1481,7 +1490,7 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
           <h2 className="stat-label">Pending approvals</h2>
           <div className="stat-footer">
             {pendingCount > 0
-              ? <button className="bg-transparent border-none text-[var(--brand-500)] cursor-pointer p-0 text-[0.72rem]" onClick={() => onNavigate?.("approvals")}>Review →</button>
+              ? <AppButton variant="ghost" size="sm" className="px-0 h-auto text-[var(--brand-500)] text-[0.72rem]" onClick={() => onNavigate?.("approvals")}>Review →</AppButton>
               : "No action needed"
             }
           </div>
@@ -1697,7 +1706,7 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
           </div>
           {effortByProject.length > 0 && (
             <div className="border-t border-[var(--border-subtle)] px-[var(--space-5)] py-[var(--space-3)]">
-              <button onClick={() => onNavigate?.("projects")} className="card-footer-link">View all projects →</button>
+              <AppButton variant="ghost" size="sm" className="card-footer-link px-0 h-auto" onClick={() => onNavigate?.("projects")}>View all projects →</AppButton>
             </div>
           )}
         </div>
@@ -1774,7 +1783,7 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
                 {totalStaff > 0 ? `${totalStaff - submittedCount} not yet submitted` : ""}
               </div>
             </div>
-            <button className="btn btn-outline btn-sm" onClick={() => onNavigate?.("approvals")}>Send reminder →</button>
+            <AppButton variant="outline" size="sm" onClick={() => onNavigate?.("approvals")}>Send reminder →</AppButton>
           </div>
         </div>
       </div>

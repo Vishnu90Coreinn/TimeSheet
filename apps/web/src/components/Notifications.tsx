@@ -5,6 +5,7 @@ import { apiFetch } from "../api/client";
 import type { Notification, NotificationListResponse } from "../types";
 import { EmptyNotifications } from "./EmptyState";
 import { useConfirm } from "./ConfirmDialog";
+import { AppButton } from "./ui";
 
 const PAGE_SIZE = 10;
 const DRAWER_CLOSE_MS = 220;
@@ -317,8 +318,10 @@ export function NotificationBell() {
 
   return (
     <>
-      <button
+      <AppButton
         type="button"
+        variant="ghost"
+        size="sm"
         className="icon-btn relative"
         onClick={() => setOpen((value) => !value)}
         aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
@@ -332,20 +335,24 @@ export function NotificationBell() {
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
-      </button>
+      </AppButton>
 
       {mounted && (
         <div
           className="fixed inset-0 z-[260] transition-opacity duration-200"
           style={{ opacity: open ? 1 : 0, pointerEvents: open ? "auto" : "none" }}
         >
-          <button
+          <AppButton
             type="button"
+            variant="ghost"
+            size="sm"
             aria-hidden="true"
             tabIndex={-1}
             className="absolute inset-0 border-0 bg-[rgba(17,24,39,0.28)] backdrop-blur-[1px]"
             onClick={() => setOpen(false)}
-          />
+          >
+            {" "}
+          </AppButton>
 
           <aside
             role="dialog"
@@ -369,14 +376,15 @@ export function NotificationBell() {
                 </div>
               </div>
 
-              <button
+              <AppButton
                 type="button"
-                className="btn btn-ghost btn-sm"
+                variant="ghost"
+                size="sm"
                 onClick={() => setOpen(false)}
                 aria-label="Close notifications"
               >
                 <X size={16} />
-              </button>
+              </AppButton>
             </div>
 
             <div className="flex items-center justify-between gap-3 border-b border-border-subtle px-4 py-3">
@@ -384,22 +392,25 @@ export function NotificationBell() {
                 Inbox
               </div>
               <div className="flex items-center gap-2">
-                <button
+                <AppButton
                   type="button"
-                  className="btn btn-ghost btn-sm"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => void markAllRead()}
                   disabled={unreadCount === 0}
                 >
                   Mark all read
-                </button>
-                <button
+                </AppButton>
+                <AppButton
                   type="button"
-                  className="btn btn-ghost btn-sm text-danger"
+                  variant="ghost"
+                  size="sm"
+                  className="text-danger"
                   onClick={() => void clearAll()}
                   disabled={!hasItems}
                 >
                   Clear all
-                </button>
+                </AppButton>
               </div>
             </div>
 
@@ -452,10 +463,11 @@ export function NotificationBell() {
 
                                 <div className="min-w-0 flex-1">
                                   {notification.actionUrl ? (
-                                    <button
+                                    <AppButton
                                       type="button"
                                       onClick={() => void openNotification(notification)}
-                                      className="block w-full text-left"
+                                      variant="ghost"
+                                      className="block w-full text-left p-0 h-auto min-h-0 bg-transparent"
                                     >
                                       <div className="flex items-center gap-2">
                                         <div className={`truncate text-[0.9rem] font-semibold ${unread ? "text-text-primary" : "text-text-secondary"}`}>
@@ -466,7 +478,7 @@ export function NotificationBell() {
                                       <div className="mt-1 line-clamp-2 text-[0.82rem] leading-5 text-text-tertiary">
                                         {notification.message}
                                       </div>
-                                    </button>
+                                    </AppButton>
                                   ) : (
                                     <div>
                                       <div className="flex items-center gap-2">
@@ -487,14 +499,15 @@ export function NotificationBell() {
                                       <span aria-hidden="true">•</span>
                                       <span>{meta.label}</span>
                                     </div>
-                                    <button
+                                    <AppButton
                                       type="button"
-                                      className="btn btn-ghost btn-sm"
+                                      variant="ghost"
+                                      size="sm"
                                       onClick={() => void dismiss(notification)}
                                     >
                                       Dismiss
                                       <ChevronRight size={14} />
-                                    </button>
+                                    </AppButton>
                                   </div>
                                 </div>
                               </div>
@@ -507,14 +520,15 @@ export function NotificationBell() {
 
                   {hasMore && (
                     <div className="pt-1">
-                      <button
+                      <AppButton
                         type="button"
-                        className="btn btn-outline w-full"
+                        variant="outline"
+                        className="w-full"
                         onClick={() => void loadPage(page + 1, "append")}
                         disabled={loadingMore}
                       >
                         {loadingMore ? "Loading..." : "Load more notifications"}
-                      </button>
+                      </AppButton>
                     </div>
                   )}
                 </div>

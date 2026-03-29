@@ -9,6 +9,7 @@ import { useToast } from "../contexts/ToastContext";
 import { SkeletonPage } from "./Skeleton";
 import { EmptyTimesheets } from "./EmptyState";
 import { TimePickerInput } from "./TimePickerInput";
+import { AppButton, AppInput, AppSelect, AppTextarea } from "./ui";
 import type { AttendanceSummary } from "./AttendanceWidget";
 import type { OvertimeSummary, Project, TaskCategory, TimesheetDay, TimesheetEntry, WeekDayMeta, WeekSummary } from "../types";
 import { useTimezone } from "../hooks/useTimezone";
@@ -721,54 +722,64 @@ export function Timesheets() {
               </div>
             </div>
             <div className="flex gap-2 flex-wrap items-center">
-              <button className="btn btn-outline btn-sm">Export</button>
+              <AppButton variant="outline" size="sm" className="ts-toolbar-btn">Export</AppButton>
               {isDraft && dayEntries.length > 0 && (
-                <button
-                  className="btn btn-outline btn-sm"
+                <AppButton
+                  variant="outline"
+                  size="sm"
+                  className="ts-toolbar-btn"
                   onClick={() => { setSaveTemplateName(""); setShowSaveTemplateModal(true); }}
                 >
                   Save as Template
-                </button>
+                </AppButton>
               )}
               {submittableCount > 0 && (
-                <button
-                  className="btn btn-primary btn-sm"
+                <AppButton
+                  variant="primary"
+                  size="sm"
+                  className="ts-toolbar-btn"
                   onClick={() => setShowSubmitWeekModal(true)}
                   title={`Submit all ${submittableCount} draft day${submittableCount > 1 ? "s" : ""} this week`}
                 >
                   Submit Week ({submittableCount})
-                </button>
+                </AppButton>
               )}
               {isDraft && dayEntries.length > 0 && (
-                <button
-                  className="btn btn-outline btn-sm"
+                <AppButton
+                  variant="outline"
+                  size="sm"
+                  className="ts-toolbar-btn"
                   onClick={() => setShowSubmitForm((v) => !v)}
                 >
                   Send for Review
-                </button>
+                </AppButton>
               )}
-              <button
-                className="btn btn-primary"
+              <AppButton
+                variant="primary"
+                size="sm"
+                className="ts-toolbar-btn"
                 onClick={openNew}
                 disabled={isLocked}
                 title={isLocked ? `Entries cannot be added to ${isApproved ? "an" : "a"} ${dayData?.status} timesheet` : undefined}
                 style={isLocked ? { opacity: 0.45, cursor: "not-allowed", pointerEvents: "none" } : undefined}
               >
                 + Add Entry
-              </button>
+              </AppButton>
             </div>
           </div>
 
           {/* Week strip with prev/next navigation */}
           <div className="flex items-stretch gap-[6px]">
-            <button
+            <AppButton
+              variant="ghost"
+              unstyled
               className="ts-week-nav-btn"
               onClick={() => shiftWeek(-7)}
               title="Previous week"
               aria-label="Previous week"
             >
               &#8249;
-            </button>
+            </AppButton>
             <div className="flex-1 grid grid-cols-7 gap-[6px]">
             {weekDays.map((date, i) => {
               const meta = weekDayMap.get(date);
@@ -790,7 +801,9 @@ export function Timesheets() {
               const isToday = date === todayIso();
               const dayApproved = meta?.status === "approved";
               return (
-                <button
+                <AppButton
+                  variant="ghost"
+                  unstyled
                   key={date}
                   className={[
                     "ts-day-card",
@@ -823,18 +836,20 @@ export function Timesheets() {
                       />
                     </div>
                   </div>
-                </button>
+                </AppButton>
               );
             })}
             </div>
-            <button
+            <AppButton
+              variant="ghost"
+              unstyled
               className="ts-week-nav-btn"
               onClick={() => shiftWeek(7)}
               title="Next week"
               aria-label="Next week"
             >
               &#8250;
-            </button>
+            </AppButton>
           </div>
 
           {/* Entry form */}
@@ -847,7 +862,7 @@ export function Timesheets() {
               {/* Description */}
               <div className="flex flex-col gap-1">
                 <label className="text-[12px] font-semibold text-[var(--n-600,#4b5563)]">Task / Description</label>
-                <textarea
+                <AppTextarea
                   className="ts-form-input resize-y"
                   rows={2}
                   placeholder="What did you work on?"
@@ -860,7 +875,7 @@ export function Timesheets() {
               <div className="flex gap-[10px] items-start flex-wrap">
                 <div className="flex flex-col gap-1 flex-1">
                   <label className="text-[12px] font-semibold text-[var(--n-600,#4b5563)]">Project</label>
-                  <select
+                  <AppSelect
                     className="ts-form-input"
                     value={form.projectId}
                     onChange={(e) => setFormField({ projectId: e.target.value })}
@@ -869,11 +884,11 @@ export function Timesheets() {
                     {projects.map((p) => (
                       <option key={p.id} value={p.id}>{p.name}</option>
                     ))}
-                  </select>
+                  </AppSelect>
                 </div>
                 <div className="flex flex-col gap-1 flex-1">
                   <label className="text-[12px] font-semibold text-[var(--n-600,#4b5563)]">Category</label>
-                  <select
+                  <AppSelect
                     className="ts-form-input"
                     value={form.taskCategoryId}
                     onChange={(e) => setFormField({ taskCategoryId: e.target.value })}
@@ -881,7 +896,7 @@ export function Timesheets() {
                     {categories.map((c) => (
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
-                  </select>
+                  </AppSelect>
                 </div>
               </div>
 
@@ -890,20 +905,22 @@ export function Timesheets() {
                 <div className="flex gap-[10px] items-end flex-wrap">
                   <div className="flex flex-col gap-1 w-[140px] shrink-0">
                     <label className="text-[12px] font-semibold text-[var(--n-600,#4b5563)]">Duration (h)</label>
-                    <input
+                    <AppInput
                       className="ts-form-input"
                       placeholder="e.g. 1.5"
                       value={form.durationHours}
                       onChange={(e) => setFormField({ durationHours: e.target.value.replace(",", ".") })}
                     />
                   </div>
-                  <button
+                  <AppButton
                     type="button"
+                    variant="ghost"
+                    size="sm"
                     className="text-[12px] text-brand-500 hover:underline pb-[7px] whitespace-nowrap"
                     onClick={() => setShowTimePicker(true)}
                   >
                     Set start &amp; end time instead
-                  </button>
+                  </AppButton>
                 </div>
               ) : (
                 <div className="flex gap-[10px] items-end flex-wrap">
@@ -924,32 +941,36 @@ export function Timesheets() {
                       </span>
                     </div>
                   )}
-                  <button
+                  <AppButton
                     type="button"
+                    variant="ghost"
+                    size="sm"
                     className="text-[12px] text-[var(--n-400,#9ca3af)] hover:underline pb-[7px] whitespace-nowrap"
                     onClick={() => { setShowTimePicker(false); setFormField({ startTime: "", endTime: "" }); }}
                   >
                     Enter duration instead
-                  </button>
+                  </AppButton>
                 </div>
               )}
 
               {formError && <p className="text-[12px] text-danger m-0">{formError}</p>}
 
               <div className="flex gap-2 justify-end">
-                <button
-                  className="btn btn-outline btn-sm"
+                <AppButton
+                  variant="outline"
+                  size="sm"
                   onClick={() => { setShowForm(false); setFormError(""); }}
                 >
                   Cancel
-                </button>
-                <button
-                  className="btn btn-primary btn-sm"
+                </AppButton>
+                <AppButton
+                  variant="primary"
+                  size="sm"
                   onClick={() => void saveEntry()}
                   disabled={saving}
                 >
                   {saving ? "Saving…" : "Save entry"}
-                </button>
+                </AppButton>
               </div>
             </div>
           )}
@@ -960,7 +981,7 @@ export function Timesheets() {
               <div className="text-[14px] font-semibold text-[var(--n-900,#111827)]">Submit for Review</div>
               <div className="flex flex-col gap-1">
                 <label className="text-[12px] font-semibold text-[var(--n-600,#4b5563)]">Notes (optional)</label>
-                <textarea
+                <AppTextarea
                   className="ts-form-input resize-y"
                   rows={3}
                   placeholder="Optional notes to your manager…"
@@ -973,8 +994,8 @@ export function Timesheets() {
                   <label className="text-[12px] font-semibold text-[var(--n-600,#4b5563)]">
                     Mismatch reason <span className="text-danger">*</span>
                   </label>
-                  <textarea
-                    className="ts-form-input resize-y border-warning"
+                <AppTextarea
+                  className="ts-form-input resize-y border-warning"
                     rows={3}
                     placeholder="Explain why logged hours differ from attendance hours…"
                     value={mismatchReason}
@@ -985,8 +1006,8 @@ export function Timesheets() {
               )}
               {submitError && <p className="text-[12px] text-danger m-0">{submitError}</p>}
               <div className="flex gap-2 justify-end">
-                <button className="btn btn-outline btn-sm" onClick={() => setShowSubmitForm(false)}>Cancel</button>
-                <button className="btn btn-primary btn-sm" onClick={() => void submitTimesheet()}>Submit Timesheet</button>
+                <AppButton variant="outline" size="sm" onClick={() => setShowSubmitForm(false)}>Cancel</AppButton>
+                <AppButton variant="primary" size="sm" onClick={() => void submitTimesheet()}>Submit Timesheet</AppButton>
               </div>
             </div>
           )}
@@ -1042,18 +1063,20 @@ export function Timesheets() {
                 <EmptyTimesheets onAdd={isDraft && !isLocked ? openNew : undefined} />
                 {isDraft && !isLocked && (
                   <div className="flex items-center justify-center gap-3 flex-wrap">
-                    <button
-                      className="btn btn-outline btn-sm"
+                    <AppButton
+                      variant="outline"
+                      size="sm"
                       onClick={() => void copyYesterday()}
                     >
                       Copy yesterday&apos;s entries
-                    </button>
-                    <button
-                      className="btn btn-outline btn-sm"
+                    </AppButton>
+                    <AppButton
+                      variant="outline"
+                      size="sm"
                       onClick={() => void openTemplateModal()}
                     >
                       Use Template
-                    </button>
+                    </AppButton>
                   </div>
                 )}
               </div>
@@ -1097,12 +1120,12 @@ export function Timesheets() {
                     </div>
                     {isDraft ? (
                       <div className="flex gap-1">
-                        <button className="ts-icon-btn" title="Edit" onClick={() => openEdit(entry)}>
+                        <AppButton variant="ghost" size="sm" className="ts-icon-btn" title="Edit" onClick={() => openEdit(entry)}>
                           <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M14.7 3.3a1 1 0 0 1 1.4 1.4L5.5 15.3l-3 .7.7-3L14.7 3.3z"/></svg>
-                        </button>
-                        <button className="ts-icon-btn ts-icon-btn--danger" title="Delete" onClick={() => void deleteEntry(entry.id)}>
+                        </AppButton>
+                        <AppButton variant="ghost" size="sm" className="ts-icon-btn ts-icon-btn--danger" title="Delete" onClick={() => void deleteEntry(entry.id)}>
                           <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 6h14M8 6V4h4v2M6 6l1 11h6l1-11"/></svg>
-                        </button>
+                        </AppButton>
                       </div>
                     ) : (
                       <div className="w-[28px] h-[28px] flex items-center justify-center text-[var(--n-400,#9ca3af)] shrink-0" title={`Locked — ${dayData?.status}`}>
@@ -1179,7 +1202,7 @@ export function Timesheets() {
                 </div>
                 <div className="flex items-center justify-between gap-2 mt-1">
                   <label className="text-[11px] text-text-secondary font-semibold">Add to date</label>
-                  <input
+                  <AppInput
                     type="date"
                     value={convertDate}
                     max={todayIso()}
@@ -1188,19 +1211,21 @@ export function Timesheets() {
                   />
                 </div>
                 <div className="flex gap-2 mt-[10px]">
-                  <button
-                    className="btn btn-primary btn-sm"
+                  <AppButton
+                    variant="primary"
+                    size="sm"
                     disabled={convertLoading}
                     onClick={() => void convertTimer()}
                   >
                     {convertLoading ? "Adding…" : "Add to Timesheet"}
-                  </button>
-                  <button
-                    className="btn btn-outline btn-sm"
+                  </AppButton>
+                  <AppButton
+                    variant="outline"
+                    size="sm"
                     onClick={() => setStoppedTimer(null)}
                   >
                     Discard
-                  </button>
+                  </AppButton>
                 </div>
               </div>
             )}
@@ -1217,50 +1242,53 @@ export function Timesheets() {
                 {activeTimer.note && (
                   <div className="text-[11px] text-text-secondary mt-[2px] mb-[6px]">{activeTimer.note}</div>
                 )}
-                <button
-                  className="btn ts-btn-stop btn-sm w-full mt-2"
+                <AppButton
+                  variant="danger"
+                  size="sm"
+                  className="ts-btn-stop w-full mt-2"
                   onClick={() => void stopTaskTimer()}
                   disabled={timerLoading}
                 >
                   <svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor" className="mr-[5px]"><rect x="2" y="2" width="8" height="8" rx="1.5"/></svg>
                   Stop
-                </button>
+                </AppButton>
               </>
             )}
 
             {/* Start new timer */}
             {!activeTimer && !stoppedTimer && (
               <>
-                <select
+                <AppSelect
                   className="ts-timer-select"
                   value={timerProjectId}
                   onChange={(e) => setTimerProjectId(e.target.value)}
                 >
                   {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-                <select
+                </AppSelect>
+                <AppSelect
                   className="ts-timer-select"
                   value={timerCategoryId}
                   onChange={(e) => setTimerCategoryId(e.target.value)}
                 >
                   {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-                <input
-                  type="text"
+                </AppSelect>
+                <AppInput
                   className="ts-timer-note"
                   placeholder="Note (optional)"
                   value={timerNote}
                   onChange={(e) => setTimerNote(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") void startTaskTimer(); }}
                 />
-                <button
-                  className="btn btn-primary btn-sm w-full mt-2"
+                <AppButton
+                  variant="primary"
+                  size="sm"
+                  className="w-full mt-2"
                   onClick={() => void startTaskTimer()}
                   disabled={timerLoading || !timerProjectId || !timerCategoryId}
                 >
                   <svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor" className="mr-[5px]"><polygon points="3,1 11,6 3,11"/></svg>
                   Start Timer
-                </button>
+                </AppButton>
               </>
             )}
 
@@ -1388,13 +1416,14 @@ export function Timesheets() {
             <div className="text-[15px] font-bold text-[var(--n-900,#111827)]">Delete time entry?</div>
             <div className="text-[13px] text-[var(--n-600,#4b5563)] leading-[1.55]">This entry will be permanently removed. You can&rsquo;t undo this action.</div>
             <div className="flex gap-2 justify-end mt-[6px]">
-              <button className="btn btn-outline btn-sm" onClick={() => setDeleteModal(null)}>Keep it</button>
-              <button
-                className="btn btn-sm bg-danger text-white border-none"
+              <AppButton variant="outline" size="sm" onClick={() => setDeleteModal(null)}>Keep it</AppButton>
+              <AppButton
+                variant="danger"
+                size="sm"
                 onClick={() => void confirmDeleteEntry()}
               >
                 Delete entry
-              </button>
+              </AppButton>
             </div>
           </div>
         </div>
@@ -1453,14 +1482,15 @@ export function Timesheets() {
               </tbody>
             </table>
             <div className="flex gap-2 justify-end mt-[6px]">
-              <button className="btn btn-outline btn-sm" onClick={() => setShowSubmitWeekModal(false)}>Cancel</button>
-              <button
-                className="btn btn-primary btn-sm"
+              <AppButton variant="outline" size="sm" onClick={() => setShowSubmitWeekModal(false)}>Cancel</AppButton>
+              <AppButton
+                variant="primary"
+                size="sm"
                 disabled={submitWeekLoading || submittableCount === 0}
                 onClick={() => void submitWeek()}
               >
                 {submitWeekLoading ? "Submitting…" : `Submit ${submittableCount} day${submittableCount > 1 ? "s" : ""}`}
-              </button>
+              </AppButton>
             </div>
           </div>
         </div>
@@ -1497,13 +1527,14 @@ export function Timesheets() {
                           : "—"}
                       </div>
                     </div>
-                    <button
-                      className="btn btn-primary btn-sm"
+                    <AppButton
+                      variant="primary"
+                      size="sm"
                       disabled={templateApplyingId === t.id}
                       onClick={() => void applyTemplate(t.id)}
                     >
                       {templateApplyingId === t.id ? "Applying…" : "Apply"}
-                    </button>
+                    </AppButton>
                   </div>
                 ))}
               </div>
@@ -1512,7 +1543,7 @@ export function Timesheets() {
               <span className="text-[12px] text-[#9ca3af]">
                 Manage templates in your Profile page.
               </span>
-              <button className="btn btn-outline btn-sm" onClick={() => setShowTemplateModal(false)}>Close</button>
+              <AppButton variant="outline" size="sm" onClick={() => setShowTemplateModal(false)}>Close</AppButton>
             </div>
           </div>
         </div>
@@ -1537,7 +1568,7 @@ export function Timesheets() {
               <label className="text-[12px] font-semibold text-[#6b7280] block mb-[6px]">
                 Template name
               </label>
-              <input
+              <AppInput
                 className="ts-form-input w-full box-border"
                 placeholder="e.g. Standard work day"
                 value={saveTemplateName}
@@ -1548,14 +1579,15 @@ export function Timesheets() {
               />
             </div>
             <div className="flex gap-2 justify-end mt-[6px]">
-              <button className="btn btn-outline btn-sm" onClick={() => setShowSaveTemplateModal(false)}>Cancel</button>
-              <button
-                className="btn btn-primary btn-sm"
+              <AppButton variant="outline" size="sm" onClick={() => setShowSaveTemplateModal(false)}>Cancel</AppButton>
+              <AppButton
+                variant="primary"
+                size="sm"
                 disabled={saveTemplateLoading || !saveTemplateName.trim()}
                 onClick={() => void saveAsTemplate()}
               >
                 {saveTemplateLoading ? "Saving…" : "Save Template"}
-              </button>
+              </AppButton>
             </div>
           </div>
         </div>

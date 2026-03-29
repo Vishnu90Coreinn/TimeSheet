@@ -3,6 +3,7 @@
  * Drawer, ConfirmModal, OverflowMenu, ToggleSwitch, Toast hook.
  */
 import { useState, type ReactNode } from "react";
+import { AppButton } from "../ui";
 
 // ── Drawer ────────────────────────────────────────────────
 interface DrawerProps {
@@ -20,7 +21,7 @@ export function Drawer({ open, title, onClose, children, footer }: DrawerProps) 
       <div className="drawer" role="dialog" aria-modal="true" aria-label={title}>
         <div className="drawer-header">
           <div className="drawer-title">{title}</div>
-          <button className="drawer-close" onClick={onClose} aria-label="Close">✕</button>
+          <AppButton className="drawer-close" variant="ghost" size="sm" onClick={onClose} aria-label="Close">x</AppButton>
         </div>
         <div className="drawer-body">{children}</div>
         {footer && <div className="drawer-footer">{footer}</div>}
@@ -47,10 +48,10 @@ export function ConfirmModal({ open, title, body, confirmLabel = "Delete", dange
         <div className="modal-title">{title}</div>
         <div className="modal-body">{body}</div>
         <div className="modal-actions">
-          <button className="btn btn-ghost btn-sm" onClick={onCancel}>Cancel</button>
-          <button className={`btn ${danger ? "btn-danger" : "btn-primary"} btn-sm`} onClick={onConfirm}>
+          <AppButton variant="ghost" size="sm" onClick={onCancel}>Cancel</AppButton>
+          <AppButton variant={danger ? "danger" : "primary"} size="sm" onClick={onConfirm}>
             {confirmLabel}
-          </button>
+          </AppButton>
         </div>
       </div>
     </div>
@@ -68,21 +69,23 @@ export function OverflowMenu({ items }: { items: OverflowMenuItem[] }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="overflow-wrap">
-      <button className="overflow-btn" onClick={() => setOpen((o) => !o)} aria-label="More actions">
+      <AppButton className="overflow-btn" variant="ghost" size="sm" onClick={() => setOpen((o) => !o)} aria-label="More actions">
         ···
-      </button>
+      </AppButton>
       {open && (
         <>
           <div className="fixed inset-0 z-[99]" onClick={() => setOpen(false)} />
           <div className="overflow-menu">
             {items.map((item) => (
-              <button
+              <AppButton
                 key={item.label}
                 className={`overflow-item${item.danger ? " overflow-item--danger" : item.warning ? " overflow-item--warning" : ""}`}
                 onClick={() => { item.onClick(); setOpen(false); }}
+                variant="ghost"
+                size="sm"
               >
                 {item.label}
-              </button>
+              </AppButton>
             ))}
           </div>
         </>

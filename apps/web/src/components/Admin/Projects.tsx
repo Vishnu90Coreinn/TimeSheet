@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Pencil, PauseCircle, PlayCircle } from "lucide-react";
 import { apiFetch } from "../../api/client";
 import type { Project } from "../../types";
+import { AppButton, AppCheckbox, AppIconButton, AppInput, AppPagination, AppSelect, AppTableShell } from "../ui";
 
 type ProjectForm = { name: string; code: string; isActive: boolean };
 const BLANK: ProjectForm = { name: "", code: "", isActive: true };
@@ -31,7 +32,7 @@ function Drawer({ open, title, onClose, children, footer }: { open: boolean; tit
       <div className="drawer" role="dialog" aria-modal="true">
         <div className="drawer-header">
           <div className="drawer-title">{title}</div>
-          <button className="drawer-close" onClick={onClose}>×</button>
+          <AppButton className="drawer-close" variant="ghost" size="sm" onClick={onClose}>x</AppButton>
         </div>
         <div className="drawer-body">{children}</div>
         {footer && <div className="drawer-footer">{footer}</div>}
@@ -139,22 +140,22 @@ export function Projects() {
         onClose={() => setEditing(null)}
         footer={
           <>
-            <button className="btn btn-primary" onClick={() => void save()}>Save</button>
-            <button className="btn btn-ghost" onClick={() => setEditing(null)}>Cancel</button>
+            <AppButton variant="primary" onClick={() => void save()}>Save</AppButton>
+            <AppButton variant="ghost" onClick={() => setEditing(null)}>Cancel</AppButton>
           </>
         }
       >
         {error && <div className="alert alert-error">{error}</div>}
         <div className="form-field">
           <label className="form-label" htmlFor="p-name">Name <span className="required">*</span></label>
-          <input id="p-name" className="input-field" value={form.name} onChange={(e) => f("name", e.target.value)} maxLength={200} required />
+          <AppInput id="p-name" value={form.name} onChange={(e) => f("name", e.target.value)} maxLength={200} required />
         </div>
         <div className="form-field">
           <label className="form-label" htmlFor="p-code">Code <span className="required">*</span></label>
-          <input id="p-code" className="input-field" value={form.code} onChange={(e) => f("code", e.target.value.toUpperCase())} maxLength={50} required />
+          <AppInput id="p-code" value={form.code} onChange={(e) => f("code", e.target.value.toUpperCase())} maxLength={50} required />
         </div>
         <label className="flex items-center gap-2 text-[0.825rem] text-text-secondary">
-          <input type="checkbox" checked={form.isActive} onChange={(e) => f("isActive", e.target.checked)} className="[accent-color:var(--brand-600)]" />
+          <AppCheckbox checked={form.isActive} onChange={(e) => f("isActive", e.target.checked)} />
           Active
         </label>
       </Drawer>
@@ -165,23 +166,23 @@ export function Projects() {
           <div className="page-subtitle">Manage projects available for timesheet entries</div>
         </div>
         <div className="page-actions">
-          <button className="btn btn-outline" onClick={() => void load()}>Refresh</button>
-          <button className="btn btn-primary" onClick={openCreate}>+ New Project</button>
+          <AppButton variant="outline" onClick={() => void load()}>Refresh</AppButton>
+          <AppButton variant="primary" onClick={openCreate}>+ New Project</AppButton>
         </div>
       </div>
 
       <div className="mgmt-toolbar">
         <div className="input-icon-wrap mgmt-search-wrap">
           <span className="input-icon">🔍</span>
-          <input className="input-field mgmt-search" placeholder="Search projects..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <AppInput className="mgmt-search" placeholder="Search projects..." value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
-        <select className="input-field mgmt-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+        <AppSelect className="mgmt-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="">All Statuses</option>
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
           <option value="archived">Archived</option>
-        </select>
-        <button className="btn btn-outline mgmt-filter-btn">□ Filter</button>
+        </AppSelect>
+        <AppButton className="mgmt-filter-btn" variant="outline">Filter</AppButton>
       </div>
 
       <div className="card overflow-visible">
@@ -190,22 +191,20 @@ export function Projects() {
             All Projects
             <span className="mgmt-count-pill">{projects.length} project{projects.length === 1 ? "" : "s"}</span>
           </div>
-          <button className="btn btn-outline btn-sm">Export</button>
+          <AppButton variant="outline" size="sm">Export</AppButton>
         </div>
-        <div className="table-wrap mgmt-table-wrap">
+        <AppTableShell>
           <table className="table-base mgmt-table">
             <thead>
               <tr>
                 <th className="w-11">
-                  <input
-                    type="checkbox"
+                  <AppCheckbox
                     aria-label="Select all projects"
                     checked={sorted.length > 0 && selectedProjectIds.size === sorted.length}
                     onChange={() => {
                       if (selectedProjectIds.size === sorted.length) setSelectedProjectIds(new Set());
                       else setSelectedProjectIds(new Set(sorted.map((p) => p.id)));
                     }}
-                    className="w-4 h-4 [accent-color:var(--brand-600)]"
                   />
                 </th>
                 <th className="th-sort" onClick={() => toggleSort("name")} aria-sort={sortCol === "name" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
@@ -225,7 +224,7 @@ export function Projects() {
               {sorted.map((p) => (
                 <tr key={p.id} className={p.isActive ? "" : "opacity-[0.6]"}>
                   <td>
-                    <input type="checkbox" checked={selectedProjectIds.has(p.id)} onChange={() => toggleProjectSelect(p.id)} className="w-4 h-4 [accent-color:var(--brand-600)]" />
+                    <AppCheckbox checked={selectedProjectIds.has(p.id)} onChange={() => toggleProjectSelect(p.id)} />
                   </td>
                   <td>
                     <div className="flex items-center gap-3">
@@ -247,23 +246,23 @@ export function Projects() {
                   <td className="td-muted">—</td>
                   <td>
                     <div className="flex gap-2 items-center">
-                      <button
-                        className="mgmt-icon-action mgmt-icon-action-edit"
+                      <AppIconButton
+                        tone="edit"
                         onClick={() => openEdit(p)}
                         title={`Edit ${p.name}`}
                         aria-label={`Edit ${p.name}`}
                       >
                         <Pencil size={14} />
-                      </button>
-                      <button
-                        className={`mgmt-icon-action ${p.isActive ? "mgmt-icon-action-danger" : "mgmt-icon-action-success"}`}
+                      </AppIconButton>
+                      <AppIconButton
+                        tone={p.isActive ? "danger" : "success"}
                         onClick={() => void toggleProjectActive(p)}
                         title={p.isArchived ? "Archived project cannot be activated/deactivated" : `${p.isActive ? "Deactivate" : "Activate"} ${p.name}`}
                         aria-label={p.isArchived ? `Archived project ${p.name}` : `${p.isActive ? "Deactivate" : "Activate"} ${p.name}`}
                         disabled={p.isArchived}
                       >
                         {p.isActive ? <PauseCircle size={14} /> : <PlayCircle size={14} />}
-                      </button>
+                      </AppIconButton>
                     </div>
                   </td>
                 </tr>
@@ -275,14 +274,10 @@ export function Projects() {
               )}
             </tbody>
           </table>
-        </div>
+        </AppTableShell>
         <div className="mgmt-card-foot">
           <span>Showing 1-{sorted.length} of {sorted.length} project{sorted.length === 1 ? "" : "s"}</span>
-          <div className="mgmt-pagination">
-            <button className="btn btn-outline btn-sm px-2" aria-label="Previous page">&lt;</button>
-            <button className="btn btn-primary btn-sm px-3">1</button>
-            <button className="btn btn-outline btn-sm px-2" aria-label="Next page">&gt;</button>
-          </div>
+          <AppPagination page={1} totalPages={1} onPrev={() => {}} onNext={() => {}} />
         </div>
       </div>
     </section>

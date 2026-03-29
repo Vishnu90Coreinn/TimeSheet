@@ -7,6 +7,7 @@ import { Eye, EyeOff, Lock, Camera, Download, Trash2 } from "lucide-react";
 import { apiFetch } from "../api/client";
 import type { MyProfile, NotificationPreferences } from "../types";
 import { TimezoneSelect, type TimezoneOption } from "./TimezoneSelect";
+import { AppButton, AppCheckbox, AppIconButton, AppInput, AppSelect } from "./ui";
 
 // ── Template types ─────────────────────────────────────────────────────────────
 interface TemplateEntryRow { projectId: string; categoryId: string; minutes: number; note: string; }
@@ -80,7 +81,7 @@ function PwdField({
     <div className="form-field">
       <label className="form-label">{label}</label>
       <div className="relative">
-        <input
+        <AppInput
           className={`input-field pr-10${error ? " error" : ""}`}
           type={show ? "text" : "password"}
           value={value}
@@ -89,15 +90,15 @@ function PwdField({
           placeholder={placeholder}
           autoComplete="off"
         />
-        <button
+        <AppIconButton
           type="button"
           onClick={() => setShow(s => !s)}
-          className="absolute right-[10px] top-1/2 -translate-y-1/2 bg-transparent border-0 cursor-pointer text-text-tertiary p-0 flex"
+          className="absolute right-[10px] top-1/2 -translate-y-1/2 text-text-tertiary"
           tabIndex={-1}
           aria-label={show ? "Hide password" : "Show password"}
         >
           {show ? <EyeOff size={16} /> : <Eye size={16} />}
-        </button>
+        </AppIconButton>
       </div>
       {error && <div className="text-[0.72rem] text-danger mt-[2px]">{error}</div>}
     </div>
@@ -369,7 +370,7 @@ export function Profile({ onBack }: { onBack: () => void }) {
             <div className="page-subtitle">Manage your account details and preferences</div>
           </div>
           <div className="page-actions">
-            <button className="btn btn-ghost" onClick={onBack}>← Back</button>
+            <AppButton variant="ghost" onClick={onBack}>← Back</AppButton>
           </div>
         </div>
 
@@ -404,7 +405,7 @@ export function Profile({ onBack }: { onBack: () => void }) {
                       {!profile.avatarDataUrl && initials}
                     </div>
                     {/* Camera overlay button */}
-                    <button
+                    <AppButton
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={savingAvatar}
@@ -413,8 +414,8 @@ export function Profile({ onBack }: { onBack: () => void }) {
                       title="Upload avatar"
                     >
                       <Camera size={20} />
-                    </button>
-                    <input
+                    </AppButton>
+                    <AppInput
                       ref={fileInputRef}
                       type="file"
                       accept="image/*"
@@ -428,14 +429,16 @@ export function Profile({ onBack }: { onBack: () => void }) {
                     </div>
                     <div className="text-[0.8rem] text-text-tertiary capitalize">{profile.role}</div>
                     {profile.avatarDataUrl && (
-                      <button
+                      <AppButton
                         type="button"
-                        className="btn btn-ghost mt-2 py-[2px] px-2 text-[0.72rem]"
+                        variant="ghost"
+                        size="sm"
+                        className="mt-2 py-[2px] px-2 text-[0.72rem]"
                         onClick={() => void removeAvatar()}
                         disabled={savingAvatar}
                       >
                         Remove photo
-                      </button>
+                      </AppButton>
                     )}
                   </div>
                 </div>
@@ -444,7 +447,7 @@ export function Profile({ onBack }: { onBack: () => void }) {
                 <div className="grid gap-4">
                   <div className="form-field">
                     <label className="form-label">Display Name</label>
-                    <input
+                    <AppInput
                       className="input-field"
                       value={displayName}
                       onChange={e => setDisplayName(e.target.value)}
@@ -453,7 +456,7 @@ export function Profile({ onBack }: { onBack: () => void }) {
                   </div>
                   <div className="form-field">
                     <label className="form-label">Username <span className="text-danger">*</span></label>
-                    <input
+                    <AppInput
                       className={`input-field${usernameError ? " error" : ""}`}
                       value={username}
                       onChange={e => setUsername(e.target.value)}
@@ -463,7 +466,7 @@ export function Profile({ onBack }: { onBack: () => void }) {
                   </div>
                   <div className="form-field">
                     <label className="form-label">Email <span className="text-danger">*</span></label>
-                    <input
+                    <AppInput
                       className={`input-field${emailError ? " error" : ""}`}
                       type="email"
                       value={email}
@@ -483,13 +486,13 @@ export function Profile({ onBack }: { onBack: () => void }) {
                   </div>
                 </div>
 
-                <button
-                  className="btn btn-primary"
+                <AppButton
+                  variant="primary"
                   onClick={() => void saveProfile()}
                   disabled={savingProfile}
                 >
                   {savingProfile ? "Saving…" : "Save Changes"}
-                </button>
+                </AppButton>
               </div>
             </div>
 
@@ -565,13 +568,13 @@ export function Profile({ onBack }: { onBack: () => void }) {
                   error={confirmError}
                   placeholder="Re-enter new password"
                 />
-                <button
-                  className="btn btn-primary"
+                <AppButton
+                  variant="primary"
                   onClick={() => void changePassword()}
                   disabled={pwdDisabled}
                 >
                   {savingPwd ? "Changing…" : "Change Password"}
-                </button>
+                </AppButton>
               </div>
             </div>
 
@@ -651,8 +654,9 @@ export function Profile({ onBack }: { onBack: () => void }) {
               <div className="card-title">Timesheet Templates</div>
               <div className="card-subtitle">Save and reuse common sets of time entries</div>
             </div>
-            <button
-              className="btn btn-outline btn-sm"
+            <AppButton
+              variant="outline"
+              size="sm"
               onClick={() => {
                 setNewTemplateName("");
                 setNewTemplateRows([{ projectId: entryOptions?.projects[0]?.id ?? "", categoryId: entryOptions?.taskCategories[0]?.id ?? "", minutes: 60, note: "" }]);
@@ -660,7 +664,7 @@ export function Profile({ onBack }: { onBack: () => void }) {
               }}
             >
               {showNewTemplateForm ? "Cancel" : "+ New Template"}
-            </button>
+            </AppButton>
           </div>
 
           {/* New template form */}
@@ -668,7 +672,7 @@ export function Profile({ onBack }: { onBack: () => void }) {
             <div className="px-5 pb-5 flex flex-col gap-4">
               <div className="form-field">
                 <label className="form-label">Template name <span className="text-danger">*</span></label>
-                <input
+                <AppInput
                   className="input-field"
                   placeholder="e.g. Standard work day"
                   maxLength={120}
@@ -682,23 +686,23 @@ export function Profile({ onBack }: { onBack: () => void }) {
                 <div className="text-[0.72rem] font-bold text-text-tertiary uppercase tracking-[0.05em]">Entries</div>
                 {newTemplateRows.map((row, idx) => (
                   <div key={idx} className="grid gap-2 items-center" style={{ gridTemplateColumns: "1fr 1fr 80px 1fr auto" }}>
-                    <select
+                    <AppSelect
                       className="input-field text-[0.82rem]"
                       value={row.projectId}
                       onChange={e => setNewTemplateRows(prev => prev.map((r, i) => i === idx ? { ...r, projectId: e.target.value } : r))}
                     >
                       <option value="">— Project —</option>
                       {(entryOptions?.projects ?? []).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                    </select>
-                    <select
+                    </AppSelect>
+                    <AppSelect
                       className="input-field text-[0.82rem]"
                       value={row.categoryId}
                       onChange={e => setNewTemplateRows(prev => prev.map((r, i) => i === idx ? { ...r, categoryId: e.target.value } : r))}
                     >
                       <option value="">— Category —</option>
                       {(entryOptions?.taskCategories ?? []).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                    <input
+                    </AppSelect>
+                    <AppInput
                       className="input-field text-[0.82rem]"
                       type="number"
                       min={1}
@@ -707,42 +711,46 @@ export function Profile({ onBack }: { onBack: () => void }) {
                       value={row.minutes}
                       onChange={e => setNewTemplateRows(prev => prev.map((r, i) => i === idx ? { ...r, minutes: parseInt(e.target.value) || 0 } : r))}
                     />
-                    <input
+                    <AppInput
                       className="input-field text-[0.82rem]"
                       placeholder="Note (optional)"
                       maxLength={500}
                       value={row.note}
                       onChange={e => setNewTemplateRows(prev => prev.map((r, i) => i === idx ? { ...r, note: e.target.value } : r))}
                     />
-                    <button
+                    <AppButton
                       type="button"
-                      className="btn btn-ghost py-[4px] px-2 text-danger text-[0.8rem]"
+                      variant="ghost"
+                      size="sm"
+                      className="py-[4px] px-2 text-danger text-[0.8rem]"
                       onClick={() => setNewTemplateRows(prev => prev.filter((_, i) => i !== idx))}
                       title="Remove row"
                     >
                       ✕
-                    </button>
+                    </AppButton>
                   </div>
                 ))}
-                <button
+                <AppButton
                   type="button"
-                  className="btn btn-ghost self-start text-[0.82rem] text-brand-500"
+                  variant="ghost"
+                  className="self-start text-[0.82rem] text-brand-500"
                   onClick={() => setNewTemplateRows(prev => [
                     ...prev,
                     { projectId: entryOptions?.projects[0]?.id ?? "", categoryId: entryOptions?.taskCategories[0]?.id ?? "", minutes: 60, note: "" },
                   ])}
                 >
                   + Add Row
-                </button>
+                </AppButton>
               </div>
 
-              <button
-                className="btn btn-primary self-start"
+              <AppButton
+                variant="primary"
+                className="self-start"
                 disabled={savingTemplate || !newTemplateName.trim() || newTemplateRows.filter(r => r.projectId && r.categoryId && r.minutes > 0).length === 0}
                 onClick={() => void saveNewTemplate()}
               >
                 {savingTemplate ? "Saving…" : "Save Template"}
-              </button>
+              </AppButton>
             </div>
           )}
 
@@ -765,27 +773,32 @@ export function Profile({ onBack }: { onBack: () => void }) {
                     {confirmDeleteTemplateId === t.id ? (
                       <div className="flex gap-2 items-center">
                         <span className="text-[0.75rem] text-text-tertiary">Delete?</span>
-                        <button
-                          className="btn btn-sm [background:var(--danger)] text-white border-0 py-[3px] px-[10px]"
+                        <AppButton
+                          variant="danger"
+                          size="sm"
+                          className="py-[3px] px-[10px]"
                           disabled={deletingTemplateId === t.id}
                           onClick={() => void deleteTemplate(t.id)}
                         >
                           {deletingTemplateId === t.id ? "…" : "Yes"}
-                        </button>
-                        <button
-                          className="btn btn-outline btn-sm"
+                        </AppButton>
+                        <AppButton
+                          variant="outline"
+                          size="sm"
                           onClick={() => setConfirmDeleteTemplateId(null)}
                         >
                           No
-                        </button>
+                        </AppButton>
                       </div>
                     ) : (
-                      <button
-                        className="btn btn-ghost btn-sm text-danger"
+                      <AppButton
+                        variant="ghost"
+                        size="sm"
+                        className="text-danger"
                         onClick={() => setConfirmDeleteTemplateId(t.id)}
                       >
                         Delete
-                      </button>
+                      </AppButton>
                     )}
                   </div>
                 ))}
@@ -822,13 +835,15 @@ export function Profile({ onBack }: { onBack: () => void }) {
                   <span className="text-[0.75rem] text-text-tertiary mt-1 block">Processing… check back shortly.</span>
                 )}
               </div>
-              <button
-                className="btn btn-secondary btn-sm shrink-0"
+              <AppButton
+                variant="secondary"
+                size="sm"
+                className="shrink-0"
                 onClick={() => void handleRequestExport()}
                 disabled={requestingExport || exportStatus === "Pending"}
               >
                 {requestingExport ? "Requesting…" : "Request export"}
-              </button>
+              </AppButton>
             </div>
 
             {/* Delete account */}
@@ -840,23 +855,26 @@ export function Profile({ onBack }: { onBack: () => void }) {
                 </div>
               </div>
               {!confirmDelete ? (
-                <button
-                  className="btn btn-sm border border-danger text-danger bg-transparent hover:bg-danger-light shrink-0"
+                <AppButton
+                  variant="outline"
+                  size="sm"
+                  className="border border-danger text-danger bg-transparent hover:bg-danger-light shrink-0"
                   onClick={() => setConfirmDelete(true)}
                 >
                   <Trash2 size={13} className="mr-1" /> Delete account
-                </button>
+                </AppButton>
               ) : (
                 <div className="flex items-center gap-2 shrink-0">
                   <span className="text-[0.75rem] text-text-tertiary">Are you sure?</span>
-                  <button
-                    className="btn btn-sm [background:var(--color-danger)] text-white border-0"
+                  <AppButton
+                    variant="danger"
+                    size="sm"
                     disabled={deletingAccount}
                     onClick={() => void handleDeleteAccount()}
                   >
                     {deletingAccount ? "Deleting…" : "Yes, delete"}
-                  </button>
-                  <button className="btn btn-outline btn-sm" onClick={() => setConfirmDelete(false)}>Cancel</button>
+                  </AppButton>
+                  <AppButton variant="outline" size="sm" onClick={() => setConfirmDelete(false)}>Cancel</AppButton>
                 </div>
               )}
             </div>
@@ -896,8 +914,7 @@ function ToggleRow({
           className="absolute top-[3px] w-[16px] h-[16px] rounded-full bg-white transition-[left] duration-200 shadow-[0_1px_3px_rgba(0,0,0,0.2)]"
           style={{ left: checked ? 21 : 3 }}
         />
-        <input
-          type="checkbox"
+        <AppCheckbox
           checked={checked}
           disabled={disabled}
           onChange={e => onChange(e.target.checked)}

@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../api/client";
 import { StatusBadge, toBadgeStatus } from "./StatusBadge";
 import type { TeamMemberStatus } from "../types";
+import { AppButton } from "./ui";
 
 type Filter = "all" | "missing" | "needs-approval" | "on-leave";
 
@@ -138,15 +139,27 @@ function MiniCalendar({
     <div className="select-none w-[224px]">
       {/* Month / year navigation */}
       <div className="flex items-center justify-between mb-2">
-        <button type="button"
+        <AppButton
+          type="button"
+          unstyled
           className="bg-transparent border-0 cursor-pointer px-2 py-[2px] rounded-sm text-base leading-none text-text-secondary flex items-center"
-          onClick={prevMonth} aria-label="Previous month">‹</button>
+          onClick={prevMonth}
+          aria-label="Previous month"
+        >
+          ‹
+        </AppButton>
         <span className="text-[0.82rem] font-bold text-text-primary">
           {MONTH_NAMES[viewMonth]} {viewYear}
         </span>
-        <button type="button"
+        <AppButton
+          type="button"
+          unstyled
           className="bg-transparent border-0 cursor-pointer px-2 py-[2px] rounded-sm text-base leading-none text-text-secondary flex items-center"
-          onClick={nextMonth} aria-label="Next month">›</button>
+          onClick={nextMonth}
+          aria-label="Next month"
+        >
+          ›
+        </AppButton>
       </div>
 
       {/* Day-of-week labels */}
@@ -164,9 +177,10 @@ function MiniCalendar({
           const isSelected = cell.iso === value;
           const isToday    = cell.iso === todayStr;
           return (
-            <button
+            <AppButton
               key={cell.iso}
               type="button"
+              unstyled
               onClick={() => { onChange(cell.iso); onClose(); }}
               className="rounded cursor-pointer text-[0.72rem] leading-[28px] h-7 p-0"
               style={{
@@ -183,20 +197,22 @@ function MiniCalendar({
               aria-pressed={isSelected}
             >
               {cell.day}
-            </button>
+            </AppButton>
           );
         })}
       </div>
 
       {/* Today shortcut */}
       <div className="mt-2 border-t border-border-subtle pt-2">
-        <button
+        <AppButton
           type="button"
-          className="btn btn-ghost btn-sm w-full text-[0.75rem]"
+          variant="ghost"
+          size="sm"
+          className="w-full text-[0.75rem]"
           onClick={() => { onChange(todayIso()); onClose(); }}
         >
           Today
-        </button>
+        </AppButton>
       </div>
     </div>
   );
@@ -216,9 +232,11 @@ function DatePicker({ value, onChange }: { value: string; onChange: (d: string) 
 
   return (
     <div ref={ref} className="relative">
-      <button
+      <AppButton
         type="button"
-        className="btn btn-outline btn-sm flex items-center gap-[6px]"
+        variant="outline"
+        size="sm"
+        className="flex items-center gap-[6px]"
         onClick={() => setOpen(v => !v)}
         aria-label={`Selected date: ${fmtDateDisplay(value)}. Click to change`}
         aria-expanded={open}
@@ -226,7 +244,7 @@ function DatePicker({ value, onChange }: { value: string; onChange: (d: string) 
       >
         <CalendarIcon />
         {fmtDateDisplay(value)}
-      </button>
+      </AppButton>
 
       {open && (
         <div
@@ -441,9 +459,10 @@ export function TeamStatus() {
           {(Object.keys(FILTER_LABELS) as Filter[]).map(f => {
             const isActive = filter === f;
             return (
-              <button
+              <AppButton
                 key={f}
                 type="button"
+                unstyled
                 onClick={() => setFilter(f)}
                 className="flex items-center gap-1.5 px-4 py-3 text-[0.82rem] font-medium whitespace-nowrap border-b-2 transition-colors"
                 style={isActive
@@ -460,7 +479,7 @@ export function TeamStatus() {
                 >
                   {counts[f]}
                 </span>
-              </button>
+              </AppButton>
             );
           })}
         </div>
@@ -577,37 +596,42 @@ export function TeamStatus() {
                       <td className={stickyTdCls}>
                         <div className="flex items-center gap-1.5 flex-wrap">
                           {m.pendingApprovalCount > 0 && (
-                            <button
+                            <AppButton
                               type="button"
+                              unstyled
                               onClick={() => navigate("/approvals")}
                               className="bg-transparent border-0 p-0 text-brand-600 font-semibold text-[0.8rem] cursor-pointer inline-flex items-center hover:underline"
                               title={`View ${m.pendingApprovalCount} pending approval${m.pendingApprovalCount !== 1 ? "s" : ""}`}
                             >
                               {m.pendingApprovalCount} pending<ArrowRight />
-                            </button>
+                            </AppButton>
                           )}
 
                           {m.todayTimesheetStatus === "missing" && (
-                            <button
+                            <AppButton
                               type="button"
+                              variant="outline"
+                              size="sm"
                               className="btn btn-sm border border-border-subtle bg-[var(--surface)] text-text-secondary text-[0.72rem]"
                               disabled={isReminding}
                               onClick={() => void remind(m.userId, m.username)}
                               title="Send reminder notification"
                             >
                               {isReminding ? "…" : "Remind"}
-                            </button>
+                            </AppButton>
                           )}
 
                           {m.pendingApprovalCount > 0 && (
-                            <button
+                            <AppButton
                               type="button"
-                              className="btn btn-outline-success btn-sm text-[0.72rem] inline-flex items-center gap-1"
+                              variant="outline"
+                              size="sm"
+                              className="text-[0.72rem] inline-flex items-center gap-1"
                               onClick={() => navigate("/approvals")}
                               title="Go to Approvals"
                             >
                               <CheckIcon /> Approve
-                            </button>
+                            </AppButton>
                           )}
 
                           {m.pendingApprovalCount === 0 && m.todayTimesheetStatus !== "missing" && (

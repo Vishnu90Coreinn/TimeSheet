@@ -6,6 +6,7 @@ import { apiFetch } from "../api/client";
 import { SkeletonPage } from "./Skeleton";
 import { EmptyReports } from "./EmptyState";
 import type { ReportKey, SavedReport, SavedReportPayload } from "../types";
+import { AppButton, AppInput, AppSelect, AppTableShell } from "./ui";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type PagedResponse = { page: number; pageSize: number; total: number; items: Record<string, unknown>[] };
@@ -578,13 +579,15 @@ export function Reports() {
         {/* Saved Reports dropdown + Manage link */}
         <div className="flex items-center gap-2">
           <div className="relative inline-block">
-            <button
-              className="btn btn-outline btn-sm flex items-center gap-1"
+            <AppButton
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-1"
               onClick={() => setShowSavedDropdown(o => !o)}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
               Saved Reports ▾
-            </button>
+            </AppButton>
             {showSavedDropdown && (
               <>
                 <div className="fixed inset-0 z-[99]" onClick={() => setShowSavedDropdown(false)} />
@@ -593,45 +596,51 @@ export function Reports() {
                     <div className="px-4 py-3 text-[0.8rem] text-[#9ca3af]">No saved reports yet.</div>
                   ) : (
                     savedReports.map(sr => (
-                      <button
+                      <AppButton
                         key={sr.id}
-                        className="rpt-export-item w-full text-left"
+                        variant="ghost"
+                        size="sm"
+                        className="rpt-export-item w-full text-left justify-start"
                         onClick={() => loadSavedReportFilters(sr)}
                       >
                         <span className="block font-medium text-[0.82rem]">{sr.name}</span>
                         <span className="block text-[0.72rem] text-[#9ca3af]">{TABS.find(t => t.key === sr.reportKey)?.label ?? sr.reportKey}</span>
-                      </button>
+                      </AppButton>
                     ))
                   )}
                 </div>
               </>
             )}
           </div>
-          <button
-            className="btn btn-ghost btn-sm text-[0.8rem] underline underline-offset-2"
+          <AppButton
+            variant="ghost"
+            size="sm"
+            className="text-[0.8rem] underline underline-offset-2"
             onClick={() => { setShowManageModal(true); setShowSavedDropdown(false); }}
           >
             Manage
-          </button>
+          </AppButton>
         </div>
       </div>
 
       {/* Mobile tab select */}
-      <select
-        className="input-field rpt-tabs-select"
+      <AppSelect
+        className="rpt-tabs-select"
         value={reportKey}
         onChange={(e) => switchTab(e.target.value as ReportKey)}
       >
         {TABS.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
-      </select>
+      </AppSelect>
 
       {/* Tab strip */}
       <div className="flex border-b border-[var(--border-subtle)] overflow-x-auto rpt-tabs-strip" ref={tabsRef}>
         {TABS.map(t => {
           const isActive = reportKey === t.key;
           return (
-            <button
+            <AppButton
               key={t.key}
+              variant="ghost"
+              size="sm"
               className="px-4 py-3 text-[0.82rem] font-medium whitespace-nowrap border-b-2 transition-colors"
               style={isActive
                 ? { borderBottomColor: "var(--color-primary, #6366f1)", color: "var(--color-primary, #6366f1)" }
@@ -639,7 +648,7 @@ export function Reports() {
               onClick={() => switchTab(t.key)}
             >
               {t.label}
-            </button>
+            </AppButton>
           );
         })}
       </div>
@@ -648,32 +657,34 @@ export function Reports() {
       <div className="card-flat rpt-filter-bar">
         <div className="form-field">
           <label className="form-label" htmlFor="rpt-from">From Date</label>
-          <input id="rpt-from" type="date" className="input-field" value={fromDate}
+          <AppInput id="rpt-from" type="date" value={fromDate}
             onChange={e => setFromDate(e.target.value)} max={toDate || today} />
         </div>
         <div className="form-field">
           <label className="form-label" htmlFor="rpt-to">To Date</label>
-          <input id="rpt-to" type="date" className="input-field" value={toDate}
+          <AppInput id="rpt-to" type="date" value={toDate}
             onChange={e => setToDate(e.target.value)} min={fromDate} max={today} />
         </div>
         {uniqueEmployees.length > 0 && (
           <div className="form-field min-w-[180px]">
             <label className="form-label" htmlFor="rpt-emp">Employee</label>
-            <select id="rpt-emp" className="input-field" value={employeeFilter}
+            <AppSelect id="rpt-emp" value={employeeFilter}
               onChange={e => setEmployeeFilter(e.target.value)}>
               <option value="">All employees</option>
               {uniqueEmployees.map(e => <option key={e} value={e}>{e}</option>)}
-            </select>
+            </AppSelect>
           </div>
         )}
-        <button className="btn btn-primary" onClick={() => void loadReport(reportKey, 1)}>Apply</button>
-        <button
-          className="btn btn-outline btn-sm flex items-center gap-1"
+        <AppButton variant="primary" onClick={() => void loadReport(reportKey, 1)}>Apply</AppButton>
+        <AppButton
+          variant="outline"
+          size="sm"
+          className="flex items-center gap-1"
           onClick={() => openSaveModal()}
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
           Save Report
-        </button>
+        </AppButton>
       </div>
 
       {/* KPI strip */}
@@ -700,28 +711,32 @@ export function Reports() {
             </div>
           </div>
           <div className="page-actions">
-            <input
+            <AppInput
               type="text"
-              className="input-field w-[200px] h-[30px] text-[0.8rem]"
+              className="w-[200px] h-[30px] text-[0.8rem]"
               placeholder="Search rows…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
             <div className="relative inline-block">
-              <button className="btn btn-outline btn-sm flex items-center gap-1" onClick={() => setExportOpen(o => !o)}>
+              <AppButton variant="outline" size="sm" className="flex items-center gap-1" onClick={() => setExportOpen(o => !o)}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 Export ▾
-              </button>
+              </AppButton>
               {exportOpen && (
                 <>
                   <div className="fixed inset-0 z-[99]" onClick={() => setExportOpen(false)} />
                   <div className="absolute right-0 top-[calc(100%+4px)] bg-n-0 border border-border-default rounded-lg shadow-md z-[100] min-w-[130px] py-1">
                     {(["csv", "excel", "pdf"] as const).map(fmt => (
-                      <button key={fmt}
+                      <AppButton
+                        key={fmt}
+                        variant="ghost"
+                        size="sm"
                         className="rpt-export-item"
-                        onClick={() => { void exportReport(fmt); setExportOpen(false); }}>
+                        onClick={() => { void exportReport(fmt); setExportOpen(false); }}
+                      >
                         {fmt.toUpperCase()}
-                      </button>
+                      </AppButton>
                     ))}
                   </div>
                 </>
@@ -737,7 +752,7 @@ export function Reports() {
         ) : (
           <>
             <div className="rpt-table-outer">
-              <div className="table-wrap">
+              <AppTableShell>
                 <table className="table-base">
                   <thead>
                     <tr>
@@ -774,26 +789,26 @@ export function Reports() {
                     )}
                   </tbody>
                 </table>
-              </div>
+              </AppTableShell>
             </div>
 
             {/* Pagination footer */}
             <div className="rpt-pagination">
               <span className="rpt-showing">{showingText}</span>
               <div className="rpt-page-controls">
-                <select
-                  className="input-field w-auto text-[0.8rem] px-2 py-1 h-auto"
+                <AppSelect
+                  className="w-auto text-[0.8rem] px-2 py-1 h-auto"
                   value={pageSize}
                   onChange={e => changePageSize(Number(e.target.value))}
                   aria-label="Rows per page"
                 >
                   {PAGE_SIZES.map(s => <option key={s} value={s}>{s} / page</option>)}
-                </select>
-                <button className="btn btn-ghost btn-sm" disabled={page <= 1}
-                  onClick={() => void loadReport(reportKey, page - 1)}>← Prev</button>
+                </AppSelect>
+                <AppButton variant="ghost" size="sm" disabled={page <= 1}
+                  onClick={() => void loadReport(reportKey, page - 1)}>← Prev</AppButton>
                 <span className="rpt-page-info">Page {page} of {totalPages}</span>
-                <button className="btn btn-ghost btn-sm" disabled={page >= totalPages}
-                  onClick={() => void loadReport(reportKey, page + 1)}>Next →</button>
+                <AppButton variant="ghost" size="sm" disabled={page >= totalPages}
+                  onClick={() => void loadReport(reportKey, page + 1)}>Next →</AppButton>
               </div>
             </div>
           </>
@@ -809,16 +824,15 @@ export function Reports() {
           <div style={{ background: "var(--color-n-0, #fff)", borderRadius: 12, padding: "28px 32px", width: "100%", maxWidth: 480, boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
               <span style={{ fontWeight: 700, fontSize: "1.05rem" }}>{editingReport ? "Edit Saved Report" : "Save Report"}</span>
-              <button className="btn btn-ghost btn-sm" onClick={closeSaveModal} aria-label="Close">✕</button>
+              <AppButton variant="ghost" size="sm" onClick={closeSaveModal} aria-label="Close">x</AppButton>
             </div>
 
             {/* Name */}
             <div className="form-field" style={{ marginBottom: 14 }}>
               <label className="form-label" htmlFor="save-name">Report Name</label>
-              <input
+              <AppInput
                 id="save-name"
                 type="text"
-                className="input-field"
                 placeholder="e.g. Monthly Attendance"
                 value={saveName}
                 onChange={e => setSaveName(e.target.value)}
@@ -829,30 +843,28 @@ export function Reports() {
             {/* Schedule type */}
             <div className="form-field" style={{ marginBottom: 14 }}>
               <label className="form-label" htmlFor="save-schedule">Schedule</label>
-              <select
+              <AppSelect
                 id="save-schedule"
-                className="input-field"
                 value={saveSchedule}
                 onChange={e => setSaveSchedule(e.target.value as "None" | "Weekly" | "Monthly")}
               >
                 <option value="None">No schedule</option>
                 <option value="Weekly">Weekly</option>
                 <option value="Monthly">Monthly (1st of month)</option>
-              </select>
+              </AppSelect>
             </div>
 
             {/* Weekly: day of week */}
             {saveSchedule === "Weekly" && (
               <div className="form-field" style={{ marginBottom: 14 }}>
                 <label className="form-label" htmlFor="save-day">Day of Week</label>
-                <select
+                <AppSelect
                   id="save-day"
-                  className="input-field"
                   value={saveDay}
                   onChange={e => setSaveDay(Number(e.target.value))}
                 >
                   {DAY_NAMES.map((d, i) => <option key={i} value={i}>{d}</option>)}
-                </select>
+                </AppSelect>
               </div>
             )}
 
@@ -860,16 +872,15 @@ export function Reports() {
             {saveSchedule !== "None" && (
               <div className="form-field" style={{ marginBottom: 14 }}>
                 <label className="form-label" htmlFor="save-hour">Send at Hour (UTC)</label>
-                <select
+                <AppSelect
                   id="save-hour"
-                  className="input-field"
                   value={saveHour}
                   onChange={e => setSaveHour(Number(e.target.value))}
                 >
                   {Array.from({ length: 24 }, (_, i) => (
                     <option key={i} value={i}>{String(i).padStart(2, "0")}:00</option>
                   ))}
-                </select>
+                </AppSelect>
               </div>
             )}
 
@@ -877,22 +888,21 @@ export function Reports() {
             <div className="form-field" style={{ marginBottom: 20 }}>
               <label className="form-label">Recipient Emails</label>
               <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
-                <input
+                <AppInput
                   type="email"
-                  className="input-field"
                   placeholder="email@example.com"
                   value={emailInput}
                   onChange={e => setEmailInput(e.target.value)}
                   onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addEmail(); } }}
                 />
-                <button type="button" className="btn btn-outline btn-sm" onClick={addEmail}>Add</button>
+                <AppButton type="button" variant="outline" size="sm" onClick={addEmail}>Add</AppButton>
               </div>
               {saveEmails.length > 0 && (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                   {saveEmails.map(email => (
                     <span key={email} style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "#f3f4f6", borderRadius: 6, padding: "2px 8px", fontSize: "0.78rem" }}>
                       {email}
-                      <button type="button" onClick={() => removeEmail(email)} style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280", fontSize: "0.9rem", lineHeight: 1, padding: 0 }} aria-label={`Remove ${email}`}>×</button>
+                      <AppButton type="button" variant="ghost" size="sm" onClick={() => removeEmail(email)} aria-label={`Remove ${email}`} className="p-0 min-h-0 h-auto text-[0.9rem] leading-none">x</AppButton>
                     </span>
                   ))}
                 </div>
@@ -900,10 +910,10 @@ export function Reports() {
             </div>
 
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button className="btn btn-ghost btn-sm" onClick={closeSaveModal} disabled={saveLoading}>Cancel</button>
-              <button className="btn btn-primary" onClick={() => void handleSaveReport()} disabled={saveLoading || !saveName.trim()}>
+              <AppButton variant="ghost" size="sm" onClick={closeSaveModal} disabled={saveLoading}>Cancel</AppButton>
+              <AppButton variant="primary" onClick={() => void handleSaveReport()} disabled={saveLoading || !saveName.trim()}>
                 {saveLoading ? "Saving…" : editingReport ? "Update" : "Save"}
-              </button>
+              </AppButton>
             </div>
           </div>
         </div>
@@ -918,7 +928,7 @@ export function Reports() {
           <div style={{ background: "var(--color-n-0, #fff)", borderRadius: 12, padding: "28px 32px", width: "100%", maxWidth: 640, maxHeight: "80vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
               <span style={{ fontWeight: 700, fontSize: "1.05rem" }}>Manage Saved Reports</span>
-              <button className="btn btn-ghost btn-sm" onClick={() => setShowManageModal(false)} aria-label="Close">✕</button>
+              <AppButton variant="ghost" size="sm" onClick={() => setShowManageModal(false)} aria-label="Close">x</AppButton>
             </div>
 
             <div style={{ overflowY: "auto", flex: 1 }}>
@@ -929,6 +939,7 @@ export function Reports() {
                   <p className="empty-state__desc">Save a report using the "Save Report" button in the filter bar.</p>
                 </div>
               ) : (
+                <AppTableShell>
                 <table className="table-base" style={{ width: "100%" }}>
                   <thead>
                     <tr>
@@ -958,24 +969,25 @@ export function Reports() {
                           <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                             {deleteConfirmId === sr.id ? (
                               <>
-                                <button className="btn btn-sm" style={{ background: "#fee2e2", color: "#991b1b", border: "none" }} onClick={() => void deleteSavedReport(sr.id)}>Confirm Delete</button>
-                                <button className="btn btn-ghost btn-sm" onClick={() => setDeleteConfirmId(null)}>Cancel</button>
+                                <AppButton variant="danger" size="sm" onClick={() => void deleteSavedReport(sr.id)}>Confirm Delete</AppButton>
+                                <AppButton variant="ghost" size="sm" onClick={() => setDeleteConfirmId(null)}>Cancel</AppButton>
                               </>
                             ) : (
                               <>
-                                <button
-                                  className="btn btn-outline btn-sm"
+                                <AppButton
+                                  variant="outline"
+                                  size="sm"
                                   onClick={() => { setShowManageModal(false); openSaveModal(sr); }}
                                 >
                                   Edit
-                                </button>
-                                <button
-                                  className="btn btn-sm"
-                                  style={{ background: "#fee2e2", color: "#991b1b", border: "none" }}
+                                </AppButton>
+                                <AppButton
+                                  variant="danger"
+                                  size="sm"
                                   onClick={() => setDeleteConfirmId(sr.id)}
                                 >
                                   Delete
-                                </button>
+                                </AppButton>
                               </>
                             )}
                           </div>
@@ -984,6 +996,7 @@ export function Reports() {
                     ))}
                   </tbody>
                 </table>
+                </AppTableShell>
               )}
             </div>
           </div>

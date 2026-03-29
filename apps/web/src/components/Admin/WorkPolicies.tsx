@@ -5,6 +5,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { apiFetch } from "../../api/client";
 import type { WorkPolicy } from "../../types";
+import { AppButton, AppCheckbox, AppIconButton, AppInput, AppPagination, AppSelect, AppTableShell } from "../ui";
 
 type PolicyForm = {
   name: string;
@@ -51,7 +52,7 @@ function Drawer({ open, title, onClose, children, footer }: { open: boolean; tit
       <div className="drawer" role="dialog" aria-modal="true">
         <div className="drawer-header">
           <div className="drawer-title">{title}</div>
-          <button className="drawer-close" onClick={onClose}>✕</button>
+          <AppButton className="drawer-close" variant="ghost" size="sm" onClick={onClose}>x</AppButton>
         </div>
         <div className="drawer-body">{children}</div>
         {footer && <div className="drawer-footer">{footer}</div>}
@@ -68,8 +69,8 @@ function ConfirmModal({ open, title, body, onConfirm, onCancel }: { open: boolea
         <div className="modal-title">{title}</div>
         <div className="modal-body">{body}</div>
         <div className="modal-actions">
-          <button className="btn btn-ghost btn-sm" onClick={onCancel}>Cancel</button>
-          <button className="btn btn-danger btn-sm" onClick={onConfirm}>Delete</button>
+          <AppButton variant="ghost" size="sm" onClick={onCancel}>Cancel</AppButton>
+          <AppButton variant="danger" size="sm" onClick={onConfirm}>Delete</AppButton>
         </div>
       </div>
     </div>
@@ -200,8 +201,8 @@ export function WorkPolicies() {
       <Drawer open={!!editing} title={drawerTitle} onClose={() => setEditing(null)}
         footer={
           <>
-            <button className="btn btn-primary" onClick={() => void save()}>Save Policy</button>
-            <button className="btn btn-ghost" onClick={() => setEditing(null)}>Cancel</button>
+            <AppButton variant="primary" onClick={() => void save()}>Save Policy</AppButton>
+            <AppButton variant="ghost" onClick={() => setEditing(null)}>Cancel</AppButton>
           </>
         }
       >
@@ -209,31 +210,32 @@ export function WorkPolicies() {
           <div className="grid grid-cols-2 gap-4">
             <div className="form-field col-span-2">
               <label className="form-label">Policy Name <span className="required">*</span></label>
-              <input className="input-field" placeholder="e.g. Standard 8h, Consultant 2h" value={form.name} onChange={(e) => f("name", e.target.value)} />
+              <AppInput placeholder="e.g. Standard 8h, Consultant 2h" value={form.name} onChange={(e) => f("name", e.target.value)} />
             </div>
           <div className="form-field">
             <label className="form-label">Daily Hours <span className="required">*</span></label>
-            <input className="input-field" type="number" min="0.5" max="24" step="0.5" placeholder="e.g. 8" value={form.dailyHours} onChange={(e) => f("dailyHours", e.target.value)} />
+            <AppInput type="number" min="0.5" max="24" step="0.5" placeholder="e.g. 8" value={form.dailyHours} onChange={(e) => f("dailyHours", e.target.value)} />
             {weeklyPreview && <div className="text-[0.75rem] text-text-tertiary mt-1">{weeklyPreview}</div>}
           </div>
           <div className="form-field">
             <label className="form-label">Work Days / Week</label>
-            <select className="input-field" value={form.workDaysPerWeek} onChange={(e) => f("workDaysPerWeek", Number(e.target.value))}>
+            <AppSelect value={form.workDaysPerWeek} onChange={(e) => f("workDaysPerWeek", Number(e.target.value))}>
               <option value={5}>5 days (Mon–Fri)</option>
               <option value={6}>6 days (Mon–Sat)</option>
-            </select>
+            </AppSelect>
           </div>
             <div className="form-field">
               <label className="form-label">Status</label>
               <label className="flex items-center gap-2 h-[38px] cursor-pointer text-[0.825rem] text-text-secondary">
-                <input type="checkbox" checked={form.isActive} onChange={(e) => f("isActive", e.target.checked)} className="[accent-color:var(--brand-600)]" />
+                <AppCheckbox checked={form.isActive} onChange={(e) => f("isActive", e.target.checked)} />
                 Active
               </label>
             </div>
           </div>
           <div className="mt-4 border border-border-subtle rounded-xl bg-n-50 overflow-hidden">
-            <button
+            <AppButton
               type="button"
+              variant="ghost"
               className="w-full flex items-center justify-between px-4 py-3 text-left"
               onClick={() => setOvertimeRulesOpen((open) => !open)}
             >
@@ -242,29 +244,29 @@ export function WorkPolicies() {
                 <div className="text-[0.75rem] text-text-tertiary mt-0.5">Set daily and weekly thresholds plus comp-off handling</div>
               </div>
               <span className="text-text-tertiary text-[0.9rem]">{overtimeRulesOpen ? "−" : "+"}</span>
-            </button>
+            </AppButton>
             {overtimeRulesOpen && (
               <div className="px-4 pb-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="form-field">
                     <label className="form-label">Daily OT After (hours)</label>
-                    <input className="input-field" type="number" min="0" step="0.5" value={form.dailyOvertimeAfterHours} onChange={(e) => f("dailyOvertimeAfterHours", e.target.value)} />
+                    <AppInput type="number" min="0" step="0.5" value={form.dailyOvertimeAfterHours} onChange={(e) => f("dailyOvertimeAfterHours", e.target.value)} />
                   </div>
                   <div className="form-field">
                     <label className="form-label">Weekly OT After (hours)</label>
-                    <input className="input-field" type="number" min="0" step="0.5" value={form.weeklyOvertimeAfterHours} onChange={(e) => f("weeklyOvertimeAfterHours", e.target.value)} />
+                    <AppInput type="number" min="0" step="0.5" value={form.weeklyOvertimeAfterHours} onChange={(e) => f("weeklyOvertimeAfterHours", e.target.value)} />
                   </div>
                   <div className="form-field">
                     <label className="form-label">Overtime Multiplier</label>
-                    <input className="input-field" type="number" min="1" step="0.1" value={form.overtimeMultiplier} onChange={(e) => f("overtimeMultiplier", e.target.value)} />
+                    <AppInput type="number" min="1" step="0.1" value={form.overtimeMultiplier} onChange={(e) => f("overtimeMultiplier", e.target.value)} />
                   </div>
                   <div className="form-field">
                     <label className="form-label">Comp-Off Expiry (days)</label>
-                    <input className="input-field" type="number" min="0" step="1" value={form.compOffExpiryDays} onChange={(e) => f("compOffExpiryDays", e.target.value)} />
+                    <AppInput type="number" min="0" step="1" value={form.compOffExpiryDays} onChange={(e) => f("compOffExpiryDays", e.target.value)} />
                   </div>
                   <div className="form-field col-span-2">
                     <label className="flex items-center gap-2 h-[38px] cursor-pointer text-[0.825rem] text-text-secondary">
-                      <input type="checkbox" checked={form.compOffEnabled} onChange={(e) => f("compOffEnabled", e.target.checked)} className="[accent-color:var(--brand-600)]" />
+                      <AppCheckbox checked={form.compOffEnabled} onChange={(e) => f("compOffEnabled", e.target.checked)} />
                       Enable comp-off accrual
                     </label>
                   </div>
@@ -293,8 +295,8 @@ export function WorkPolicies() {
           <div className="page-subtitle">Define daily expected hours for different employee types</div>
         </div>
         <div className="page-actions">
-          <button className="btn btn-outline" onClick={() => void load()}>Refresh</button>
-          <button className="btn btn-primary" onClick={openCreate}>+ New Policy</button>
+          <AppButton variant="outline" onClick={() => void load()}>Refresh</AppButton>
+          <AppButton variant="primary" onClick={openCreate}>+ New Policy</AppButton>
         </div>
       </div>
 
@@ -305,15 +307,15 @@ export function WorkPolicies() {
             All Work Policies
             <span className="mgmt-count-pill">{policies.length} polic{policies.length === 1 ? "y" : "ies"}</span>
           </div>
-          <button className="btn btn-outline btn-sm">Export</button>
+          <AppButton variant="outline" size="sm">Export</AppButton>
         </div>
         <div className="mgmt-toolbar px-4 pb-3">
           <div className="input-icon-wrap mgmt-search-wrap">
             <span className="input-icon">🔍</span>
-            <input className="input-field mgmt-search" placeholder="Search policies..." value={search} onChange={e => setSearch(e.target.value)} />
+            <AppInput className="mgmt-search" placeholder="Search policies..." value={search} onChange={e => setSearch(e.target.value)} />
           </div>
         </div>
-        <div className="table-wrap mgmt-table-wrap">
+        <AppTableShell>
           <table className="table-base mgmt-table">
             <thead>
               <tr>
@@ -337,7 +339,7 @@ export function WorkPolicies() {
               {sorted.map((p) => (
                 <tr key={p.id}>
                   <td>
-                    <button className="btn-table-link text-left" onClick={() => openEdit(p)}>{p.name}</button>
+                    <AppButton className="btn-table-link text-left" variant="ghost" size="sm" onClick={() => openEdit(p)}>{p.name}</AppButton>
                     <div className="text-[0.75rem] text-text-tertiary mt-1 leading-5">{formatOvertimeSummary(p)}</div>
                   </td>
                   <td>{(p.dailyExpectedMinutes / 60).toFixed(1)}h / day</td>
@@ -350,36 +352,32 @@ export function WorkPolicies() {
                   </td>
                   <td className="text-right">
                     <div className="flex gap-2 justify-end">
-                      <button
-                        className="mgmt-icon-action mgmt-icon-action-edit"
+                      <AppIconButton
+                        tone="edit"
                         onClick={() => openEdit(p)}
                         title={`Edit ${p.name}`}
                         aria-label={`Edit ${p.name}`}
                       >
                         <Pencil size={14} />
-                      </button>
-                      <button
-                        className="mgmt-icon-action mgmt-icon-action-danger"
+                      </AppIconButton>
+                      <AppIconButton
+                        tone="danger"
                         onClick={() => setDeleteTarget(p)}
                         title={`Delete ${p.name}`}
                         aria-label={`Delete ${p.name}`}
                       >
                         <Trash2 size={14} />
-                      </button>
+                      </AppIconButton>
                     </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </AppTableShell>
         <div className="mgmt-card-foot">
           <span>Showing 1-{sorted.length} of {sorted.length} polic{sorted.length === 1 ? "y" : "ies"}</span>
-          <div className="mgmt-pagination">
-            <button className="btn btn-outline btn-sm px-2" aria-label="Previous page">&lt;</button>
-            <button className="btn btn-primary btn-sm px-3">1</button>
-            <button className="btn btn-outline btn-sm px-2" aria-label="Next page">&gt;</button>
-          </div>
+          <AppPagination page={1} totalPages={1} onPrev={() => {}} onNext={() => {}} />
         </div>
       </div>
 

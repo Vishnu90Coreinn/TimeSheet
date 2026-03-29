@@ -6,6 +6,7 @@ import { apiFetch } from "../api/client";
 import { SkeletonPage } from "./Skeleton";
 import { EmptyLeave } from "./EmptyState";
 import type { CompOffBalance, LeaveBalance, LeaveRequest, LeaveRequestGroup, LeaveType, TeamLeaveEntry, User } from "../types";
+import { AppButton, AppInput, AppSelect, AppTextarea } from "./ui";
 
 // ─── Types ─────────────────────────────────────────────────────
 interface CalendarEntry { date: string; type: "pending" | "approved" | "rejected" }
@@ -148,9 +149,9 @@ function MiniCalendar() {
   return (
     <div className="lv-cal">
       <div className="lv-cal-nav">
-        <button className="lv-cal-btn" onClick={prevMonth} aria-label="Previous month">‹</button>
+        <AppButton variant="ghost" size="sm" className="lv-cal-btn" onClick={prevMonth} aria-label="Previous month">‹</AppButton>
         <span className="lv-cal-month">{MONTH_NAMES[month]} {year}</span>
-        <button className="lv-cal-btn" onClick={nextMonth} aria-label="Next month">›</button>
+        <AppButton variant="ghost" size="sm" className="lv-cal-btn" onClick={nextMonth} aria-label="Next month">›</AppButton>
       </div>
       <div className="lv-cal-grid">
         {DAY_LABELS.map((d) => <div key={d} className="lv-cal-day-label">{d}</div>)}
@@ -495,14 +496,14 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
         </div>
         <div className="page-actions">
           {/* Leave Report — with download icon */}
-          <button className="btn btn-outline flex items-center gap-[6px]">
+          <AppButton variant="outline" className="flex items-center gap-[6px]">
             <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <path d="M10 3v10M6 9l4 4 4-4"/><rect x="3" y="14" width="14" height="3" rx="1"/>
             </svg>
             Leave Report
-          </button>
+          </AppButton>
           {/* Scroll-to-form CTA — only when not already in view */}
-          <button className="btn btn-primary" onClick={scrollToApply}>+ Apply for Leave</button>
+          <AppButton variant="primary" onClick={scrollToApply}>+ Apply for Leave</AppButton>
         </div>
       </div>
 
@@ -589,9 +590,8 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
                       <label className="form-label" htmlFor="lv-onbehalf">
                         Apply on behalf of
                       </label>
-                      <select
+                      <AppSelect
                         id="lv-onbehalf"
-                        className="input-field"
                         value={leaveForm.onBehalfOfUserId}
                         onChange={(e) => setLeaveForm((p) => ({ ...p, onBehalfOfUserId: e.target.value }))}
                       >
@@ -599,7 +599,7 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
                         {allUsers.filter((u) => u.isActive).map((u) => (
                           <option key={u.id} value={u.id}>{u.username}</option>
                         ))}
-                      </select>
+                      </AppSelect>
                       {leaveForm.onBehalfOfUserId && (
                         <div className="lv-onbehalf-banner">
                           <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -614,38 +614,35 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
                   {/* Leave type */}
                   <div className="form-field">
                     <label className="form-label" htmlFor="lv-type">Leave Type <span className="required">*</span></label>
-                    <select
+                    <AppSelect
                       id="lv-type"
-                      className="input-field"
                       value={leaveForm.leaveTypeId}
                       onChange={(e) => setLeaveForm((p) => ({ ...p, leaveTypeId: e.target.value }))}
                       required
                     >
                       {leaveTypes.map((lt) => <option key={lt.id} value={lt.id}>{lt.name}</option>)}
-                    </select>
+                    </AppSelect>
                   </div>
 
                   {/* Duration */}
                   <div className="form-field">
                     <label className="form-label" htmlFor="lv-duration">Duration <span className="required">*</span></label>
-                    <select
+                    <AppSelect
                       id="lv-duration"
-                      className="input-field"
                       value={leaveForm.isHalfDay ? "half" : "full"}
                       onChange={(e) => setLeaveForm((p) => ({ ...p, isHalfDay: e.target.value === "half" }))}
                     >
                       <option value="full">Full day</option>
                       <option value="half">Half day</option>
-                    </select>
+                    </AppSelect>
                   </div>
 
                   {/* From date */}
                   <div className="form-field">
                     <label className="form-label" htmlFor="lv-from">From Date <span className="required">*</span></label>
-                    <input
+                    <AppInput
                       id="lv-from"
                       type="date"
-                      className="input-field"
                       value={leaveForm.fromDate}
                       onChange={(e) => setLeaveForm((p) => ({ ...p, fromDate: e.target.value }))}
                       required
@@ -655,10 +652,9 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
                   {/* To date */}
                   <div className="form-field">
                     <label className="form-label" htmlFor="lv-to">To Date <span className="required">*</span></label>
-                    <input
+                    <AppInput
                       id="lv-to"
                       type="date"
-                      className="input-field"
                       value={leaveForm.toDate}
                       onChange={(e) => setLeaveForm((p) => ({ ...p, toDate: e.target.value }))}
                       required
@@ -679,9 +675,8 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
                   {/* Reason — full width */}
                   <div className="form-field lv-form-full">
                     <label className="form-label" htmlFor="lv-reason">Reason</label>
-                    <textarea
+                    <AppTextarea
                       id="lv-reason"
-                      className="input-field"
                       rows={3}
                       placeholder="Brief description of the reason for leave…"
                       value={leaveForm.comment}
@@ -693,14 +688,14 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
                 </div>
 
                 <div className="flex gap-[var(--space-3)] mt-[var(--space-4)]">
-                  <button
+                  <AppButton
                     type="button"
-                    className="btn btn-outline"
+                    variant="outline"
                     onClick={() => setLeaveForm({ leaveTypeId: leaveTypes[0]?.id ?? "", fromDate: today(), toDate: today(), isHalfDay: false, comment: "", onBehalfOfUserId: "" })}
                   >
                     Reset form
-                  </button>
-                  <button type="submit" className="btn btn-primary">Submit request</button>
+                  </AppButton>
+                  <AppButton type="submit" variant="primary">Submit request</AppButton>
                 </div>
 
                 {/* Form feedback */}
@@ -729,7 +724,7 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
             <div className="card-header">
               <div className="lv-hist-header flex-1">
                 <div className="card-title">Leave History</div>
-                <select
+                <AppSelect
                   className="lv-year-sel"
                   value={histYear}
                   onChange={(e) => setHistYear(Number(e.target.value))}
@@ -744,7 +739,7 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
                       {y}
                     </option>
                   ))}
-                </select>
+                </AppSelect>
               </div>
             </div>
 
@@ -768,15 +763,17 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
                       {(h.status === "pending" || h.status === "rejected") && (
                         <div className="lv-hist-card-actions">
                           {h.status === "rejected" && (
-                            <button className="btn btn-outline btn-sm" onClick={() => reApply(h)}>Re-apply</button>
+                            <AppButton variant="outline" size="sm" onClick={() => reApply(h)}>Re-apply</AppButton>
                           )}
                           {h.status === "pending" && (
-                            <button
-                              className="btn btn-sm [border:1px_solid_#ef4444] text-[#ef4444] bg-transparent"
+                            <AppButton
+                              variant="outline"
+                              size="sm"
+                              className="[border:1px_solid_#ef4444] text-[#ef4444] bg-transparent"
                               onClick={() => setCancelModal(h.id)}
                             >
                               Cancel
-                            </button>
+                            </AppButton>
                           )}
                         </div>
                       )}
@@ -844,8 +841,8 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
                             <td>{l.isHalfDay ? "Half Day" : "Full Day"}</td>
                             <td>
                               <div className="flex gap-[var(--space-2)]">
-                                <button className="btn btn-outline-success btn-sm" onClick={() => void reviewLeave(l.id, true)}>✓ Approve</button>
-                                <button className="btn btn-outline-reject btn-sm" onClick={() => setShowRejectForm(showRejectForm === l.id ? null : l.id)}>✗ Reject</button>
+                                <AppButton variant="outline" size="sm" className="btn btn-outline-success" onClick={() => void reviewLeave(l.id, true)}>✓ Approve</AppButton>
+                                <AppButton variant="outline" size="sm" className="btn btn-outline-reject" onClick={() => setShowRejectForm(showRejectForm === l.id ? null : l.id)}>✗ Reject</AppButton>
                               </div>
                             </td>
                           </tr>
@@ -853,7 +850,7 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
                             <tr key={`${l.id}-rej`}>
                               <td colSpan={5} className="p-0">
                                 <div className="lv-mgr-reject-row">
-                                  <input
+                                  <AppInput
                                     className="input-field flex-1 max-w-[360px]"
                                     placeholder="Rejection comment (required)"
                                     value={rejectComments[l.id] ?? ""}
@@ -861,8 +858,8 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
                                     required
                                     maxLength={1000}
                                   />
-                                  <button className="btn btn-danger btn-sm" onClick={() => void reviewLeave(l.id, false)}>Confirm Reject</button>
-                                  <button className="btn btn-ghost btn-sm" onClick={() => setShowRejectForm(null)}>Cancel</button>
+                                  <AppButton variant="danger" size="sm" onClick={() => void reviewLeave(l.id, false)}>Confirm Reject</AppButton>
+                                  <AppButton variant="ghost" size="sm" onClick={() => setShowRejectForm(null)}>Cancel</AppButton>
                                 </div>
                               </td>
                             </tr>
@@ -929,13 +926,10 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
               Are you sure you want to cancel this leave request? This action cannot be undone.
             </div>
             <div className="lv-modal-actions">
-              <button className="btn btn-outline btn-sm" onClick={() => setCancelModal(null)}>Keep it</button>
-              <button
-                className="btn btn-sm bg-[#ef4444] text-white border-none"
-                onClick={() => void confirmCancelLeave()}
-              >
+              <AppButton variant="outline" size="sm" onClick={() => setCancelModal(null)}>Keep it</AppButton>
+              <AppButton variant="danger" size="sm" onClick={() => void confirmCancelLeave()}>
                 Yes, cancel request
-              </button>
+              </AppButton>
             </div>
           </div>
         </div>

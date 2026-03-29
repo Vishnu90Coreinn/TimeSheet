@@ -5,6 +5,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { apiFetch } from "../../api/client";
 import type { TaskCategory } from "../../types";
+import { AppButton, AppCheckbox, AppIconButton, AppInput, AppPagination, AppTableShell } from "../ui";
 
 type CatForm = { name: string; isBillable: boolean; isActive: boolean };
 const BLANK: CatForm = { name: "", isBillable: false, isActive: true };
@@ -23,7 +24,7 @@ function Drawer({ open, title, onClose, children, footer }: { open: boolean; tit
       <div className="drawer" role="dialog" aria-modal="true">
         <div className="drawer-header">
           <div className="drawer-title">{title}</div>
-          <button className="drawer-close" onClick={onClose}>✕</button>
+          <AppButton className="drawer-close" variant="ghost" size="sm" onClick={onClose}>x</AppButton>
         </div>
         <div className="drawer-body">{children}</div>
         {footer && <div className="drawer-footer">{footer}</div>}
@@ -40,8 +41,8 @@ function ConfirmModal({ open, title, body, onConfirm, onCancel }: { open: boolea
         <div className="modal-title">{title}</div>
         <div className="modal-body">{body}</div>
         <div className="modal-actions">
-          <button className="btn btn-ghost btn-sm" onClick={onCancel}>Cancel</button>
-          <button className="btn btn-danger btn-sm" onClick={onConfirm}>Delete</button>
+          <AppButton variant="ghost" size="sm" onClick={onCancel}>Cancel</AppButton>
+          <AppButton variant="danger" size="sm" onClick={onConfirm}>Delete</AppButton>
         </div>
       </div>
     </div>
@@ -152,22 +153,22 @@ export function Categories() {
       <Drawer open={!!editing} title={drawerTitle} onClose={() => setEditing(null)}
         footer={
           <>
-            <button className="btn btn-primary" onClick={() => void save()}>Save</button>
-            <button className="btn btn-ghost" onClick={() => setEditing(null)}>Cancel</button>
+            <AppButton variant="primary" onClick={() => void save()}>Save</AppButton>
+            <AppButton variant="ghost" onClick={() => setEditing(null)}>Cancel</AppButton>
           </>
         }
       >
         {error && <div className="alert alert-error">{error}</div>}
         <div className="form-field">
           <label className="form-label" htmlFor="cat-name">Name <span className="required">*</span></label>
-          <input id="cat-name" className="input-field" value={form.name} onChange={(e) => f("name", e.target.value)} maxLength={120} required />
+          <AppInput id="cat-name" value={form.name} onChange={(e) => f("name", e.target.value)} maxLength={120} required />
         </div>
         <label className="flex items-center gap-2 text-[0.825rem] text-text-secondary">
-          <input type="checkbox" checked={form.isBillable} onChange={(e) => f("isBillable", e.target.checked)} className="[accent-color:var(--brand-600)]" />
+          <AppCheckbox checked={form.isBillable} onChange={(e) => f("isBillable", e.target.checked)} />
           Billable
         </label>
         <label className="flex items-center gap-2 text-[0.825rem] text-text-secondary">
-          <input type="checkbox" checked={form.isActive} onChange={(e) => f("isActive", e.target.checked)} className="[accent-color:var(--brand-600)]" />
+          <AppCheckbox checked={form.isActive} onChange={(e) => f("isActive", e.target.checked)} />
           Active
         </label>
       </Drawer>
@@ -188,8 +189,8 @@ export function Categories() {
           <div className="page-subtitle">Manage task categories and billability flags</div>
         </div>
         <div className="page-actions">
-          <button className="btn btn-outline" onClick={() => void load()}>Refresh</button>
-          <button className="btn btn-primary" onClick={openCreate}>+ New Category</button>
+          <AppButton variant="outline" onClick={() => void load()}>Refresh</AppButton>
+          <AppButton variant="primary" onClick={openCreate}>+ New Category</AppButton>
         </div>
       </div>
 
@@ -200,15 +201,15 @@ export function Categories() {
             All Categories
             <span className="mgmt-count-pill">{categories.length} categor{categories.length === 1 ? "y" : "ies"}</span>
           </div>
-          <button className="btn btn-outline btn-sm">Export</button>
+          <AppButton variant="outline" size="sm">Export</AppButton>
         </div>
         <div className="mgmt-toolbar px-4 pb-3">
           <div className="input-icon-wrap mgmt-search-wrap">
             <span className="input-icon">🔍</span>
-            <input className="input-field mgmt-search" placeholder="Search categories..." value={search} onChange={e => setSearch(e.target.value)} />
+            <AppInput className="mgmt-search" placeholder="Search categories..." value={search} onChange={e => setSearch(e.target.value)} />
           </div>
         </div>
-        <div className="table-wrap mgmt-table-wrap">
+        <AppTableShell>
           <table className="table-base mgmt-table">
             <thead>
               <tr>
@@ -228,28 +229,28 @@ export function Categories() {
               {sorted.map((c) => (
                 <tr key={c.id} className={c.isActive ? "" : "opacity-[0.55]"}>
                   <td>
-                    <button className="btn-table-link" onClick={() => openEdit(c)}>{c.name}</button>
+                    <AppButton className="btn-table-link" variant="ghost" size="sm" onClick={() => openEdit(c)}>{c.name}</AppButton>
                   </td>
                   <td><ToggleSwitch checked={c.isBillable} onChange={() => void toggleBillable(c)} /></td>
                   <td><ToggleSwitch checked={c.isActive} onChange={() => void toggleActive(c)} /></td>
                   <td>
                     <div className="flex gap-2">
-                      <button
-                        className="mgmt-icon-action mgmt-icon-action-edit"
+                      <AppIconButton
+                        tone="edit"
                         onClick={() => openEdit(c)}
                         title={`Edit ${c.name}`}
                         aria-label={`Edit ${c.name}`}
                       >
                         <Pencil size={14} />
-                      </button>
-                      <button
-                        className="mgmt-icon-action mgmt-icon-action-danger"
+                      </AppIconButton>
+                      <AppIconButton
+                        tone="danger"
                         onClick={() => setDeleteId(c.id)}
                         title={`Delete ${c.name}`}
                         aria-label={`Delete ${c.name}`}
                       >
                         <Trash2 size={14} />
-                      </button>
+                      </AppIconButton>
                     </div>
                   </td>
                 </tr>
@@ -257,14 +258,10 @@ export function Categories() {
               {sorted.length === 0 && <tr className="empty-row"><td colSpan={4}>{search ? "No categories match your search." : "No categories found."}</td></tr>}
             </tbody>
           </table>
-        </div>
+        </AppTableShell>
         <div className="mgmt-card-foot">
           <span>Showing 1-{sorted.length} of {sorted.length} categor{sorted.length === 1 ? "y" : "ies"}</span>
-          <div className="mgmt-pagination">
-            <button className="btn btn-outline btn-sm px-2" aria-label="Previous page">&lt;</button>
-            <button className="btn btn-primary btn-sm px-3">1</button>
-            <button className="btn btn-outline btn-sm px-2" aria-label="Next page">&gt;</button>
-          </div>
+          <AppPagination page={1} totalPages={1} onPrev={() => {}} onNext={() => {}} />
         </div>
       </div>
     </section>

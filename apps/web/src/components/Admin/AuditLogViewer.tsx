@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Search } from "lucide-react";
 import { apiFetch } from "../../api/client";
+import { AppButton, AppInput, AppPagination, AppSelect, AppTableShell } from "../ui";
 
 interface AuditLogEntry {
   id: string;
@@ -76,27 +77,28 @@ export function AuditLogViewer() {
         <form onSubmit={handleSearch} className="mgmt-toolbar p-4">
           <div className="relative flex-1 min-w-[260px]">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
-            <input
+            <AppInput
               type="text"
-              className="input-field pl-8"
+              className="pl-8"
               placeholder="Search action, entity type, ID..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
             />
           </div>
-          <select className="input-field mgmt-select" value={actionFilter} onChange={(e) => setActionFilter(e.target.value)}>
+          <AppSelect className="mgmt-select" value={actionFilter} onChange={(e) => setActionFilter(e.target.value)}>
             <option value="">All actions</option>
             {actionOptions.map((action) => <option key={action} value={action}>{action}</option>)}
-          </select>
-          <select className="input-field mgmt-select" value={entityFilter} onChange={(e) => setEntityFilter(e.target.value)}>
+          </AppSelect>
+          <AppSelect className="mgmt-select" value={entityFilter} onChange={(e) => setEntityFilter(e.target.value)}>
             <option value="">All entities</option>
             {entityOptions.map((entity) => <option key={entity} value={entity}>{entity}</option>)}
-          </select>
-          <button type="submit" className="btn btn-primary btn-sm">Search</button>
+          </AppSelect>
+          <AppButton type="submit" variant="primary" size="sm">Search</AppButton>
           {hasFilters && (
-            <button
+            <AppButton
               type="button"
-              className="btn btn-outline btn-sm"
+              variant="outline"
+              size="sm"
               onClick={() => {
                 setSearch("");
                 setSearchInput("");
@@ -106,7 +108,7 @@ export function AuditLogViewer() {
               }}
             >
               Clear
-            </button>
+            </AppButton>
           )}
         </form>
         <div className="px-4 pb-3 text-[0.75rem] text-text-tertiary">
@@ -115,7 +117,7 @@ export function AuditLogViewer() {
       </div>
 
       <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
+        <AppTableShell className="overflow-x-auto">
           <table className="table-base mgmt-table w-full">
             <thead>
               <tr>
@@ -164,18 +166,14 @@ export function AuditLogViewer() {
               )}
             </tbody>
           </table>
-        </div>
+        </AppTableShell>
 
         {data && totalPages > 1 && (
           <div className="mgmt-card-foot">
             <span className="text-[0.75rem] text-text-tertiary">
               Page {page} of {totalPages} · {data.totalCount} total entries
             </span>
-            <div className="mgmt-pagination">
-              <button className="btn btn-outline btn-sm px-2" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>&lt;</button>
-              <button className="btn btn-primary btn-sm px-3">{page}</button>
-              <button className="btn btn-outline btn-sm px-2" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>&gt;</button>
-            </div>
+            <AppPagination page={page} totalPages={totalPages} onPrev={() => setPage((p) => p - 1)} onNext={() => setPage((p) => p + 1)} />
           </div>
         )}
       </div>

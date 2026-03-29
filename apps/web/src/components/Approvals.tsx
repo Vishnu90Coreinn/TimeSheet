@@ -3,6 +3,7 @@ import { apiFetch } from "../api/client";
 import { SkeletonPage } from "./Skeleton";
 import { EmptyApprovals } from "./EmptyState";
 import type { ApprovalItem, LeaveRequest } from "../types";
+import { AppButton, AppCheckbox, AppInput, AppSelect } from "./ui";
 
 type Tab = "all" | "timesheets" | "leave";
 type StatsPeriod = "thisWeek" | "thisMonth" | "custom";
@@ -172,9 +173,9 @@ function CompactCalendar({
   return (
     <div className="select-none w-[224px]">
       <div className="flex items-center justify-between mb-2">
-        <button type="button" className="bg-transparent border-0 cursor-pointer px-2 py-[2px] rounded-sm text-base leading-none text-text-secondary flex items-center" onClick={() => month === 0 ? (setMonth(11), setYear(y => y - 1)) : setMonth(m => m - 1)} aria-label="Previous month">‹</button>
+        <AppButton type="button" variant="ghost" size="sm" className="px-2 py-[2px] rounded-sm text-base leading-none text-text-secondary flex items-center" onClick={() => month === 0 ? (setMonth(11), setYear(y => y - 1)) : setMonth(m => m - 1)} aria-label="Previous month">‹</AppButton>
         <span className="text-[0.82rem] font-bold text-text-primary">{CAL_MONTHS[month]} {year}</span>
-        <button type="button" className="bg-transparent border-0 cursor-pointer px-2 py-[2px] rounded-sm text-base leading-none text-text-secondary flex items-center" onClick={() => month === 11 ? (setMonth(0), setYear(y => y + 1)) : setMonth(m => m + 1)} aria-label="Next month">›</button>
+        <AppButton type="button" variant="ghost" size="sm" className="px-2 py-[2px] rounded-sm text-base leading-none text-text-secondary flex items-center" onClick={() => month === 11 ? (setMonth(0), setYear(y => y + 1)) : setMonth(m => m + 1)} aria-label="Next month">›</AppButton>
       </div>
 
       <div className="grid grid-cols-7 mb-1">
@@ -204,7 +205,7 @@ function CompactCalendar({
         })}
       </div>
       <div className="mt-2 border-t border-border-subtle pt-2">
-        <button type="button" className="btn btn-ghost btn-sm w-full text-[0.75rem]" onClick={() => { onChange(todayIso()); onClose(); }}>Today</button>
+        <AppButton type="button" variant="ghost" size="sm" className="w-full text-[0.75rem]" onClick={() => { onChange(todayIso()); onClose(); }}>Today</AppButton>
       </div>
     </div>
   );
@@ -224,16 +225,18 @@ function ModernDatePicker({ value, onChange, ariaLabel }: { value: string; onCha
 
   return (
     <div ref={ref} className="relative">
-      <button
+      <AppButton
         type="button"
-        className="btn btn-outline btn-sm apr3-date-trigger"
+        variant="outline"
+        size="sm"
+        className="apr3-date-trigger"
         onClick={() => setOpen(v => !v)}
         aria-label={ariaLabel}
         aria-expanded={open}
         aria-haspopup="dialog"
       >
         {value ? fmtDate(value) : "Select date"}
-      </button>
+      </AppButton>
       {open && (
         <div
           role="dialog"
@@ -567,13 +570,13 @@ export function Approvals() {
           <div className="page-subtitle">{headerSubtitle}</div>
         </div>
         <div className="page-actions">
-          <button className="btn btn-outline btn-sm" onClick={() => void openDelegateModal()}>
+          <AppButton variant="outline" size="sm" onClick={() => void openDelegateModal()}>
             Delegate Approvals
-          </button>
+          </AppButton>
           {delegation && (
-            <button className="btn btn-ghost btn-sm text-[#b91c1c]" onClick={() => void handleRevokeDelegate()}>
+            <AppButton variant="ghost" size="sm" className="text-[#b91c1c]" onClick={() => void handleRevokeDelegate()}>
               Revoke Delegation
-            </button>
+            </AppButton>
           )}
         </div>
       </div>
@@ -587,39 +590,45 @@ export function Approvals() {
       )}
 
       <div className="apr3-stats-toolbar-compact">
-        <div className="apr3-period-segment apr3-period-segment-compact" role="tablist" aria-label="Stats period">
-          <button
+          <div className="apr3-period-segment apr3-period-segment-compact" role="tablist" aria-label="Stats period">
+          <AppButton
             className={`apr3-segment-btn ${statsPeriod === "thisWeek" ? "active" : ""}`}
             onClick={() => setStatsPeriod("thisWeek")}
             role="tab"
             aria-selected={statsPeriod === "thisWeek"}
+            variant="ghost"
+            type="button"
           >
             This Week
-          </button>
-          <button
+          </AppButton>
+          <AppButton
             className={`apr3-segment-btn ${statsPeriod === "thisMonth" ? "active" : ""}`}
             onClick={() => setStatsPeriod("thisMonth")}
             role="tab"
             aria-selected={statsPeriod === "thisMonth"}
+            variant="ghost"
+            type="button"
           >
             This Month
-          </button>
-          <button
+          </AppButton>
+          <AppButton
             className={`apr3-segment-btn ${statsPeriod === "custom" ? "active" : ""}`}
             onClick={() => setStatsPeriod("custom")}
             role="tab"
             aria-selected={statsPeriod === "custom"}
+            variant="ghost"
+            type="button"
           >
             Custom
-          </button>
-        </div>
+          </AppButton>
+          </div>
 
         {statsPeriod === "custom" ? (
           <div className="apr3-period-inline-range">
             <ModernDatePicker value={customFrom} onChange={setCustomFrom} ariaLabel={`From date ${customFrom ? fmtDate(customFrom) : "not selected"}`} />
             <span className="apr3-range-sep">to</span>
             <ModernDatePicker value={customTo} onChange={setCustomTo} ariaLabel={`To date ${customTo ? fmtDate(customTo) : "not selected"}`} />
-            <button className="btn btn-primary btn-sm" onClick={() => loadData()} disabled={!customFrom || !customTo}>Apply</button>
+            <AppButton variant="primary" size="sm" onClick={() => loadData()} disabled={!customFrom || !customTo}>Apply</AppButton>
           </div>
         ) : (
           <div className="apr3-period-inline-note">{statsPeriodLabel}</div>
@@ -686,9 +695,9 @@ export function Approvals() {
 
       <div className="apr3-tabs">
         {tabs.map(({ key, label, count, disabled }) => (
-          <button key={key} className={`apr3-tab${tab === key ? " active" : ""}${disabled ? " apr3-tab-disabled" : ""}`} onClick={() => !disabled && setTab(key)} disabled={disabled}>
+          <AppButton key={key} variant="ghost" className={`apr3-tab${tab === key ? " active" : ""}${disabled ? " apr3-tab-disabled" : ""}`} onClick={() => !disabled && setTab(key)} disabled={disabled}>
             {label}<span className="apr3-tab-count">{count}</span>
-          </button>
+          </AppButton>
         ))}
       </div>
 
@@ -701,34 +710,36 @@ export function Approvals() {
                 <line x1="21" y1="21" x2="16.65" y2="16.65" />
               </svg>
             </span>
-            <input
-              className="input apr3-search apr3-search-modern"
+            <AppInput
+              className="apr3-search apr3-search-modern"
               placeholder="Search employee by name..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
             {search && (
-              <button className="apr3-filter-clear" onClick={() => setSearch("")} aria-label="Clear search">
+              <AppButton className="apr3-filter-clear" variant="ghost" size="sm" onClick={() => setSearch("")} aria-label="Clear search">
                 Clear
-              </button>
+              </AppButton>
             )}
           </div>
           <div className="apr3-filter-sort-wrap">
             <label className="apr3-filter-sort-label" htmlFor="apr-sort-select">Sort by</label>
-            <select id="apr-sort-select" className="input apr3-sort apr3-sort-modern" value={sortBy} onChange={(e) => setSortBy(e.target.value as SortBy)}>
+            <AppSelect id="apr-sort-select" className="apr3-sort apr3-sort-modern" value={sortBy} onChange={(e) => setSortBy(e.target.value as SortBy)}>
               <option value="waiting">Longest waiting</option>
               <option value="name">Employee name</option>
               <option value="hours">Hours logged</option>
               <option value="period">Period date</option>
-            </select>
-            <button
-              className="btn btn-ghost btn-sm apr3-sort-direction"
+            </AppSelect>
+            <AppButton
+              className="apr3-sort-direction"
+              variant="ghost"
+              size="sm"
               onClick={() => setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"))}
               aria-label={`Sort direction ${sortDirection === "asc" ? "ascending" : "descending"}`}
               title={`Sort ${sortDirection === "asc" ? "ascending" : "descending"}`}
             >
               {sortDirection === "asc" ? "↑" : "↓"}
-            </button>
+            </AppButton>
           </div>
         </div>
       )}
@@ -740,9 +751,9 @@ export function Approvals() {
           <div className={`apr3-select-bar ${selectedIds.size > 0 ? "apr3-select-bar-active" : ""}`}>
             {hasManyTimesheets ? (
               <>
-                <button className="apr3-select-hit" onClick={() => toggleSelectAll(filteredTsPending.map((a) => a.timesheetId))} aria-label="Toggle select all timesheets">
-                  <input type="checkbox" readOnly checked={selectedIds.size === filteredTsPending.length && filteredTsPending.length > 0} className="w-4 h-4 [accent-color:var(--brand-600)]" />
-                </button>
+                <AppButton variant="ghost" className="apr3-select-hit" onClick={() => toggleSelectAll(filteredTsPending.map((a) => a.timesheetId))} aria-label="Toggle select all timesheets">
+                  <AppCheckbox readOnly checked={selectedIds.size === filteredTsPending.length && filteredTsPending.length > 0} />
+                </AppButton>
                 <span className="text-[0.8rem] text-text-secondary">{selectedIds.size === filteredTsPending.length && filteredTsPending.length > 0 ? "Deselect all" : "Select all"}</span>
               </>
             ) : (
@@ -755,31 +766,33 @@ export function Approvals() {
                 {selectedIneligibleCount > 0 ? ` · ${selectedIneligibleCount} needs manual review` : ""}
               </span>
             )}
-            <button
-              className={`btn btn-primary btn-sm ${!canBulkApprove ? "apr3-bulk-disabled" : ""}`}
+            <AppButton
+              className={(!canBulkApprove ? "apr3-bulk-disabled" : "")}
+              variant="primary"
+              size="sm"
               onClick={() => void bulkApprove()}
               disabled={!canBulkApprove || selectedEligibleCount === 0}
               title={selectedEligibleCount > 0 ? `Approve ${selectedEligibleCount} eligible selected` : "Select one or more eligible timesheets"}
             >
               {bulkApproving ? "Approving..." : selectedCount > 0 ? `Approve ${selectedEligibleCount} selected` : "Approve selected"}
-            </button>
-            <button className="btn btn-outline btn-sm" onClick={() => setBulkRejectMode((v) => !v)} disabled={selectedCount === 0}>
+            </AppButton>
+            <AppButton variant="outline" size="sm" onClick={() => setBulkRejectMode((v) => !v)} disabled={selectedCount === 0}>
               Request correction selected
-            </button>
+            </AppButton>
             {bulkRejectMode && (
               <div className="apr3-bulk-reject">
                 <label className="apr3-input-label" htmlFor="bulk-reject-comment">Correction note</label>
-                <input
+                <AppInput
                   id="bulk-reject-comment"
-                  className="input-field"
+                  className="flex-1"
                   value={bulkRejectComment}
                   onChange={(e) => setBulkRejectComment(e.target.value)}
                   placeholder="What should be corrected?"
                 />
                 <span className="apr3-char-count">{bulkRejectComment.length}/500</span>
-                <button className="btn btn-primary btn-sm" onClick={() => void bulkRequestCorrection()} disabled={bulkRejecting || bulkRejectComment.trim().length === 0}>
+                <AppButton variant="primary" size="sm" onClick={() => void bulkRequestCorrection()} disabled={bulkRejecting || bulkRejectComment.trim().length === 0}>
                   {bulkRejecting ? "Sending..." : "Send"}
-                </button>
+                </AppButton>
               </div>
             )}
           </div>
@@ -787,18 +800,18 @@ export function Approvals() {
 
         {showTs && filteredTsPending.length > 0 && (
           <div className="apr3-table-head" aria-label="Approval columns">
-            <button className="apr3-head-btn" onClick={() => toggleSort("name")}>
+            <AppButton variant="ghost" className="apr3-head-btn" onClick={() => toggleSort("name")}>
               Employee {sortBy === "name" ? (sortDirection === "asc" ? "↑" : "↓") : ""}
-            </button>
-            <button className="apr3-head-btn" onClick={() => toggleSort("period")}>
+            </AppButton>
+            <AppButton variant="ghost" className="apr3-head-btn" onClick={() => toggleSort("period")}>
               Period {sortBy === "period" ? (sortDirection === "asc" ? "↑" : "↓") : ""}
-            </button>
-            <button className="apr3-head-btn" onClick={() => toggleSort("hours")}>
+            </AppButton>
+            <AppButton variant="ghost" className="apr3-head-btn" onClick={() => toggleSort("hours")}>
               Hours logged {sortBy === "hours" ? (sortDirection === "asc" ? "↑" : "↓") : ""}
-            </button>
-            <button className="apr3-head-btn" onClick={() => toggleSort("waiting")}>
+            </AppButton>
+            <AppButton variant="ghost" className="apr3-head-btn" onClick={() => toggleSort("waiting")}>
               Waiting {sortBy === "waiting" ? (sortDirection === "asc" ? "↑" : "↓") : ""}
-            </button>
+            </AppButton>
           </div>
         )}
 
@@ -812,9 +825,9 @@ export function Approvals() {
           return (
             <div key={a.timesheetId} className="apr3-card [border-left:3px_solid_var(--brand-500)]">
               <div className="apr3-card-inner">
-                <button className="apr3-select-hit" onClick={() => toggleSelect(a.timesheetId)} aria-label={`Select ${person}`}>
-                  <input type="checkbox" readOnly checked={selectedIds.has(a.timesheetId)} className="w-4 h-4 [accent-color:var(--brand-600)]" />
-                </button>
+                <AppButton variant="ghost" className="apr3-select-hit" onClick={() => toggleSelect(a.timesheetId)} aria-label={`Select ${person}`}>
+                  <AppCheckbox readOnly checked={selectedIds.has(a.timesheetId)} />
+                </AppButton>
                 <div className="apr3-avatar" style={{ background: avatarColor(a.userId ?? a.username) }}>{initials(person)}</div>
                 <div className="apr3-meta">
                   <div className="apr3-meta-title apr3-meta-grid">
@@ -830,16 +843,17 @@ export function Approvals() {
                 </div>
                 <div className="apr3-right">
                   <div className="apr3-actions">
-                    <button className={`btn btn-primary btn-sm ${requiresReview ? "apr3-bulk-disabled" : ""}`} onClick={() => void approveTs(a.timesheetId, requiresReview)} disabled={requiresReview} title={requiresReview ? "Cannot approve: 0 hours or mismatch detected. Request correction first." : "Approve timesheet"} aria-label="Approve timesheet">Approve</button>
-                    <button className="btn btn-outline-reject btn-sm" onClick={() => toggleReject(a.timesheetId, "ts")} aria-label="Request correction">Request correction</button>
-                    <button
-                      className="btn btn-ghost btn-sm"
+                    <AppButton variant="primary" size="sm" className={requiresReview ? "apr3-bulk-disabled" : ""} onClick={() => void approveTs(a.timesheetId, requiresReview)} disabled={requiresReview} title={requiresReview ? "Cannot approve: 0 hours or mismatch detected. Request correction first." : "Approve timesheet"} aria-label="Approve timesheet">Approve</AppButton>
+                    <AppButton variant="outline" size="sm" className="btn btn-outline-reject" onClick={() => toggleReject(a.timesheetId, "ts")} aria-label="Request correction">Request correction</AppButton>
+                    <AppButton
+                      variant="ghost"
+                      size="sm"
                       onClick={() => void openTimesheetDetail(a.timesheetId)}
                       aria-expanded={detailId === a.timesheetId}
                       aria-controls={`ts-detail-${a.timesheetId}`}
                     >
                       {detailId === a.timesheetId ? "Hide details" : "View details"}
-                    </button>
+                    </AppButton>
                   </div>
                 </div>
               </div>
@@ -872,17 +886,17 @@ export function Approvals() {
               {rejectFor?.id === a.timesheetId && rejectFor.kind === "ts" && (
                 <div className="apr3-reject-row">
                   <label className="apr3-input-label" htmlFor={`ts-correct-${a.timesheetId}`}>Correction note</label>
-                  <input
+                  <AppInput
                     id={`ts-correct-${a.timesheetId}`}
-                    className="input-field flex-1 max-w-[520px]"
+                    className="flex-1 max-w-[520px]"
                     placeholder="What should be corrected?"
                     value={rejectComment}
                     onChange={(e) => setRejectComment(e.target.value.slice(0, 500))}
                     autoFocus
                   />
                   <span className="apr3-char-count">{rejectComment.length}/500</span>
-                  <button className="btn btn-primary btn-sm" onClick={() => void confirmRejectTs(a.timesheetId)}>Send correction request</button>
-                  <button className="btn btn-ghost btn-sm" onClick={() => setRejectFor(null)}>Cancel</button>
+                  <AppButton variant="primary" size="sm" onClick={() => void confirmRejectTs(a.timesheetId)}>Send correction request</AppButton>
+                  <AppButton variant="ghost" size="sm" onClick={() => setRejectFor(null)}>Cancel</AppButton>
                 </div>
               )}
             </div>
@@ -907,16 +921,16 @@ export function Approvals() {
               </div>
               <div className="apr3-right">
                 <div className="apr3-actions">
-                  <button className="btn btn-primary btn-sm" onClick={() => void approveLeave(l.id)} aria-label="Approve leave">Approve</button>
-                  <button className="btn btn-outline-reject btn-sm" onClick={() => toggleReject(l.id, "leave")} aria-label="Reject leave">Reject</button>
+                  <AppButton variant="primary" size="sm" onClick={() => void approveLeave(l.id)} aria-label="Approve leave">Approve</AppButton>
+                  <AppButton variant="outline" size="sm" className="btn btn-outline-reject" onClick={() => toggleReject(l.id, "leave")} aria-label="Reject leave">Reject</AppButton>
                 </div>
               </div>
             </div>
             {rejectFor?.id === l.id && rejectFor.kind === "leave" && (
               <div className="apr3-reject-row">
-                <input className="input-field flex-1 max-w-[520px]" placeholder="Reason for rejection (required)" value={rejectComment} onChange={(e) => setRejectComment(e.target.value)} autoFocus />
-                <button className="btn btn-danger btn-sm" onClick={() => void confirmRejectLeave(l.id)}>Confirm reject</button>
-                <button className="btn btn-ghost btn-sm" onClick={() => setRejectFor(null)}>Cancel</button>
+                <AppInput className="flex-1 max-w-[520px]" placeholder="Reason for rejection (required)" value={rejectComment} onChange={(e) => setRejectComment(e.target.value)} autoFocus />
+                <AppButton variant="danger" size="sm" onClick={() => void confirmRejectLeave(l.id)}>Confirm reject</AppButton>
+                <AppButton variant="ghost" size="sm" onClick={() => setRejectFor(null)}>Cancel</AppButton>
               </div>
             )}
           </div>
@@ -936,26 +950,26 @@ export function Approvals() {
           <div style={{ background: "var(--color-n-0, #fff)", borderRadius: 12, padding: "28px 32px", width: "100%", maxWidth: 480, boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
               <span style={{ fontWeight: 700, fontSize: "1.05rem" }}>Delegate Approvals</span>
-              <button className="btn btn-ghost btn-sm" onClick={() => setShowDelegateModal(false)} aria-label="Close">x</button>
+              <AppButton variant="ghost" size="sm" onClick={() => setShowDelegateModal(false)} aria-label="Close">x</AppButton>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div>
                 <label style={{ fontSize: "0.82rem", fontWeight: 600, display: "block", marginBottom: 4 }}>Delegate to</label>
-                <select className="input" value={delegateToUserId} onChange={(e) => setDelegateToUserId(e.target.value)} style={{ width: "100%" }}>
+                <AppSelect value={delegateToUserId} onChange={(e) => setDelegateToUserId(e.target.value)} className="w-full">
                   <option value="">Select a manager or admin...</option>
                   {delegateUsers.map((u) => (<option key={u.id} value={u.id}>{u.displayName || u.username}</option>))}
-                </select>
+                </AppSelect>
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div>
                   <label style={{ fontSize: "0.82rem", fontWeight: 600, display: "block", marginBottom: 4 }}>From date</label>
-                  <input type="date" className="input" value={delegateFromDate} onChange={(e) => setDelegateFromDate(e.target.value)} style={{ width: "100%" }} />
+                  <AppInput type="date" value={delegateFromDate} onChange={(e) => setDelegateFromDate(e.target.value)} className="w-full" />
                 </div>
                 <div>
                   <label style={{ fontSize: "0.82rem", fontWeight: 600, display: "block", marginBottom: 4 }}>To date</label>
-                  <input type="date" className="input" value={delegateToDate} onChange={(e) => setDelegateToDate(e.target.value)} style={{ width: "100%" }} />
+                  <AppInput type="date" value={delegateToDate} onChange={(e) => setDelegateToDate(e.target.value)} className="w-full" />
                 </div>
               </div>
               {delegateDateError && <p className="apr3-form-error">{delegateDateError}</p>}
@@ -964,10 +978,10 @@ export function Approvals() {
             </div>
 
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 24 }}>
-              <button className="btn btn-ghost btn-sm" onClick={() => setShowDelegateModal(false)} disabled={delegateSaving}>Cancel</button>
-              <button className="btn btn-primary" onClick={() => void handleSaveDelegate()} disabled={delegateSaving || !delegateToUserId || !delegateFromDate || !delegateToDate}>
+              <AppButton variant="ghost" size="sm" onClick={() => setShowDelegateModal(false)} disabled={delegateSaving}>Cancel</AppButton>
+              <AppButton variant="primary" onClick={() => void handleSaveDelegate()} disabled={delegateSaving || !delegateToUserId || !delegateFromDate || !delegateToDate}>
                 {delegateSaving ? "Saving..." : "Save Delegation"}
-              </button>
+              </AppButton>
             </div>
           </div>
         </div>

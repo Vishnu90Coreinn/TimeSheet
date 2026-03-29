@@ -2009,6 +2009,17 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
   background: #eef2ff;
 }
 
+/* Compact toolbar buttons used in Timesheets */
+.ts-toolbar-btn.btn.btn-sm {
+  height: 30px;
+  min-height: 30px;
+  padding: 0 12px;
+  font-size: 0.75rem;
+  gap: 6px;
+  border-radius: 8px;
+  line-height: 1;
+}
+
 /* Day cards in the week strip */
 .ts-day-card {
   background: var(--surface, #fff);

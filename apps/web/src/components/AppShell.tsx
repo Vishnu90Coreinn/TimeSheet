@@ -69,6 +69,14 @@ interface AppShellProps {
 
 export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, onLogout, children }: AppShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("shell.sidebar.collapsed") === "1";
+  });
+  const [isDesktop, setIsDesktop] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    return window.innerWidth >= 1280;
+  });
   const [pendingCount, setPendingCount] = useState(0);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
@@ -82,10 +90,16 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
   useEffect(() => {
     function handleResize() {
       if (window.innerWidth >= 768) setMobileOpen(false);
+      setIsDesktop(window.innerWidth >= 1280);
     }
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("shell.sidebar.collapsed", sidebarCollapsed ? "1" : "0");
+  }, [sidebarCollapsed]);
 
   // Load pending approvals count for the Approvals badge
   useEffect(() => {
@@ -256,7 +270,7 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
         />
 
         {/* Sidebar */}
-        <aside className={`shell-sidebar${mobileOpen ? " mobile-open" : ""}`}>
+        <aside className={`shell-sidebar${mobileOpen ? " mobile-open" : ""}${isDesktop && sidebarCollapsed ? " collapsed" : ""}`}>
 
           {/* Brand header */}
           <div className="sidebar-header">
@@ -275,6 +289,15 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
                   <span className="sidebar-brand-name">{tenantSettings.appName}</span>
                 )}
               </div>
+              <button
+                type="button"
+                className="sidebar-collapse-btn"
+                onClick={() => setSidebarCollapsed((v) => !v)}
+                aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              >
+                <ChevronIcon collapsed={sidebarCollapsed} />
+              </button>
             </div>
           </div>
 
@@ -348,6 +371,14 @@ function HamburgerIcon() {
       <line x1="3" y1="6" x2="21" y2="6"/>
       <line x1="3" y1="12" x2="21" y2="12"/>
       <line x1="3" y1="18" x2="21" y2="18"/>
+    </svg>
+  );
+}
+
+function ChevronIcon({ collapsed }: { collapsed: boolean }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {collapsed ? <polyline points="9 18 15 12 9 6" /> : <polyline points="15 18 9 12 15 6" />}
     </svg>
   );
 }

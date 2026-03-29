@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { apiFetch } from "../../api/client";
 import type { Department, LeavePolicy, User, WorkPolicy } from "../../types";
 import { Pencil, UserCheck, UserX } from "lucide-react";
+import { AppButton, AppCheckbox, AppIconButton, AppInput, AppPagination, AppSelect, AppTableShell } from "../ui";
 
 type UserForm = {
   username: string;
@@ -68,7 +69,7 @@ function Drawer({ open, title, onClose, children, footer }: { open: boolean; tit
       <div className="drawer" role="dialog" aria-modal="true">
         <div className="drawer-header">
           <div className="drawer-title">{title}</div>
-          <button className="drawer-close" onClick={onClose}>✕</button>
+          <AppButton className="drawer-close" variant="ghost" size="sm" onClick={onClose}>x</AppButton>
         </div>
         <div className="drawer-body">{children}</div>
         {footer && <div className="drawer-footer">{footer}</div>}
@@ -207,8 +208,8 @@ export function Users() {
       <Drawer open={!!editing} title={drawerTitle} onClose={() => setEditing(null)}
         footer={
           <>
-            <button className="btn btn-primary" onClick={() => void save()}>Save</button>
-            <button className="btn btn-ghost" onClick={() => setEditing(null)}>Cancel</button>
+            <AppButton variant="primary" onClick={() => void save()}>Save</AppButton>
+            <AppButton variant="ghost" onClick={() => setEditing(null)}>Cancel</AppButton>
           </>
         }
       >
@@ -216,34 +217,34 @@ export function Users() {
         <div className="grid grid-cols-2 gap-4">
           <div className="form-field">
             <label className="form-label" htmlFor="u-username">Username <span className="required">*</span></label>
-            <input id="u-username" className="input-field" value={form.username} onChange={(e) => f("username", e.target.value)} />
+            <AppInput id="u-username" value={form.username} onChange={(e) => f("username", e.target.value)} />
           </div>
           <div className="form-field">
             <label className="form-label" htmlFor="u-email">Email <span className="required">*</span></label>
-            <input id="u-email" type="email" className="input-field" value={form.email} onChange={(e) => f("email", e.target.value)} />
+            <AppInput id="u-email" type="email" value={form.email} onChange={(e) => f("email", e.target.value)} />
           </div>
           <div className="form-field">
             <label className="form-label" htmlFor="u-empid">Employee ID</label>
-            <input id="u-empid" className="input-field" value={form.employeeId} onChange={(e) => f("employeeId", e.target.value)} placeholder="EMP-0001" />
+            <AppInput id="u-empid" value={form.employeeId} onChange={(e) => f("employeeId", e.target.value)} placeholder="EMP-0001" />
             {form.employeeId && !EMP_ID_RE.test(form.employeeId) && <div className="text-[0.72rem] text-danger mt-[3px]">Format: EMP-XXXX (4 digits)</div>}
           </div>
           <div className="form-field">
             <label className="form-label" htmlFor="u-role">Role</label>
-            <select id="u-role" className="input-field" value={form.role} onChange={(e) => f("role", e.target.value)}>
+            <AppSelect id="u-role" value={form.role} onChange={(e) => f("role", e.target.value)}>
               <option value="employee">Employee</option>
               <option value="consultant">Consultant</option>
               <option value="manager">Manager</option>
               <option value="admin">Admin</option>
-            </select>
+            </AppSelect>
           </div>
           {editing === "new" && (
             <div className="form-field col-span-2">
               <label className="form-label" htmlFor="u-pwd">Password <span className="required">*</span></label>
               <div className="relative">
-                <input id="u-pwd" type={showPwd ? "text" : "password"} className="input-field pr-11" value={form.password} onChange={(e) => f("password", e.target.value)} />
-                <button type="button" onClick={() => setShowPwd((s) => !s)} className="absolute right-[10px] top-1/2 -translate-y-1/2 bg-transparent border-0 cursor-pointer text-text-tertiary text-[0.8rem]">
+                <AppInput id="u-pwd" type={showPwd ? "text" : "password"} className="pr-11" value={form.password} onChange={(e) => f("password", e.target.value)} />
+                <AppButton type="button" variant="ghost" size="sm" onClick={() => setShowPwd((s) => !s)} className="absolute right-[6px] top-1/2 -translate-y-1/2 text-text-tertiary text-[0.8rem] px-2 py-1 min-h-0 h-auto">
                   {showPwd ? "Hide" : "Show"}
-                </button>
+                </AppButton>
               </div>
               {strength && (
                 <>
@@ -257,34 +258,34 @@ export function Users() {
           )}
           <div className="form-field">
             <label className="form-label" htmlFor="u-dept">Department</label>
-            <select id="u-dept" className="input-field" value={form.departmentId} onChange={(e) => f("departmentId", e.target.value)}>
+            <AppSelect id="u-dept" value={form.departmentId} onChange={(e) => f("departmentId", e.target.value)}>
               <option value="">— none —</option>
               {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-            </select>
+            </AppSelect>
           </div>
           <div className="form-field">
             <label className="form-label" htmlFor="u-policy">Work Policy</label>
-            <select id="u-policy" className="input-field" value={form.workPolicyId} onChange={(e) => f("workPolicyId", e.target.value)}>
+            <AppSelect id="u-policy" value={form.workPolicyId} onChange={(e) => f("workPolicyId", e.target.value)}>
               <option value="">— none —</option>
               {policies.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
+            </AppSelect>
           </div>
           <div className="form-field">
             <label className="form-label" htmlFor="u-lpolicy">Leave Policy</label>
-            <select id="u-lpolicy" className="input-field" value={form.leavePolicyId} onChange={(e) => f("leavePolicyId", e.target.value)}>
+            <AppSelect id="u-lpolicy" value={form.leavePolicyId} onChange={(e) => f("leavePolicyId", e.target.value)}>
               <option value="">— none —</option>
               {leavePolicies.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
+            </AppSelect>
           </div>
           <div className="form-field">
             <label className="form-label" htmlFor="u-mgr">Manager</label>
-            <select id="u-mgr" className="input-field" value={form.managerId} onChange={(e) => f("managerId", e.target.value)}>
+            <AppSelect id="u-mgr" value={form.managerId} onChange={(e) => f("managerId", e.target.value)}>
               <option value="">— none —</option>
               {users.filter((u) => !editing || editing === "new" || (editing as User).id !== u.id).map((u) => <option key={u.id} value={u.id}>{u.username}</option>)}
-            </select>
+            </AppSelect>
           </div>
           <label className="flex items-center gap-2 text-[0.825rem] text-text-secondary self-end pb-[10px]">
-            <input type="checkbox" checked={form.isActive} onChange={(e) => f("isActive", e.target.checked)} className="[accent-color:var(--brand-600)]" />
+            <AppCheckbox checked={form.isActive} onChange={(e) => f("isActive", e.target.checked)} />
             Active
           </label>
         </div>
@@ -296,27 +297,27 @@ export function Users() {
           <div className="page-subtitle">Manage user accounts, roles, and team assignments</div>
         </div>
         <div className="page-actions">
-          <button className="btn btn-primary" onClick={openCreate}>+ New User</button>
+          <AppButton variant="primary" onClick={openCreate}>+ New User</AppButton>
         </div>
       </div>
 
       <div className="mgmt-toolbar">
         <div className="input-icon-wrap mgmt-search-wrap">
           <span className="input-icon">🔍</span>
-          <input className="input-field mgmt-search" placeholder="Search by username, email or employee ID..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <AppInput className="mgmt-search" placeholder="Search by username, email or employee ID..." value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
-        <select className="input-field mgmt-select" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
+        <AppSelect className="mgmt-select" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
           <option value="">All Roles</option>
           <option value="employee">Employee</option>
           <option value="consultant">Consultant</option>
           <option value="manager">Manager</option>
           <option value="admin">Admin</option>
-        </select>
-        <select className="input-field mgmt-select" value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)}>
+        </AppSelect>
+        <AppSelect className="mgmt-select" value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)}>
           <option value="">All Departments</option>
           {departments.map((d) => <option key={d.id} value={d.name}>{d.name}</option>)}
-        </select>
-        <button className="btn btn-outline mgmt-filter-btn">□ Filter</button>
+        </AppSelect>
+        <AppButton className="mgmt-filter-btn" variant="outline">Filter</AppButton>
       </div>
 
       <div className="card overflow-visible">
@@ -325,22 +326,20 @@ export function Users() {
             All Users
             <span className="mgmt-count-pill">{users.length} users</span>
           </div>
-          <button className="btn btn-outline btn-sm">Export</button>
+          <AppButton variant="outline" size="sm">Export</AppButton>
         </div>
-        <div className="table-wrap mgmt-table-wrap">
+        <AppTableShell>
           <table className="table-base mgmt-table">
             <thead>
               <tr>
                 <th className="w-11">
-                  <input
-                    type="checkbox"
+                  <AppCheckbox
                     aria-label="Select all users"
                     checked={sorted.length > 0 && selectedUserIds.size === sorted.length}
                     onChange={() => {
                       if (selectedUserIds.size === sorted.length) setSelectedUserIds(new Set());
                       else setSelectedUserIds(new Set(sorted.map((u) => u.id)));
                     }}
-                    className="w-4 h-4 [accent-color:var(--brand-600)]"
                   />
                 </th>
                 <th className="th-sort" onClick={() => toggleSort("username")} aria-sort={sortCol === "username" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>User <SortIcon active={sortCol === "username"} dir={sortDir} /></th>
@@ -355,7 +354,7 @@ export function Users() {
             <tbody>
               {sorted.map((u) => (
                 <tr key={u.id} className={u.isActive ? "" : "opacity-[0.55]"}>
-                  <td><input type="checkbox" aria-label={`Select ${u.username}`} checked={selectedUserIds.has(u.id)} onChange={() => toggleUserSelect(u.id)} className="w-4 h-4 [accent-color:var(--brand-600)]" /></td>
+                  <td><AppCheckbox aria-label={`Select ${u.username}`} checked={selectedUserIds.has(u.id)} onChange={() => toggleUserSelect(u.id)} /></td>
                   <td>
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-[0.72rem]" style={{ background: avatarColor(u.username) }}>{initials(u.username)}</div>
@@ -372,22 +371,22 @@ export function Users() {
                   <td>{u.isActive ? <span className="badge badge-success">Active</span> : <span className="badge badge-neutral">Inactive</span>}</td>
                   <td>
                     <div className="flex gap-2 items-center">
-                      <button
-                        className="mgmt-icon-action mgmt-icon-action-edit"
+                      <AppIconButton
+                        tone="edit"
                         onClick={() => openEdit(u)}
                         title={`Edit ${u.username}`}
                         aria-label={`Edit ${u.username}`}
                       >
                         <Pencil size={14} />
-                      </button>
-                      <button
-                        className={`mgmt-icon-action ${u.isActive ? "mgmt-icon-action-danger" : "mgmt-icon-action-success"}`}
+                      </AppIconButton>
+                      <AppIconButton
+                        tone={u.isActive ? "danger" : "success"}
                         onClick={() => void toggleActive(u)}
                         title={`${u.isActive ? "Deactivate" : "Activate"} ${u.username}`}
                         aria-label={`${u.isActive ? "Deactivate" : "Activate"} ${u.username}`}
                       >
                         {u.isActive ? <UserX size={14} /> : <UserCheck size={14} />}
-                      </button>
+                      </AppIconButton>
                     </div>
                   </td>
                 </tr>
@@ -399,14 +398,10 @@ export function Users() {
               )}
             </tbody>
           </table>
-        </div>
+        </AppTableShell>
         <div className="mgmt-card-foot">
           <span>Showing 1–{sorted.length} of {sorted.length} user{sorted.length === 1 ? "" : "s"}</span>
-          <div className="mgmt-pagination">
-            <button className="btn btn-outline btn-sm px-2" aria-label="Previous page">&lt;</button>
-            <button className="btn btn-primary btn-sm px-3">1</button>
-            <button className="btn btn-outline btn-sm px-2" aria-label="Next page">&gt;</button>
-          </div>
+          <AppPagination page={1} totalPages={1} onPrev={() => {}} onNext={() => {}} />
         </div>
       </div>
     </section>

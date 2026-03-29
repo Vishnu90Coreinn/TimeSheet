@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "../../api/client";
 import { useToast } from "../../contexts/ToastContext";
+import { AppButton, AppInput, AppTableShell } from "../ui";
 
 interface PolicyItem {
   dataType: string;
@@ -84,7 +85,7 @@ export function RetentionPolicy() {
             <span className="mgmt-count-pill">{policies.length} items</span>
           </div>
         </div>
-        <div className="table-wrap mgmt-table-wrap">
+        <AppTableShell>
           <table className="table-base mgmt-table w-full">
             <thead>
               <tr>
@@ -103,11 +104,11 @@ export function RetentionPolicy() {
                       <div className="text-[0.75rem] text-text-tertiary mt-[2px]">{meta.hint}</div>
                     </td>
                     <td>
-                      <input
+                      <AppInput
                         type="number"
                         min={1}
                         max={9999}
-                        className="input-field w-[120px] text-right"
+                        className="w-[120px] text-right"
                         value={policy.retentionDays}
                         onChange={(e) => setDays(policy.dataType, Math.max(1, parseInt(e.target.value, 10) || 1))}
                       />
@@ -118,23 +119,24 @@ export function RetentionPolicy() {
               })}
             </tbody>
           </table>
-        </div>
+        </AppTableShell>
         <div className="mgmt-card-foot">
           <span className="text-[0.75rem] text-text-tertiary">
             {isDirty ? "You have unsaved changes." : "All changes saved."}
           </span>
           <div className="flex items-center gap-2">
-            <button
+            <AppButton
               type="button"
-              className="btn btn-outline btn-sm"
+              variant="outline"
+              size="sm"
               disabled={!isDirty || saving}
               onClick={() => setPolicies(initialPolicies)}
             >
               Reset
-            </button>
-            <button type="submit" className="btn btn-primary btn-sm" disabled={!isDirty || saving}>
+            </AppButton>
+            <AppButton type="submit" variant="primary" size="sm" disabled={!isDirty || saving}>
               {saving ? "Saving..." : "Save policies"}
-            </button>
+            </AppButton>
           </div>
         </div>
       </form>

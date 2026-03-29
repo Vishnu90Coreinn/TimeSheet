@@ -63,7 +63,7 @@ export function AssetsTab({
   return (
     <div className="flex flex-col gap-6">
       {/* Logo */}
-      <div className="form-group">
+      <div className="flex flex-col gap-1.5">
         <label className="form-label">Logo</label>
         <div
           className="border-2 border-dashed rounded-lg p-4 flex flex-col items-center gap-3 cursor-pointer transition-colors hover:border-[var(--color-primary)]"
@@ -99,11 +99,11 @@ export function AssetsTab({
           )}
         </div>
         <input ref={logoInputRef} type="file" accept=".png,.jpg,.jpeg,.svg,.webp,image/*" className="hidden" onChange={e => handleFileInput(e, "logo")} />
-        <p className="form-hint">Recommended: 200×60 px PNG or SVG. Shown in the sidebar.</p>
+        <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>Recommended: 200×60 px PNG or SVG. Shown in the sidebar.</p>
       </div>
 
       {/* Favicon */}
-      <div className="form-group">
+      <div className="flex flex-col gap-1.5">
         <label className="form-label">Favicon</label>
         <div
           className="border-2 border-dashed rounded-lg p-4 flex flex-col items-center gap-3 cursor-pointer transition-colors hover:border-[var(--color-primary)]"
@@ -132,7 +132,7 @@ export function AssetsTab({
           )}
         </div>
         <input ref={faviconInputRef} type="file" accept=".png,.ico,.svg,image/*" className="hidden" onChange={e => handleFileInput(e, "favicon")} />
-        <p className="form-hint">Recommended: 32×32 px ICO or PNG.</p>
+        <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>Recommended: 32×32 px ICO or PNG.</p>
       </div>
     </div>
   );

@@ -19,15 +19,15 @@ export function ColorsTab({ primaryColor, onPrimaryColorChange }: ColorsTabProps
   return (
     <div className="flex flex-col gap-6">
       {/* Colour picker */}
-      <div className="form-group">
+      <div className="flex flex-col gap-1.5">
         <label className="form-label">Primary Colour</label>
         <ColorPicker value={primaryColor} onChange={onPrimaryColorChange} />
       </div>
 
       {/* Brand presets */}
       <div>
-        <p className="form-label mb-2">Brand Presets</p>
-        <p className="form-hint mb-3">Click a preset to apply instantly. You can refine further using the picker above.</p>
+        <p className="form-label mb-1">Brand Presets</p>
+        <p className="text-xs mb-3" style={{ color: "var(--text-tertiary)" }}>Click a preset to apply instantly. You can refine further using the picker above.</p>
         <div className="grid grid-cols-3 gap-2">
           {PRESETS.map(preset => {
             const scale = buildScale(preset.hex);

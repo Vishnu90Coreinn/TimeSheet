@@ -118,7 +118,7 @@ export function ColorPicker({ value, onChange }: ColorPickerProps) {
         />
         <input
           type="text"
-          className="form-input flex-1 font-mono text-sm"
+          className="input-field flex-1 font-mono text-sm"
           placeholder="#6366f1"
           value={hexInput}
           onChange={e => setHexInput(e.target.value)}

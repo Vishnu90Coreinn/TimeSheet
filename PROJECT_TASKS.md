@@ -1455,7 +1455,6 @@ if (!data.length) return <EmptyTimesheets onAdd={openForm} />;
 | 38 | GDPR / Compliance Toolkit | ✅ DONE | merged |
 | 39 | White-label & Theming | ✅ DONE | merged |
 | 40 | Branding Page UX Overhaul | ✅ DONE | merged |
-| 41 | UI Platform Standardisation (Material UI Foundation) | TODO | `feature/sprint-41-mui-foundation` |
 
 ---
 
@@ -1479,7 +1478,7 @@ Any AI agent picking up a sprint task should follow this sequence:
 8. cd apps/web && npx tsc --noEmit   ← must pass before commit
 9. git add <specific files> && git commit -m "feat(sprint-N): ..."
 10. git push origin feature/sprint-<N>-<slug>
-11. Update `docs/AI_HANDOFF_PLAYBOOK.md` with completed scope, verification, and next actions
+11. Update project task notes with completed scope, verification, and next actions
 ```
 
 ### Key file locations
@@ -1508,61 +1507,6 @@ Any AI agent picking up a sprint task should follow this sequence:
 5. Restrict access in `hasViewAccess()` in `App.tsx` if needed
 
 ---
-
----
-
-## Sprint 41 — UI Platform Standardisation (Material UI Foundation)
-**Branch:** `feature/sprint-41-mui-foundation`  
-**Status:** `TODO`  
-**Goal:** Introduce Material UI in a scalable, low-risk way while preserving product identity and enabling incremental migration.
-
-### Principles
-- Avoid big-bang rewrite.
-- Keep existing route/state/API behavior unchanged.
-- Use wrapper components so feature code does not depend directly on raw MUI primitives.
-- Preserve design identity by mapping existing tokens into a single MUI theme.
-
-### Phase 41.1 — Foundation and Guardrails
-- [ ] **MUI-001** Install dependencies: `@mui/material`, `@mui/icons-material`, `@emotion/react`, `@emotion/styled`
-- [ ] **MUI-002** Add root `MuiThemeProvider` mapped to current design tokens (brand, neutrals, spacing, typography)
-- [ ] **MUI-003** Create wrapper components in `apps/web/src/components/ui/`: `AppButton`, `AppInput`, `AppSelect`, `AppDialog`, `AppTableShell`, `AppPagination`
-- [ ] **MUI-004** Define implementation rule: migrated/new pages consume wrappers; direct MUI only inside wrapper files
-- [ ] **MUI-005** Add QA checklist for wrapper parity (focus/hover/disabled/dark/mobile)
-
-### Phase 41.2 — Pilot Migration (Low Risk)
-- [ ] **MUI-006** Migrate Users page controls + pagination using wrappers (keep existing data logic)
-- [ ] **MUI-007** Migrate Projects page controls + pagination using wrappers
-- [ ] **MUI-008** Migrate Audit Logs filter bar + pagination using wrappers
-- [ ] **MUI-009** Migrate Data Retention controls/actions using wrappers
-- [ ] **MUI-010** Validate role-based UI parity (admin/manager/employee)
-
-### Phase 41.3 — Admin Table System Unification
-- [ ] **MUI-011** Build one reusable admin table pattern (header + filters + table + footer + pagination)
-- [ ] **MUI-012** Apply unified pattern to Categories, Holidays, Leave Policies, Work Policies
-- [ ] **MUI-013** Add shared row-action icon pattern (Edit/Activate/Deactivate/Delete with tooltip + aria labels)
-
-### Phase 41.4 — Scale Readiness
-- [ ] **MUI-014** Bundle/perf pass (tree-shaking and selective imports)
-- [ ] **MUI-015** Accessibility pass (keyboard, focus order, aria, contrast)
-- [ ] **MUI-016** Globalization checks (RTL, locale formatting, text expansion)
-
-### Acceptance criteria
-- Functional parity maintained across migrated pages
-- Wrapper-based UI pattern adopted for all Sprint 41 scope
-- Visual consistency preserved with current approved brand direction
-- `npx tsc --noEmit` and relevant test/build checks pass
-
----
-
-## Cross-Agent Continuity (Codex ↔ Claude)
-**Status:** `ACTIVE`  
-**Purpose:** Ensure Codex and Claude can continue each other’s tasks with zero context loss.
-
-- [ ] **AGT-001** Maintain handoff log in `docs/AI_HANDOFF_PLAYBOOK.md`
-- [ ] **AGT-002** Every major change set must update: branch, scope done, files changed, pending work, verification results
-- [ ] **AGT-003** For partial tasks, record blocker + exact next action/command
-- [ ] **AGT-004** Before session handoff, run required verification commands and log output summary
-- [ ] **AGT-005** Record architectural decisions in Decision Log section (no undocumented decisions)
 
 ---
 

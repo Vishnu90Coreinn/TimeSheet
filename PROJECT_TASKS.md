@@ -1393,6 +1393,34 @@ if (!data.length) return <EmptyTimesheets onAdd={openForm} />;
 
 ---
 
+### Sprint 40 — Branding Page UX Overhaul 🎨 ✅ DONE
+**Branch:** `feature/sprint-40-branding-ux` → **merged to master**
+**Status:** `DONE`
+**Goal:** Rebuild the flat Branding admin page into a polished 6-tab layout with a custom colour picker, preset templates, drag-and-drop asset upload, and a live preview panel.
+
+#### Frontend
+- [x] **BR-001** Rebuild `TenantBranding.tsx` into 6-tab layout: Identity / Colors / Assets / Login / Emails / Advanced ✅
+- [x] **BR-002** Custom colour picker: saturation square + hue strip + hex input ✅
+- [x] **BR-003** WCAG AA/AAA contrast badge updates live on every picker change ✅
+- [x] **BR-004** 6 brand colour preset template cards (Indigo, Ocean Blue, Emerald, Amber, Rose, Slate) ✅
+- [x] **BR-005** Drag-and-drop logo + favicon upload with dual light/dark background preview ✅
+- [x] **BR-006** Live preview panel with Sidebar / Dashboard / Login screen switcher ✅
+- [x] **BR-007** `useBrandingForm` hook — single shared form state with dirty tracking ✅
+- [x] **BR-008** Unsaved changes sticky banner with Discard + Save actions ✅
+- [x] **BR-009** Extract colour math to `utils/colorUtils.ts` ✅
+- [x] **BR-010** Login and Emails tabs show coming-soon placeholders ✅
+
+#### Acceptance criteria
+- All 6 tabs render without error
+- Colour picker drag interactions update preview live
+- WCAG badge reflects correct contrast ratio on every change
+- Preset cards update picker and preview immediately on click
+- Logo/favicon upload works via drag-and-drop and click-to-browse
+- Unsaved banner appears on first change, disappears after Save or Discard
+- `npx tsc --noEmit` passes
+
+---
+
 ## Sprint Delivery Order (Full Roadmap)
 
 | # | Sprint | Status | Branch |
@@ -1426,6 +1454,7 @@ if (!data.length) return <EmptyTimesheets onAdd={openForm} />;
 | 37 | Capacity Planning | TODO | `feature/sprint-37-capacity-planning` |
 | 38 | GDPR / Compliance Toolkit | ✅ DONE | merged |
 | 39 | White-label & Theming | ✅ DONE | merged |
+| 40 | Branding Page UX Overhaul | ✅ DONE | merged |
 
 ---
 

@@ -25,12 +25,11 @@ const NAV_ITEMS: NavItem[] = [
   { view: "dashboard",       label: "Dashboard",      icon: <DashboardIcon />,   group: "main" },
   { view: "timesheets",      label: "Timesheets",     icon: <ClockIcon />,       group: "main" },
   { view: "leave",           label: "Leave",          icon: <CalendarIcon />,    group: "main" },
-  { view: "reports",         label: "Reports",        icon: <ChartIcon />,       group: "main" },
   { view: "approvals",       label: "Approvals",      icon: <CheckIcon />,       group: "manager", badgeVariant: "danger" },
   { view: "team",            label: "Team Status",    icon: <TeamIcon />,        group: "manager" },
   { view: "projects",        label: "Projects",       icon: <FolderIcon />,      group: "admin" },
-  { view: "categories",      label: "Categories",     icon: <TagIcon />,         group: "admin" },
   { view: "users",           label: "Users",          icon: <UsersIcon />,       group: "admin" },
+  { view: "categories",      label: "Categories",     icon: <TagIcon />,         group: "admin" },
   { view: "holidays",        label: "Holidays",       icon: <StarIcon />,        group: "admin" },
   { view: "leave-policies",  label: "Leave Policies", icon: <LeavePolicyIcon />, group: "admin" },
   { view: "work-policies",   label: "Work Policies",  icon: <BriefcaseIcon />,   group: "admin" },
@@ -38,6 +37,25 @@ const NAV_ITEMS: NavItem[] = [
   { view: "retention-policy",  label: "Data Retention",   icon: <ShieldIcon size={18} />,     group: "admin" },
   { view: "audit-logs",        label: "Audit Logs",       icon: <ScrollTextIcon size={18} />, group: "admin" },
 ];
+
+const VIEW_LABELS: Record<View, string> = {
+  dashboard: "Dashboard",
+  timesheets: "Timesheets",
+  leave: "Leave",
+  reports: "Reports",
+  approvals: "Approvals",
+  projects: "Projects",
+  categories: "Categories",
+  users: "Users",
+  holidays: "Holidays",
+  "leave-policies": "Leave Policies",
+  "work-policies": "Work Policies",
+  profile: "My Profile",
+  team: "Team Status",
+  branding: "Branding",
+  "retention-policy": "Data Retention",
+  "audit-logs": "Audit Logs",
+};
 
 interface AppShellProps {
   session: Session;
@@ -49,26 +67,15 @@ interface AppShellProps {
   children: ReactNode;
 }
 
-const VIEW_LABELS: Record<View, string> = {
-  dashboard: "Dashboard", timesheets: "Timesheets", leave: "Leave",
-  reports: "Reports", approvals: "Approvals", projects: "Projects",
-  categories: "Categories", users: "Users", holidays: "Holidays",
-  "leave-policies": "Leave Policies",
-  "work-policies": "Work Policies",
-  profile: "My Profile",
-  team: "Team Status",
-  branding: "Branding",
-  "retention-policy": "Data Retention",
-  "audit-logs": "Audit Logs",
-};
-
 export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, onLogout, children }: AppShellProps) {
-  const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const initials = session.username.slice(0, 2).toUpperCase();
+  const roleKey = session.role.toLowerCase();
+  const isAdminManagementView =
+    roleKey === "admin" && (view === "users" || view === "projects" || view === "categories");
   const tenantSettings = useTenantSettings();
 
   // Close mobile sidebar when resizing to tablet/desktop
@@ -148,9 +155,9 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
     item.view === "approvals" ? { ...item, badge: pendingCount } : item
   );
 
-  const mainItems    = withBadges.filter(i => i.group === "main"    && nav.includes(i.view));
+  const mainItems = withBadges.filter(i => i.group === "main" && nav.includes(i.view));
   const managerItems = withBadges.filter(i => i.group === "manager" && nav.includes(i.view));
-  const adminItems   = withBadges.filter(i => i.group === "admin"   && nav.includes(i.view));
+  const adminItems = withBadges.filter(i => i.group === "admin" && nav.includes(i.view));
 
   function renderNavItem(item: typeof withBadges[0]) {
     return (
@@ -249,7 +256,7 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
         />
 
         {/* Sidebar */}
-        <aside className={`shell-sidebar${collapsed ? " collapsed" : ""}${mobileOpen ? " mobile-open" : ""}`}>
+        <aside className={`shell-sidebar${mobileOpen ? " mobile-open" : ""}`}>
 
           {/* Brand header */}
           <div className="sidebar-header">
@@ -268,29 +275,6 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
                   <span className="sidebar-brand-name">{tenantSettings.appName}</span>
                 )}
               </div>
-              <button
-                type="button"
-                className="sidebar-collapse-btn"
-                onClick={() => setCollapsed(c => !c)}
-                aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-                title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-              >
-                <CollapseIcon collapsed={collapsed} />
-              </button>
-            </div>
-          </div>
-
-          {/* User profile section */}
-          <div className="sidebar-user-section">
-            <div className="sidebar-user-row">
-              <div className="relative">
-                <div className="sidebar-user-avatar">{initials}</div>
-                <span className="sidebar-user-online" aria-hidden="true" />
-              </div>
-              <div className="sidebar-user-info">
-                <div className="sidebar-user-name">{session.username}</div>
-                <div className="sidebar-user-role capitalize">{session.role}</div>
-              </div>
             </div>
           </div>
 
@@ -301,7 +285,7 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
               {mainItems.map(renderNavItem)}
             </div>
 
-            {managerItems.length > 0 && (
+            {roleKey !== "admin" && managerItems.length > 0 && (
               <div className="nav-section">
                 <span className="nav-section-label">My Team</span>
                 {managerItems.map(renderNavItem)}
@@ -331,7 +315,7 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
         </aside>
 
         {/* Content */}
-        <main className="shell-content page-enter">
+        <main className={`shell-content page-enter${isAdminManagementView ? " shell-content--wide" : ""}`}>
           <div className="page-content">
             {children}
           </div>
@@ -364,16 +348,6 @@ function HamburgerIcon() {
       <line x1="3" y1="6" x2="21" y2="6"/>
       <line x1="3" y1="12" x2="21" y2="12"/>
       <line x1="3" y1="18" x2="21" y2="18"/>
-    </svg>
-  );
-}
-function CollapseIcon({ collapsed }: { collapsed: boolean }) {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      {collapsed
-        ? <polyline points="9 18 15 12 9 6" />
-        : <polyline points="15 18 9 12 15 6" />
-      }
     </svg>
   );
 }

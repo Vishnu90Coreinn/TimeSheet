@@ -1,7 +1,4 @@
-/**
- * RetentionPolicy.tsx — Admin page to configure data retention periods.
- */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "../../api/client";
 import { useToast } from "../../contexts/ToastContext";
 
@@ -11,29 +8,36 @@ interface PolicyItem {
 }
 
 const LABELS: Record<string, { label: string; hint: string }> = {
-  timesheets:    { label: "Timesheets",      hint: "Timesheet entries and submissions (default 7 years)" },
-  auditlogs:     { label: "Audit Logs",      hint: "User action audit trail (default 1 year)" },
-  notifications: { label: "Notifications",   hint: "In-app notification records (default 90 days)" },
-  sessions:      { label: "Work Sessions",   hint: "Clock-in/out session records (default 180 days)" },
+  timesheets: { label: "Timesheets", hint: "Timesheet entries and submissions (default 7 years)" },
+  auditlogs: { label: "Audit Logs", hint: "User action audit trail (default 1 year)" },
+  notifications: { label: "Notifications", hint: "In-app notification records (default 90 days)" },
+  sessions: { label: "Work Sessions", hint: "Clock-in/out session records (default 180 days)" },
 };
+
+function toYears(days: number): string {
+  return `${(days / 365).toFixed(1)}y`;
+}
 
 export function RetentionPolicy() {
   const toast = useToast();
   const [policies, setPolicies] = useState<PolicyItem[]>([]);
+  const [initialPolicies, setInitialPolicies] = useState<PolicyItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     apiFetch("/admin/retention-policy")
-      .then(r => r.ok ? r.json() : null)
+      .then((r) => (r.ok ? r.json() : null))
       .then((data: { policies: PolicyItem[] } | null) => {
-        if (data) setPolicies(data.policies);
+        if (!data) return;
+        setPolicies(data.policies);
+        setInitialPolicies(data.policies);
       })
       .finally(() => setLoading(false));
   }, []);
 
   function setDays(dataType: string, days: number) {
-    setPolicies(prev => prev.map(p => p.dataType === dataType ? { ...p, retentionDays: days } : p));
+    setPolicies((prev) => prev.map((p) => (p.dataType === dataType ? { ...p, retentionDays: days } : p)));
   }
 
   async function handleSave(e: React.FormEvent) {
@@ -44,6 +48,7 @@ export function RetentionPolicy() {
       body: JSON.stringify(policies),
     });
     if (r.ok) {
+      setInitialPolicies(policies);
       toast.success("Retention policies saved");
     } else {
       toast.error("Failed to save retention policies");
@@ -51,57 +56,88 @@ export function RetentionPolicy() {
     setSaving(false);
   }
 
+  const isDirty = useMemo(() => JSON.stringify(policies) !== JSON.stringify(initialPolicies), [policies, initialPolicies]);
+
   if (loading) {
     return (
-      <div className="page-content">
+      <section>
         <div className="skeleton w-48 h-6 rounded mb-4" />
         <div className="skeleton w-full h-48 rounded-lg" />
-      </div>
+      </section>
     );
   }
 
   return (
-    <div className="page-content">
+    <section>
       <div className="page-header">
-        <h1 className="page-title">Data Retention</h1>
-        <p className="page-subtitle">Configure how long each type of data is kept before automatic deletion</p>
+        <div>
+          <h1 className="page-title">Data Retention</h1>
+          <p className="page-subtitle">Configure how long each data category is kept before automatic cleanup.</p>
+        </div>
+        <div className="text-[0.75rem] text-text-tertiary">Changes apply to future cleanup cycles.</div>
       </div>
 
-      <form onSubmit={e => void handleSave(e)} className="card p-6 max-w-2xl">
-        <div className="flex flex-col gap-5">
-          {policies.map(policy => {
-            const meta = LABELS[policy.dataType] ?? { label: policy.dataType, hint: "" };
-            const years = (policy.retentionDays / 365).toFixed(1);
-            return (
-              <div key={policy.dataType} className="flex items-start justify-between gap-6 py-3 border-b border-border-subtle last:border-0">
-                <div className="min-w-0">
-                  <div className="text-[0.85rem] font-semibold text-text-primary">{meta.label}</div>
-                  <div className="text-[0.75rem] text-text-tertiary mt-[2px]">{meta.hint}</div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <input
-                    type="number"
-                    min={1}
-                    max={9999}
-                    className="form-input w-24 text-right"
-                    value={policy.retentionDays}
-                    onChange={e => setDays(policy.dataType, Math.max(1, parseInt(e.target.value) || 1))}
-                  />
-                  <span className="text-[0.8rem] text-text-tertiary w-16">
-                    days <span className="text-text-disabled">({years}y)</span>
-                  </span>
-                </div>
-              </div>
-            );
-          })}
+      <form onSubmit={(e) => void handleSave(e)} className="card overflow-hidden max-w-4xl">
+        <div className="card-header mgmt-card-head">
+          <div className="card-title">
+            Retention Policies
+            <span className="mgmt-count-pill">{policies.length} items</span>
+          </div>
         </div>
-
-        <div className="flex justify-end mt-6">
-          <button type="submit" className="btn btn-primary" disabled={saving}>
-            {saving ? "Saving…" : "Save policies"}
-          </button>
+        <div className="table-wrap mgmt-table-wrap">
+          <table className="table-base mgmt-table w-full">
+            <thead>
+              <tr>
+                <th>Data Type</th>
+                <th className="w-[180px]">Retention (days)</th>
+                <th className="w-[120px]">Years</th>
+              </tr>
+            </thead>
+            <tbody>
+              {policies.map((policy) => {
+                const meta = LABELS[policy.dataType] ?? { label: policy.dataType, hint: "" };
+                return (
+                  <tr key={policy.dataType}>
+                    <td>
+                      <div className="font-semibold text-text-primary">{meta.label}</div>
+                      <div className="text-[0.75rem] text-text-tertiary mt-[2px]">{meta.hint}</div>
+                    </td>
+                    <td>
+                      <input
+                        type="number"
+                        min={1}
+                        max={9999}
+                        className="input-field w-[120px] text-right"
+                        value={policy.retentionDays}
+                        onChange={(e) => setDays(policy.dataType, Math.max(1, parseInt(e.target.value, 10) || 1))}
+                      />
+                    </td>
+                    <td className="text-[0.8rem] text-text-secondary">{toYears(policy.retentionDays)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div className="mgmt-card-foot">
+          <span className="text-[0.75rem] text-text-tertiary">
+            {isDirty ? "You have unsaved changes." : "All changes saved."}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              disabled={!isDirty || saving}
+              onClick={() => setPolicies(initialPolicies)}
+            >
+              Reset
+            </button>
+            <button type="submit" className="btn btn-primary btn-sm" disabled={!isDirty || saving}>
+              {saving ? "Saving..." : "Save policies"}
+            </button>
+          </div>
         </div>
       </form>
-    </div>
+    </section>
   );
 }

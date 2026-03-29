@@ -1,7 +1,4 @@
-/**
- * AuditLogViewer.tsx — Searchable, paginated audit log for admins.
- */
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Search } from "lucide-react";
 import { apiFetch } from "../../api/client";
 
@@ -25,6 +22,8 @@ interface PageResponse {
 export function AuditLogViewer() {
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
+  const [actionFilter, setActionFilter] = useState("");
+  const [entityFilter, setEntityFilter] = useState("");
   const [page, setPage] = useState(1);
   const [data, setData] = useState<PageResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -40,7 +39,9 @@ export function AuditLogViewer() {
     setLoading(false);
   }, [page, search]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -49,38 +50,73 @@ export function AuditLogViewer() {
   }
 
   const totalPages = data ? Math.ceil(data.totalCount / pageSize) : 1;
+  const items = data?.items ?? [];
+  const actionOptions = Array.from(new Set(items.map((i) => i.action))).sort((a, b) => a.localeCompare(b));
+  const entityOptions = Array.from(new Set(items.map((i) => i.entityType))).sort((a, b) => a.localeCompare(b));
+  const visibleItems = items.filter((entry) => {
+    const actionMatch = !actionFilter || entry.action === actionFilter;
+    const entityMatch = !entityFilter || entry.entityType === entityFilter;
+    return actionMatch && entityMatch;
+  });
+  const hasFilters = Boolean(search || searchInput || actionFilter || entityFilter);
 
   return (
-    <div className="page-content">
+    <section>
       <div className="page-header">
-        <h1 className="page-title">Audit Log</h1>
-        <p className="page-subtitle">All user actions recorded in the system</p>
+        <div>
+          <h1 className="page-title">Audit Log</h1>
+          <p className="page-subtitle">Track who changed what, and when.</p>
+        </div>
+        <div className="text-[0.75rem] text-text-tertiary">
+          {data?.totalCount ?? 0} total records
+        </div>
       </div>
 
-      {/* Search */}
-      <form onSubmit={handleSearch} className="flex gap-2 mb-4 max-w-md">
-        <div className="relative flex-1">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
-          <input
-            type="text"
-            className="form-input pl-8"
-            placeholder="Search action, entity type, ID…"
-            value={searchInput}
-            onChange={e => setSearchInput(e.target.value)}
-          />
+      <div className="card overflow-visible mb-4">
+        <form onSubmit={handleSearch} className="mgmt-toolbar p-4">
+          <div className="relative flex-1 min-w-[260px]">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
+            <input
+              type="text"
+              className="input-field pl-8"
+              placeholder="Search action, entity type, ID..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+            />
+          </div>
+          <select className="input-field mgmt-select" value={actionFilter} onChange={(e) => setActionFilter(e.target.value)}>
+            <option value="">All actions</option>
+            {actionOptions.map((action) => <option key={action} value={action}>{action}</option>)}
+          </select>
+          <select className="input-field mgmt-select" value={entityFilter} onChange={(e) => setEntityFilter(e.target.value)}>
+            <option value="">All entities</option>
+            {entityOptions.map((entity) => <option key={entity} value={entity}>{entity}</option>)}
+          </select>
+          <button type="submit" className="btn btn-primary btn-sm">Search</button>
+          {hasFilters && (
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              onClick={() => {
+                setSearch("");
+                setSearchInput("");
+                setActionFilter("");
+                setEntityFilter("");
+                setPage(1);
+              }}
+            >
+              Clear
+            </button>
+          )}
+        </form>
+        <div className="px-4 pb-3 text-[0.75rem] text-text-tertiary">
+          Showing {visibleItems.length} of {items.length} records on this page
         </div>
-        <button type="submit" className="btn btn-secondary btn-sm">Search</button>
-        {search && (
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setSearch(""); setSearchInput(""); setPage(1); }}>
-            Clear
-          </button>
-        )}
-      </form>
+      </div>
 
-      {/* Table */}
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="data-table w-full">
+          <table className="table-base mgmt-table w-full">
             <thead>
               <tr>
                 <th>Time</th>
@@ -100,27 +136,27 @@ export function AuditLogViewer() {
                     ))}
                   </tr>
                 ))
-              ) : data?.items.length === 0 ? (
+              ) : visibleItems.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="text-center text-text-tertiary py-8">No audit log entries found</td>
                 </tr>
               ) : (
-                data?.items.map(entry => (
+                visibleItems.map((entry) => (
                   <tr key={entry.id}>
                     <td className="text-[0.75rem] text-text-secondary whitespace-nowrap">
                       {new Date(entry.createdAtUtc).toLocaleString()}
                     </td>
                     <td className="font-mono text-[0.72rem] text-text-tertiary">
-                      {entry.actorUserId ? entry.actorUserId.slice(0, 8) + "…" : "—"}
+                      {entry.actorUserId ? `${entry.actorUserId.slice(0, 8)}...` : "—"}
                     </td>
                     <td>
-                      <span className="badge badge-info text-[0.72rem]">{entry.action}</span>
+                      <span className="badge badge-brand text-[0.72rem]">{entry.action}</span>
                     </td>
                     <td className="text-[0.8rem] text-text-secondary">{entry.entityType}</td>
                     <td className="font-mono text-[0.72rem] text-text-tertiary">
-                      {entry.entityId.length > 12 ? entry.entityId.slice(0, 12) + "…" : entry.entityId}
+                      {entry.entityId.length > 12 ? `${entry.entityId.slice(0, 12)}...` : entry.entityId}
                     </td>
-                    <td className="text-[0.75rem] text-text-secondary max-w-[200px] truncate" title={entry.details ?? undefined}>
+                    <td className="text-[0.75rem] text-text-secondary max-w-[260px] truncate" title={entry.details ?? undefined}>
                       {entry.details ?? "—"}
                     </td>
                   </tr>
@@ -130,34 +166,19 @@ export function AuditLogViewer() {
           </table>
         </div>
 
-        {/* Pagination */}
         {data && totalPages > 1 && (
-          <div className="px-4 py-3 border-t border-border-subtle flex items-center justify-between">
+          <div className="mgmt-card-foot">
             <span className="text-[0.75rem] text-text-tertiary">
-              {data.totalCount} total entries
+              Page {page} of {totalPages} · {data.totalCount} total entries
             </span>
-            <div className="flex gap-1">
-              <button
-                className="btn btn-ghost btn-sm"
-                disabled={page <= 1}
-                onClick={() => setPage(p => p - 1)}
-              >
-                ← Prev
-              </button>
-              <span className="px-3 py-1 text-[0.8rem] text-text-secondary">
-                {page} / {totalPages}
-              </span>
-              <button
-                className="btn btn-ghost btn-sm"
-                disabled={page >= totalPages}
-                onClick={() => setPage(p => p + 1)}
-              >
-                Next →
-              </button>
+            <div className="mgmt-pagination">
+              <button className="btn btn-outline btn-sm px-2" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>&lt;</button>
+              <button className="btn btn-primary btn-sm px-3">{page}</button>
+              <button className="btn btn-outline btn-sm px-2" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>&gt;</button>
             </div>
           </div>
         )}
       </div>
-    </div>
+    </section>
   );
 }

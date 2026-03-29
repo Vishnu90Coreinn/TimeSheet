@@ -2,6 +2,7 @@
  * Categories.tsx — Pulse SaaS design v3.0
  */
 import { useEffect, useState, type ReactNode } from "react";
+import { Pencil, Trash2 } from "lucide-react";
 import { apiFetch } from "../../api/client";
 import type { TaskCategory } from "../../types";
 
@@ -187,24 +188,28 @@ export function Categories() {
           <div className="page-subtitle">Manage task categories and billability flags</div>
         </div>
         <div className="page-actions">
-          <button className="btn btn-ghost" onClick={() => void load()}>Refresh</button>
+          <button className="btn btn-outline" onClick={() => void load()}>Refresh</button>
           <button className="btn btn-primary" onClick={openCreate}>+ New Category</button>
         </div>
       </div>
 
       {/* Table */}
       <div className="card overflow-visible">
-        <div className="card-header">
-          <div>
-            <div className="card-title">All Categories</div>
-            <div className="card-subtitle">{categories.length} categor{categories.length === 1 ? "y" : "ies"}</div>
+        <div className="card-header mgmt-card-head">
+          <div className="card-title">
+            All Categories
+            <span className="mgmt-count-pill">{categories.length} categor{categories.length === 1 ? "y" : "ies"}</span>
+          </div>
+          <button className="btn btn-outline btn-sm">Export</button>
+        </div>
+        <div className="mgmt-toolbar px-4 pb-3">
+          <div className="input-icon-wrap mgmt-search-wrap">
+            <span className="input-icon">🔍</span>
+            <input className="input-field mgmt-search" placeholder="Search categories..." value={search} onChange={e => setSearch(e.target.value)} />
           </div>
         </div>
-        <div className="table-search-bar">
-          <input className="input-field table-search-input" placeholder="Search categories…" value={search} onChange={e => setSearch(e.target.value)} />
-        </div>
-        <div className="table-wrap">
-          <table className="table-base">
+        <div className="table-wrap mgmt-table-wrap">
+          <table className="table-base mgmt-table">
             <thead>
               <tr>
                 <th className="th-sort" onClick={() => toggleSort("name")} aria-sort={sortCol === "name" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
@@ -229,8 +234,22 @@ export function Categories() {
                   <td><ToggleSwitch checked={c.isActive} onChange={() => void toggleActive(c)} /></td>
                   <td>
                     <div className="flex gap-2">
-                      <button className="btn btn-ghost btn-sm" onClick={() => openEdit(c)}>Edit</button>
-                      <button className="btn btn-subtle-danger btn-sm" onClick={() => setDeleteId(c.id)}>Delete</button>
+                      <button
+                        className="mgmt-icon-action mgmt-icon-action-edit"
+                        onClick={() => openEdit(c)}
+                        title={`Edit ${c.name}`}
+                        aria-label={`Edit ${c.name}`}
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        className="mgmt-icon-action mgmt-icon-action-danger"
+                        onClick={() => setDeleteId(c.id)}
+                        title={`Delete ${c.name}`}
+                        aria-label={`Delete ${c.name}`}
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -238,6 +257,14 @@ export function Categories() {
               {sorted.length === 0 && <tr className="empty-row"><td colSpan={4}>{search ? "No categories match your search." : "No categories found."}</td></tr>}
             </tbody>
           </table>
+        </div>
+        <div className="mgmt-card-foot">
+          <span>Showing 1-{sorted.length} of {sorted.length} categor{sorted.length === 1 ? "y" : "ies"}</span>
+          <div className="mgmt-pagination">
+            <button className="btn btn-outline btn-sm px-2" aria-label="Previous page">&lt;</button>
+            <button className="btn btn-primary btn-sm px-3">1</button>
+            <button className="btn btn-outline btn-sm px-2" aria-label="Next page">&gt;</button>
+          </div>
         </div>
       </div>
     </section>

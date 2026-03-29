@@ -436,8 +436,8 @@ export function TeamStatus() {
           </div>
         </div>
 
-        {/* C3 + NEW-2 — Filter bar: ALL four tabs always show their count badge */}
-        <div className="flex gap-1 flex-wrap">
+        {/* Filter tabs — underline style */}
+        <div className="flex border-b border-[var(--border-subtle)] overflow-x-auto">
           {(Object.keys(FILTER_LABELS) as Filter[]).map(f => {
             const isActive = filter === f;
             return (
@@ -445,15 +445,17 @@ export function TeamStatus() {
                 key={f}
                 type="button"
                 onClick={() => setFilter(f)}
-                className={`btn btn-sm ${isActive ? "btn-primary" : "btn-ghost"}`}
+                className="flex items-center gap-1.5 px-4 py-3 text-[0.82rem] font-medium whitespace-nowrap border-b-2 transition-colors"
+                style={isActive
+                  ? { borderBottomColor: "var(--color-primary, #6366f1)", color: "var(--color-primary, #6366f1)" }
+                  : { borderBottomColor: "transparent", color: "var(--text-secondary, #64748b)" }}
               >
                 {FILTER_LABELS[f]}
-                {/* Badge always rendered for every tab */}
                 <span
-                  className="ml-[6px] rounded-[10px] px-[7px] py-[1px] text-[11px] font-bold min-w-[18px] text-center inline-block"
+                  className="rounded-[10px] px-[7px] py-[1px] text-[11px] font-bold min-w-[18px] text-center inline-block"
                   style={{
-                    background: isActive ? "rgba(255,255,255,0.25)" : "var(--n-200)",
-                    color: isActive ? "#fff" : "var(--text-secondary)",
+                    background: isActive ? "var(--color-primary-100, #e0e7ff)" : "var(--n-200)",
+                    color: isActive ? "var(--color-primary, #6366f1)" : "var(--text-secondary)",
                   }}
                 >
                   {counts[f]}
@@ -462,9 +464,6 @@ export function TeamStatus() {
             );
           })}
         </div>
-
-        {/* M2 — Visual separator between filter bar and table */}
-        <div className="border-t border-border-subtle -mt-1" />
 
         {/* Table */}
         <div className="card overflow-auto">

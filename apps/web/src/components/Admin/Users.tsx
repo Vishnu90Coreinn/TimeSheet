@@ -1,15 +1,33 @@
-/**
- * Users.tsx — Pulse SaaS design v3.0
- */
 import { useEffect, useState, type ReactNode } from "react";
 import { apiFetch } from "../../api/client";
 import type { Department, LeavePolicy, User, WorkPolicy } from "../../types";
+import { Pencil, UserCheck, UserX } from "lucide-react";
 
 type UserForm = {
-  username: string; email: string; employeeId: string; password: string;
-  role: string; isActive: boolean; departmentId: string; workPolicyId: string; leavePolicyId: string; managerId: string;
+  username: string;
+  email: string;
+  employeeId: string;
+  password: string;
+  role: string;
+  isActive: boolean;
+  departmentId: string;
+  workPolicyId: string;
+  leavePolicyId: string;
+  managerId: string;
 };
-const BLANK: UserForm = { username: "", email: "", employeeId: "", password: "", role: "employee", isActive: true, departmentId: "", workPolicyId: "", leavePolicyId: "", managerId: "" };
+
+const BLANK: UserForm = {
+  username: "",
+  email: "",
+  employeeId: "",
+  password: "",
+  role: "employee",
+  isActive: true,
+  departmentId: "",
+  workPolicyId: "",
+  leavePolicyId: "",
+  managerId: "",
+};
 
 const EMP_ID_RE = /^EMP-\d{4}$/;
 type SortDir = "asc" | "desc";
@@ -32,10 +50,10 @@ function pwdStrength(pwd: string): "weak" | "medium" | "strong" | null {
 }
 
 function initials(name: string): string {
-  return name.split(/[\s_]+/).map(p => p[0] ?? "").join("").toUpperCase().slice(0, 2) || "?";
+  return name.split(/[\s_]+/).map((p) => p[0] ?? "").join("").toUpperCase().slice(0, 2) || "?";
 }
 
-const AVATAR_PALETTE = ["#818cf8","#a78bfa","#34d399","#60a5fa","#f472b6","#fb923c","#4ade80","#38bdf8"];
+const AVATAR_PALETTE = ["#818cf8", "#a78bfa", "#34d399", "#60a5fa", "#f472b6", "#fb923c", "#4ade80", "#38bdf8"];
 function avatarColor(name: string): string {
   let n = 0;
   for (const c of name) n = (n * 31 + c.charCodeAt(0)) & 0xffff;
@@ -66,17 +84,19 @@ export function Users() {
   const [leavePolicies, setLeavePolicies] = useState<LeavePolicy[]>([]);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
+  const [departmentFilter, setDepartmentFilter] = useState("");
+  const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
   const [sortCol, setSortCol] = useState<"username" | "role" | "departmentName" | "isActive">("username");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
-
-  function toggleSort(col: typeof sortCol) {
-    if (sortCol === col) setSortDir(d => d === "asc" ? "desc" : "asc");
-    else { setSortCol(col); setSortDir("asc"); }
-  }
   const [editing, setEditing] = useState<User | "new" | null>(null);
   const [form, setForm] = useState<UserForm>(BLANK);
   const [error, setError] = useState("");
   const [showPwd, setShowPwd] = useState(false);
+
+  function toggleSort(col: typeof sortCol) {
+    if (sortCol === col) setSortDir((d) => d === "asc" ? "desc" : "asc");
+    else { setSortCol(col); setSortDir("asc"); }
+  }
 
   async function load() {
     const r = await apiFetch("/users");
@@ -92,8 +112,21 @@ export function Users() {
 
   function openCreate() { setForm(BLANK); setError(""); setShowPwd(false); setEditing("new"); }
   function openEdit(u: User) {
-    setForm({ username: u.username, email: u.email, employeeId: u.employeeId, password: "", role: u.role, isActive: u.isActive, departmentId: u.departmentId ?? "", workPolicyId: u.workPolicyId ?? "", leavePolicyId: u.leavePolicyId ?? "", managerId: u.managerId ?? "" });
-    setError(""); setShowPwd(false); setEditing(u);
+    setForm({
+      username: u.username,
+      email: u.email,
+      employeeId: u.employeeId,
+      password: "",
+      role: u.role,
+      isActive: u.isActive,
+      departmentId: u.departmentId ?? "",
+      workPolicyId: u.workPolicyId ?? "",
+      leavePolicyId: u.leavePolicyId ?? "",
+      managerId: u.managerId ?? "",
+    });
+    setError("");
+    setShowPwd(false);
+    setEditing(u);
   }
 
   async function save() {
@@ -103,32 +136,59 @@ export function Users() {
       return;
     }
     const body = {
-      username: form.username, email: form.email, employeeId: form.employeeId, role: form.role,
-      isActive: form.isActive, departmentId: form.departmentId || null, workPolicyId: form.workPolicyId || null, leavePolicyId: form.leavePolicyId || null, managerId: form.managerId || null,
+      username: form.username,
+      email: form.email,
+      employeeId: form.employeeId,
+      role: form.role,
+      isActive: form.isActive,
+      departmentId: form.departmentId || null,
+      workPolicyId: form.workPolicyId || null,
+      leavePolicyId: form.leavePolicyId || null,
+      managerId: form.managerId || null,
       ...(editing === "new" ? { password: form.password } : {}),
     };
     const r = editing === "new"
       ? await apiFetch("/users", { method: "POST", body: JSON.stringify(body) })
       : await apiFetch(`/users/${(editing as User).id}`, { method: "PUT", body: JSON.stringify(body) });
     if (r.ok || r.status === 204) { setEditing(null); void load(); }
-    else { const d = await r.json().catch(() => ({})); setError((d as { message?: string }).message ?? "Save failed"); }
+    else {
+      const d = await r.json().catch(() => ({}));
+      setError((d as { message?: string }).message ?? "Save failed");
+    }
   }
 
   async function toggleActive(u: User) {
-    const body = { username: u.username, email: u.email, employeeId: u.employeeId, role: u.role, isActive: !u.isActive, departmentId: u.departmentId, workPolicyId: u.workPolicyId, managerId: u.managerId };
+    const body = {
+      username: u.username,
+      email: u.email,
+      employeeId: u.employeeId,
+      role: u.role,
+      isActive: !u.isActive,
+      departmentId: u.departmentId,
+      workPolicyId: u.workPolicyId,
+      managerId: u.managerId,
+    };
     await apiFetch(`/users/${u.id}`, { method: "PUT", body: JSON.stringify(body) });
     void load();
   }
 
-  const f = (k: keyof UserForm, v: string | boolean) => setForm((p) => ({ ...p, [k]: v }));
+  function toggleUserSelect(id: string) {
+    setSelectedUserIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
 
+  const f = (k: keyof UserForm, v: string | boolean) => setForm((p) => ({ ...p, [k]: v }));
   const strength = editing === "new" ? pwdStrength(form.password) : null;
 
-  const filtered = users.filter(u => {
+  const filtered = users.filter((u) => {
     const q = search.toLowerCase();
     const matchesSearch = !q || u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || (u.employeeId ?? "").toLowerCase().includes(q);
     const matchesRole = !roleFilter || u.role === roleFilter;
-    return matchesSearch && matchesRole;
+    const matchesDepartment = !departmentFilter || (u.departmentName ?? "").toLowerCase() === departmentFilter.toLowerCase();
+    return matchesSearch && matchesRole && matchesDepartment;
   });
 
   const sorted = [...filtered].sort((a, b) => {
@@ -144,7 +204,6 @@ export function Users() {
 
   return (
     <section className="flex flex-col gap-6">
-      {/* Drawer form */}
       <Drawer open={!!editing} title={drawerTitle} onClose={() => setEditing(null)}
         footer={
           <>
@@ -165,16 +224,8 @@ export function Users() {
           </div>
           <div className="form-field">
             <label className="form-label" htmlFor="u-empid">Employee ID</label>
-            <input
-              id="u-empid"
-              className="input-field"
-              value={form.employeeId}
-              onChange={(e) => f("employeeId", e.target.value)}
-              placeholder="EMP-0001"
-            />
-            {form.employeeId && !EMP_ID_RE.test(form.employeeId) && (
-              <div className="text-[0.72rem] text-danger mt-[3px]">Format: EMP-XXXX (4 digits)</div>
-            )}
+            <input id="u-empid" className="input-field" value={form.employeeId} onChange={(e) => f("employeeId", e.target.value)} placeholder="EMP-0001" />
+            {form.employeeId && !EMP_ID_RE.test(form.employeeId) && <div className="text-[0.72rem] text-danger mt-[3px]">Format: EMP-XXXX (4 digits)</div>}
           </div>
           <div className="form-field">
             <label className="form-label" htmlFor="u-role">Role</label>
@@ -189,18 +240,8 @@ export function Users() {
             <div className="form-field col-span-2">
               <label className="form-label" htmlFor="u-pwd">Password <span className="required">*</span></label>
               <div className="relative">
-                <input
-                  id="u-pwd"
-                  type={showPwd ? "text" : "password"}
-                  className="input-field pr-11"
-                  value={form.password}
-                  onChange={(e) => f("password", e.target.value)}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPwd(s => !s)}
-                  className="absolute right-[10px] top-1/2 -translate-y-1/2 bg-transparent border-0 cursor-pointer text-text-tertiary text-[0.8rem]"
-                >
+                <input id="u-pwd" type={showPwd ? "text" : "password"} className="input-field pr-11" value={form.password} onChange={(e) => f("password", e.target.value)} />
+                <button type="button" onClick={() => setShowPwd((s) => !s)} className="absolute right-[10px] top-1/2 -translate-y-1/2 bg-transparent border-0 cursor-pointer text-text-tertiary text-[0.8rem]">
                   {showPwd ? "Hide" : "Show"}
                 </button>
               </div>
@@ -249,7 +290,6 @@ export function Users() {
         </div>
       </Drawer>
 
-      {/* Page header */}
       <div className="page-header">
         <div>
           <div className="page-title">User Management</div>
@@ -260,78 +300,93 @@ export function Users() {
         </div>
       </div>
 
-      {/* Table */}
+      <div className="mgmt-toolbar">
+        <div className="input-icon-wrap mgmt-search-wrap">
+          <span className="input-icon">🔍</span>
+          <input className="input-field mgmt-search" placeholder="Search by username, email or employee ID..." value={search} onChange={(e) => setSearch(e.target.value)} />
+        </div>
+        <select className="input-field mgmt-select" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
+          <option value="">All Roles</option>
+          <option value="employee">Employee</option>
+          <option value="consultant">Consultant</option>
+          <option value="manager">Manager</option>
+          <option value="admin">Admin</option>
+        </select>
+        <select className="input-field mgmt-select" value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)}>
+          <option value="">All Departments</option>
+          {departments.map((d) => <option key={d.id} value={d.name}>{d.name}</option>)}
+        </select>
+        <button className="btn btn-outline mgmt-filter-btn">□ Filter</button>
+      </div>
+
       <div className="card overflow-visible">
-        <div className="card-header">
-          <div>
-            <div className="card-title">All Users</div>
-            <div className="card-subtitle">{users.length} user{users.length === 1 ? "" : "s"}</div>
+        <div className="card-header mgmt-card-head">
+          <div className="card-title">
+            All Users
+            <span className="mgmt-count-pill">{users.length} users</span>
           </div>
+          <button className="btn btn-outline btn-sm">Export</button>
         </div>
-        <div className="table-search-bar flex-wrap">
-          <input
-            className="input-field table-search-input"
-            placeholder="Search by username, email or employee ID…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <select
-            className="input-field w-auto min-w-[130px]"
-            value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
-          >
-            <option value="">All roles</option>
-            <option value="employee">Employee</option>
-            <option value="manager">Manager</option>
-            <option value="admin">Admin</option>
-          </select>
-        </div>
-        <div className="table-wrap">
-          <table className="table-base">
+        <div className="table-wrap mgmt-table-wrap">
+          <table className="table-base mgmt-table">
             <thead>
               <tr>
-                <th className="w-11"></th>
-                <th className="th-sort" onClick={() => toggleSort("username")} aria-sort={sortCol === "username" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
-                  Username <SortIcon active={sortCol === "username"} dir={sortDir} />
+                <th className="w-11">
+                  <input
+                    type="checkbox"
+                    aria-label="Select all users"
+                    checked={sorted.length > 0 && selectedUserIds.size === sorted.length}
+                    onChange={() => {
+                      if (selectedUserIds.size === sorted.length) setSelectedUserIds(new Set());
+                      else setSelectedUserIds(new Set(sorted.map((u) => u.id)));
+                    }}
+                    className="w-4 h-4 [accent-color:var(--brand-600)]"
+                  />
                 </th>
-                <th>Email</th>
-                <th className="w-[110px]">Employee ID</th>
-                <th className="th-sort w-[90px]" onClick={() => toggleSort("role")} aria-sort={sortCol === "role" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
-                  Role <SortIcon active={sortCol === "role"} dir={sortDir} />
-                </th>
-                <th className="th-sort" onClick={() => toggleSort("departmentName")} aria-sort={sortCol === "departmentName" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
-                  Department <SortIcon active={sortCol === "departmentName"} dir={sortDir} />
-                </th>
+                <th className="th-sort" onClick={() => toggleSort("username")} aria-sort={sortCol === "username" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>User <SortIcon active={sortCol === "username"} dir={sortDir} /></th>
+                <th className="w-[130px]">Employee ID</th>
+                <th className="th-sort w-[120px]" onClick={() => toggleSort("role")} aria-sort={sortCol === "role" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>Role <SortIcon active={sortCol === "role"} dir={sortDir} /></th>
+                <th className="th-sort" onClick={() => toggleSort("departmentName")} aria-sort={sortCol === "departmentName" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>Department <SortIcon active={sortCol === "departmentName"} dir={sortDir} /></th>
                 <th>Leave Policy</th>
-                <th className="th-sort w-[90px]" onClick={() => toggleSort("isActive")} aria-sort={sortCol === "isActive" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
-                  Status <SortIcon active={sortCol === "isActive"} dir={sortDir} />
-                </th>
-                <th className="w-[130px]">Actions</th>
+                <th className="th-sort w-[100px]" onClick={() => toggleSort("isActive")} aria-sort={sortCol === "isActive" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>Status <SortIcon active={sortCol === "isActive"} dir={sortDir} /></th>
+                <th className="w-[120px]">Actions</th>
               </tr>
             </thead>
             <tbody>
               {sorted.map((u) => (
                 <tr key={u.id} className={u.isActive ? "" : "opacity-[0.55]"}>
+                  <td><input type="checkbox" aria-label={`Select ${u.username}`} checked={selectedUserIds.has(u.id)} onChange={() => toggleUserSelect(u.id)} className="w-4 h-4 [accent-color:var(--brand-600)]" /></td>
                   <td>
-                    <div
-                      className="w-8 h-8 rounded-md flex items-center justify-center text-white font-bold text-[0.72rem]"
-                      style={{ background: avatarColor(u.username) }}
-                    >
-                      {initials(u.username)}
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-[0.72rem]" style={{ background: avatarColor(u.username) }}>{initials(u.username)}</div>
+                      <div className="min-w-0">
+                        <div className="font-semibold text-text-primary">{u.username}</div>
+                        <div className="td-muted max-w-[220px] overflow-hidden text-ellipsis whitespace-nowrap">{u.email}</div>
+                      </div>
                     </div>
                   </td>
-                  <td><strong>{u.username}</strong></td>
-                  <td className="td-muted max-w-[180px] overflow-hidden text-ellipsis whitespace-nowrap">{u.email}</td>
                   <td><code className="font-mono text-[0.75rem] bg-n-100 px-[5px] py-0.5 rounded-sm">{u.employeeId || "—"}</code></td>
-                  <td><span className={`badge ${u.role === "admin" ? "badge-error" : u.role === "manager" ? "badge-warning" : "badge-brand"}`}>{u.role}</span></td>
+                  <td><span className={`badge ${u.role === "admin" ? "badge-error" : u.role === "manager" ? "badge-warning" : "badge-brand"}`}>{u.role.charAt(0).toUpperCase() + u.role.slice(1)}</span></td>
                   <td className="td-muted">{u.departmentName ?? "—"}</td>
                   <td className="td-muted">{u.leavePolicyName ?? "—"}</td>
                   <td>{u.isActive ? <span className="badge badge-success">Active</span> : <span className="badge badge-neutral">Inactive</span>}</td>
                   <td>
-                    <div className="flex gap-2">
-                      <button className="btn btn-ghost btn-sm" onClick={() => openEdit(u)}>Edit</button>
-                      <button className="btn btn-outline btn-sm" onClick={() => void toggleActive(u)}>
-                        {u.isActive ? "Deactivate" : "Activate"}
+                    <div className="flex gap-2 items-center">
+                      <button
+                        className="mgmt-icon-action mgmt-icon-action-edit"
+                        onClick={() => openEdit(u)}
+                        title={`Edit ${u.username}`}
+                        aria-label={`Edit ${u.username}`}
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        className={`mgmt-icon-action ${u.isActive ? "mgmt-icon-action-danger" : "mgmt-icon-action-success"}`}
+                        onClick={() => void toggleActive(u)}
+                        title={`${u.isActive ? "Deactivate" : "Activate"} ${u.username}`}
+                        aria-label={`${u.isActive ? "Deactivate" : "Activate"} ${u.username}`}
+                      >
+                        {u.isActive ? <UserX size={14} /> : <UserCheck size={14} />}
                       </button>
                     </div>
                   </td>
@@ -339,11 +394,19 @@ export function Users() {
               ))}
               {sorted.length === 0 && (
                 <tr className="empty-row">
-                  <td colSpan={9}>{search || roleFilter ? "No users match your filters." : "No users found."}</td>
+                  <td colSpan={8}>{search || roleFilter || departmentFilter ? "No users match your filters." : "No users found."}</td>
                 </tr>
               )}
             </tbody>
           </table>
+        </div>
+        <div className="mgmt-card-foot">
+          <span>Showing 1–{sorted.length} of {sorted.length} user{sorted.length === 1 ? "" : "s"}</span>
+          <div className="mgmt-pagination">
+            <button className="btn btn-outline btn-sm px-2" aria-label="Previous page">&lt;</button>
+            <button className="btn btn-primary btn-sm px-3">1</button>
+            <button className="btn btn-outline btn-sm px-2" aria-label="Next page">&gt;</button>
+          </div>
         </div>
       </div>
     </section>

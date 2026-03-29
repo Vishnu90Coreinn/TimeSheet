@@ -370,9 +370,6 @@ export function Reports() {
   const [saveLoading, setSaveLoading] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-  function scrollTabs(dir: -1 | 1) {
-    tabsRef.current?.scrollBy({ left: dir * 180, behavior: "smooth" });
-  }
 
   function buildUrl(key: ReportKey, pg: number, ps: number) {
     const params = new URLSearchParams({ page: String(pg), pageSize: String(ps) });
@@ -628,21 +625,23 @@ export function Reports() {
         {TABS.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
       </select>
 
-      {/* Tab strip with scroll arrows */}
-      <div className="rpt-tabs-row">
-        <button className="rpt-tab-arrow" onClick={() => scrollTabs(-1)} aria-label="Scroll tabs left">‹</button>
-        <div className="rpt-tabs" ref={tabsRef}>
-          {TABS.map(t => (
+      {/* Tab strip */}
+      <div className="flex border-b border-[var(--border-subtle)] overflow-x-auto rpt-tabs-strip" ref={tabsRef}>
+        {TABS.map(t => {
+          const isActive = reportKey === t.key;
+          return (
             <button
               key={t.key}
-              className={`rpt-tab${reportKey === t.key ? " rpt-tab--active" : ""}`}
+              className="px-4 py-3 text-[0.82rem] font-medium whitespace-nowrap border-b-2 transition-colors"
+              style={isActive
+                ? { borderBottomColor: "var(--color-primary, #6366f1)", color: "var(--color-primary, #6366f1)" }
+                : { borderBottomColor: "transparent", color: "var(--text-secondary, #64748b)" }}
               onClick={() => switchTab(t.key)}
             >
               {t.label}
             </button>
-          ))}
-        </div>
-        <button className="rpt-tab-arrow" onClick={() => scrollTabs(1)} aria-label="Scroll tabs right">›</button>
+          );
+        })}
       </div>
 
       {/* Filter bar */}

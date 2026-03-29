@@ -1,7 +1,5 @@
-/**
- * Holidays.tsx — Pulse SaaS design v3.0
- */
 import { useEffect, useState, type ReactNode } from "react";
+import { Pencil, Trash2 } from "lucide-react";
 import { apiFetch } from "../../api/client";
 import type { Holiday } from "../../types";
 
@@ -16,7 +14,7 @@ function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
 
 function fmtDate(iso: string): string {
   if (!iso) return "—";
-  const d = new Date(iso.includes("T") ? iso : iso + "T00:00:00");
+  const d = new Date(iso.includes("T") ? iso : `${iso}T00:00:00`);
   return d.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
 }
 
@@ -28,7 +26,7 @@ function Drawer({ open, title, onClose, children, footer }: { open: boolean; tit
       <div className="drawer" role="dialog" aria-modal="true">
         <div className="drawer-header">
           <div className="drawer-title">{title}</div>
-          <button className="drawer-close" onClick={onClose}>✕</button>
+          <button className="drawer-close" onClick={onClose}>×</button>
         </div>
         <div className="drawer-body">{children}</div>
         {footer && <div className="drawer-footer">{footer}</div>}
@@ -64,23 +62,37 @@ export function Holidays() {
   const [showImport, setShowImport] = useState(false);
   const [sortCol, setSortCol] = useState<"name" | "date" | "isRecurring">("date");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
-
-  function toggleSort(col: typeof sortCol) {
-    if (sortCol === col) setSortDir(d => d === "asc" ? "desc" : "asc");
-    else { setSortCol(col); setSortDir("asc"); }
-  }
   const [importText, setImportText] = useState("");
   const [importError, setImportError] = useState("");
+
+  function toggleSort(col: typeof sortCol) {
+    if (sortCol === col) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else {
+      setSortCol(col);
+      setSortDir("asc");
+    }
+  }
 
   async function load(y: number) {
     const r = await apiFetch(`/holidays?year=${y}`);
     if (r.ok) setHolidays(await r.json());
   }
 
-  useEffect(() => { void load(year); }, [year]);
+  useEffect(() => {
+    void load(year);
+  }, [year]);
 
-  function openCreate() { setForm(BLANK); setError(""); setEditing("new"); }
-  function openEdit(h: Holiday) { setForm({ name: h.name, date: h.date, isRecurring: h.isRecurring }); setError(""); setEditing(h); }
+  function openCreate() {
+    setForm(BLANK);
+    setError("");
+    setEditing("new");
+  }
+
+  function openEdit(h: Holiday) {
+    setForm({ name: h.name, date: h.date, isRecurring: h.isRecurring });
+    setError("");
+    setEditing(h);
+  }
 
   async function save() {
     setError("");
@@ -88,8 +100,13 @@ export function Holidays() {
     const r = editing === "new"
       ? await apiFetch("/holidays", { method: "POST", body: JSON.stringify(body) })
       : await apiFetch(`/holidays/${(editing as Holiday).id}`, { method: "PUT", body: JSON.stringify(body) });
-    if (r.ok) { setEditing(null); void load(year); }
-    else { const d = await r.json().catch(() => ({})); setError((d as { message?: string }).message ?? "Save failed"); }
+    if (r.ok) {
+      setEditing(null);
+      void load(year);
+      return;
+    }
+    const d = await r.json().catch(() => ({}));
+    setError((d as { message?: string }).message ?? "Save failed");
   }
 
   async function doDelete(id: string) {
@@ -100,11 +117,14 @@ export function Holidays() {
 
   async function importHolidays() {
     setImportError("");
-    const lines = importText.trim().split("\n").map(l => l.trim()).filter(Boolean);
+    const lines = importText.trim().split("\n").map((l) => l.trim()).filter(Boolean);
     const entries: { name: string; date: string; isRecurring: boolean }[] = [];
     for (const line of lines) {
-      const parts = line.split(",").map(p => p.trim());
-      if (parts.length < 2) { setImportError(`Invalid line: "${line}" — expected "Name, YYYY-MM-DD"`); return; }
+      const parts = line.split(",").map((p) => p.trim());
+      if (parts.length < 2) {
+        setImportError(`Invalid line: "${line}" - expected "Name, YYYY-MM-DD"`);
+        return;
+      }
       entries.push({ name: parts[0], date: parts[1], isRecurring: parts[2]?.toLowerCase() === "true" });
     }
     for (const entry of entries) {
@@ -117,10 +137,7 @@ export function Holidays() {
 
   const f = (k: keyof HolidayForm, v: string | boolean) => setForm((p) => ({ ...p, [k]: v }));
 
-  const filtered = holidays.filter(h =>
-    !search.trim() || h.name.toLowerCase().includes(search.toLowerCase())
-  );
-
+  const filtered = holidays.filter((h) => !search.trim() || h.name.toLowerCase().includes(search.toLowerCase()));
   const sorted = [...filtered].sort((a, b) => {
     const mul = sortDir === "asc" ? 1 : -1;
     if (sortCol === "name") return mul * a.name.localeCompare(b.name);
@@ -133,8 +150,10 @@ export function Holidays() {
 
   return (
     <section className="flex flex-col gap-6">
-      {/* Drawer form */}
-      <Drawer open={!!editing} title={drawerTitle} onClose={() => setEditing(null)}
+      <Drawer
+        open={!!editing}
+        title={drawerTitle}
+        onClose={() => setEditing(null)}
         footer={
           <>
             <button className="btn btn-primary" onClick={() => void save()}>Save</button>
@@ -157,8 +176,10 @@ export function Holidays() {
         </label>
       </Drawer>
 
-      {/* Bulk import drawer */}
-      <Drawer open={showImport} title="Bulk Import Holidays" onClose={() => setShowImport(false)}
+      <Drawer
+        open={showImport}
+        title="Bulk Import Holidays"
+        onClose={() => setShowImport(false)}
         footer={
           <>
             <button className="btn btn-primary" onClick={() => void importHolidays()}>Import</button>
@@ -167,8 +188,10 @@ export function Holidays() {
         }
       >
         <p className="text-[0.825rem] text-text-secondary mb-3">
-          Paste one holiday per line in the format:<br />
-          <code className="font-mono text-[0.8rem]">Holiday Name, YYYY-MM-DD, true/false</code><br />
+          Paste one holiday per line in the format:
+          <br />
+          <code className="font-mono text-[0.8rem]">Holiday Name, YYYY-MM-DD, true/false</code>
+          <br />
           The third column (recurring) is optional and defaults to false.
         </p>
         {importError && <div className="alert alert-error mb-3">{importError}</div>}
@@ -181,7 +204,6 @@ export function Holidays() {
         />
       </Drawer>
 
-      {/* Confirm delete modal */}
       <ConfirmModal
         open={!!deleteId}
         title="Delete Holiday?"
@@ -190,7 +212,6 @@ export function Holidays() {
         onCancel={() => setDeleteId(null)}
       />
 
-      {/* Page header */}
       <div className="page-header">
         <div>
           <div className="page-title">Holiday Management</div>
@@ -198,29 +219,32 @@ export function Holidays() {
         </div>
         <div className="page-actions">
           <div className="year-stepper">
-            <button className="year-stepper-btn" onClick={() => setYear(y => y - 1)}>‹</button>
+            <button className="year-stepper-btn" onClick={() => setYear((y) => y - 1)}>&lt;</button>
             <span className="year-stepper-val">{year}</span>
-            <button className="year-stepper-btn" onClick={() => setYear(y => y + 1)}>›</button>
+            <button className="year-stepper-btn" onClick={() => setYear((y) => y + 1)}>&gt;</button>
           </div>
-          <button className="btn btn-ghost" onClick={() => void load(year)}>Refresh</button>
+          <button className="btn btn-outline" onClick={() => void load(year)}>Refresh</button>
           <button className="btn btn-outline" onClick={() => setShowImport(true)}>Bulk Import</button>
           <button className="btn btn-primary" onClick={openCreate}>+ Add Holiday</button>
         </div>
       </div>
 
-      {/* Table */}
       <div className="card overflow-visible">
-        <div className="card-header">
-          <div>
-            <div className="card-title">Holidays — {year}</div>
-            <div className="card-subtitle">{holidays.length} holiday{holidays.length === 1 ? "" : "s"}</div>
+        <div className="card-header mgmt-card-head">
+          <div className="card-title">
+            Holidays - {year}
+            <span className="mgmt-count-pill">{holidays.length} holiday{holidays.length === 1 ? "" : "s"}</span>
+          </div>
+          <button className="btn btn-outline btn-sm">Export</button>
+        </div>
+        <div className="mgmt-toolbar px-4 pb-3">
+          <div className="input-icon-wrap mgmt-search-wrap">
+            <span className="input-icon">🔍</span>
+            <input className="input-field mgmt-search" placeholder="Search holidays..." value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
         </div>
-        <div className="table-search-bar">
-          <input className="input-field table-search-input" placeholder="Search holidays…" value={search} onChange={e => setSearch(e.target.value)} />
-        </div>
-        <div className="table-wrap">
-          <table className="table-base">
+        <div className="table-wrap mgmt-table-wrap">
+          <table className="table-base mgmt-table">
             <thead>
               <tr>
                 <th className="th-sort" onClick={() => toggleSort("name")} aria-sort={sortCol === "name" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
@@ -232,25 +256,23 @@ export function Holidays() {
                 <th className="th-sort w-[140px]" onClick={() => toggleSort("isRecurring")} aria-sort={sortCol === "isRecurring" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
                   Recurrence <SortIcon active={sortCol === "isRecurring"} dir={sortDir} />
                 </th>
-                <th className="w-[100px]">Actions</th>
+                <th className="w-[110px]">Actions</th>
               </tr>
             </thead>
             <tbody>
               {sorted.map((h) => (
                 <tr key={h.id}>
-                  <td>
-                    <button className="btn-table-link" onClick={() => openEdit(h)}>{h.name}</button>
-                  </td>
+                  <td><button className="btn-table-link" onClick={() => openEdit(h)}>{h.name}</button></td>
                   <td>{fmtDate(h.date)}</td>
-                  <td>
-                    {h.isRecurring
-                      ? <span className="badge bg-purple-100 text-purple-700 border border-purple-300">↻ Annual</span>
-                      : <span className="badge badge-neutral">Once</span>}
-                  </td>
+                  <td>{h.isRecurring ? <span className="badge bg-purple-100 text-purple-700 border border-purple-300">Annual</span> : <span className="badge badge-neutral">Once</span>}</td>
                   <td>
                     <div className="flex gap-2">
-                      <button className="btn btn-ghost btn-sm" onClick={() => openEdit(h)}>Edit</button>
-                      <button className="btn btn-subtle-danger btn-sm" onClick={() => setDeleteId(h.id)}>Delete</button>
+                      <button className="mgmt-icon-action mgmt-icon-action-edit" onClick={() => openEdit(h)} title={`Edit ${h.name}`} aria-label={`Edit ${h.name}`}>
+                        <Pencil size={14} />
+                      </button>
+                      <button className="mgmt-icon-action mgmt-icon-action-danger" onClick={() => setDeleteId(h.id)} title={`Delete ${h.name}`} aria-label={`Delete ${h.name}`}>
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -258,6 +280,14 @@ export function Holidays() {
               {sorted.length === 0 && <tr className="empty-row"><td colSpan={4}>{search ? "No holidays match your search." : `No holidays for ${year}.`}</td></tr>}
             </tbody>
           </table>
+        </div>
+        <div className="mgmt-card-foot">
+          <span>Showing 1-{sorted.length} of {sorted.length} holiday{sorted.length === 1 ? "" : "s"}</span>
+          <div className="mgmt-pagination">
+            <button className="btn btn-outline btn-sm px-2" aria-label="Previous page">&lt;</button>
+            <button className="btn btn-primary btn-sm px-3">1</button>
+            <button className="btn btn-outline btn-sm px-2" aria-label="Next page">&gt;</button>
+          </div>
         </div>
       </div>
     </section>

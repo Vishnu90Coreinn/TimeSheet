@@ -11,3 +11,5 @@ obj/
 apps/web/tsconfig.tsbuildinfo
 /.dotnet-cli
 /.dotnet-home
+/.superpowers/brainstorm/18259-1774715466
+/.claude/settings.local.json

@@ -48,3 +48,5 @@ public record TimesheetWeekDayResponse(DateOnly WorkDate, string Status, int Ent
 public record TimesheetWeekResponse(DateOnly WeekStartDate, DateOnly WeekEndDate, int WeekEnteredMinutes, int WeekAttendanceNetMinutes, int WeekExpectedMinutes, IReadOnlyList<TimesheetWeekDayResponse> Days);
 
 public record CopyTimesheetRequest(DateOnly SourceDate, DateOnly TargetDate);
+
+public record TimesheetExportUserDto(Guid Id, string DisplayName, string Username);

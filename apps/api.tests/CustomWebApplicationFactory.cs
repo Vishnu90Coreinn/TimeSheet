@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using TimeSheet.Infrastructure.Persistence.Interceptors;
 
 namespace TimeSheet.Api.Tests;
 
@@ -29,8 +30,9 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 .ToList();
             foreach (var d in efConfigDescriptors) services.Remove(d);
 
-            services.AddDbContext<TimeSheetDbContext>(options =>
-                options.UseInMemoryDatabase(_databaseName));
+            services.AddDbContext<TimeSheetDbContext>((serviceProvider, options) =>
+                options.UseInMemoryDatabase(_databaseName)
+                    .AddInterceptors(serviceProvider.GetRequiredService<AuditInterceptor>()));
         });
     }
 }

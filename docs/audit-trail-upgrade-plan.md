@@ -1,4 +1,4 @@
-# Audit Trail Upgrade — Field-Level Change Tracking
+﻿# Audit Trail Upgrade â€” Field-Level Change Tracking
 
 **Branch:** `feature/AuditLogUpgrade`
 **Status:** Plan / Design
@@ -14,7 +14,7 @@ The existing audit system is a flat log:
 AuditLog: Id | ActorUserId | Action | EntityType | EntityId | Details (free-text/JSON blob) | CreatedAtUtc
 ```
 
-`Details` is manually constructed per controller — inconsistent, unqueryable, and missing before/after values.
+`Details` is manually constructed per controller â€” inconsistent, unqueryable, and missing before/after values.
 The upgrade must be **non-breaking** (old string-based logs stay valid) while layering structured field tracking on top.
 
 ---
@@ -22,27 +22,27 @@ The upgrade must be **non-breaking** (old string-based logs stay valid) while la
 ## Architecture Overview
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     HTTP Request                            │
-└──────────────────────┬──────────────────────────────────────┘
-                       │
-┌──────────────────────▼──────────────────────────────────────┐
-│  apps/api  (Controllers / MediatR Handlers)                 │
-│  Existing: auditService.WriteAsync("UserUpdated", ...)      │
-│  NEW:      AuditInterceptor (automatic, zero-touch)         │
-└──────────────────────┬──────────────────────────────────────┘
-                       │
-┌──────────────────────▼──────────────────────────────────────┐
-│  TimeSheet.Application                                      │
-│  IAuditService (extended) + IAuditQueue                     │
-└────────────┬──────────────────────────────┬─────────────────┘
-             │                              │
-┌────────────▼──────────┐    ┌─────────────▼─────────────────┐
-│ TimeSheet.Domain       │    │ TimeSheet.Infrastructure       │
-│ AuditLog (upgraded)    │    │ AuditInterceptor               │
-│ AuditLogChange (new)   │    │ AuditService (upgraded)        │
-│ SensitiveAttribute     │    │ AuditBackgroundQueue           │
-└───────────────────────┘    └───────────────────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚                     HTTP Request                            â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                       â”‚
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â–¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚  apps/api  (Controllers / MediatR Handlers)                 â”‚
+â”‚  Existing: auditService.WriteAsync("UserUpdated", ...)      â”‚
+â”‚  NEW:      AuditInterceptor (automatic, zero-touch)         â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                       â”‚
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â–¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚  TimeSheet.Application                                      â”‚
+â”‚  IAuditService (extended) + IAuditQueue                     â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+             â”‚                              â”‚
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â–¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â–¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ TimeSheet.Domain       â”‚    â”‚ TimeSheet.Infrastructure       â”‚
+â”‚ AuditLog (upgraded)    â”‚    â”‚ AuditInterceptor               â”‚
+â”‚ AuditLogChange (new)   â”‚    â”‚ AuditService (upgraded)        â”‚
+â”‚ SensitiveAttribute     â”‚    â”‚ AuditBackgroundQueue           â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
 ---
@@ -80,20 +80,20 @@ CREATE TABLE AuditLogChanges (
 );
 ```
 
-**Design decision — normalized rows vs JSON column:**
+**Design decision â€” normalized rows vs JSON column:**
 
 | Approach | Pros | Cons |
 |---|---|---|
 | Normalized rows (chosen) | Queryable by field name; index-seekable | More rows (~8x per update) |
 | JSON column | Compact; single row | `JSON_VALUE()` is not index-seekable; can't filter `WHERE FieldName = 'X'` efficiently |
 
-At 10k updates/day with avg 8 changed fields = 80k rows/day — well within SQL Server capacity and covered by the existing 1-year retention policy.
+At 10k updates/day with avg 8 changed fields = 80k rows/day â€” well within SQL Server capacity and covered by the existing 1-year retention policy.
 
 ---
 
 ## 2. Domain Layer Changes
 
-### `src/TimeSheet.Domain/Entities/AuditLog.cs` — upgrade in place
+### `src/TimeSheet.Domain/Entities/AuditLog.cs` â€” upgrade in place
 
 ```csharp
 namespace TimeSheet.Domain.Entities;
@@ -131,7 +131,7 @@ public class AuditLogChange
 }
 ```
 
-### `src/TimeSheet.Domain/Common/SensitiveAttribute.cs` — new file
+### `src/TimeSheet.Domain/Common/SensitiveAttribute.cs` â€” new file
 
 Marks entity properties that must never appear as plain text in audit logs.
 
@@ -164,7 +164,7 @@ public class User
 
 ---
 
-## 3. Capture Mechanism — EF Core `ISaveChangesInterceptor`
+## 3. Capture Mechanism â€” EF Core `ISaveChangesInterceptor`
 
 ### Capture strategy decision
 
@@ -190,14 +190,14 @@ namespace TimeSheet.Infrastructure.Persistence.Interceptors;
 public sealed class AuditInterceptor(ICurrentUserService currentUser, ICorrelationIdAccessor correlationId)
     : SaveChangesInterceptor
 {
-    // Infrastructure noise — never audit these
+    // Infrastructure noise â€” never audit these
     private static readonly HashSet<string> IgnoredFields = new(StringComparer.OrdinalIgnoreCase)
     {
         "RowVersion", "UpdatedAtUtc", "CreatedAtUtc", "PasswordHash",
         "ConcurrencyStamp", "NormalizedEmail", "NormalizedUserName"
     };
 
-    // Opt-in list — only track meaningful entities
+    // Opt-in list â€” only track meaningful entities
     private static readonly HashSet<Type> TrackedTypes =
     [
         typeof(User), typeof(Timesheet), typeof(TimesheetEntry),
@@ -271,7 +271,7 @@ public sealed class AuditInterceptor(ICurrentUserService currentUser, ICorrelati
             var propName = prop.Metadata.Name;
             if (IgnoredFields.Contains(propName)) continue;
 
-            // [Sensitive] lookup — cache this in production via SensitiveFieldCache
+            // [Sensitive] lookup â€” cache this in production via SensitiveFieldCache
             var clrProp = entityType.GetProperty(propName);
             var isSensitive = clrProp?.GetCustomAttribute<SensitiveAttribute>() is not null;
 
@@ -321,7 +321,7 @@ public sealed class AuditInterceptor(ICurrentUserService currentUser, ICorrelati
     private static string? FormatValue(object? val) => val switch
     {
         null => null,
-        DateTime dt => dt.ToString("O"),       // ISO 8601 — consistent with UTC serializer
+        DateTime dt => dt.ToString("O"),       // ISO 8601 â€” consistent with UTC serializer
         DateTimeOffset dto => dto.ToString("O"),
         _ => val.ToString()
     };
@@ -330,17 +330,17 @@ public sealed class AuditInterceptor(ICurrentUserService currentUser, ICorrelati
 
 > **Production note:** Reflection in `BuildChanges` is called on every save. Add a static
 > `ConcurrentDictionary<(Type, string), bool> SensitiveFieldCache` to cache the attribute
-> lookup — one reflection call per property per app lifetime.
+> lookup â€” one reflection call per property per app lifetime.
 
 ---
 
-## 4. Performance Strategy — Two-Tier Audit
+## 4. Performance Strategy â€” Two-Tier Audit
 
-### Tier 1 — Same-transaction (default, user-initiated HTTP requests)
+### Tier 1 â€” Same-transaction (default, user-initiated HTTP requests)
 
-The interceptor adds audit rows to the same `SaveChanges` call. Audit and data commit atomically — if the main change rolls back, the audit entry rolls back too. This is the correct compliance behaviour.
+The interceptor adds audit rows to the same `SaveChanges` call. Audit and data commit atomically â€” if the main change rolls back, the audit entry rolls back too. This is the correct compliance behaviour.
 
-### Tier 2 — Fire-and-forget queue (background jobs / bulk operations)
+### Tier 2 â€” Fire-and-forget queue (background jobs / bulk operations)
 
 ```csharp
 // src/TimeSheet.Application/Common/Interfaces/IAuditQueue.cs
@@ -389,11 +389,11 @@ namespace TimeSheet.Application.Common.Interfaces;
 
 public interface IAuditService
 {
-    // Existing — kept for backward compat (used by EventHandlers, no field changes)
+    // Existing â€” kept for backward compat (used by EventHandlers, no field changes)
     Task WriteAsync(string action, string entityType, string entityId,
                     string details, Guid? actorUserId = null);
 
-    // New — structured field changes (when manual diff is preferred over interceptor)
+    // New â€” structured field changes (when manual diff is preferred over interceptor)
     Task WriteWithChangesAsync(string action, string entityType, string entityId,
                                IReadOnlyList<FieldChange> changes, Guid? actorUserId = null);
 }
@@ -494,16 +494,16 @@ migrationBuilder.CreateIndex("IX_AuditLogChanges_FieldName",  "AuditLogChanges",
 
 ## 8. API Design
 
-All endpoints under `/api/v1/admin/` — admin-only (`[Authorize(Roles = "admin")]`).
+All endpoints under `/api/v1/admin/` â€” admin-only (`[Authorize(Roles = "admin")]`).
 
 | Method | Route | Description |
 |---|---|---|
-| `GET` | `/audit-logs` | Existing — add `hasFieldChanges` to response DTO |
-| `GET` | `/audit-logs/{id}/changes` | **NEW** — field-level changes for one log entry |
-| `GET` | `/audit-logs/entities/{entityType}/{entityId}` | **NEW** — full history of one entity |
+| `GET` | `/audit-logs` | Existing â€” add `hasFieldChanges` to response DTO |
+| `GET` | `/audit-logs/{id}/changes` | **NEW** â€” field-level changes for one log entry |
+| `GET` | `/audit-logs/entities/{entityType}/{entityId}` | **NEW** â€” full history of one entity |
 | `GET` | `/audit-logs/actors` | Existing |
 | `GET` | `/audit-logs/stats` | Existing |
-| `GET` | `/audit-logs/export` | Existing — extend CSV to include field changes |
+| `GET` | `/audit-logs/export` | Existing â€” extend CSV to include field changes |
 
 ### New endpoint implementations
 
@@ -554,7 +554,7 @@ public async Task<ActionResult<IReadOnlyList<AuditLogEntry>>> GetEntityHistory(
 
 ---
 
-## 9. Frontend — `AuditLogViewer.tsx` Upgrade
+## 9. Frontend â€” `AuditLogViewer.tsx` Upgrade
 
 The existing component has the table, pagination, filters, and drawer shell. The upgrade adds a lazy-loaded field-level diff table inside the drawer.
 
@@ -589,7 +589,7 @@ function ChangesDiffTable({ logId }: { logId: string }) {
   }, [logId]);
 
   if (loading)
-    return <div className="text-sm text-gray-400 py-4 text-center">Loading changes…</div>;
+    return <div className="text-sm text-gray-400 py-4 text-center">Loading changesâ€¦</div>;
 
   if (changes.length === 0)
     return (
@@ -628,7 +628,7 @@ function ChangesDiffTable({ logId }: { logId: string }) {
 
 function DiffCell({ value, type }: { value: string | null; type: "old" | "new" }) {
   if (value === null)
-    return <span className="text-gray-300 italic text-xs">—</span>;
+    return <span className="text-gray-300 italic text-xs">â€”</span>;
   if (value === "[REDACTED]")
     return <span className="text-gray-400 text-xs font-mono">[REDACTED]</span>;
 
@@ -641,7 +641,7 @@ function DiffCell({ value, type }: { value: string | null; type: "old" | "new" }
 }
 
 function humaniseField(name: string): string {
-  // "HoursWorked" → "Hours Worked", "projectId" → "Project"
+  // "HoursWorked" â†’ "Hours Worked", "projectId" â†’ "Project"
   return name
     .replace(/Id$/, "")
     .replace(/([A-Z])/g, " $1")
@@ -663,69 +663,106 @@ Replace the raw `Details` text block in the existing drawer with:
 )}
 ```
 
-Lazy-loaded — the diff fetch only fires when a row is clicked.
+Lazy-loaded â€” the diff fetch only fires when a row is clicked.
 
 ---
 
 ## 10. Step-by-Step Implementation Plan
 
 ```
-Phase 1 — Schema + Domain  (no behavior change; safe to ship)
-──────────────────────────────────────────────────────────────
-[1] Add AuditLogChange entity to src/TimeSheet.Domain/Entities/AuditLog.cs
-[2] Add SensitiveAttribute + SensitiveFieldCache to src/TimeSheet.Domain/Common/
-[3] Apply [Sensitive] to User.PasswordHash (and any PII fields)
-[4] Update AuditLogConfiguration.cs (add relationship, new indexes)
-[5] Add AuditLogChangeConfiguration.cs
-[6] Add Sprint42_AuditFieldChanges migration (.cs + .Designer.cs — both required)
-[7] Add AuditLogChanges DbSet to TimeSheetDbContext
+Phase 1 â€” Schema + Domain  (no behavior change; safe to ship)
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+[x] [1] Add AuditLogChange entity to src/TimeSheet.Domain/Entities/AuditLog.cs
+[x] [2] Add SensitiveAttribute + SensitiveFieldCache to src/TimeSheet.Domain/Common/
+[x] [3] Apply [Sensitive] to User.PasswordHash (and any PII fields)
+[x] [4] Update AuditLogConfiguration.cs (add relationship, new indexes)
+[x] [5] Add AuditLogChangeConfiguration.cs
+[x] [6] Add Sprint42_AuditFieldChanges migration (.cs + .Designer.cs — both required)
+[x] [7] Add AuditLogChanges DbSet to TimeSheetDbContext
 
-Phase 2 — Interceptor  (starts capturing field changes automatically)
-──────────────────────────────────────────────────────────────
-[8]  Add ICurrentUserService interface to Application/Common/Interfaces/
-[9]  Add HttpContextCurrentUserService implementation to Infrastructure/Services/
-[10] Add ICorrelationIdAccessor interface (reads from existing CorrelationIdMiddleware)
-[11] Build AuditInterceptor in Infrastructure/Persistence/Interceptors/
-[12] Register interceptor in Infrastructure/DependencyInjection.cs
-     (AddInterceptors — must be scoped to avoid capturing stale DbContext)
-[13] Verify with integration test: save User → AuditLogChanges rows created for modified fields
+Phase 2 â€” Interceptor  (starts capturing field changes automatically)
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+[x] [8]  Add ICurrentUserService interface to Application/Common/Interfaces/
+[x] [9]  Add HttpContextCurrentUserService implementation to Infrastructure/Services/
+[x] [10] Add ICorrelationIdAccessor interface (reads from existing CorrelationIdMiddleware)
+[x] [11] Build AuditInterceptor in Infrastructure/Persistence/Interceptors/
+[x] [12] Register interceptor in Infrastructure/DependencyInjection.cs
+     (AddInterceptors â€” must be scoped to avoid capturing stale DbContext)
+[x] [13] Verify with integration test: save User -> AuditLogChanges rows created for modified fields
 
-Phase 3 — API upgrade
-──────────────────────────────────────────────────────────────
-[14] Add GET /audit-logs/{id}/changes endpoint to AdminPrivacyController
-[15] Add GET /audit-logs/entities/{entityType}/{entityId} endpoint
-[16] Add hasFieldChanges to AuditLogEntry DTO response
+Phase 3 â€” API upgrade
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+[x] [14] Add GET /audit-logs/{id}/changes endpoint to AdminPrivacyController
+[x] [15] Add GET /audit-logs/entities/{entityType}/{entityId} endpoint
+[x] [16] Add hasFieldChanges to AuditLogEntry DTO response
 [17] Extend export CSV to include field change columns (optional)
 
-Phase 4 — Frontend upgrade
-──────────────────────────────────────────────────────────────
+Phase 4 â€” Frontend upgrade
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 [18] Add AuditLogChange interface to AuditLogViewer.tsx
 [19] Extend AuditLogEntry interface with hasFieldChanges
 [20] Add ChangesDiffTable + DiffCell + humaniseField components
-[21] Wire hasFieldChanges → lazy fetch + diff table in existing drawer
+[21] Wire hasFieldChanges â†’ lazy fetch + diff table in existing drawer
 [22] Add "Entity History" quick-link from User/Timesheet detail pages (optional)
 ```
+
+## Claude Handover (After Phase 3)
+
+### What Is Done
+- Phase 3 items [14], [15], and [16] are implemented.
+- New admin API endpoints:
+  - `GET /api/v1/admin/audit-logs/{id}/changes`
+  - `GET /api/v1/admin/audit-logs/entities/{entityType}/{entityId}`
+- `GET /api/v1/admin/audit-logs` now includes `hasFieldChanges` in each item.
+- API read logic is moved behind clean-architecture boundary:
+  - `IAdminPrivacyRepository` contract in Domain layer
+  - `AdminPrivacyRepository` implementation in Infrastructure Repository layer
+  - `AdminPrivacyController` uses repository abstraction (no direct `TimeSheetDbContext`)
+- Integration tests added and passing for new Phase 3 behavior.
+
+### Files Added
+- `src/TimeSheet.Domain/Interfaces/IAdminPrivacyRepository.cs`
+- `src/TimeSheet.Infrastructure/Persistence/Repositories/AdminPrivacyRepository.cs`
+- `apps/api.tests/AdminAuditLogsIntegrationTests.cs`
+
+### Files Updated
+- `apps/api/Controllers/AdminPrivacyController.cs`
+- `apps/api/Dtos/PrivacyDtos.cs`
+- `src/TimeSheet.Infrastructure/DependencyInjection.cs`
+- `docs/audit-trail-upgrade-plan.md` (phase tracking)
+
+### Phase 4 Next (Frontend)
+1. Update `apps/web/src/components/Admin/AuditLogViewer.tsx` interfaces:
+   - `AuditLogEntry.hasFieldChanges: boolean`
+   - new `AuditLogChange` shape (`fieldName`, `oldValue`, `newValue`, `valueType`)
+2. Add lazy-loaded drawer view:
+   - fetch changes from `/api/v1/admin/audit-logs/{id}/changes` only when drawer opens
+   - render before/after diff rows and redacted values safely
+3. Keep backward compatibility:
+   - if `hasFieldChanges` is false, show existing `details` content path unchanged
+4. Optional:
+   - add "Entity History" quick-link from relevant detail pages if included in scope.
 
 ---
 
 ## 11. Codebase-Specific Implementation Notes
 
-1. **`AuditService.WriteAsync` does NOT call `SaveChangesAsync`** — the interceptor is consistent
+1. **`AuditService.WriteAsync` does NOT call `SaveChangesAsync`** â€” the interceptor is consistent
    with this pattern; it adds rows to the context and relies on the caller's `SaveChangesAsync`.
 
-2. **EF InMemory in tests** — `ISaveChangesInterceptor` works with the InMemory provider.
-   Do NOT use `defaultValueSql: "NEWSEQUENTIALID()"` in entity constructors — set
+2. **EF InMemory in tests** â€” `ISaveChangesInterceptor` works with the InMemory provider.
+   Do NOT use `defaultValueSql: "NEWSEQUENTIALID()"` in entity constructors â€” set
    `Id = Guid.NewGuid()` instead. (The SQL default is migration-only.)
 
-3. **Designer.cs is mandatory** — every migration needs both `.cs` and `.Designer.cs`.
+3. **Designer.cs is mandatory** â€” every migration needs both `.cs` and `.Designer.cs`.
 
 4. **CorrelationIdMiddleware already exists** at `apps/api/Middleware/CorrelationIdMiddleware.cs`.
    Wire `ICorrelationIdAccessor` to read from `IHttpContextAccessor` using the same header key.
 
-5. **Do NOT include `AuditLog` or `AuditLogChange` in `TrackedTypes`** — would cause
+5. **Do NOT include `AuditLog` or `AuditLogChange` in `TrackedTypes`** â€” would cause
    infinite recursion in the interceptor.
 
-6. **`TrackedTypes` whitelist reduces noise by ~60%** — excludes `RefreshTokens`,
+6. **`TrackedTypes` whitelist reduces noise by ~60%** â€” excludes `RefreshTokens`,
    `PushSubscriptions`, `Notifications`, `ConsentLogs`, etc. which generate high-volume,
    low-value audit rows.
 
@@ -740,5 +777,8 @@ Phase 4 — Frontend upgrade
 | Interceptor scope | Opt-in `TrackedTypes` whitelist | All entities | Avoids high-volume noise from infra entities |
 | Transaction boundary | Same-transaction (atomic) | Fire-and-forget queue | Compliance: if data change rolls back, audit must too. Queue reserved for background jobs |
 | Sensitive field masking | Compile-time `[Sensitive]` attribute | Runtime config file | Attribute travels with property; no config drift; cached via reflection |
-| Old `Details` field | Preserved (nullable) | Remove | Backward compat — existing rows have string Details; frontend drawer still reads it |
+| Old `Details` field | Preserved (nullable) | Remove | Backward compat â€” existing rows have string Details; frontend drawer still reads it |
 | Diff rendering | Strikethrough red / green | Unified diff | Simpler for scalar fields; unified diff suited for multiline text (not applicable here) |
+
+
+

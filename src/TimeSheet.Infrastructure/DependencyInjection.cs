@@ -5,6 +5,7 @@ using TimeSheet.Application.Common.Interfaces;
 using TimeSheet.Domain.Interfaces;
 using TimeSheet.Infrastructure.BackgroundJobs;
 using TimeSheet.Infrastructure.Persistence;
+using TimeSheet.Infrastructure.Persistence.Interceptors;
 using TimeSheet.Infrastructure.Persistence.Repositories;
 using TimeSheet.Infrastructure.Services;
 using AppInterfaces = TimeSheet.Application.Common.Interfaces;
@@ -19,9 +20,11 @@ public static class DependencyInjection
         IConfiguration configuration)
     {
         // Persistence
-        services.AddDbContext<TimeSheetDbContext>(options =>
+        services.AddScoped<AuditInterceptor>();
+        services.AddDbContext<TimeSheetDbContext>((serviceProvider, options) =>
             options.UseSqlServer(configuration.GetConnectionString("DefaultConnection"),
-                b => b.MigrationsAssembly("TimeSheet.Infrastructure")));
+                    b => b.MigrationsAssembly("TimeSheet.Infrastructure"))
+                .AddInterceptors(serviceProvider.GetRequiredService<AuditInterceptor>()));
 
         // Repositories
         services.AddScoped<ITimesheetRepository, TimesheetRepository>();
@@ -41,6 +44,7 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<ISavedReportRepository, SavedReportRepository>();
         services.AddScoped<IApprovalDelegationRepository, ApprovalDelegationRepository>();
+        services.AddScoped<IAdminPrivacyRepository, AdminPrivacyRepository>();
 
         // Core services — registered for Application interfaces (used by handlers)
         services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
@@ -64,6 +68,7 @@ public static class DependencyInjection
         // CurrentUserService (requires IHttpContextAccessor)
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddScoped<ICorrelationIdAccessor, HttpContextCorrelationIdAccessor>();
 
         // Background jobs
         services.AddHostedService<RefreshTokenCleanupService>();

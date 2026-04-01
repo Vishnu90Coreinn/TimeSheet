@@ -113,7 +113,7 @@ public class UsersController(TimeSheetDbContext dbContext, AppInterfaces.IPasswo
         dbContext.Users.Add(user);
         dbContext.UserRoles.Add(new UserRole { UserId = user.Id, RoleId = role.Id });
 
-        await auditService.WriteAsync("UserCreated", "User", user.Id.ToString(), $"Created user {user.Username}", GetUserId());
+        // Field-level audit is handled automatically by AuditInterceptor on SaveChangesAsync.
         await dbContext.SaveChangesAsync();
 
         return CreatedAtAction(nameof(GetById), new { id = user.Id },
@@ -162,7 +162,7 @@ public class UsersController(TimeSheetDbContext dbContext, AppInterfaces.IPasswo
 
         SyncUserRole(user, role.Id);
 
-        await auditService.WriteAsync("UserUpdated", "User", user.Id.ToString(), $"Updated user {user.Username}", GetUserId());
+        // Field-level audit is handled automatically by AuditInterceptor on SaveChangesAsync.
         await dbContext.SaveChangesAsync();
 
         return NoContent();

@@ -93,23 +93,87 @@ public class AdminPrivacyRepository(TimeSheetDbContext dbContext) : IAdminPrivac
         return new AuditLogPageReadModel(items, total, page, pageSize);
     }
 
+    // FK fields whose raw GUID values are resolved to human-readable display names.
+    private static readonly HashSet<string> KnownFkFields = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "ManagerId", "DepartmentId", "WorkPolicyId", "LeavePolicyId",
+        "ProjectId", "TaskCategoryId"
+    };
+
     public async Task<IReadOnlyList<AuditLogChangeReadModel>?> GetAuditChangesAsync(Guid auditLogId, CancellationToken ct = default)
     {
         var exists = await dbContext.AuditLogs.AsNoTracking().AnyAsync(a => a.Id == auditLogId, ct);
-        if (!exists)
-        {
-            return null;
-        }
+        if (!exists) return null;
 
-        return await dbContext.AuditLogChanges.AsNoTracking()
+        var rawChanges = await dbContext.AuditLogChanges.AsNoTracking()
             .Where(c => c.AuditLogId == auditLogId)
             .OrderBy(c => c.FieldName)
-            .Select(c => new AuditLogChangeReadModel(
-                c.FieldName,
-                c.IsMasked ? "[REDACTED]" : c.OldValue,
-                c.IsMasked ? "[REDACTED]" : c.NewValue,
-                c.ValueType))
             .ToListAsync(ct);
+
+        if (rawChanges.Count == 0) return [];
+
+        // Collect all unique GUIDs per FK field for batch resolution
+        var guidsByField = new Dictionary<string, HashSet<Guid>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var c in rawChanges.Where(c => !c.IsMasked && KnownFkFields.Contains(c.FieldName)))
+        {
+            if (!guidsByField.TryGetValue(c.FieldName, out var set))
+                guidsByField[c.FieldName] = set = [];
+            if (Guid.TryParse(c.OldValue, out var old)) set.Add(old);
+            if (Guid.TryParse(c.NewValue, out var nv))  set.Add(nv);
+        }
+
+        // One query per FK table, only for fields that actually appear in this entry
+        var resolutions = new Dictionary<string, Dictionary<Guid, string>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (fieldName, guids) in guidsByField)
+        {
+            var ids = guids.ToList();
+            resolutions[fieldName] = fieldName.ToLowerInvariant() switch
+            {
+                "managerid" => await dbContext.Users.AsNoTracking()
+                    .Where(u => ids.Contains(u.Id))
+                    .ToDictionaryAsync(u => u.Id, u => string.IsNullOrWhiteSpace(u.DisplayName) ? u.Username : u.DisplayName, ct),
+                "departmentid" => await dbContext.Departments.AsNoTracking()
+                    .Where(d => ids.Contains(d.Id))
+                    .ToDictionaryAsync(d => d.Id, d => d.Name, ct),
+                "workpolicyid" => await dbContext.WorkPolicies.AsNoTracking()
+                    .Where(p => ids.Contains(p.Id))
+                    .ToDictionaryAsync(p => p.Id, p => p.Name, ct),
+                "leavepolicyid" => await dbContext.LeavePolicies.AsNoTracking()
+                    .Where(p => ids.Contains(p.Id))
+                    .ToDictionaryAsync(p => p.Id, p => p.Name, ct),
+                "projectid" => await dbContext.Projects.AsNoTracking()
+                    .Where(p => ids.Contains(p.Id))
+                    .ToDictionaryAsync(p => p.Id, p => p.Name, ct),
+                "taskcategoryid" => await dbContext.TaskCategories.AsNoTracking()
+                    .Where(t => ids.Contains(t.Id))
+                    .ToDictionaryAsync(t => t.Id, t => t.Name, ct),
+                _ => []
+            };
+        }
+
+        // Build final result — resolve FK GUIDs; leave everything else as-is
+        return rawChanges.Select(c =>
+        {
+            if (c.IsMasked)
+                return new AuditLogChangeReadModel(c.FieldName, "[REDACTED]", "[REDACTED]", c.ValueType);
+
+            var oldDisplay = Resolve(c.FieldName, c.OldValue, resolutions);
+            var newDisplay = Resolve(c.FieldName, c.NewValue, resolutions);
+            return new AuditLogChangeReadModel(c.FieldName, oldDisplay, newDisplay, c.ValueType);
+        }).ToList();
+    }
+
+    private static string? Resolve(
+        string fieldName,
+        string? rawValue,
+        Dictionary<string, Dictionary<Guid, string>> resolutions)
+    {
+        if (rawValue is null) return null;
+        if (resolutions.TryGetValue(fieldName, out var map)
+            && Guid.TryParse(rawValue, out var guid)
+            && map.TryGetValue(guid, out var displayName))
+            return displayName;
+        return rawValue;
     }
 
     public async Task<IReadOnlyList<AuditLogListItemReadModel>> GetEntityHistoryAsync(

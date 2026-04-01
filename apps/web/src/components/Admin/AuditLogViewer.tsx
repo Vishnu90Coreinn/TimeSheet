@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Search, Download, X, ChevronUp, ChevronDown, Clock, User, FileText,
   Check, AlertCircle, Send, Plus, Edit2, Activity,
@@ -825,11 +826,18 @@ function StatsBar({ stats }: { stats: AuditStats | null }) {
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 export function AuditLogViewer() {
-  // Filter state
-  const [searchInput, setSearchInput]         = useState("");
-  const [search, setSearch]                   = useState("");
+  // Pre-filters from URL params — e.g. /audit-logs?entityType=User&entityId={guid}
+  const [searchParams] = useSearchParams();
+  const initEntityType = searchParams.get("entityType") ?? "";
+  const initEntityId   = searchParams.get("entityId")   ?? "";
+
+  // Filter state — initialised from URL params when present
+  const [searchInput, setSearchInput]         = useState(initEntityId);
+  const [search, setSearch]                   = useState(initEntityId);
   const [actionFilters, setActionFilters]     = useState<string[]>([]);
-  const [entityFilters, setEntityFilters]     = useState<string[]>([]);
+  const [entityFilters, setEntityFilters]     = useState<string[]>(
+    initEntityType ? [initEntityType] : []
+  );
   const [actorFilters, setActorFilters]       = useState<string[]>([]);
   const [preset, setPreset]                   = useState<PresetKey>("all");
   const [customFrom, setCustomFrom]           = useState("");
@@ -847,9 +855,11 @@ export function AuditLogViewer() {
   const [loading, setLoading]         = useState(true);
   const [selectedEntry, setSelectedEntry] = useState<AuditLogEntry | null>(null);
 
-  // Accumulated options for multi-select dropdowns
+  // Accumulated options for multi-select dropdowns — seed with URL-param entity type
   const [knownActions, setKnownActions]   = useState<string[]>([]);
-  const [knownEntities, setKnownEntities] = useState<string[]>([]);
+  const [knownEntities, setKnownEntities] = useState<string[]>(
+    initEntityType ? [initEntityType] : []
+  );
 
   // Computed date range from preset
   const { fromDate, toDate } = (() => {

@@ -128,15 +128,20 @@ public class AdminPrivacyController(IAdminPrivacyRepository adminPrivacyReposito
         [FromQuery] DateTime? toDate)
     {
         var rows = await adminPrivacyRepository.GetAuditLogsForExportAsync(
-            new AuditLogFilterReadModel(search, actorId, action, entityType, fromDate, toDate, null, 1, 100));
+            new AuditLogFilterReadModel(search, actorId, action, entityType, fromDate, toDate, null, 1, 500));
+
+        // Fetch field-change summaries for all rows in one batch
+        var summaries = await adminPrivacyRepository.GetFieldChangeSummariesAsync(
+            rows.Select(r => r.Id));
 
         var sb = new System.Text.StringBuilder();
-        sb.AppendLine("Id,Timestamp,Actor,Action,EntityType,EntityId,Details");
+        sb.AppendLine("Id,Timestamp,Actor,Action,EntityType,EntityId,Details,FieldChanges");
         foreach (var row in rows)
         {
             var actorName = row.ActorName ?? row.ActorUserId?.ToString() ?? "System";
             var details = (row.Details ?? string.Empty).Replace("\"", "\"\"");
-            sb.AppendLine($"{row.Id},{row.CreatedAtUtc:O},{CsvQuote(actorName)},{row.Action},{row.EntityType},{row.EntityId},{CsvQuote(details)}");
+            summaries.TryGetValue(row.Id, out var fieldChanges);
+            sb.AppendLine($"{row.Id},{row.CreatedAtUtc:O},{CsvQuote(actorName)},{row.Action},{row.EntityType},{row.EntityId},{CsvQuote(details)},{CsvQuote(fieldChanges ?? string.Empty)}");
         }
 
         var bytes = System.Text.Encoding.UTF8.GetBytes(sb.ToString());

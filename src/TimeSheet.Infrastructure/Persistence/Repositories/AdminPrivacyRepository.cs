@@ -112,7 +112,55 @@ public class AdminPrivacyRepository(TimeSheetDbContext dbContext) : IAdminPrivac
 
         if (rawChanges.Count == 0) return [];
 
-        // Collect all unique GUIDs per FK field for batch resolution
+        var resolutions = await BuildResolutionsAsync(rawChanges, ct);
+
+        return rawChanges.Select(c =>
+        {
+            if (c.IsMasked)
+                return new AuditLogChangeReadModel(c.FieldName, "[REDACTED]", "[REDACTED]", c.ValueType);
+            return new AuditLogChangeReadModel(
+                c.FieldName,
+                Resolve(c.FieldName, c.OldValue, resolutions),
+                Resolve(c.FieldName, c.NewValue, resolutions),
+                c.ValueType);
+        }).ToList();
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, string>> GetFieldChangeSummariesAsync(
+        IEnumerable<Guid> auditLogIds, CancellationToken ct = default)
+    {
+        var ids = auditLogIds.Distinct().ToList();
+        if (ids.Count == 0) return new Dictionary<Guid, string>();
+
+        var rawChanges = await dbContext.AuditLogChanges.AsNoTracking()
+            .Where(c => ids.Contains(c.AuditLogId))
+            .OrderBy(c => c.AuditLogId)
+            .ThenBy(c => c.FieldName)
+            .ToListAsync(ct);
+
+        if (rawChanges.Count == 0) return new Dictionary<Guid, string>();
+
+        var resolutions = await BuildResolutionsAsync(rawChanges, ct);
+
+        return rawChanges
+            .GroupBy(c => c.AuditLogId)
+            .ToDictionary(
+                g => g.Key,
+                g => string.Join(" | ", g.Select(c =>
+                {
+                    var label = HumaniseField(c.FieldName);
+                    if (c.IsMasked) return $"{label}: [REDACTED] → [REDACTED]";
+                    var old = Resolve(c.FieldName, c.OldValue, resolutions) ?? "—";
+                    var nv  = Resolve(c.FieldName, c.NewValue, resolutions) ?? "—";
+                    return $"{label}: {old} → {nv}";
+                })));
+    }
+
+    // ── Shared FK resolution helpers ──────────────────────────────────────────
+
+    private async Task<Dictionary<string, Dictionary<Guid, string>>> BuildResolutionsAsync(
+        IEnumerable<AuditLogChange> rawChanges, CancellationToken ct)
+    {
         var guidsByField = new Dictionary<string, HashSet<Guid>>(StringComparer.OrdinalIgnoreCase);
         foreach (var c in rawChanges.Where(c => !c.IsMasked && KnownFkFields.Contains(c.FieldName)))
         {
@@ -122,45 +170,34 @@ public class AdminPrivacyRepository(TimeSheetDbContext dbContext) : IAdminPrivac
             if (Guid.TryParse(c.NewValue, out var nv))  set.Add(nv);
         }
 
-        // One query per FK table, only for fields that actually appear in this entry
         var resolutions = new Dictionary<string, Dictionary<Guid, string>>(StringComparer.OrdinalIgnoreCase);
         foreach (var (fieldName, guids) in guidsByField)
         {
-            var ids = guids.ToList();
+            var idList = guids.ToList();
             resolutions[fieldName] = fieldName.ToLowerInvariant() switch
             {
-                "managerid" => await dbContext.Users.AsNoTracking()
-                    .Where(u => ids.Contains(u.Id))
+                "managerid"      => await dbContext.Users.AsNoTracking()
+                    .Where(u => idList.Contains(u.Id))
                     .ToDictionaryAsync(u => u.Id, u => string.IsNullOrWhiteSpace(u.DisplayName) ? u.Username : u.DisplayName, ct),
-                "departmentid" => await dbContext.Departments.AsNoTracking()
-                    .Where(d => ids.Contains(d.Id))
+                "departmentid"   => await dbContext.Departments.AsNoTracking()
+                    .Where(d => idList.Contains(d.Id))
                     .ToDictionaryAsync(d => d.Id, d => d.Name, ct),
-                "workpolicyid" => await dbContext.WorkPolicies.AsNoTracking()
-                    .Where(p => ids.Contains(p.Id))
+                "workpolicyid"   => await dbContext.WorkPolicies.AsNoTracking()
+                    .Where(p => idList.Contains(p.Id))
                     .ToDictionaryAsync(p => p.Id, p => p.Name, ct),
-                "leavepolicyid" => await dbContext.LeavePolicies.AsNoTracking()
-                    .Where(p => ids.Contains(p.Id))
+                "leavepolicyid"  => await dbContext.LeavePolicies.AsNoTracking()
+                    .Where(p => idList.Contains(p.Id))
                     .ToDictionaryAsync(p => p.Id, p => p.Name, ct),
-                "projectid" => await dbContext.Projects.AsNoTracking()
-                    .Where(p => ids.Contains(p.Id))
+                "projectid"      => await dbContext.Projects.AsNoTracking()
+                    .Where(p => idList.Contains(p.Id))
                     .ToDictionaryAsync(p => p.Id, p => p.Name, ct),
                 "taskcategoryid" => await dbContext.TaskCategories.AsNoTracking()
-                    .Where(t => ids.Contains(t.Id))
+                    .Where(t => idList.Contains(t.Id))
                     .ToDictionaryAsync(t => t.Id, t => t.Name, ct),
                 _ => []
             };
         }
-
-        // Build final result — resolve FK GUIDs; leave everything else as-is
-        return rawChanges.Select(c =>
-        {
-            if (c.IsMasked)
-                return new AuditLogChangeReadModel(c.FieldName, "[REDACTED]", "[REDACTED]", c.ValueType);
-
-            var oldDisplay = Resolve(c.FieldName, c.OldValue, resolutions);
-            var newDisplay = Resolve(c.FieldName, c.NewValue, resolutions);
-            return new AuditLogChangeReadModel(c.FieldName, oldDisplay, newDisplay, c.ValueType);
-        }).ToList();
+        return resolutions;
     }
 
     private static string? Resolve(
@@ -174,6 +211,19 @@ public class AdminPrivacyRepository(TimeSheetDbContext dbContext) : IAdminPrivac
             && map.TryGetValue(guid, out var displayName))
             return displayName;
         return rawValue;
+    }
+
+    private static string HumaniseField(string name)
+    {
+        // "WorkPolicyId" → "Work Policy",  "ManagerId" → "Manager"
+        if (name.EndsWith("Id", StringComparison.Ordinal)) name = name[..^2];
+        var sb = new System.Text.StringBuilder();
+        foreach (var ch in name)
+        {
+            if (char.IsUpper(ch) && sb.Length > 0) sb.Append(' ');
+            sb.Append(ch);
+        }
+        return sb.ToString();
     }
 
     public async Task<IReadOnlyList<AuditLogListItemReadModel>> GetEntityHistoryAsync(

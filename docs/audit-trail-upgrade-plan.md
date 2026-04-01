@@ -695,15 +695,15 @@ Phase 3 â€” API upgrade
 [x] [14] Add GET /audit-logs/{id}/changes endpoint to AdminPrivacyController
 [x] [15] Add GET /audit-logs/entities/{entityType}/{entityId} endpoint
 [x] [16] Add hasFieldChanges to AuditLogEntry DTO response
-[17] Extend export CSV to include field change columns (optional)
+[x] [17] Extend export CSV to include field change columns (optional)
 
 Phase 4 â€” Frontend upgrade
 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-[18] Add AuditLogChange interface to AuditLogViewer.tsx
-[19] Extend AuditLogEntry interface with hasFieldChanges
-[20] Add ChangesDiffTable + DiffCell + humaniseField components
-[21] Wire hasFieldChanges â†’ lazy fetch + diff table in existing drawer
-[22] Add "Entity History" quick-link from User/Timesheet detail pages (optional)
+[x] [18] Add AuditLogChange interface to AuditLogViewer.tsx
+[x] [19] Extend AuditLogEntry interface with hasFieldChanges
+[x] [20] Add ChangesDiffTable + DiffCell + humaniseField components
+[x] [21] Wire hasFieldChanges â†’ lazy fetch + diff table in existing drawer
+[x] [22] Add "Entity History" quick-link from User/Timesheet detail pages (optional)
 ```
 
 ## Claude Handover (After Phase 3)

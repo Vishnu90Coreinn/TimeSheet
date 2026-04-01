@@ -18,6 +18,14 @@ public interface IAdminPrivacyRepository
     Task<IReadOnlyList<AuditLogExportItemReadModel>> GetAuditLogsForExportAsync(
         AuditLogFilterReadModel filter,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns a pipe-separated "Field: Before → After" summary string keyed by AuditLog ID,
+    /// for use in CSV exports. Only IDs that have field-level change rows are returned.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, string>> GetFieldChangeSummariesAsync(
+        IEnumerable<Guid> auditLogIds,
+        CancellationToken ct = default);
 }
 
 public record RetentionPolicyReadModel(string DataType, int RetentionDays);

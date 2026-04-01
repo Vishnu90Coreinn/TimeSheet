@@ -11,6 +11,20 @@ namespace TimeSheet.Infrastructure.Persistence.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            // These three indexes were pre-created by db/schema.sql and must be dropped
+            // before column alterations, then recreated at the end of this method.
+            migrationBuilder.DropIndex(
+                name: "IX_AuditLogs_EntityType_EntityId",
+                table: "AuditLogs");
+
+            migrationBuilder.DropIndex(
+                name: "IX_AuditLogs_ActorUserId",
+                table: "AuditLogs");
+
+            migrationBuilder.DropIndex(
+                name: "IX_AuditLogs_CreatedAtUtc",
+                table: "AuditLogs");
+
             migrationBuilder.AlterColumn<string>(
                 name: "EntityType",
                 table: "AuditLogs",
@@ -129,6 +143,9 @@ namespace TimeSheet.Infrastructure.Persistence.Migrations
                 name: "IX_AuditLogs_EntityType_EntityId",
                 table: "AuditLogs");
 
+            // Column alterations happen below; indexes are recreated after to restore
+            // the pre-Sprint42 state that schema.sql originally established.
+
             migrationBuilder.DropColumn(
                 name: "CorrelationId",
                 table: "AuditLogs");
@@ -170,6 +187,22 @@ namespace TimeSheet.Infrastructure.Persistence.Migrations
                 oldClrType: typeof(string),
                 oldType: "nvarchar(100)",
                 oldMaxLength: 100);
+
+            // Restore the three indexes that schema.sql originally established
+            migrationBuilder.CreateIndex(
+                name: "IX_AuditLogs_ActorUserId",
+                table: "AuditLogs",
+                column: "ActorUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AuditLogs_CreatedAtUtc",
+                table: "AuditLogs",
+                column: "CreatedAtUtc");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AuditLogs_EntityType_EntityId",
+                table: "AuditLogs",
+                columns: new[] { "EntityType", "EntityId" });
         }
     }
 }

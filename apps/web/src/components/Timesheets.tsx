@@ -9,6 +9,7 @@ import { useToast } from "../contexts/ToastContext";
 import { SkeletonPage } from "./Skeleton";
 import { EmptyTimesheets } from "./EmptyState";
 import { TimePickerInput } from "./TimePickerInput";
+import { TimesheetExportModal } from "./TimesheetExportModal";
 import { AppButton, AppInput, AppSelect, AppTextarea } from "./ui";
 import type { AttendanceSummary } from "./AttendanceWidget";
 import type { OvertimeSummary, Project, TaskCategory, TimesheetDay, TimesheetEntry, WeekDayMeta, WeekSummary } from "../types";
@@ -224,6 +225,7 @@ export function Timesheets() {
   const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
   const [saveTemplateName, setSaveTemplateName] = useState("");
   const [saveTemplateLoading, setSaveTemplateLoading] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
 
   /* ── Attendance ───────────────────────────────────────────────────────────── */
   const loadAttendance = useCallback(async () => {
@@ -722,7 +724,9 @@ export function Timesheets() {
               </div>
             </div>
             <div className="flex gap-2 flex-wrap items-center">
-              <AppButton variant="outline" size="sm" className="ts-toolbar-btn">Export</AppButton>
+              <AppButton variant="outline" size="sm" className="ts-toolbar-btn" onClick={() => setExportOpen(true)}>
+                Export
+              </AppButton>
               {isDraft && dayEntries.length > 0 && (
                 <AppButton
                   variant="outline"
@@ -1592,6 +1596,7 @@ export function Timesheets() {
           </div>
         </div>
       )}
+      <TimesheetExportModal open={exportOpen} onClose={() => setExportOpen(false)} />
     </section>
   );
 }

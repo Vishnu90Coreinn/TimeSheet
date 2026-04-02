@@ -25,6 +25,7 @@ const NAV_ITEMS: NavItem[] = [
   { view: "dashboard",       label: "Dashboard",      icon: <DashboardIcon />,   group: "main" },
   { view: "timesheets",      label: "Timesheets",     icon: <ClockIcon />,       group: "main" },
   { view: "leave",           label: "Leave",          icon: <CalendarIcon />,    group: "main" },
+  { view: "reports",         label: "Reports",        icon: <ChartIcon />,       group: "main" },
   { view: "approvals",       label: "Approvals",      icon: <CheckIcon />,       group: "manager", badgeVariant: "danger" },
   { view: "team",            label: "Team Status",    icon: <TeamIcon />,        group: "manager" },
   { view: "projects",        label: "Projects",       icon: <FolderIcon />,      group: "admin" },

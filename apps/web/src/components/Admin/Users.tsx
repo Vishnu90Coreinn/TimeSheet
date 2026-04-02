@@ -1,7 +1,8 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../../api/client";
 import type { Department, LeavePolicy, User, WorkPolicy } from "../../types";
-import { Pencil, UserCheck, UserX } from "lucide-react";
+import { History, Pencil, UserCheck, UserX } from "lucide-react";
 import { AppButton, AppCheckbox, AppIconButton, AppInput, AppPagination, AppSelect, AppTableShell } from "../ui";
 
 type UserForm = {
@@ -79,6 +80,7 @@ function Drawer({ open, title, onClose, children, footer }: { open: boolean; tit
 }
 
 export function Users() {
+  const navigate = useNavigate();
   const [users, setUsers] = useState<User[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [policies, setPolicies] = useState<WorkPolicy[]>([]);
@@ -378,6 +380,14 @@ export function Users() {
                         aria-label={`Edit ${u.username}`}
                       >
                         <Pencil size={14} />
+                      </AppIconButton>
+                      <AppIconButton
+                        tone="edit"
+                        onClick={() => navigate(`/audit-logs?entityType=User&entityId=${u.id}`)}
+                        title={`Audit history for ${u.username}`}
+                        aria-label={`Audit history for ${u.username}`}
+                      >
+                        <History size={14} />
                       </AppIconButton>
                       <AppIconButton
                         tone={u.isActive ? "danger" : "success"}

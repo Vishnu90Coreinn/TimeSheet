@@ -17,6 +17,7 @@ public class TimeSheetDbContext(DbContextOptions<TimeSheetDbContext> options) : 
     public DbSet<OvertimePolicy> OvertimePolicies => Set<OvertimePolicy>();
     public DbSet<CompOffBalance> CompOffBalances => Set<CompOffBalance>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<AuditLogChange> AuditLogChanges => Set<AuditLogChange>();
     public DbSet<WorkSession> WorkSessions => Set<WorkSession>();
     public DbSet<BreakEntry> BreakEntries => Set<BreakEntry>();
     public DbSet<Timesheet> Timesheets => Set<Timesheet>();

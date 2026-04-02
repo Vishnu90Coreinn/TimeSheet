@@ -11,6 +11,7 @@ import { EmptyTimesheets } from "./EmptyState";
 import { TimePickerInput } from "./TimePickerInput";
 import { TimesheetExportModal } from "./TimesheetExportModal";
 import { AppButton, AppInput, AppSelect, AppTextarea } from "./ui";
+import { Pencil, Trash2 } from "lucide-react";
 import type { AttendanceSummary } from "./AttendanceWidget";
 import type { OvertimeSummary, Project, TaskCategory, TimesheetDay, TimesheetEntry, WeekDayMeta, WeekSummary } from "../types";
 import { useTimezone } from "../hooks/useTimezone";
@@ -748,7 +749,7 @@ export function Timesheets() {
                   Submit Week ({submittableCount})
                 </AppButton>
               )}
-              {isDraft && dayEntries.length > 0 && (
+              {(isDraft || isRejected) && dayEntries.length > 0 && (
                 <AppButton
                   variant="outline"
                   size="sm"
@@ -1122,13 +1123,13 @@ export function Timesheets() {
                     <div className="text-[14px] font-bold text-[var(--n-900,#111827)] whitespace-nowrap min-w-[40px] text-right">
                       {fmtHours(entry.minutes)}
                     </div>
-                    {isDraft ? (
+                    {(isDraft || isRejected) ? (
                       <div className="flex gap-1">
                         <AppButton variant="ghost" size="sm" className="ts-icon-btn" title="Edit" onClick={() => openEdit(entry)}>
-                          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M14.7 3.3a1 1 0 0 1 1.4 1.4L5.5 15.3l-3 .7.7-3L14.7 3.3z"/></svg>
+                          <Pencil size={14} />
                         </AppButton>
                         <AppButton variant="ghost" size="sm" className="ts-icon-btn ts-icon-btn--danger" title="Delete" onClick={() => void deleteEntry(entry.id)}>
-                          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 6h14M8 6V4h4v2M6 6l1 11h6l1-11"/></svg>
+                          <Trash2 size={14} />
                         </AppButton>
                       </div>
                     ) : (

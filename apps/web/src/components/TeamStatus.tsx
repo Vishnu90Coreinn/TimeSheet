@@ -556,7 +556,7 @@ export function TeamStatus() {
         {/* ── KPI Stats Strip ─────────────────────────────────────────────────── */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
           {kpiCards.map(k => (
-            <div key={k.label} style={{ background: "transparent", border: "1px solid var(--border-subtle)", borderLeft: `3px solid ${k.color}`, borderRadius: 10, padding: "14px 16px", display: "flex", alignItems: "flex-start", gap: 12 }}>
+            <div key={k.label} style={{ background: "var(--surface)", border: "1px solid var(--border-subtle)", borderLeft: `3px solid ${k.color}`, borderRadius: 10, padding: "14px 16px", display: "flex", alignItems: "flex-start", gap: 12 }}>
               <div style={{ width: 36, height: 36, borderRadius: 8, background: k.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: k.color }}>
                 {k.icon}
               </div>
@@ -570,7 +570,7 @@ export function TeamStatus() {
         </div>
 
         {/* ── Main Card (filter tabs + table) ─────────────────────────────────── */}
-        <div style={{ background: "var(--surface)", border: "1px solid var(--border-subtle)", borderRadius: 12, overflow: "clip" }}>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border-subtle)", borderRadius: 12, overflow: "hidden" }}>
 
           {/* Filter tabs */}
           <div style={{ display: "flex", borderBottom: "1px solid var(--border-subtle)", padding: "0 4px", overflowX: "auto" }}>
@@ -638,7 +638,7 @@ export function TeamStatus() {
                     </th>
                     <th style={{ width: "20%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Week Progress</th>
                     <th style={{ width: "12%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Timesheet</th>
-                    <th style={{ width: "22%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", position: "sticky", right: 0, zIndex: 2, background: "var(--n-50, #f8fafc)", boxShadow: "-2px 0 6px rgba(0,0,0,0.06)" }}>
+                    <th style={{ width: "22%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       Actions
                     </th>
                   </tr>
@@ -696,8 +696,8 @@ export function TeamStatus() {
                         {/* Timesheet */}
                         <td><StatusBadge status={tsStatus} /></td>
 
-                        {/* Actions — sticky right */}
-                        <td style={{ position: "sticky", right: 0, zIndex: 1, background: "var(--surface)", boxShadow: "-2px 0 6px rgba(0,0,0,0.04)" }}>
+                        {/* Actions */}
+                        <td>
                           <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                             {m.pendingApprovalCount > 0 && (
                               <button

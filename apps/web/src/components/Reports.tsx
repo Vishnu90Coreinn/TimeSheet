@@ -14,6 +14,7 @@ type SortDir = "asc" | "desc";
 type ColFormat = "minutes" | "date" | "datetime" | "status" | "bool" | "util-bar" | "balance-bar" | "delta" | "leave-days";
 type ColConfig = { key: string; label: string; hidden?: boolean; format?: ColFormat; sortable?: boolean; align?: "right"; primary?: boolean };
 type KpiCard = { label: string; value: string; sub?: string; accent?: "red" | "amber" | "green" };
+type DatePreset = "7d" | "30d" | "thisMonth" | "lastMonth" | "custom";
 
 // ── Column definitions ────────────────────────────────────────────────────────
 const REPORT_COLS: Record<ReportKey, ColConfig[]> = {
@@ -370,7 +371,27 @@ export function Reports() {
   const [editingReport, setEditingReport] = useState<SavedReport | null>(null);
   const [saveLoading, setSaveLoading] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [datePreset, setDatePreset] = useState<DatePreset>("thisMonth");
 
+  function applyDatePreset(preset: DatePreset) {
+    const d = new Date();
+    const todayStr = d.toISOString().slice(0, 10);
+    if (preset === "7d") {
+      const f = new Date(d); f.setDate(d.getDate() - 6);
+      setFromDate(f.toISOString().slice(0, 10)); setToDate(todayStr);
+    } else if (preset === "30d") {
+      const f = new Date(d); f.setDate(d.getDate() - 29);
+      setFromDate(f.toISOString().slice(0, 10)); setToDate(todayStr);
+    } else if (preset === "thisMonth") {
+      setFromDate(getMonthStart()); setToDate(todayStr);
+    } else if (preset === "lastMonth") {
+      const y = d.getFullYear(), m = d.getMonth();
+      const ls = new Date(m === 0 ? y - 1 : y, m === 0 ? 11 : m - 1, 1);
+      const le = new Date(y, m, 0);
+      setFromDate(ls.toISOString().slice(0, 10)); setToDate(le.toISOString().slice(0, 10));
+    }
+    setDatePreset(preset);
+  }
 
   function buildUrl(key: ReportKey, pg: number, ps: number) {
     const params = new URLSearchParams({ page: String(pg), pageSize: String(ps) });
@@ -568,175 +589,182 @@ export function Reports() {
 
   if (loading && data === null) return <SkeletonPage kpis={3} rows={8} cols={5} />;
 
+  const PRESET_OPTS: { key: DatePreset; label: string }[] = [
+    { key: "7d", label: "7 Days" },
+    { key: "30d", label: "30 Days" },
+    { key: "thisMonth", label: "This Month" },
+    { key: "lastMonth", label: "Last Month" },
+    { key: "custom", label: "Custom" },
+  ];
+
+  const KPI_PALETTES = [
+    { main: "#4f46e5", bg: "#eef2ff", border: "#c7d2fe" },
+    { main: "#059669", bg: "#ecfdf5", border: "#a7f3d0" },
+    { main: "#7c3aed", bg: "#f5f3ff", border: "#ddd6fe" },
+    { main: "#64748b", bg: "#f8fafc", border: "#e2e8f0" },
+  ];
+  const KPI_ACCENT_PALETTES: Record<string, { main: string; bg: string; border: string }> = {
+    red:   { main: "#dc2626", bg: "#fef2f2", border: "#fecaca" },
+    amber: { main: "#d97706", bg: "#fffbeb", border: "#fde68a" },
+    green: { main: "#059669", bg: "#ecfdf5", border: "#a7f3d0" },
+  };
+  const KPI_ICONS = [
+    <svg key="0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
+    <svg key="1" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>,
+    <svg key="2" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
+    <svg key="3" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
+  ];
+
   return (
-    <section className="flex flex-col gap-6">
-      {/* Page header */}
-      <div className="page-header">
+    <section style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+
+      {/* ── Page Header ── */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
         <div>
-          <div className="page-title">Reports</div>
-          <div className="page-subtitle">Workforce analytics and data exports</div>
+          <h1 style={{ margin: 0, fontSize: "1.3rem", fontWeight: 700, color: "var(--text-primary)" }}>Reports</h1>
+          <p style={{ margin: "3px 0 0", fontSize: "0.82rem", color: "var(--text-secondary)" }}>Workforce analytics and data exports</p>
         </div>
-        {/* Saved Reports dropdown + Manage link */}
-        <div className="flex items-center gap-2">
-          <div className="relative inline-block">
-            <AppButton
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-1"
-              onClick={() => setShowSavedDropdown(o => !o)}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-              Saved Reports ▾
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div style={{ position: "relative", display: "inline-block" }}>
+            <AppButton variant="outline" size="sm" style={{ display: "flex", alignItems: "center", gap: 6 }} onClick={() => setShowSavedDropdown(o => !o)}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              Saved Reports
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
             </AppButton>
             {showSavedDropdown && (
               <>
-                <div className="fixed inset-0 z-[99]" onClick={() => setShowSavedDropdown(false)} />
-                <div className="absolute right-0 top-[calc(100%+4px)] bg-n-0 border border-border-default rounded-lg shadow-md z-[100] min-w-[240px] py-1">
+                <div style={{ position: "fixed", inset: 0, zIndex: 99 }} onClick={() => setShowSavedDropdown(false)} />
+                <div style={{ position: "absolute", right: 0, top: "calc(100% + 4px)", background: "var(--n-0)", border: "1px solid var(--border-default)", borderRadius: 10, boxShadow: "0 4px 20px rgba(0,0,0,0.1)", zIndex: 100, minWidth: 240, padding: "4px 0" }}>
                   {savedReports.length === 0 ? (
-                    <div className="px-4 py-3 text-[0.8rem] text-[#9ca3af]">No saved reports yet.</div>
-                  ) : (
-                    savedReports.map(sr => (
-                      <AppButton
-                        key={sr.id}
-                        variant="ghost"
-                        size="sm"
-                        className="rpt-export-item w-full text-left justify-start"
-                        onClick={() => loadSavedReportFilters(sr)}
-                      >
-                        <span className="block font-medium text-[0.82rem]">{sr.name}</span>
-                        <span className="block text-[0.72rem] text-[#9ca3af]">{TABS.find(t => t.key === sr.reportKey)?.label ?? sr.reportKey}</span>
-                      </AppButton>
-                    ))
-                  )}
+                    <div style={{ padding: "12px 16px", fontSize: "0.8rem", color: "var(--text-tertiary)" }}>No saved reports yet.</div>
+                  ) : savedReports.map(sr => (
+                    <AppButton key={sr.id} variant="ghost" size="sm" className="rpt-export-item w-full text-left justify-start" onClick={() => loadSavedReportFilters(sr)}>
+                      <span style={{ display: "block", fontWeight: 600, fontSize: "0.82rem" }}>{sr.name}</span>
+                      <span style={{ display: "block", fontSize: "0.72rem", color: "var(--text-tertiary)" }}>{TABS.find(t => t.key === sr.reportKey)?.label ?? sr.reportKey}</span>
+                    </AppButton>
+                  ))}
                 </div>
               </>
             )}
           </div>
-          <AppButton
-            variant="ghost"
-            size="sm"
-            className="text-[0.8rem] underline underline-offset-2"
-            onClick={() => { setShowManageModal(true); setShowSavedDropdown(false); }}
-          >
+          <AppButton variant="ghost" size="sm" style={{ fontSize: "0.8rem", color: "var(--text-secondary)", textDecoration: "underline", textUnderlineOffset: 2 }} onClick={() => { setShowManageModal(true); setShowSavedDropdown(false); }}>
             Manage
           </AppButton>
         </div>
       </div>
 
-      {/* Mobile tab select */}
-      <AppSelect
-        className="rpt-tabs-select"
-        value={reportKey}
-        onChange={(e) => switchTab(e.target.value as ReportKey)}
-      >
-        {TABS.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
-      </AppSelect>
-
-      {/* Tab strip */}
-      <div className="flex border-b border-[var(--border-subtle)] overflow-x-auto rpt-tabs-strip" ref={tabsRef}>
-        {TABS.map(t => {
-          const isActive = reportKey === t.key;
-          return (
-            <AppButton
-              key={t.key}
-              variant="ghost"
-              size="sm"
-              className="px-4 py-3 text-[0.82rem] font-medium whitespace-nowrap border-b-2 transition-colors"
-              style={isActive
-                ? { borderBottomColor: "var(--color-primary, #6366f1)", color: "var(--color-primary, #6366f1)" }
-                : { borderBottomColor: "transparent", color: "var(--text-secondary, #64748b)" }}
-              onClick={() => switchTab(t.key)}
-            >
-              {t.label}
-            </AppButton>
-          );
-        })}
-      </div>
-
-      {/* Filter bar */}
-      <div className="card-flat rpt-filter-bar">
-        <div className="form-field">
-          <label className="form-label" htmlFor="rpt-from">From Date</label>
-          <AppInput id="rpt-from" type="date" value={fromDate}
-            onChange={e => setFromDate(e.target.value)} max={toDate || today} />
+      {/* ── Filter Bar ── */}
+      <div style={{ background: "var(--n-0)", border: "1px solid var(--border-default)", borderRadius: 12, padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+        {/* Date preset pills */}
+        <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 4, flexShrink: 0 }}>
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          {PRESET_OPTS.map(p => {
+            const active = datePreset === p.key;
+            return (
+              <button key={p.key} type="button" onClick={() => applyDatePreset(p.key)} style={{ padding: "5px 12px", borderRadius: 20, border: active ? "1px solid var(--brand-500)" : "1px solid var(--border-default)", background: active ? "var(--brand-50)" : "transparent", color: active ? "var(--brand-700)" : "var(--text-secondary)", fontWeight: active ? 600 : 400, fontSize: "0.78rem", cursor: "pointer", transition: "all 0.12s" }}>
+                {p.label}
+              </button>
+            );
+          })}
         </div>
-        <div className="form-field">
-          <label className="form-label" htmlFor="rpt-to">To Date</label>
-          <AppInput id="rpt-to" type="date" value={toDate}
-            onChange={e => setToDate(e.target.value)} min={fromDate} max={today} />
-        </div>
-        {uniqueEmployees.length > 0 && (
-          <div className="form-field min-w-[180px]">
-            <label className="form-label" htmlFor="rpt-emp">Employee</label>
-            <AppSelect id="rpt-emp" value={employeeFilter}
-              onChange={e => setEmployeeFilter(e.target.value)}>
+
+        {/* Filters + actions row */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          {datePreset === "custom" ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <AppInput type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} max={toDate || today} style={{ width: 155, fontSize: "0.82rem" }} />
+              <span style={{ fontSize: "0.82rem", color: "var(--text-tertiary)", fontWeight: 500 }}>→</span>
+              <AppInput type="date" value={toDate} onChange={e => setToDate(e.target.value)} min={fromDate} max={today} style={{ width: 155, fontSize: "0.82rem" }} />
+            </div>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 8, background: "var(--n-50)", border: "1px solid var(--border-subtle)", fontSize: "0.82rem", fontWeight: 500, color: "var(--text-primary)" }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+              {fromDate ? fmtDateStr(fromDate) : "—"}&nbsp;→&nbsp;{toDate ? fmtDateStr(toDate) : "—"}
+            </div>
+          )}
+          {uniqueEmployees.length > 0 && (
+            <AppSelect value={employeeFilter} onChange={e => setEmployeeFilter(e.target.value)} style={{ minWidth: 170, fontSize: "0.82rem" }}>
               <option value="">All employees</option>
               {uniqueEmployees.map(e => <option key={e} value={e}>{e}</option>)}
             </AppSelect>
+          )}
+          <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+            <AppButton variant="primary" size="sm" style={{ display: "flex", alignItems: "center", gap: 5 }} onClick={() => void loadReport(reportKey, 1)}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.18-7.36"/></svg>
+              Run Report
+            </AppButton>
+            <AppButton variant="outline" size="sm" style={{ display: "flex", alignItems: "center", gap: 5 }} onClick={() => openSaveModal()}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              Save
+            </AppButton>
           </div>
-        )}
-        <AppButton variant="primary" onClick={() => void loadReport(reportKey, 1)}>Apply</AppButton>
-        <AppButton
-          variant="outline"
-          size="sm"
-          className="flex items-center gap-1"
-          onClick={() => openSaveModal()}
-        >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-          Save Report
-        </AppButton>
+        </div>
       </div>
 
-      {/* KPI strip */}
+      {/* ── KPI Strip ── */}
       {kpis.length > 0 && !loading && (
-        <div className="rpt-kpi-strip">
-          {kpis.map(k => (
-            <div key={k.label} className={`rpt-kpi-card rpt-kpi-card--${k.accent ?? "none"}`}>
-              <div className="rpt-kpi-value">{k.value}</div>
-              <div className="rpt-kpi-label">{k.label}</div>
-              {k.sub && <div className="rpt-kpi-sub">{k.sub}</div>}
-            </div>
-          ))}
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(${kpis.length}, 1fr)`, gap: 12 }}>
+          {kpis.map((k, i) => {
+            const pal = (k.accent ? KPI_ACCENT_PALETTES[k.accent] : null) ?? KPI_PALETTES[i % 4];
+            return (
+              <div key={k.label} style={{ background: "var(--n-0)", borderRadius: 12, border: "1px solid var(--border-default)", borderLeft: `3px solid ${pal.main}`, padding: "16px 20px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 10 }}>
+                  <span style={{ width: 26, height: 26, borderRadius: 7, background: pal.bg, border: `1px solid ${pal.border}`, display: "inline-flex", alignItems: "center", justifyContent: "center", color: pal.main, flexShrink: 0 }}>
+                    {KPI_ICONS[i % 4]}
+                  </span>
+                  <span style={{ fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-secondary)" }}>{k.label}</span>
+                </div>
+                <div style={{ fontSize: "1.55rem", fontWeight: 700, color: pal.main, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{k.value}</div>
+                {k.sub && <div style={{ fontSize: "0.70rem", color: "var(--text-secondary)", marginTop: 5 }}>{k.sub}</div>}
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {/* Table card */}
-      <div className="card overflow-hidden">
-        <div className="card-header">
-          <div>
-            <div className="card-title">{TABS.find(t => t.key === reportKey)?.label}</div>
-            <div className="card-subtitle">
-              {loading ? "Loading…" : `${totalFromApi} records`}
-              {!loading && freshnessLabel && <span className="rpt-freshness">{freshnessLabel}</span>}
-            </div>
+      {/* Mobile tab select */}
+      <AppSelect className="rpt-tabs-select" value={reportKey} onChange={e => switchTab(e.target.value as ReportKey)}>
+        {TABS.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
+      </AppSelect>
+
+      {/* ── Content Card ── */}
+      <div style={{ background: "var(--n-0)", borderRadius: 12, border: "1px solid var(--border-default)", overflow: "hidden" }}>
+
+        {/* Tab strip + search/export in one row */}
+        <div style={{ display: "flex", alignItems: "stretch", justifyContent: "space-between", borderBottom: "1px solid var(--border-subtle)", padding: "0 20px", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "stretch", overflowX: "auto", gap: 0 }} className="rpt-tabs-strip">
+            {TABS.map(t => {
+              const isActive = reportKey === t.key;
+              return (
+                <button key={t.key} type="button" onClick={() => switchTab(t.key)} style={{ padding: "13px 14px", background: "none", border: "none", borderBottom: isActive ? "2px solid var(--brand-600)" : "2px solid transparent", cursor: "pointer", fontSize: "0.82rem", fontWeight: isActive ? 600 : 400, color: isActive ? "var(--brand-700)" : "var(--text-secondary)", whiteSpace: "nowrap", transition: "color 0.12s", flexShrink: 0 }}>
+                  {t.label}
+                </button>
+              );
+            })}
           </div>
-          <div className="page-actions">
-            <AppInput
-              type="text"
-              className="w-[200px] h-[30px] text-[0.8rem]"
-              placeholder="Search rows…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <div className="relative inline-block">
-              <AppButton variant="outline" size="sm" className="flex items-center gap-1" onClick={() => setExportOpen(o => !o)}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                Export ▾
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+            <div style={{ position: "relative" }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", color: "var(--text-tertiary)", pointerEvents: "none" }}>
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <AppInput type="text" style={{ paddingLeft: 28, width: 190, height: 30, fontSize: "0.8rem" }} placeholder="Search rows…" value={search} onChange={e => setSearch(e.target.value)} />
+            </div>
+            <div style={{ position: "relative", display: "inline-block" }}>
+              <AppButton variant="outline" size="sm" style={{ display: "flex", alignItems: "center", gap: 5 }} onClick={() => setExportOpen(o => !o)}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Export
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
               </AppButton>
               {exportOpen && (
                 <>
-                  <div className="fixed inset-0 z-[99]" onClick={() => setExportOpen(false)} />
-                  <div className="absolute right-0 top-[calc(100%+4px)] bg-n-0 border border-border-default rounded-lg shadow-md z-[100] min-w-[130px] py-1">
+                  <div style={{ position: "fixed", inset: 0, zIndex: 99 }} onClick={() => setExportOpen(false)} />
+                  <div style={{ position: "absolute", right: 0, top: "calc(100% + 4px)", background: "var(--n-0)", border: "1px solid var(--border-default)", borderRadius: 10, boxShadow: "0 4px 20px rgba(0,0,0,0.1)", zIndex: 100, minWidth: 130, padding: "4px 0" }}>
                     {(["csv", "excel", "pdf"] as const).map(fmt => (
-                      <AppButton
-                        key={fmt}
-                        variant="ghost"
-                        size="sm"
-                        className="rpt-export-item"
-                        onClick={() => { void exportReport(fmt); setExportOpen(false); }}
-                      >
-                        {fmt.toUpperCase()}
-                      </AppButton>
+                      <AppButton key={fmt} variant="ghost" size="sm" className="rpt-export-item" onClick={() => { void exportReport(fmt); setExportOpen(false); }}>{fmt.toUpperCase()}</AppButton>
                     ))}
                   </div>
                 </>
@@ -745,9 +773,19 @@ export function Reports() {
           </div>
         </div>
 
+        {/* Report meta row */}
+        <div style={{ padding: "10px 20px", borderBottom: "1px solid var(--border-subtle)", display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--text-primary)" }}>{TABS.find(t => t.key === reportKey)?.label}</span>
+          <span style={{ fontSize: "0.75rem", color: "var(--text-tertiary)" }}>·</span>
+          <span style={{ fontSize: "0.78rem", color: "var(--text-secondary)" }}>{loading ? "Loading…" : `${totalFromApi.toLocaleString()} record${totalFromApi !== 1 ? "s" : ""}`}</span>
+          {!loading && freshnessLabel && (
+            <><span style={{ fontSize: "0.75rem", color: "var(--text-tertiary)" }}>·</span><span style={{ fontSize: "0.72rem", color: "var(--text-tertiary)" }}>{freshnessLabel}</span></>
+          )}
+        </div>
+
         {loading ? (
-          <div className="card-body">
-            <EmptyReports />
+          <div style={{ padding: "56px 20px", textAlign: "center", color: "var(--text-tertiary)", fontSize: "0.82rem" }}>
+            Loading report…
           </div>
         ) : (
           <>
@@ -757,14 +795,8 @@ export function Reports() {
                   <thead>
                     <tr>
                       {cols.map(c => (
-                        <th
-                          key={c.key}
-                          className={[c.sortable && "rpt-th-sort", c.align === "right" && "text-right"].filter(Boolean).join(" ")}
-                          aria-sort={c.sortable ? (sortCol === c.key ? (sortDir === "asc" ? "ascending" : "descending") : "none") : undefined}
-                          onClick={c.sortable ? () => toggleSort(c.key) : undefined}
-                        >
-                          {c.label}
-                          {c.sortable && <SortIcon active={sortCol === c.key} dir={sortDir} />}
+                        <th key={c.key} className={[c.sortable && "rpt-th-sort", c.align === "right" && "text-right"].filter(Boolean).join(" ")} aria-sort={c.sortable ? (sortCol === c.key ? (sortDir === "asc" ? "ascending" : "descending") : "none") : undefined} onClick={c.sortable ? () => toggleSort(c.key) : undefined}>
+                          {c.label}{c.sortable && <SortIcon active={sortCol === c.key} dir={sortDir} />}
                         </th>
                       ))}
                     </tr>
@@ -775,9 +807,7 @@ export function Reports() {
                       return (
                         <tr key={i} className={isZeroAlloc ? "rpt-zero-alloc" : undefined}>
                           {cols.map(c => (
-                            <td key={c.key} className={c.align === "right" ? "text-right" : undefined}>
-                              {renderCell(c, row)}
-                            </td>
+                            <td key={c.key} className={c.align === "right" ? "text-right" : undefined}>{renderCell(c, row)}</td>
                           ))}
                         </tr>
                       );
@@ -791,110 +821,61 @@ export function Reports() {
                 </table>
               </AppTableShell>
             </div>
-
-            {/* Pagination footer */}
             <div className="rpt-pagination">
               <span className="rpt-showing">{showingText}</span>
               <div className="rpt-page-controls">
-                <AppSelect
-                  className="w-auto text-[0.8rem] px-2 py-1 h-auto"
-                  value={pageSize}
-                  onChange={e => changePageSize(Number(e.target.value))}
-                  aria-label="Rows per page"
-                >
+                <AppSelect className="w-auto text-[0.8rem] px-2 py-1 h-auto" value={pageSize} onChange={e => changePageSize(Number(e.target.value))} aria-label="Rows per page">
                   {PAGE_SIZES.map(s => <option key={s} value={s}>{s} / page</option>)}
                 </AppSelect>
-                <AppButton variant="ghost" size="sm" disabled={page <= 1}
-                  onClick={() => void loadReport(reportKey, page - 1)}>← Prev</AppButton>
+                <AppButton variant="ghost" size="sm" disabled={page <= 1} onClick={() => void loadReport(reportKey, page - 1)}>← Prev</AppButton>
                 <span className="rpt-page-info">Page {page} of {totalPages}</span>
-                <AppButton variant="ghost" size="sm" disabled={page >= totalPages}
-                  onClick={() => void loadReport(reportKey, page + 1)}>Next →</AppButton>
+                <AppButton variant="ghost" size="sm" disabled={page >= totalPages} onClick={() => void loadReport(reportKey, page + 1)}>Next →</AppButton>
               </div>
             </div>
           </>
         )}
       </div>
 
-      {/* ── Save Report Modal ─────────────────────────────────────────────── */}
+      {/* ── Save Report Modal ── */}
       {showSaveModal && (
-        <div
-          style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center" }}
-          onClick={e => { if (e.target === e.currentTarget) closeSaveModal(); }}
-        >
+        <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={e => { if (e.target === e.currentTarget) closeSaveModal(); }}>
           <div style={{ background: "var(--color-n-0, #fff)", borderRadius: 12, padding: "28px 32px", width: "100%", maxWidth: 480, boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
               <span style={{ fontWeight: 700, fontSize: "1.05rem" }}>{editingReport ? "Edit Saved Report" : "Save Report"}</span>
-              <AppButton variant="ghost" size="sm" onClick={closeSaveModal} aria-label="Close">x</AppButton>
+              <AppButton variant="ghost" size="sm" onClick={closeSaveModal} aria-label="Close">✕</AppButton>
             </div>
-
-            {/* Name */}
             <div className="form-field" style={{ marginBottom: 14 }}>
               <label className="form-label" htmlFor="save-name">Report Name</label>
-              <AppInput
-                id="save-name"
-                type="text"
-                placeholder="e.g. Monthly Attendance"
-                value={saveName}
-                onChange={e => setSaveName(e.target.value)}
-                autoFocus
-              />
+              <AppInput id="save-name" type="text" placeholder="e.g. Monthly Attendance" value={saveName} onChange={e => setSaveName(e.target.value)} autoFocus />
             </div>
-
-            {/* Schedule type */}
             <div className="form-field" style={{ marginBottom: 14 }}>
               <label className="form-label" htmlFor="save-schedule">Schedule</label>
-              <AppSelect
-                id="save-schedule"
-                value={saveSchedule}
-                onChange={e => setSaveSchedule(e.target.value as "None" | "Weekly" | "Monthly")}
-              >
+              <AppSelect id="save-schedule" value={saveSchedule} onChange={e => setSaveSchedule(e.target.value as "None" | "Weekly" | "Monthly")}>
                 <option value="None">No schedule</option>
                 <option value="Weekly">Weekly</option>
                 <option value="Monthly">Monthly (1st of month)</option>
               </AppSelect>
             </div>
-
-            {/* Weekly: day of week */}
             {saveSchedule === "Weekly" && (
               <div className="form-field" style={{ marginBottom: 14 }}>
                 <label className="form-label" htmlFor="save-day">Day of Week</label>
-                <AppSelect
-                  id="save-day"
-                  value={saveDay}
-                  onChange={e => setSaveDay(Number(e.target.value))}
-                >
+                <AppSelect id="save-day" value={saveDay} onChange={e => setSaveDay(Number(e.target.value))}>
                   {DAY_NAMES.map((d, i) => <option key={i} value={i}>{d}</option>)}
                 </AppSelect>
               </div>
             )}
-
-            {/* Hour (Weekly or Monthly) */}
             {saveSchedule !== "None" && (
               <div className="form-field" style={{ marginBottom: 14 }}>
                 <label className="form-label" htmlFor="save-hour">Send at Hour (UTC)</label>
-                <AppSelect
-                  id="save-hour"
-                  value={saveHour}
-                  onChange={e => setSaveHour(Number(e.target.value))}
-                >
-                  {Array.from({ length: 24 }, (_, i) => (
-                    <option key={i} value={i}>{String(i).padStart(2, "0")}:00</option>
-                  ))}
+                <AppSelect id="save-hour" value={saveHour} onChange={e => setSaveHour(Number(e.target.value))}>
+                  {Array.from({ length: 24 }, (_, i) => <option key={i} value={i}>{String(i).padStart(2, "0")}:00</option>)}
                 </AppSelect>
               </div>
             )}
-
-            {/* Recipient emails */}
             <div className="form-field" style={{ marginBottom: 20 }}>
               <label className="form-label">Recipient Emails</label>
               <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
-                <AppInput
-                  type="email"
-                  placeholder="email@example.com"
-                  value={emailInput}
-                  onChange={e => setEmailInput(e.target.value)}
-                  onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addEmail(); } }}
-                />
+                <AppInput type="email" placeholder="email@example.com" value={emailInput} onChange={e => setEmailInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addEmail(); } }} />
                 <AppButton type="button" variant="outline" size="sm" onClick={addEmail}>Add</AppButton>
               </div>
               {saveEmails.length > 0 && (
@@ -902,106 +883,74 @@ export function Reports() {
                   {saveEmails.map(email => (
                     <span key={email} style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "#f3f4f6", borderRadius: 6, padding: "2px 8px", fontSize: "0.78rem" }}>
                       {email}
-                      <AppButton type="button" variant="ghost" size="sm" onClick={() => removeEmail(email)} aria-label={`Remove ${email}`} className="p-0 min-h-0 h-auto text-[0.9rem] leading-none">x</AppButton>
+                      <AppButton type="button" variant="ghost" size="sm" onClick={() => removeEmail(email)} aria-label={`Remove ${email}`} style={{ padding: 0, minHeight: 0, height: "auto", lineHeight: 1, fontSize: "0.9rem" }}>✕</AppButton>
                     </span>
                   ))}
                 </div>
               )}
             </div>
-
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
               <AppButton variant="ghost" size="sm" onClick={closeSaveModal} disabled={saveLoading}>Cancel</AppButton>
-              <AppButton variant="primary" onClick={() => void handleSaveReport()} disabled={saveLoading || !saveName.trim()}>
-                {saveLoading ? "Saving…" : editingReport ? "Update" : "Save"}
-              </AppButton>
+              <AppButton variant="primary" onClick={() => void handleSaveReport()} disabled={saveLoading || !saveName.trim()}>{saveLoading ? "Saving…" : editingReport ? "Update" : "Save"}</AppButton>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── Manage Saved Reports Modal ────────────────────────────────────── */}
+      {/* ── Manage Saved Reports Modal ── */}
       {showManageModal && (
-        <div
-          style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center" }}
-          onClick={e => { if (e.target === e.currentTarget) setShowManageModal(false); }}
-        >
+        <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={e => { if (e.target === e.currentTarget) setShowManageModal(false); }}>
           <div style={{ background: "var(--color-n-0, #fff)", borderRadius: 12, padding: "28px 32px", width: "100%", maxWidth: 640, maxHeight: "80vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
               <span style={{ fontWeight: 700, fontSize: "1.05rem" }}>Manage Saved Reports</span>
-              <AppButton variant="ghost" size="sm" onClick={() => setShowManageModal(false)} aria-label="Close">x</AppButton>
+              <AppButton variant="ghost" size="sm" onClick={() => setShowManageModal(false)} aria-label="Close">✕</AppButton>
             </div>
-
             <div style={{ overflowY: "auto", flex: 1 }}>
               {savedReports.length === 0 ? (
                 <div className="empty-state">
                   <div className="empty-state__icon">📋</div>
                   <p className="empty-state__title">No saved reports</p>
-                  <p className="empty-state__desc">Save a report using the "Save Report" button in the filter bar.</p>
+                  <p className="empty-state__desc">Save a report using the "Save" button in the filter bar.</p>
                 </div>
               ) : (
                 <AppTableShell>
-                <table className="table-base" style={{ width: "100%" }}>
-                  <thead>
-                    <tr>
-                      <th>Name</th>
-                      <th>Report</th>
-                      <th>Schedule</th>
-                      <th>Last Run</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {savedReports.map(sr => (
-                      <tr key={sr.id}>
-                        <td>
-                          <span className="text-[rgb(16,16,26)] font-medium text-[0.88rem]">{sr.name}</span>
-                        </td>
-                        <td>
-                          <span className="text-[0.82rem] text-[#6b7280]">{TABS.find(t => t.key === sr.reportKey)?.label ?? sr.reportKey}</span>
-                        </td>
-                        <td>
-                          <span className="text-[0.82rem]">{scheduleDesc(sr)}</span>
-                        </td>
-                        <td>
-                          <span className="text-[0.82rem] text-[#9ca3af]">{sr.lastRunAt ? fmtDateStr(sr.lastRunAt) : "Never"}</span>
-                        </td>
-                        <td>
-                          <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                            {deleteConfirmId === sr.id ? (
-                              <>
-                                <AppButton variant="danger" size="sm" onClick={() => void deleteSavedReport(sr.id)}>Confirm Delete</AppButton>
-                                <AppButton variant="ghost" size="sm" onClick={() => setDeleteConfirmId(null)}>Cancel</AppButton>
-                              </>
-                            ) : (
-                              <>
-                                <AppButton
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => { setShowManageModal(false); openSaveModal(sr); }}
-                                >
-                                  Edit
-                                </AppButton>
-                                <AppButton
-                                  variant="danger"
-                                  size="sm"
-                                  onClick={() => setDeleteConfirmId(sr.id)}
-                                >
-                                  Delete
-                                </AppButton>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                  <table className="table-base" style={{ width: "100%" }}>
+                    <thead>
+                      <tr><th>Name</th><th>Report</th><th>Schedule</th><th>Last Run</th><th></th></tr>
+                    </thead>
+                    <tbody>
+                      {savedReports.map(sr => (
+                        <tr key={sr.id}>
+                          <td><span style={{ fontWeight: 600, fontSize: "0.88rem", color: "var(--text-primary)" }}>{sr.name}</span></td>
+                          <td><span style={{ fontSize: "0.82rem", color: "var(--text-secondary)" }}>{TABS.find(t => t.key === sr.reportKey)?.label ?? sr.reportKey}</span></td>
+                          <td><span style={{ fontSize: "0.82rem" }}>{scheduleDesc(sr)}</span></td>
+                          <td><span style={{ fontSize: "0.82rem", color: "var(--text-tertiary)" }}>{sr.lastRunAt ? fmtDateStr(sr.lastRunAt) : "Never"}</span></td>
+                          <td>
+                            <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                              {deleteConfirmId === sr.id ? (
+                                <>
+                                  <AppButton variant="danger" size="sm" onClick={() => void deleteSavedReport(sr.id)}>Confirm Delete</AppButton>
+                                  <AppButton variant="ghost" size="sm" onClick={() => setDeleteConfirmId(null)}>Cancel</AppButton>
+                                </>
+                              ) : (
+                                <>
+                                  <AppButton variant="outline" size="sm" onClick={() => { setShowManageModal(false); openSaveModal(sr); }}>Edit</AppButton>
+                                  <AppButton variant="danger" size="sm" onClick={() => setDeleteConfirmId(sr.id)}>Delete</AppButton>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </AppTableShell>
               )}
             </div>
           </div>
         </div>
       )}
+
     </section>
   );
 }

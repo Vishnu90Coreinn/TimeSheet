@@ -41,6 +41,7 @@ public record TimesheetDayResponse(
     int RemainingMinutes,
     bool HasMismatch,
     string? MismatchReason,
+    string? ManagerComment,
     IReadOnlyList<TimesheetEntryResponse> Entries);
 
 public record TimesheetWeekDayResponse(DateOnly WorkDate, string Status, int EnteredMinutes, int AttendanceNetMinutes, int ExpectedMinutes, bool HasMismatch);

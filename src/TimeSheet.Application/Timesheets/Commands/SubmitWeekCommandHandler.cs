@@ -55,7 +55,7 @@ public class SubmitWeekCommandHandler(
                 continue;
             }
 
-            if (timesheet.Status != TimesheetStatus.Draft)
+            if (timesheet.Status != TimesheetStatus.Draft && timesheet.Status != TimesheetStatus.Rejected)
             {
                 skipped.Add(new SubmitWeekSkipped(dateStr, $"Already {timesheet.Status.ToString().ToLowerInvariant()}"));
                 continue;

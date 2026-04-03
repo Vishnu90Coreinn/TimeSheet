@@ -38,8 +38,8 @@ public class SubmitTimesheetCommandHandler(
         if (timesheet is null)
             return Result<TimesheetDayResult>.Failure("No timesheet exists for this date.");
 
-        if (timesheet.Status != TimesheetStatus.Draft)
-            return Result<TimesheetDayResult>.Conflict("Only draft timesheets can be submitted.");
+        if (timesheet.Status != TimesheetStatus.Draft && timesheet.Status != TimesheetStatus.Rejected)
+            return Result<TimesheetDayResult>.Conflict("Only draft or rejected timesheets can be submitted.");
 
         var attendanceNet = await timesheetQuery.GetAttendanceNetMinutesAsync(userId, request.WorkDate, ct);
         var entered = timesheet.Entries.Sum(e => e.Minutes);

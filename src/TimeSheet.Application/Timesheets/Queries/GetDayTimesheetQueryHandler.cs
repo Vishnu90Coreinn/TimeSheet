@@ -18,7 +18,7 @@ public class GetDayTimesheetQueryHandler(
         var date = request.WorkDate ?? dateTimeProvider.TodayUtc;
 
         var result = await timesheetQueryService.GetDayAsync(userId, date, cancellationToken)
-            ?? new TimesheetDayResult(Guid.Empty, date, "draft", 0, 0, 0, 0, false, null, []);
+            ?? new TimesheetDayResult(Guid.Empty, date, "draft", 0, 0, 0, 0, false, null, null, []);
 
         return Result<TimesheetDayResult>.Success(result);
     }

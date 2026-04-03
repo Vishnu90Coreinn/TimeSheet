@@ -42,8 +42,8 @@ public class DeleteTimesheetEntryCommandHandler(
         if (workDate.Value < today.AddDays(-backdateDays))
             return Result<TimesheetDayResult>.Failure($"Editing window is limited to {backdateDays} day(s).");
 
-        if (timesheet.Status != TimesheetStatus.Draft)
-            return Result<TimesheetDayResult>.Conflict("Only draft timesheets can be edited.");
+        if (timesheet.Status != TimesheetStatus.Draft && timesheet.Status != TimesheetStatus.Rejected)
+            return Result<TimesheetDayResult>.Conflict("Only draft or rejected timesheets can be edited.");
 
         timesheet.Entries.Remove(entry);
 

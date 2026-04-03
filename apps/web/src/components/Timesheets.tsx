@@ -686,7 +686,7 @@ export function Timesheets() {
 
   // Count days with draft status + entries for "Submit Week" button enablement
   const submittableCount = (weekData?.days ?? []).filter(d =>
-    d.status === "draft" && d.enteredMinutes > 0
+    (d.status === "draft" || d.status === "rejected") && d.enteredMinutes > 0
   ).length;
 
   // Today by project (from dayData entries)
@@ -981,7 +981,7 @@ export function Timesheets() {
           )}
 
           {/* Submit form */}
-          {showSubmitForm && isDraft && (
+          {showSubmitForm && (isDraft || isRejected) && (
             <div className="border-[1.5px] border-border-subtle rounded-xl bg-white p-5 flex flex-col gap-[14px]">
               <div className="text-[14px] font-semibold text-[var(--n-900,#111827)]">Submit for Review</div>
               <div className="flex flex-col gap-1">
@@ -1049,14 +1049,16 @@ export function Timesheets() {
             </div>
           )}
           {isRejected && (
-            <div className="flex items-center gap-[10px] rounded-[10px] px-4 py-3 text-[13px] bg-[#fef2f2] border-[1.5px] border-[#fca5a5] text-[#991b1b]">
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" className="shrink-0">
+            <div className="flex items-start gap-[10px] rounded-[10px] px-4 py-3 text-[13px] bg-[#fef2f2] border-[1.5px] border-[#fca5a5] text-[#991b1b]">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" className="shrink-0 mt-[1px]">
                 <circle cx="10" cy="10" r="9" stroke="#ef4444" strokeWidth="1.8"/>
                 <path d="M7 7l6 6M13 7l-6 6" stroke="#ef4444" strokeWidth="1.8" strokeLinecap="round"/>
               </svg>
               <div>
-                <strong>Timesheet rejected</strong>
-                <span className="font-normal opacity-85"> — Please review and resubmit.</span>
+                <div><strong>Timesheet rejected</strong><span className="font-normal opacity-85"> — Please review and resubmit.</span></div>
+                {dayData?.managerComment && (
+                  <div className="mt-1 opacity-90"><span className="font-semibold">Manager&apos;s note:</span> {dayData.managerComment}</div>
+                )}
               </div>
             </div>
           )}
@@ -1125,12 +1127,12 @@ export function Timesheets() {
                     </div>
                     {(isDraft || isRejected) ? (
                       <div className="flex gap-1">
-                        <AppButton variant="ghost" size="sm" className="ts-icon-btn" title="Edit" onClick={() => openEdit(entry)}>
+                        <button type="button" className="ts-icon-btn" title="Edit" onClick={() => openEdit(entry)}>
                           <Pencil size={14} />
-                        </AppButton>
-                        <AppButton variant="ghost" size="sm" className="ts-icon-btn ts-icon-btn--danger" title="Delete" onClick={() => void deleteEntry(entry.id)}>
+                        </button>
+                        <button type="button" className="ts-icon-btn ts-icon-btn--danger" title="Delete" onClick={() => void deleteEntry(entry.id)}>
                           <Trash2 size={14} />
-                        </AppButton>
+                        </button>
                       </div>
                     ) : (
                       <div className="w-[28px] h-[28px] flex items-center justify-center text-[var(--n-400,#9ca3af)] shrink-0" title={`Locked — ${dayData?.status}`}>

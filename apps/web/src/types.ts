@@ -29,7 +29,7 @@ export type ApprovalItem = {
   mismatchReason: string | null;
 };
 export type ApprovalAction = { id: string; managerUsername: string; action: string; comment: string; actionedAtUtc: string };
-export type TimesheetDay = { timesheetId: string; workDate: string; status: string; attendanceNetMinutes: number; expectedMinutes: number; enteredMinutes: number; remainingMinutes: number; hasMismatch: boolean; mismatchReason?: string | null; entries: TimesheetEntry[] };
+export type TimesheetDay = { timesheetId: string; workDate: string; status: string; attendanceNetMinutes: number; expectedMinutes: number; enteredMinutes: number; remainingMinutes: number; hasMismatch: boolean; mismatchReason?: string | null; managerComment?: string | null; entries: TimesheetEntry[] };
 export type WeekDayMeta = { workDate: string; status: string; enteredMinutes: number; expectedMinutes: number; attendanceNetMinutes: number; hasMismatch: boolean };
 export type WeekSummary = { weekStartDate: string; weekEndDate: string; weekEnteredMinutes: number; weekExpectedMinutes: number; weekAttendanceNetMinutes: number; days: WeekDayMeta[] };
 export type TimesheetEntry = { id: string; projectId: string; taskCategoryId: string; projectName: string; taskCategoryName: string; minutes: number; notes: string | null };

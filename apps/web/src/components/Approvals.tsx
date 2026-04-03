@@ -67,7 +67,9 @@ function fmtHours(mins: number): string {
 
 function fmtResponseTime(hours: number | null): string {
   if (hours == null) return "-";
+  if (hours < 0) return "< 1m";
   const totalMins = Math.round(hours * 60);
+  if (totalMins <= 0) return "< 1m";
   if (totalMins < 60) return `${totalMins}m`;
   const h = Math.floor(totalMins / 60);
   const m = totalMins % 60;
@@ -409,7 +411,7 @@ export function Approvals() {
   async function bulkApprove() {
     if (selectedIds.size === 0) return;
     setBulkApproving(true);
-    const toApprove = filteredTsPending.filter((a) => selectedIds.has(a.timesheetId) && a.enteredMinutes > 0 && !sanitizeMismatch(a.mismatchReason));
+    const toApprove = filteredTsPending.filter((a) => selectedIds.has(a.timesheetId) && a.enteredMinutes > 0);
     await Promise.all(toApprove.map((a) =>
       apiFetch(`/approvals/timesheets/${a.timesheetId}/approve`, { method: "POST", body: JSON.stringify({ comment: "" }) }),
     ));
@@ -534,10 +536,10 @@ export function Approvals() {
   const hasManyTimesheets = filteredTsPending.length > 1;
   const canBulkApprove = selectedIds.size > 0 && !bulkApproving;
   const selectedCount = selectedIds.size;
-  const selectedEligibleCount = filteredTsPending.filter((a) => selectedIds.has(a.timesheetId) && a.enteredMinutes > 0 && !sanitizeMismatch(a.mismatchReason)).length;
+  const selectedEligibleCount = filteredTsPending.filter((a) => selectedIds.has(a.timesheetId) && a.enteredMinutes > 0).length;
   const selectedIneligibleCount = Math.max(0, selectedCount - selectedEligibleCount);
-  const reviewRequiredCount = tsPending.filter((a) => a.enteredMinutes === 0 || sanitizeMismatch(a.mismatchReason) !== null).length;
-  const readyNowCount = tsPending.filter((a) => a.enteredMinutes > 0 && !sanitizeMismatch(a.mismatchReason)).length + leavePending.length;
+  const reviewRequiredCount = tsPending.filter((a) => a.enteredMinutes === 0).length;
+  const readyNowCount = tsPending.filter((a) => a.enteredMinutes > 0).length + leavePending.length;
   const targetResponseHours = 24;
   const avgVsTarget = stats.avgResponseHours == null ? null : Math.round((targetResponseHours - stats.avgResponseHours) * 10) / 10;
   const avgTrendText = avgVsTarget == null ? "No benchmark yet" : avgVsTarget >= 0 ? `↓ ${Math.abs(avgVsTarget)}h vs ${targetResponseHours}h target` : `↑ ${Math.abs(avgVsTarget)}h vs ${targetResponseHours}h target`;
@@ -609,7 +611,6 @@ export function Approvals() {
       <div style={{
         background: "var(--n-0)", borderRadius: 12,
         border: "1px solid var(--border-default)",
-        overflow: "hidden",
       }}>
         {/* Stats header with period selector */}
         <div style={{
@@ -661,26 +662,90 @@ export function Approvals() {
 
         {/* 6 stat tiles */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)" }}>
-          {[
-            { value: pendingCount,              label: "Pending",         sub: "Real-time",             color: "#ea580c", bg: "#fff7ed", border: "#fed7aa" },
-            { value: readyNowCount,             label: "Ready now",       sub: "Can action now",        color: "#059669", bg: "#ecfdf5", border: "#a7f3d0" },
-            { value: stats.approvedThisMonth ?? "-", label: "Approved",   sub: statsPeriodLabel,        color: "#4f46e5", bg: "#eef2ff", border: "#c7d2fe" },
-            { value: stats.rejectedThisMonth ?? "-", label: "Corrections", sub: statsPeriodLabel,       color: "#dc2626", bg: "#fef2f2", border: "#fecaca" },
-            { value: reviewRequiredCount,       label: "Needs review",    sub: "Pending queue",         color: "#d97706", bg: "#fffbeb", border: "#fde68a" },
-            { value: fmtResponseTime(stats.avgResponseHours), label: "Avg response", sub: avgTrendText, color: "var(--text-primary)", bg: "var(--n-50)", border: "transparent" },
-          ].map((s, i) => (
+          {([
+            {
+              value: pendingCount,
+              label: "Pending",
+              sub: pendingCount === 0 ? "Queue is clear" : `${pendingCount} awaiting decision`,
+              color: "#ea580c", bg: "#fff7ed", border: "#fed7aa",
+              icon: (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>
+              ),
+            },
+            {
+              value: readyNowCount,
+              label: "Ready now",
+              sub: pendingCount > 0 ? `${readyNowCount} of ${pendingCount} can be approved` : "Nothing pending",
+              color: "#059669", bg: "#ecfdf5", border: "#a7f3d0",
+              icon: (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>
+                </svg>
+              ),
+            },
+            {
+              value: stats.approvedThisMonth ?? "-",
+              label: "Approved",
+              sub: stats.approvedThisMonth == null ? statsPeriodLabel : `${stats.approvedThisMonth === 0 ? "None yet" : `${stats.approvedThisMonth} approved`} · ${statsPeriodLabel}`,
+              color: "#4f46e5", bg: "#eef2ff", border: "#c7d2fe",
+              icon: (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 6 9 17l-5-5"/>
+                </svg>
+              ),
+            },
+            {
+              value: stats.rejectedThisMonth ?? "-",
+              label: "Corrections",
+              sub: stats.rejectedThisMonth == null ? statsPeriodLabel : `${stats.rejectedThisMonth === 0 ? "None sent" : `${stats.rejectedThisMonth} sent back`} · ${statsPeriodLabel}`,
+              color: "#dc2626", bg: "#fef2f2", border: "#fecaca",
+              icon: (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+              ),
+            },
+            {
+              value: reviewRequiredCount,
+              label: "Needs review",
+              sub: reviewRequiredCount === 0 ? "No issues in queue" : `${reviewRequiredCount} blocked — cannot approve yet`,
+              color: "#d97706", bg: "#fffbeb", border: "#fde68a",
+              icon: (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+              ),
+            },
+            {
+              value: fmtResponseTime(stats.avgResponseHours),
+              label: "Avg response",
+              sub: avgTrendText,
+              color: stats.avgResponseHours != null && stats.avgResponseHours > targetResponseHours ? "#dc2626" : "var(--text-primary)",
+              bg: "var(--n-50)", border: "transparent",
+              icon: (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>
+              ),
+            },
+          ] as const).map((s, i) => (
             <div
               key={i}
               style={{
-                padding: "16px 18px",
+                padding: "14px 18px",
                 borderRight: i < 5 ? "1px solid var(--border-subtle)" : "none",
               }}
             >
-              <div style={{ fontSize: "1.5rem", fontWeight: 700, color: s.color, lineHeight: 1.1, fontVariantNumeric: "tabular-nums" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 8, color: s.color }}>
+                {s.icon}
+                <span style={{ fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-secondary)" }}>{s.label}</span>
+              </div>
+              <div style={{ fontSize: "1.6rem", fontWeight: 700, color: s.color, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
                 {s.value}
               </div>
-              <div style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-primary)", marginTop: 4 }}>{s.label}</div>
-              <div style={{ fontSize: "0.70rem", color: "var(--text-secondary)", marginTop: 2 }}>{s.sub}</div>
+              <div style={{ fontSize: "0.70rem", color: "var(--text-secondary)", marginTop: 5, lineHeight: 1.4 }}>{s.sub}</div>
             </div>
           ))}
         </div>
@@ -858,7 +923,7 @@ export function Approvals() {
         {showTs && filteredTsPending.length > 0 && (
           <div style={{
             display: "grid",
-            gridTemplateColumns: "44px 1fr 130px 110px 130px 200px",
+            gridTemplateColumns: "44px 1fr 130px 100px 120px 1fr 36px",
             gap: 8,
             padding: "8px 20px",
             borderBottom: "1px solid var(--border-subtle)",
@@ -885,13 +950,15 @@ export function Approvals() {
               );
             })}
             <div style={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.06em", color: "var(--text-secondary)" }}>ACTIONS</div>
+            <div />
           </div>
         )}
 
         {/* Timesheet rows */}
         {showTs && filteredTsPending.map((a, rowIndex) => {
           const mismatch      = sanitizeMismatch(a.mismatchReason);
-          const requiresReview = a.enteredMinutes === 0 || mismatch !== null;
+          const requiresReview = a.enteredMinutes === 0 || mismatch !== null; // warning chip only
+          const cannotApprove  = a.enteredMinutes === 0; // only true block on approval
           const days          = waitingDays(a.submittedAtUtc, a.workDate);
           const tone          = waitingTone(days);
           const person        = (a.displayName ?? "").trim().length > 0 ? a.displayName! : a.username;
@@ -916,7 +983,7 @@ export function Approvals() {
               {/* Main row */}
               <div style={{
                 display: "grid",
-                gridTemplateColumns: "44px 1fr 130px 110px 130px 200px",
+                gridTemplateColumns: "44px 1fr 130px 100px 120px 1fr 36px",
                 gap: 8,
                 padding: "14px 20px",
                 alignItems: "center",
@@ -1008,33 +1075,48 @@ export function Approvals() {
                   <AppButton
                     variant="primary"
                     size="sm"
-                    onClick={() => void approveTs(a.timesheetId, requiresReview)}
-                    disabled={requiresReview}
-                    title={requiresReview ? "Cannot approve: 0h or mismatch. Request correction first." : "Approve timesheet"}
-                    style={requiresReview ? { opacity: 0.4 } : undefined}
+                    onClick={() => void approveTs(a.timesheetId, cannotApprove)}
+                    disabled={cannotApprove}
+                    title={cannotApprove ? "Cannot approve: no hours logged." : mismatch ? `Mismatch noted: ${mismatch}` : "Approve timesheet"}
+                    style={cannotApprove ? { opacity: 0.4 } : { background: "var(--brand-600)", borderColor: "var(--brand-600)" }}
                   >
                     Approve
                   </AppButton>
                   <AppButton
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
                     onClick={() => toggleReject(a.timesheetId, "ts")}
-                    style={{ fontSize: "0.78rem", color: "var(--text-secondary)" }}
+                    style={{ fontSize: "0.78rem", color: "var(--text-secondary)", borderColor: "var(--border-default)" }}
                   >
-                    Correct
+                    Request Correction
                   </AppButton>
-                  <button
-                    type="button"
-                    onClick={() => void openTimesheetDetail(a.timesheetId)}
-                    style={{
-                      background: "none", border: "none", cursor: "pointer",
-                      fontSize: "0.78rem", color: "var(--brand-600)", fontWeight: 500, padding: 0,
-                      textDecoration: "underline", textUnderlineOffset: 2,
-                    }}
-                  >
-                    {isDetailOpen ? "Hide" : "Details"}
-                  </button>
                 </div>
+
+                {/* Expand/collapse chevron */}
+                <button
+                  type="button"
+                  onClick={() => void openTimesheetDetail(a.timesheetId)}
+                  title={isDetailOpen ? "Collapse details" : "Expand details"}
+                  aria-label={isDetailOpen ? "Collapse details" : "Expand details"}
+                  aria-expanded={isDetailOpen}
+                  style={{
+                    width: 28, height: 28, borderRadius: 6,
+                    border: "1px solid var(--border-default)",
+                    background: isDetailOpen ? "var(--brand-50)" : "var(--n-0)",
+                    cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                    color: isDetailOpen ? "var(--brand-600)" : "var(--text-secondary)",
+                    transition: "background 0.12s, color 0.12s",
+                    flexShrink: 0,
+                  }}
+                >
+                  <svg
+                    width="14" height="14" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                    style={{ transition: "transform 0.18s", transform: isDetailOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
               </div>
 
               {/* Correction input */}
@@ -1132,7 +1214,7 @@ export function Approvals() {
           >
             <div style={{
               display: "grid",
-              gridTemplateColumns: "44px 1fr 130px 110px 130px 200px",
+              gridTemplateColumns: "44px 1fr 130px 100px 120px 1fr 36px",
               gap: 8,
               padding: "14px 20px",
               alignItems: "center",
@@ -1165,6 +1247,7 @@ export function Approvals() {
                 <AppButton variant="primary" size="sm" onClick={() => void approveLeave(l.id)}>Approve</AppButton>
                 <AppButton variant="ghost" size="sm" style={{ color: "var(--text-secondary)" }} onClick={() => toggleReject(l.id, "leave")}>Reject</AppButton>
               </div>
+              <div />
             </div>
             {rejectFor?.id === l.id && rejectFor.kind === "leave" && (
               <div style={{

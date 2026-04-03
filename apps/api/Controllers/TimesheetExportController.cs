@@ -62,6 +62,7 @@ public class TimesheetExportController(TimeSheetDbContext dbContext) : Controlle
         [FromQuery] DateOnly? fromDate,
         [FromQuery] DateOnly? toDate,
         [FromQuery] Guid? userId,
+        [FromQuery] List<Guid>? userIds,
         [FromQuery] string format = "csv",
         CancellationToken ct = default)
     {
@@ -80,7 +81,15 @@ public class TimesheetExportController(TimeSheetDbContext dbContext) : Controlle
         var permittedIds = await BuildPermittedIdsAsync(callerId.Value, ct);
 
         List<Guid> targetIds;
-        if (userId.HasValue)
+        if (userIds is { Count: > 0 })
+        {
+            var requested = userIds.Distinct().ToList();
+            if (requested.Any(requestedId => !permittedIds.Contains(requestedId)))
+                return StatusCode(403, new { message = "You are not permitted to export data for one or more selected users." });
+
+            targetIds = requested;
+        }
+        else if (userId.HasValue)
         {
             if (!permittedIds.Contains(userId.Value))
                 return StatusCode(403, new { message = "You are not permitted to export data for that user." });

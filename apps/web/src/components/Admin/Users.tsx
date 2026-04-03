@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../../api/client";
 import type { Department, LeavePolicy, User, WorkPolicy } from "../../types";
 import { History, Pencil, UserCheck, UserX } from "lucide-react";
-import { AppButton, AppCheckbox, AppIconButton, AppInput, AppPagination, AppSelect, AppTableShell } from "../ui";
+import { AppButton, AppCheckbox, AppDataTable, AppIconButton, AppInput, AppSelect, type ColumnDef } from "../ui";
 
 type UserForm = {
   username: string;
@@ -32,12 +32,6 @@ const BLANK: UserForm = {
 };
 
 const EMP_ID_RE = /^EMP-\d{4}$/;
-type SortDir = "asc" | "desc";
-
-function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
-  if (!active) return <span className="opacity-40 text-[0.7rem] ml-[3px]">↕</span>;
-  return <span className="text-[0.75rem] ml-[3px] text-brand-600">{dir === "asc" ? "↑" : "↓"}</span>;
-}
 
 function pwdStrength(pwd: string): "weak" | "medium" | "strong" | null {
   if (!pwd) return null;
@@ -85,21 +79,13 @@ export function Users() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [policies, setPolicies] = useState<WorkPolicy[]>([]);
   const [leavePolicies, setLeavePolicies] = useState<LeavePolicy[]>([]);
-  const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("");
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
-  const [sortCol, setSortCol] = useState<"username" | "role" | "departmentName" | "isActive">("username");
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [editing, setEditing] = useState<User | "new" | null>(null);
   const [form, setForm] = useState<UserForm>(BLANK);
   const [error, setError] = useState("");
   const [showPwd, setShowPwd] = useState(false);
-
-  function toggleSort(col: typeof sortCol) {
-    if (sortCol === col) setSortDir((d) => d === "asc" ? "desc" : "asc");
-    else { setSortCol(col); setSortDir("asc"); }
-  }
 
   async function load() {
     const r = await apiFetch("/users");
@@ -186,22 +172,105 @@ export function Users() {
   const f = (k: keyof UserForm, v: string | boolean) => setForm((p) => ({ ...p, [k]: v }));
   const strength = editing === "new" ? pwdStrength(form.password) : null;
 
-  const filtered = users.filter((u) => {
-    const q = search.toLowerCase();
-    const matchesSearch = !q || u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || (u.employeeId ?? "").toLowerCase().includes(q);
+  // Pre-filter by role/dept dropdowns; AppDataTable handles search + sort + pagination
+  const preFiltered = users.filter((u) => {
     const matchesRole = !roleFilter || u.role === roleFilter;
-    const matchesDepartment = !departmentFilter || (u.departmentName ?? "").toLowerCase() === departmentFilter.toLowerCase();
-    return matchesSearch && matchesRole && matchesDepartment;
+    const matchesDept = !departmentFilter || (u.departmentName ?? "").toLowerCase() === departmentFilter.toLowerCase();
+    return matchesRole && matchesDept;
   });
 
-  const sorted = [...filtered].sort((a, b) => {
-    const mul = sortDir === "asc" ? 1 : -1;
-    if (sortCol === "username") return mul * a.username.localeCompare(b.username);
-    if (sortCol === "role") return mul * a.role.localeCompare(b.role);
-    if (sortCol === "departmentName") return mul * (a.departmentName ?? "").localeCompare(b.departmentName ?? "");
-    if (sortCol === "isActive") return mul * (Number(b.isActive) - Number(a.isActive));
-    return 0;
-  });
+  const columns: ColumnDef<User>[] = [
+    {
+      key: "select",
+      label: "",
+      width: "44px",
+      render: (u) => (
+        <AppCheckbox
+          aria-label={`Select ${u.username}`}
+          checked={selectedUserIds.has(u.id)}
+          onChange={() => toggleUserSelect(u.id)}
+        />
+      ),
+    },
+    {
+      key: "username",
+      label: "User",
+      sortable: true,
+      sortValue: (u) => u.username,
+      searchValue: (u) => `${u.username} ${u.email} ${u.employeeId ?? ""}`,
+      render: (u) => (
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-[0.72rem]" style={{ background: avatarColor(u.username), flexShrink: 0 }}>
+            {initials(u.username)}
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <div className="font-semibold text-text-primary">{u.username}</div>
+            <div className="td-muted" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 220 }}>{u.email}</div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "employeeId",
+      label: "Employee ID",
+      width: "130px",
+      sortable: true,
+      sortValue: (u) => u.employeeId ?? "",
+      render: (u) => <code className="font-mono text-[0.75rem] bg-n-100 px-[5px] py-0.5 rounded-sm">{u.employeeId || "—"}</code>,
+    },
+    {
+      key: "role",
+      label: "Role",
+      width: "115px",
+      sortable: true,
+      sortValue: (u) => u.role,
+      render: (u) => (
+        <span className={`badge ${u.role === "admin" ? "badge-error" : u.role === "manager" ? "badge-warning" : "badge-brand"}`}>
+          {u.role.charAt(0).toUpperCase() + u.role.slice(1)}
+        </span>
+      ),
+    },
+    {
+      key: "department",
+      label: "Department",
+      sortable: true,
+      sortValue: (u) => u.departmentName ?? "",
+      render: (u) => <span className="td-muted">{u.departmentName ?? "—"}</span>,
+    },
+    {
+      key: "leavePolicy",
+      label: "Leave Policy",
+      render: (u) => <span className="td-muted">{u.leavePolicyName ?? "—"}</span>,
+    },
+    {
+      key: "status",
+      label: "Status",
+      width: "100px",
+      sortable: true,
+      sortValue: (u) => u.isActive ? 1 : 0,
+      render: (u) => u.isActive
+        ? <span className="badge badge-success">Active</span>
+        : <span className="badge badge-neutral">Inactive</span>,
+    },
+    {
+      key: "actions",
+      label: "Actions",
+      width: "110px",
+      render: (u) => (
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <AppIconButton tone="edit" onClick={() => openEdit(u)} title={`Edit ${u.username}`} aria-label={`Edit ${u.username}`}>
+            <Pencil size={14} />
+          </AppIconButton>
+          <AppIconButton tone="edit" onClick={() => navigate(`/audit-logs?entityType=User&entityId=${u.id}`)} title={`Audit history for ${u.username}`} aria-label={`Audit history for ${u.username}`}>
+            <History size={14} />
+          </AppIconButton>
+          <AppIconButton tone={u.isActive ? "danger" : "success"} onClick={() => void toggleActive(u)} title={`${u.isActive ? "Deactivate" : "Activate"} ${u.username}`} aria-label={`${u.isActive ? "Deactivate" : "Activate"} ${u.username}`}>
+            {u.isActive ? <UserX size={14} /> : <UserCheck size={14} />}
+          </AppIconButton>
+        </div>
+      ),
+    },
+  ];
 
   const drawerTitle = editing === "new" ? "Create User" : editing ? `Edit: ${(editing as User).username}` : "";
 
@@ -298,121 +367,39 @@ export function Users() {
           <div className="page-title">User Management</div>
           <div className="page-subtitle">Manage user accounts, roles, and team assignments</div>
         </div>
-        <div className="page-actions">
-          <AppButton variant="primary" onClick={openCreate}>+ New User</AppButton>
-        </div>
       </div>
 
-      <div className="mgmt-toolbar">
-        <div className="input-icon-wrap mgmt-search-wrap">
-          <span className="input-icon">🔍</span>
-          <AppInput className="mgmt-search" placeholder="Search by username, email or employee ID..." value={search} onChange={(e) => setSearch(e.target.value)} />
-        </div>
-        <AppSelect className="mgmt-select" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
-          <option value="">All Roles</option>
-          <option value="employee">Employee</option>
-          <option value="consultant">Consultant</option>
-          <option value="manager">Manager</option>
-          <option value="admin">Admin</option>
-        </AppSelect>
-        <AppSelect className="mgmt-select" value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)}>
-          <option value="">All Departments</option>
-          {departments.map((d) => <option key={d.id} value={d.name}>{d.name}</option>)}
-        </AppSelect>
-        <AppButton className="mgmt-filter-btn" variant="outline">Filter</AppButton>
-      </div>
-
-      <div className="card overflow-visible">
+      <div className="card overflow-hidden">
         <div className="card-header mgmt-card-head">
           <div className="card-title">
             All Users
             <span className="mgmt-count-pill">{users.length} users</span>
           </div>
-          <AppButton variant="outline" size="sm">Export</AppButton>
+          <AppButton variant="primary" size="sm" onClick={openCreate}>+ New User</AppButton>
         </div>
-        <AppTableShell>
-          <table className="table-base mgmt-table">
-            <thead>
-              <tr>
-                <th className="w-11">
-                  <AppCheckbox
-                    aria-label="Select all users"
-                    checked={sorted.length > 0 && selectedUserIds.size === sorted.length}
-                    onChange={() => {
-                      if (selectedUserIds.size === sorted.length) setSelectedUserIds(new Set());
-                      else setSelectedUserIds(new Set(sorted.map((u) => u.id)));
-                    }}
-                  />
-                </th>
-                <th className="th-sort" onClick={() => toggleSort("username")} aria-sort={sortCol === "username" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>User <SortIcon active={sortCol === "username"} dir={sortDir} /></th>
-                <th className="w-[130px]">Employee ID</th>
-                <th className="th-sort w-[120px]" onClick={() => toggleSort("role")} aria-sort={sortCol === "role" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>Role <SortIcon active={sortCol === "role"} dir={sortDir} /></th>
-                <th className="th-sort" onClick={() => toggleSort("departmentName")} aria-sort={sortCol === "departmentName" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>Department <SortIcon active={sortCol === "departmentName"} dir={sortDir} /></th>
-                <th>Leave Policy</th>
-                <th className="th-sort w-[100px]" onClick={() => toggleSort("isActive")} aria-sort={sortCol === "isActive" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>Status <SortIcon active={sortCol === "isActive"} dir={sortDir} /></th>
-                <th className="w-[120px]">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sorted.map((u) => (
-                <tr key={u.id} className={u.isActive ? "" : "opacity-[0.55]"}>
-                  <td><AppCheckbox aria-label={`Select ${u.username}`} checked={selectedUserIds.has(u.id)} onChange={() => toggleUserSelect(u.id)} /></td>
-                  <td>
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-[0.72rem]" style={{ background: avatarColor(u.username) }}>{initials(u.username)}</div>
-                      <div className="min-w-0">
-                        <div className="font-semibold text-text-primary">{u.username}</div>
-                        <div className="td-muted max-w-[220px] overflow-hidden text-ellipsis whitespace-nowrap">{u.email}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td><code className="font-mono text-[0.75rem] bg-n-100 px-[5px] py-0.5 rounded-sm">{u.employeeId || "—"}</code></td>
-                  <td><span className={`badge ${u.role === "admin" ? "badge-error" : u.role === "manager" ? "badge-warning" : "badge-brand"}`}>{u.role.charAt(0).toUpperCase() + u.role.slice(1)}</span></td>
-                  <td className="td-muted">{u.departmentName ?? "—"}</td>
-                  <td className="td-muted">{u.leavePolicyName ?? "—"}</td>
-                  <td>{u.isActive ? <span className="badge badge-success">Active</span> : <span className="badge badge-neutral">Inactive</span>}</td>
-                  <td>
-                    <div className="flex gap-2 items-center">
-                      <AppIconButton
-                        tone="edit"
-                        onClick={() => openEdit(u)}
-                        title={`Edit ${u.username}`}
-                        aria-label={`Edit ${u.username}`}
-                      >
-                        <Pencil size={14} />
-                      </AppIconButton>
-                      <AppIconButton
-                        tone="edit"
-                        onClick={() => navigate(`/audit-logs?entityType=User&entityId=${u.id}`)}
-                        title={`Audit history for ${u.username}`}
-                        aria-label={`Audit history for ${u.username}`}
-                      >
-                        <History size={14} />
-                      </AppIconButton>
-                      <AppIconButton
-                        tone={u.isActive ? "danger" : "success"}
-                        onClick={() => void toggleActive(u)}
-                        title={`${u.isActive ? "Deactivate" : "Activate"} ${u.username}`}
-                        aria-label={`${u.isActive ? "Deactivate" : "Activate"} ${u.username}`}
-                      >
-                        {u.isActive ? <UserX size={14} /> : <UserCheck size={14} />}
-                      </AppIconButton>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {sorted.length === 0 && (
-                <tr className="empty-row">
-                  <td colSpan={8}>{search || roleFilter || departmentFilter ? "No users match your filters." : "No users found."}</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </AppTableShell>
-        <div className="mgmt-card-foot">
-          <span>Showing 1–{sorted.length} of {sorted.length} user{sorted.length === 1 ? "" : "s"}</span>
-          <AppPagination page={1} totalPages={1} onPrev={() => {}} onNext={() => {}} />
-        </div>
+        <AppDataTable
+          columns={columns}
+          data={preFiltered}
+          rowKey={(u) => u.id}
+          searchPlaceholder="Search by name, email or employee ID…"
+          emptyText={roleFilter || departmentFilter ? "No users match your filters." : "No users found."}
+          rowOpacity={(u) => u.isActive ? 1 : 0.5}
+          toolbar={
+            <>
+              <AppSelect style={{ height: 34, fontSize: 13 }} value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
+                <option value="">All Roles</option>
+                <option value="employee">Employee</option>
+                <option value="consultant">Consultant</option>
+                <option value="manager">Manager</option>
+                <option value="admin">Admin</option>
+              </AppSelect>
+              <AppSelect style={{ height: 34, fontSize: 13 }} value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)}>
+                <option value="">All Departments</option>
+                {departments.map((d) => <option key={d.id} value={d.name}>{d.name}</option>)}
+              </AppSelect>
+            </>
+          }
+        />
       </div>
     </section>
   );

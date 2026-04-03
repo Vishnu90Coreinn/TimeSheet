@@ -1,5 +1,6 @@
 export * from "./AppButton";
 export * from "./AppCheckbox";
+export * from "./AppDataTable";
 export * from "./AppIconButton";
 export * from "./AppInput";
 export * from "./AppPagination";

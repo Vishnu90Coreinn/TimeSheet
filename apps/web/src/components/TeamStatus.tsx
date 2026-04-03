@@ -376,6 +376,70 @@ function EmptyTeamIcon() {
   );
 }
 
+// ── KPI strip icons ───────────────────────────────────────────────────────────
+
+function UsersIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+      <circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+  );
+}
+
+function UserCheckIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+      <circle cx="8.5" cy="7" r="4"/>
+      <polyline points="17 11 19 13 23 9"/>
+    </svg>
+  );
+}
+
+function AlertTriangleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+      <line x1="12" y1="9" x2="12" y2="13"/>
+      <line x1="12" y1="17" x2="12.01" y2="17"/>
+    </svg>
+  );
+}
+
+function HourglassIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M5 22h14"/><path d="M5 2h14"/>
+      <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"/>
+      <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"/>
+    </svg>
+  );
+}
+
+// ── Loading skeleton ───────────────────────────────────────────────────────────
+
+function RowSkeleton() {
+  const pulse: React.CSSProperties = { background: "var(--n-100)", borderRadius: 4, animation: "pulse 1.5s ease-in-out infinite" };
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderBottom: "1px solid var(--border-subtle)" }}>
+      <div style={{ ...pulse, width: 32, height: 32, borderRadius: 6, flexShrink: 0 }} />
+      <div style={{ ...pulse, flex: 1, height: 13 }} />
+      <div style={{ ...pulse, width: 72, height: 22, borderRadius: 20 }} />
+      <div style={{ ...pulse, width: 48, height: 13 }} />
+      <div style={{ ...pulse, width: 110, height: 8, borderRadius: 4 }} />
+      <div style={{ ...pulse, width: 60, height: 22, borderRadius: 20 }} />
+      <div style={{ ...pulse, width: 80, height: 28, borderRadius: 6 }} />
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function TeamStatus() {
@@ -417,6 +481,9 @@ export function TeamStatus() {
     "on-leave":       members.filter(m => m.attendance === "onLeave").length,
   };
 
+  // Present = checked in OR checked out (showed up today)
+  const presentCount = members.filter(m => m.attendance === "checkedIn" || m.attendance === "checkedOut").length;
+
   const filtered = members.filter(m => {
     if (filter === "missing")          return m.todayTimesheetStatus === "missing";
     if (filter === "needs-approval")   return m.pendingApprovalCount > 0;
@@ -427,232 +494,252 @@ export function TeamStatus() {
   // M1 — Dynamic subtitle
   const subtitle = buildSubtitle(members.length, counts.missing, counts["needs-approval"]);
 
-  // C2 — sticky td className reused per row
-  const stickyTdCls = "sticky right-0 z-[1] bg-[var(--surface)] shadow-[-2px_0_6px_rgba(0,0,0,0.04)]";
+  // KPI strip data
+  const kpiCards = [
+    {
+      label: "TOTAL MEMBERS",
+      value: loading ? "—" : String(members.length),
+      sub: loading ? "Loading…" : members.length === 1 ? "1 direct report" : `${members.length} direct reports`,
+      color: "#6366f1", bg: "#eef2ff",
+      icon: <UsersIcon />,
+    },
+    {
+      label: "PRESENT TODAY",
+      value: loading ? "—" : String(presentCount),
+      sub: loading ? "" : presentCount === members.length && members.length > 0
+        ? "Full attendance today"
+        : `${members.length - presentCount} absent`,
+      color: "#10b981", bg: "#ecfdf5",
+      icon: <UserCheckIcon />,
+    },
+    {
+      label: "MISSING TODAY",
+      value: loading ? "—" : String(counts.missing),
+      sub: loading ? "" : counts.missing > 0 ? "No timesheet submitted" : "All submitted",
+      color: !loading && counts.missing > 0 ? "#ef4444" : "#64748b",
+      bg: !loading && counts.missing > 0 ? "#fef2f2" : "#f8fafc",
+      icon: <AlertTriangleIcon />,
+    },
+    {
+      label: "NEEDS APPROVAL",
+      value: loading ? "—" : String(counts["needs-approval"]),
+      sub: loading ? "" : counts["needs-approval"] > 0 ? "Awaiting your review" : "Nothing pending",
+      color: !loading && counts["needs-approval"] > 0 ? "#f59e0b" : "#64748b",
+      bg: !loading && counts["needs-approval"] > 0 ? "#fffbeb" : "#f8fafc",
+      icon: <HourglassIcon />,
+    },
+  ];
 
   return (
     <>
       {/* Toast */}
       {toast && (
-        <div className="fixed bottom-6 right-6 z-[9999] bg-[#111827] text-white rounded-lg px-[18px] py-[10px] text-sm font-semibold shadow-[0_4px_16px_rgba(0,0,0,0.2)]">
+        <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 9999, background: "#111827", color: "#fff", borderRadius: 10, padding: "10px 18px", fontSize: 13, fontWeight: 600, boxShadow: "0 4px 16px rgba(0,0,0,0.22)", display: "flex", alignItems: "center", gap: 8 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
           {toast}
         </div>
       )}
 
-      <section className="flex flex-col gap-3">
+      <section style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
-        {/* Page header */}
+        {/* ── Page Header ─────────────────────────────────────────────────────── */}
         <div className="page-header">
           <div>
             <div className="page-title">Team Status</div>
-            {/* M1 — dynamic subtitle */}
             <div className="page-subtitle">{subtitle}</div>
           </div>
-          {/* H1 — Custom date picker instead of native input */}
           <div className="page-actions">
             <DatePicker value={date} onChange={setDate} />
           </div>
         </div>
 
-        {/* Filter tabs — underline style */}
-        <div className="flex border-b border-[var(--border-subtle)] overflow-x-auto">
-          {(Object.keys(FILTER_LABELS) as Filter[]).map(f => {
-            const isActive = filter === f;
-            return (
-              <AppButton
-                key={f}
-                type="button"
-                unstyled
-                onClick={() => setFilter(f)}
-                className="flex items-center gap-1.5 px-4 py-3 text-[0.82rem] font-medium whitespace-nowrap border-b-2 transition-colors"
-                style={isActive
-                  ? { borderBottomColor: "var(--color-primary, #6366f1)", color: "var(--color-primary, #6366f1)" }
-                  : { borderBottomColor: "transparent", color: "var(--text-secondary, #64748b)" }}
-              >
-                {FILTER_LABELS[f]}
-                <span
-                  className="rounded-[10px] px-[7px] py-[1px] text-[11px] font-bold min-w-[18px] text-center inline-block"
-                  style={{
-                    background: isActive ? "var(--color-primary-100, #e0e7ff)" : "var(--n-200)",
-                    color: isActive ? "var(--color-primary, #6366f1)" : "var(--text-secondary)",
-                  }}
-                >
-                  {counts[f]}
-                </span>
-              </AppButton>
-            );
-          })}
+        {/* ── KPI Stats Strip ─────────────────────────────────────────────────── */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+          {kpiCards.map(k => (
+            <div key={k.label} style={{ background: "var(--surface)", border: "1px solid var(--border-subtle)", borderLeft: `3px solid ${k.color}`, borderRadius: 10, padding: "14px 16px", display: "flex", alignItems: "flex-start", gap: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 8, background: k.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: k.color }}>
+                {k.icon}
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 2 }}>{k.label}</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: k.color, lineHeight: 1.1 }}>{k.value}</div>
+                <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 2 }}>{k.sub}</div>
+              </div>
+            </div>
+          ))}
         </div>
 
-        {/* Table */}
-        <div className="card overflow-auto">
+        {/* ── Main Card (filter tabs + table) ─────────────────────────────────── */}
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border-subtle)", borderRadius: 12, overflow: "hidden" }}>
+
+          {/* Filter tabs */}
+          <div style={{ display: "flex", borderBottom: "1px solid var(--border-subtle)", padding: "0 4px", overflowX: "auto" }}>
+            {(Object.keys(FILTER_LABELS) as Filter[]).map(f => {
+              const isActive = filter === f;
+              return (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setFilter(f)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 6,
+                    padding: "12px 14px", fontSize: 13, fontWeight: isActive ? 600 : 500,
+                    color: isActive ? "var(--brand-600, #5046e5)" : "var(--text-secondary)",
+                    background: "transparent", border: "none",
+                    borderBottom: `2px solid ${isActive ? "var(--brand-500, #6366f1)" : "transparent"}`,
+                    cursor: "pointer", whiteSpace: "nowrap", transition: "color 0.15s",
+                    marginBottom: -1, outline: "none",
+                  }}
+                >
+                  {FILTER_LABELS[f]}
+                  <span style={{
+                    background: isActive ? "var(--brand-100, #e0e7ff)" : "var(--n-100, #f1f5f9)",
+                    color: isActive ? "var(--brand-600, #5046e5)" : "var(--text-tertiary)",
+                    borderRadius: 10, padding: "1px 7px", fontSize: 11, fontWeight: 700,
+                    minWidth: 20, textAlign: "center", display: "inline-block",
+                  }}>
+                    {counts[f]}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Body */}
           {loading ? (
-            <div className="p-6 text-text-tertiary text-center">
-              Loading…
+            <div>
+              <RowSkeleton />
+              <RowSkeleton />
+              <RowSkeleton />
             </div>
           ) : filtered.length === 0 && members.length === 0 ? (
-            /* H5 — Full empty state for 0 members */
-            <div className="py-8 px-5 flex flex-col items-center gap-2 text-center">
-              <EmptyTeamIcon />
-              <div className="text-[0.95rem] font-bold text-text-primary">
-                No direct reports assigned
+            <div style={{ padding: "52px 24px", display: "flex", flexDirection: "column", alignItems: "center", gap: 10, textAlign: "center" }}>
+              <div style={{ width: 64, height: 64, borderRadius: 16, background: "var(--n-100)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <EmptyTeamIcon />
               </div>
-              <div className="text-[0.8rem] text-text-tertiary max-w-[320px]">
+              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", marginTop: 4 }}>No direct reports assigned</div>
+              <div style={{ fontSize: 13, color: "var(--text-tertiary)", maxWidth: 300, lineHeight: 1.6 }}>
                 You don't have any team members yet. Ask your admin to assign employees to you.
               </div>
             </div>
           ) : filtered.length === 0 ? (
-            <div className="p-6 text-text-tertiary text-center">
+            <div style={{ padding: "40px 20px", textAlign: "center", fontSize: 14, color: "var(--text-tertiary)" }}>
               No team members match this filter.
             </div>
           ) : (
-            /*
-             * C2 — table-layout: fixed, 100% width, no minWidth.
-             * "Pending Actions" is position:sticky right:0 so it is always
-             * visible even if the viewport is very narrow and the table scrolls.
-             * NEW-1 — all <th> cells get overflow:hidden + text-overflow:ellipsis
-             * so header text never bleeds into adjacent columns.
-             */
-            <table
-              className="data-table [table-layout:fixed] w-full"
-              role="grid"
-            >
-              <thead>
-                <tr>
-                  {/* NEW-1 — th base style: overflow hidden, no wrap, ellipsis */}
-                  <th className="w-[23%] overflow-hidden text-ellipsis whitespace-nowrap">Member</th>
-                  <th className="w-[13%] overflow-hidden text-ellipsis whitespace-nowrap">Attendance</th>
-                  <th className="w-[11%] overflow-hidden text-ellipsis whitespace-nowrap">
-                    <ClockIcon />Check-in Time
-                  </th>
-                  <th className="w-[19%] overflow-hidden text-ellipsis whitespace-nowrap">Week Progress</th>
-                  <th className="w-[12%] overflow-hidden text-ellipsis whitespace-nowrap">Timesheet</th>
-                  {/* C2 — sticky right column */}
-                  <th className="w-[22%] overflow-hidden text-ellipsis whitespace-nowrap sticky right-0 z-[2] bg-n-50 shadow-[-2px_0_6px_rgba(0,0,0,0.06)]">
-                    Pending Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(m => {
-                  const isReminding = reminding.has(m.userId);
-                  const tsStatus = toBadgeStatus(m.todayTimesheetStatus);
-                  const attStatus = toBadgeStatus(
-                    m.attendance === "onLeave" ? "on-leave" : m.attendance
-                  );
-                  return (
-                    <tr key={m.userId}>
-                      {/* Member — title tooltip for truncated names */}
-                      <td>
-                        <div className="flex items-center gap-2">
-                          <Avatar member={m} />
-                          <div className="min-w-0">
-                            <div
-                              className="font-semibold text-[0.82rem] text-text-primary overflow-hidden text-ellipsis whitespace-nowrap"
-                              title={m.displayName || m.username}
-                            >
-                              {m.displayName || m.username}
+            <div style={{ overflowX: "auto" }}>
+              <table className="data-table" style={{ tableLayout: "fixed", width: "100%" }} role="grid">
+                <thead>
+                  <tr>
+                    <th style={{ width: "22%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Member</th>
+                    <th style={{ width: "13%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Attendance</th>
+                    <th style={{ width: "11%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <ClockIcon />Check-in
+                    </th>
+                    <th style={{ width: "20%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Week Progress</th>
+                    <th style={{ width: "12%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Timesheet</th>
+                    <th style={{ width: "22%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", position: "sticky", right: 0, zIndex: 2, background: "var(--n-50, #f8fafc)", boxShadow: "-2px 0 6px rgba(0,0,0,0.06)" }}>
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map(m => {
+                    const isReminding = reminding.has(m.userId);
+                    const tsStatus = toBadgeStatus(m.todayTimesheetStatus);
+                    const attStatus = toBadgeStatus(m.attendance === "onLeave" ? "on-leave" : m.attendance);
+
+                    // Row left-border accent by priority: missing > needs approval > on leave
+                    const rowAccent =
+                      m.todayTimesheetStatus === "missing" ? "#ef4444"
+                      : m.pendingApprovalCount > 0 ? "#f59e0b"
+                      : m.attendance === "onLeave" ? "#6366f1"
+                      : undefined;
+
+                    return (
+                      <tr key={m.userId} style={rowAccent ? { borderLeft: `3px solid ${rowAccent}` } : {}}>
+                        {/* Member */}
+                        <td>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <Avatar member={m} />
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={m.displayName || m.username}>
+                                {m.displayName || m.username}
+                              </div>
+                              {m.displayName && (
+                                <div style={{ fontSize: 11, color: "var(--text-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={`@${m.username}`}>
+                                  @{m.username}
+                                </div>
+                              )}
                             </div>
-                            {m.displayName && (
-                              <div
-                                className="text-[0.7rem] text-text-tertiary overflow-hidden text-ellipsis whitespace-nowrap"
-                                title={`@${m.username}`}
+                          </div>
+                        </td>
+
+                        {/* Attendance */}
+                        <td><StatusBadge status={attStatus} /></td>
+
+                        {/* Check-in / out */}
+                        <td style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+                          {m.checkInAtUtc ? (
+                            <div>
+                              <div style={{ fontWeight: 600 }}>{fmtLocalTime(m.checkInAtUtc)}</div>
+                              {m.checkOutAtUtc && (
+                                <div style={{ color: "var(--text-tertiary)", fontSize: 11 }}>{fmtLocalTime(m.checkOutAtUtc)}</div>
+                              )}
+                            </div>
+                          ) : <span aria-label="No check-in recorded">—</span>}
+                        </td>
+
+                        {/* Week progress */}
+                        <td><WeekBar logged={m.weekLoggedMinutes} expected={m.weekExpectedMinutes} /></td>
+
+                        {/* Timesheet */}
+                        <td><StatusBadge status={tsStatus} /></td>
+
+                        {/* Actions — sticky right */}
+                        <td style={{ position: "sticky", right: 0, zIndex: 1, background: "var(--surface)", boxShadow: "-2px 0 6px rgba(0,0,0,0.04)" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                            {m.pendingApprovalCount > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => navigate("/approvals")}
+                                title={`Review ${m.pendingApprovalCount} pending approval${m.pendingApprovalCount !== 1 ? "s" : ""}`}
+                                style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 11px", borderRadius: 6, background: "var(--brand-50, #eef2ff)", color: "var(--brand-600, #4f46e5)", border: "1px solid var(--brand-200, #c7d2fe)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
                               >
-                                @{m.username}
-                              </div>
+                                <CheckIcon /> Review {m.pendingApprovalCount}
+                              </button>
+                            )}
+                            {m.todayTimesheetStatus === "missing" && (
+                              <button
+                                type="button"
+                                disabled={isReminding}
+                                onClick={() => void remind(m.userId, m.username)}
+                                title="Send reminder notification"
+                                style={{ display: "inline-flex", alignItems: "center", padding: "5px 11px", borderRadius: 6, background: "var(--n-0, #fff)", color: "var(--text-secondary)", border: "1px solid var(--border-default)", fontSize: 12, fontWeight: 500, cursor: isReminding ? "not-allowed" : "pointer", opacity: isReminding ? 0.55 : 1 }}
+                              >
+                                {isReminding ? "Sending…" : "Remind"}
+                              </button>
+                            )}
+                            {m.pendingApprovalCount === 0 && m.todayTimesheetStatus !== "missing" && (
+                              <span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>—</span>
                             )}
                           </div>
-                        </div>
-                      </td>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
 
-                      {/* Attendance */}
-                      <td><StatusBadge status={attStatus} /></td>
-
-                      {/* Check-in / out */}
-                      <td className="text-[0.8rem] text-text-secondary">
-                        {m.checkInAtUtc ? (
-                          <div>
-                            <div>{fmtLocalTime(m.checkInAtUtc)}</div>
-                            {m.checkOutAtUtc && (
-                              <div className="text-text-tertiary">
-                                {fmtLocalTime(m.checkOutAtUtc)}
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <span aria-label="No check-in recorded">—</span>
-                        )}
-                      </td>
-
-                      {/* Week progress */}
-                      <td>
-                        <WeekBar logged={m.weekLoggedMinutes} expected={m.weekExpectedMinutes} />
-                      </td>
-
-                      {/* Timesheet */}
-                      <td><StatusBadge status={tsStatus} /></td>
-
-                      {/* Pending Actions — sticky right */}
-                      <td className={stickyTdCls}>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          {m.pendingApprovalCount > 0 && (
-                            <AppButton
-                              type="button"
-                              unstyled
-                              onClick={() => navigate("/approvals")}
-                              className="bg-transparent border-0 p-0 text-brand-600 font-semibold text-[0.8rem] cursor-pointer inline-flex items-center hover:underline"
-                              title={`View ${m.pendingApprovalCount} pending approval${m.pendingApprovalCount !== 1 ? "s" : ""}`}
-                            >
-                              {m.pendingApprovalCount} pending<ArrowRight />
-                            </AppButton>
-                          )}
-
-                          {m.todayTimesheetStatus === "missing" && (
-                            <AppButton
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="btn btn-sm border border-border-subtle bg-[var(--surface)] text-text-secondary text-[0.72rem]"
-                              disabled={isReminding}
-                              onClick={() => void remind(m.userId, m.username)}
-                              title="Send reminder notification"
-                            >
-                              {isReminding ? "…" : "Remind"}
-                            </AppButton>
-                          )}
-
-                          {m.pendingApprovalCount > 0 && (
-                            <AppButton
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="text-[0.72rem] inline-flex items-center gap-1"
-                              onClick={() => navigate("/approvals")}
-                              title="Go to Approvals"
-                            >
-                              <CheckIcon /> Approve
-                            </AppButton>
-                          )}
-
-                          {m.pendingApprovalCount === 0 && m.todayTimesheetStatus !== "missing" && (
-                            <span className="text-[0.8rem] text-text-tertiary">—</span>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-
-          {/* H5 — Contextual message for very small teams (1 member) */}
-          {!loading && members.length === 1 && (
-            <div className="px-4 py-2 border-t border-border-subtle text-[0.74rem] text-text-tertiary text-center">
-              You're viewing all 1 direct report. Add more team members to see richer data here.
+              {members.length === 1 && (
+                <div style={{ padding: "10px 16px", borderTop: "1px solid var(--border-subtle)", fontSize: 12, color: "var(--text-tertiary)", textAlign: "center" }}>
+                  You're viewing all 1 direct report. Add more team members to see richer data here.
+                </div>
+              )}
             </div>
           )}
         </div>
+
       </section>
     </>
   );

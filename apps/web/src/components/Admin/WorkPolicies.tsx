@@ -5,7 +5,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { apiFetch } from "../../api/client";
 import type { WorkPolicy } from "../../types";
-import { AppButton, AppCheckbox, AppIconButton, AppInput, AppPagination, AppSelect, AppTableShell } from "../ui";
+import { AppButton, AppCheckbox, AppIconButton, AppInput, AppSelect } from "../ui";
+import { AppDataTable, type ColumnDef } from "../ui/AppDataTable";
 
 type PolicyForm = {
   name: string;
@@ -29,7 +30,6 @@ const BLANK: PolicyForm = {
   compOffEnabled: false,
   compOffExpiryDays: "90",
 };
-type SortDir = "asc" | "desc";
 
 const FALLBACK_OVERTIME = {
   dailyOvertimeAfterHours: 8,
@@ -38,11 +38,6 @@ const FALLBACK_OVERTIME = {
   compOffEnabled: false,
   compOffExpiryDays: 90,
 };
-
-function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
-  if (!active) return <span className="opacity-40 text-[0.7rem] ml-[3px]">↕</span>;
-  return <span className="text-[0.75rem] ml-[3px] text-brand-600">{dir === "asc" ? "↑" : "↓"}</span>;
-}
 
 function Drawer({ open, title, onClose, children, footer }: { open: boolean; title: string; onClose: () => void; children: ReactNode; footer?: ReactNode }) {
   if (!open) return null;
@@ -83,15 +78,7 @@ export function WorkPolicies() {
   const [form, setForm] = useState<PolicyForm>(BLANK);
   const [error, setError] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<WorkPolicy | null>(null);
-  const [search, setSearch] = useState("");
-  const [sortCol, setSortCol] = useState<"name" | "dailyExpectedMinutes" | "isActive">("name");
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [overtimeRulesOpen, setOvertimeRulesOpen] = useState(true);
-
-  function toggleSort(col: typeof sortCol) {
-    if (sortCol === col) setSortDir(d => d === "asc" ? "desc" : "asc");
-    else { setSortCol(col); setSortDir("asc"); }
-  }
 
   async function load() {
     const r = await apiFetch("/masters/work-policies");
@@ -113,8 +100,7 @@ export function WorkPolicies() {
       compOffEnabled: p.compOffEnabled ?? FALLBACK_OVERTIME.compOffEnabled,
       compOffExpiryDays: String(p.compOffExpiryDays ?? FALLBACK_OVERTIME.compOffExpiryDays),
     });
-    setError(""); setEditing(p);
-    setOvertimeRulesOpen(true);
+    setError(""); setEditing(p); setOvertimeRulesOpen(true);
   }
 
   async function save() {
@@ -181,23 +167,69 @@ export function WorkPolicies() {
     return `OT after ${dailyThreshold}h/day, ${weeklyThreshold}h/week · ${multiplier}x · ${compOff ? `Comp-off ${compOffExpiry}d` : "No comp-off"}`;
   }
 
-  const filtered = policies.filter(p =>
-    !search.trim() || p.name.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const sorted = [...filtered].sort((a, b) => {
-    const mul = sortDir === "asc" ? 1 : -1;
-    if (sortCol === "name") return mul * a.name.localeCompare(b.name);
-    if (sortCol === "dailyExpectedMinutes") return mul * (a.dailyExpectedMinutes - b.dailyExpectedMinutes);
-    if (sortCol === "isActive") return mul * (Number(b.isActive) - Number(a.isActive));
-    return 0;
-  });
+  const columns: ColumnDef<WorkPolicy>[] = [
+    {
+      key: "name",
+      label: "Policy Name",
+      sortable: true,
+      sortValue: p => p.name,
+      render: p => (
+        <div>
+          <AppButton className="btn-table-link text-left" variant="ghost" size="sm" onClick={() => openEdit(p)}>{p.name}</AppButton>
+          <div className="text-[0.75rem] text-text-tertiary mt-1 leading-5">{formatOvertimeSummary(p)}</div>
+        </div>
+      ),
+    },
+    {
+      key: "dailyExpectedMinutes",
+      label: "Daily Hours",
+      sortable: true,
+      sortValue: p => p.dailyExpectedMinutes,
+      width: "130px",
+      render: p => `${(p.dailyExpectedMinutes / 60).toFixed(1)}h / day`,
+    },
+    {
+      key: "weeklyTarget",
+      label: "Weekly Target",
+      width: "160px",
+      render: p => (
+        <span>
+          {((p.dailyExpectedMinutes / 60) * (p.workDaysPerWeek ?? 5)).toFixed(0)}h / week
+          <span className="text-text-tertiary text-[0.75rem] ml-1">({p.workDaysPerWeek === 6 ? "Mon–Sat" : "Mon–Fri"})</span>
+        </span>
+      ),
+    },
+    {
+      key: "isActive",
+      label: "Status",
+      sortable: true,
+      sortValue: p => Number(p.isActive),
+      width: "100px",
+      render: p => (
+        <span className={`badge ${p.isActive ? "badge-success" : "badge-neutral"}`}>{p.isActive ? "Active" : "Inactive"}</span>
+      ),
+    },
+    {
+      key: "actions",
+      label: "Actions",
+      width: "120px",
+      render: p => (
+        <div className="flex gap-2 justify-end">
+          <AppIconButton tone="edit" onClick={() => openEdit(p)} title={`Edit ${p.name}`} aria-label={`Edit ${p.name}`}>
+            <Pencil size={14} />
+          </AppIconButton>
+          <AppIconButton tone="danger" onClick={() => setDeleteTarget(p)} title={`Delete ${p.name}`} aria-label={`Delete ${p.name}`}>
+            <Trash2 size={14} />
+          </AppIconButton>
+        </div>
+      ),
+    },
+  ];
 
   const drawerTitle = editing === "new" ? "New Work Policy" : editing ? `Edit — ${(editing as WorkPolicy).name}` : "";
 
   return (
     <section className="flex flex-col gap-6">
-      {/* Drawer */}
       <Drawer open={!!editing} title={drawerTitle} onClose={() => setEditing(null)}
         footer={
           <>
@@ -279,7 +311,6 @@ export function WorkPolicies() {
           </div>
         </Drawer>
 
-      {/* Confirm delete */}
       <ConfirmModal
         open={!!deleteTarget}
         title={`Delete "${deleteTarget?.name}"?`}
@@ -288,7 +319,6 @@ export function WorkPolicies() {
         onCancel={() => setDeleteTarget(null)}
       />
 
-      {/* Page header */}
       <div className="page-header">
         <div>
           <div className="page-title">Work Policy Management</div>
@@ -300,7 +330,6 @@ export function WorkPolicies() {
         </div>
       </div>
 
-      {/* Table */}
       <div className="card overflow-visible">
         <div className="card-header mgmt-card-head">
           <div className="card-title">
@@ -309,79 +338,15 @@ export function WorkPolicies() {
           </div>
           <AppButton variant="outline" size="sm">Export</AppButton>
         </div>
-        <div className="mgmt-toolbar px-4 pb-3">
-          <div className="input-icon-wrap mgmt-search-wrap">
-            <span className="input-icon">🔍</span>
-            <AppInput className="mgmt-search" placeholder="Search policies..." value={search} onChange={e => setSearch(e.target.value)} />
-          </div>
-        </div>
-        <AppTableShell>
-          <table className="table-base mgmt-table">
-            <thead>
-              <tr>
-                <th className="th-sort" onClick={() => toggleSort("name")} aria-sort={sortCol === "name" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
-                  Policy Name <SortIcon active={sortCol === "name"} dir={sortDir} />
-                </th>
-                <th className="th-sort w-[130px]" onClick={() => toggleSort("dailyExpectedMinutes")} aria-sort={sortCol === "dailyExpectedMinutes" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
-                  Daily Hours <SortIcon active={sortCol === "dailyExpectedMinutes"} dir={sortDir} />
-                </th>
-                <th className="w-[160px]">Weekly Target</th>
-                <th className="th-sort w-[100px]" onClick={() => toggleSort("isActive")} aria-sort={sortCol === "isActive" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
-                  Status <SortIcon active={sortCol === "isActive"} dir={sortDir} />
-                </th>
-                <th className="w-[120px] text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sorted.length === 0 && (
-                <tr className="empty-row"><td colSpan={5}>{search ? "No policies match your search." : "No work policies. Click \"+ New Policy\" to create one."}</td></tr>
-              )}
-              {sorted.map((p) => (
-                <tr key={p.id}>
-                  <td>
-                    <AppButton className="btn-table-link text-left" variant="ghost" size="sm" onClick={() => openEdit(p)}>{p.name}</AppButton>
-                    <div className="text-[0.75rem] text-text-tertiary mt-1 leading-5">{formatOvertimeSummary(p)}</div>
-                  </td>
-                  <td>{(p.dailyExpectedMinutes / 60).toFixed(1)}h / day</td>
-                  <td>
-                    <span>{((p.dailyExpectedMinutes / 60) * (p.workDaysPerWeek ?? 5)).toFixed(0)}h / week</span>
-                    <span className="text-text-tertiary text-[0.75rem] ml-1">({p.workDaysPerWeek === 6 ? "Mon–Sat" : "Mon–Fri"})</span>
-                  </td>
-                  <td>
-                    <span className={`badge ${p.isActive ? "badge-success" : "badge-neutral"}`}>{p.isActive ? "Active" : "Inactive"}</span>
-                  </td>
-                  <td className="text-right">
-                    <div className="flex gap-2 justify-end">
-                      <AppIconButton
-                        tone="edit"
-                        onClick={() => openEdit(p)}
-                        title={`Edit ${p.name}`}
-                        aria-label={`Edit ${p.name}`}
-                      >
-                        <Pencil size={14} />
-                      </AppIconButton>
-                      <AppIconButton
-                        tone="danger"
-                        onClick={() => setDeleteTarget(p)}
-                        title={`Delete ${p.name}`}
-                        aria-label={`Delete ${p.name}`}
-                      >
-                        <Trash2 size={14} />
-                      </AppIconButton>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </AppTableShell>
-        <div className="mgmt-card-foot">
-          <span>Showing 1-{sorted.length} of {sorted.length} polic{sorted.length === 1 ? "y" : "ies"}</span>
-          <AppPagination page={1} totalPages={1} onPrev={() => {}} onNext={() => {}} />
-        </div>
+        <AppDataTable
+          columns={columns}
+          data={policies}
+          rowKey={p => p.id}
+          searchPlaceholder="Search policies…"
+          emptyText="No work policies. Click &quot;+ New Policy&quot; to create one."
+        />
       </div>
 
-      {/* How it works */}
       <div className="card bg-n-50 border border-border-subtle">
         <div className="card-body px-5 py-4">
           <p className="text-[0.825rem] text-text-secondary m-0 leading-[1.6]">

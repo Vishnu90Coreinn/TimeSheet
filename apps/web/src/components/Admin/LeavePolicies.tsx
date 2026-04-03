@@ -5,7 +5,8 @@ import { FormEvent, useEffect, useState, type ReactNode } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { apiFetch } from "../../api/client";
 import type { LeavePolicy, LeavePolicyAlloc, LeaveType } from "../../types";
-import { AppButton, AppCheckbox, AppIconButton, AppInput, AppPagination, AppTableShell } from "../ui";
+import { AppButton, AppCheckbox, AppIconButton, AppInput, AppTableShell } from "../ui";
+import { AppDataTable, type ColumnDef } from "../ui/AppDataTable";
 
 type PolicyForm = {
   name: string;
@@ -14,12 +15,6 @@ type PolicyForm = {
 };
 
 const BLANK: PolicyForm = { name: "", isActive: true, allocations: {} };
-type SortDir = "asc" | "desc";
-
-function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
-  if (!active) return <span className="opacity-40 text-[0.7rem] ml-[3px]">↕</span>;
-  return <span className="text-[0.75rem] ml-[3px] text-brand-600">{dir === "asc" ? "↑" : "↓"}</span>;
-}
 
 function Drawer({ open, title, onClose, children, footer }: { open: boolean; title: string; onClose: () => void; children: ReactNode; footer?: ReactNode }) {
   if (!open) return null;
@@ -77,14 +72,6 @@ export function LeavePolicies() {
   const [form, setForm] = useState<PolicyForm>(BLANK);
   const [error, setError] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [sortCol, setSortCol] = useState<"name" | "isActive">("name");
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
-
-  function toggleSort(col: typeof sortCol) {
-    if (sortCol === col) setSortDir(d => d === "asc" ? "desc" : "asc");
-    else { setSortCol(col); setSortDir("asc"); }
-  }
 
   const [ltName, setLtName] = useState("");
   const [ltActive, setLtActive] = useState(true);
@@ -101,15 +88,11 @@ export function LeavePolicies() {
     if (r.ok) setLeaveTypes(await r.json());
   }
 
-  useEffect(() => {
-    void load();
-    void loadTypes();
-  }, []);
+  useEffect(() => { void load(); void loadTypes(); }, []);
 
   async function saveLeaveType(e: FormEvent) {
     e.preventDefault();
-    setLtError("");
-    setLtSuccess("");
+    setLtError(""); setLtSuccess("");
     const name = ltName.trim();
     if (!name) { setLtError("Name is required."); return; }
     const r = await apiFetch("/leave/types", { method: "POST", body: JSON.stringify({ name, isActive: ltActive }) });
@@ -127,8 +110,7 @@ export function LeavePolicies() {
     const allocs: Record<string, number> = {};
     leaveTypes.filter((t) => t.isActive).forEach((t) => { allocs[t.id] = 0; });
     setForm({ name: "", isActive: true, allocations: allocs });
-    setError("");
-    setEditing("new");
+    setError(""); setEditing("new");
   }
 
   function openEdit(p: LeavePolicy) {
@@ -138,8 +120,7 @@ export function LeavePolicies() {
       allocs[t.id] = existing ? existing.daysPerYear : 0;
     });
     setForm({ name: p.name, isActive: p.isActive, allocations: allocs });
-    setError("");
-    setEditing(p);
+    setError(""); setEditing(p);
   }
 
   async function save() {
@@ -166,22 +147,52 @@ export function LeavePolicies() {
   const activeLeaveTypes = leaveTypes.filter((t) => t.isActive);
   const hasZeroAlloc = editing && Object.values(form.allocations).some(v => v === 0);
 
-  const filtered = policies.filter(p =>
-    !search.trim() || p.name.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const sorted = [...filtered].sort((a, b) => {
-    const mul = sortDir === "asc" ? 1 : -1;
-    if (sortCol === "name") return mul * a.name.localeCompare(b.name);
-    if (sortCol === "isActive") return mul * (Number(b.isActive) - Number(a.isActive));
-    return 0;
-  });
+  const columns: ColumnDef<LeavePolicy>[] = [
+    {
+      key: "name",
+      label: "Name",
+      sortable: true,
+      sortValue: p => p.name,
+      render: p => (
+        <AppButton className="btn-table-link" variant="ghost" size="sm" onClick={() => openEdit(p)}>{p.name}</AppButton>
+      ),
+    },
+    {
+      key: "allocations",
+      label: "Allocations",
+      render: p => <AllocPills allocs={p.allocations} />,
+    },
+    {
+      key: "isActive",
+      label: "Status",
+      sortable: true,
+      sortValue: p => Number(p.isActive),
+      width: "100px",
+      render: p => p.isActive
+        ? <span className="badge badge-success">Active</span>
+        : <span className="badge badge-neutral">Inactive</span>,
+    },
+    {
+      key: "actions",
+      label: "Actions",
+      width: "120px",
+      render: p => (
+        <div className="flex gap-2">
+          <AppIconButton tone="edit" onClick={() => openEdit(p)} title={`Edit ${p.name}`} aria-label={`Edit ${p.name}`}>
+            <Pencil size={14} />
+          </AppIconButton>
+          <AppIconButton tone="danger" onClick={() => setDeleteId(p.id)} title={`Delete ${p.name}`} aria-label={`Delete ${p.name}`}>
+            <Trash2 size={14} />
+          </AppIconButton>
+        </div>
+      ),
+    },
+  ];
 
   const drawerTitle = editing === "new" ? "New Leave Policy" : editing ? `Edit: ${(editing as LeavePolicy).name}` : "";
 
   return (
     <section className="flex flex-col gap-6">
-      {/* Policy form drawer */}
       <Drawer open={!!editing} title={drawerTitle} onClose={() => setEditing(null)}
         footer={
           <>
@@ -202,10 +213,7 @@ export function LeavePolicies() {
           />
         </div>
         <label className="flex items-center gap-2 text-[0.825rem] text-text-secondary">
-          <AppCheckbox
-            checked={form.isActive}
-            onChange={(e) => setForm((p) => ({ ...p, isActive: e.target.checked }))}
-          />
+          <AppCheckbox checked={form.isActive} onChange={(e) => setForm((p) => ({ ...p, isActive: e.target.checked }))} />
           Active
         </label>
 
@@ -237,7 +245,6 @@ export function LeavePolicies() {
         )}
       </Drawer>
 
-      {/* Confirm delete modal */}
       <ConfirmModal
         open={!!deleteId}
         title="Delete Leave Policy?"
@@ -246,7 +253,6 @@ export function LeavePolicies() {
         onCancel={() => setDeleteId(null)}
       />
 
-      {/* Page header */}
       <div className="page-header">
         <div>
           <div className="page-title">Leave Policy Management</div>
@@ -258,7 +264,6 @@ export function LeavePolicies() {
         </div>
       </div>
 
-      {/* Policies table */}
       <div className="card overflow-visible">
         <div className="card-header mgmt-card-head">
           <div className="card-title">
@@ -267,72 +272,21 @@ export function LeavePolicies() {
           </div>
           <AppButton variant="outline" size="sm">Export</AppButton>
         </div>
-        <div className="mgmt-toolbar px-4 pb-3">
-          <div className="input-icon-wrap mgmt-search-wrap">
-            <span className="input-icon">🔍</span>
-            <AppInput className="mgmt-search" placeholder="Search policies..." value={search} onChange={e => setSearch(e.target.value)} />
-          </div>
-        </div>
-        <AppTableShell>
-          <table className="table-base mgmt-table">
-            <thead>
-              <tr>
-                <th className="th-sort" onClick={() => toggleSort("name")} aria-sort={sortCol === "name" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
-                  Name <SortIcon active={sortCol === "name"} dir={sortDir} />
-                </th>
-                <th>Allocations</th>
-                <th className="th-sort w-[100px]" onClick={() => toggleSort("isActive")} aria-sort={sortCol === "isActive" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
-                  Status <SortIcon active={sortCol === "isActive"} dir={sortDir} />
-                </th>
-                <th className="w-[120px]">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sorted.map((p) => (
-                <tr key={p.id}>
-                  <td><AppButton className="btn-table-link" variant="ghost" size="sm" onClick={() => openEdit(p)}>{p.name}</AppButton></td>
-                  <td><AllocPills allocs={p.allocations} /></td>
-                  <td>{p.isActive ? <span className="badge badge-success">Active</span> : <span className="badge badge-neutral">Inactive</span>}</td>
-                  <td>
-                    <div className="flex gap-2">
-                      <AppIconButton
-                        tone="edit"
-                        onClick={() => openEdit(p)}
-                        title={`Edit ${p.name}`}
-                        aria-label={`Edit ${p.name}`}
-                      >
-                        <Pencil size={14} />
-                      </AppIconButton>
-                      <AppIconButton
-                        tone="danger"
-                        onClick={() => setDeleteId(p.id)}
-                        title={`Delete ${p.name}`}
-                        aria-label={`Delete ${p.name}`}
-                      >
-                        <Trash2 size={14} />
-                      </AppIconButton>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {sorted.length === 0 && <tr className="empty-row"><td colSpan={4}>{search ? "No policies match your search." : "No leave policies found."}</td></tr>}
-            </tbody>
-          </table>
-        </AppTableShell>
-        <div className="mgmt-card-foot">
-          <span>Showing 1-{sorted.length} of {sorted.length} polic{sorted.length === 1 ? "y" : "ies"}</span>
-          <AppPagination page={1} totalPages={1} onPrev={() => {}} onNext={() => {}} />
-        </div>
+        <AppDataTable
+          columns={columns}
+          data={policies}
+          rowKey={p => p.id}
+          searchPlaceholder="Search policies…"
+          emptyText="No leave policies found."
+        />
       </div>
 
-      {/* Divider */}
       <div className="flex items-center gap-4">
         <div className="flex-1 h-px bg-border-subtle" />
         <span className="text-[0.72rem] font-bold uppercase tracking-[0.08em] text-text-tertiary">Leave Types</span>
         <div className="flex-1 h-px bg-border-subtle" />
       </div>
 
-      {/* Leave Types management */}
       <div className="card">
         <div className="card-header">
           <div>
@@ -354,10 +308,7 @@ export function LeavePolicies() {
               />
             </div>
             <label className="flex items-center gap-2 text-[0.825rem] text-text-secondary pb-[2px]">
-              <AppCheckbox
-                checked={ltActive}
-                onChange={(e) => setLtActive(e.target.checked)}
-              />
+              <AppCheckbox checked={ltActive} onChange={(e) => setLtActive(e.target.checked)} />
               Active
             </label>
             <AppButton type="submit" variant="primary">Save Leave Type</AppButton>

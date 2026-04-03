@@ -2,16 +2,11 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { apiFetch } from "../../api/client";
 import type { Holiday } from "../../types";
-import { AppButton, AppCheckbox, AppIconButton, AppInput, AppPagination, AppTableShell, AppTextarea } from "../ui";
+import { AppButton, AppCheckbox, AppIconButton, AppInput, AppTextarea } from "../ui";
+import { AppDataTable, type ColumnDef } from "../ui/AppDataTable";
 
 type HolidayForm = { name: string; date: string; isRecurring: boolean };
 const BLANK: HolidayForm = { name: "", date: "", isRecurring: false };
-type SortDir = "asc" | "desc";
-
-function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
-  if (!active) return <span className="opacity-40 text-[0.7rem] ml-[3px]">↕</span>;
-  return <span className="text-[0.75rem] ml-[3px] text-brand-600">{dir === "asc" ? "↑" : "↓"}</span>;
-}
 
 function fmtDate(iso: string): string {
   if (!iso) return "—";
@@ -59,41 +54,19 @@ export function Holidays() {
   const [form, setForm] = useState<HolidayForm>(BLANK);
   const [error, setError] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
   const [showImport, setShowImport] = useState(false);
-  const [sortCol, setSortCol] = useState<"name" | "date" | "isRecurring">("date");
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [importText, setImportText] = useState("");
   const [importError, setImportError] = useState("");
-
-  function toggleSort(col: typeof sortCol) {
-    if (sortCol === col) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    else {
-      setSortCol(col);
-      setSortDir("asc");
-    }
-  }
 
   async function load(y: number) {
     const r = await apiFetch(`/holidays?year=${y}`);
     if (r.ok) setHolidays(await r.json());
   }
 
-  useEffect(() => {
-    void load(year);
-  }, [year]);
+  useEffect(() => { void load(year); }, [year]);
 
-  function openCreate() {
-    setForm(BLANK);
-    setError("");
-    setEditing("new");
-  }
-
-  function openEdit(h: Holiday) {
-    setForm({ name: h.name, date: h.date, isRecurring: h.isRecurring });
-    setError("");
-    setEditing(h);
-  }
+  function openCreate() { setForm(BLANK); setError(""); setEditing("new"); }
+  function openEdit(h: Holiday) { setForm({ name: h.name, date: h.date, isRecurring: h.isRecurring }); setError(""); setEditing(h); }
 
   async function save() {
     setError("");
@@ -101,11 +74,7 @@ export function Holidays() {
     const r = editing === "new"
       ? await apiFetch("/holidays", { method: "POST", body: JSON.stringify(body) })
       : await apiFetch(`/holidays/${(editing as Holiday).id}`, { method: "PUT", body: JSON.stringify(body) });
-    if (r.ok) {
-      setEditing(null);
-      void load(year);
-      return;
-    }
+    if (r.ok) { setEditing(null); void load(year); return; }
     const d = await r.json().catch(() => ({}));
     setError((d as { message?: string }).message ?? "Save failed");
   }
@@ -122,10 +91,7 @@ export function Holidays() {
     const entries: { name: string; date: string; isRecurring: boolean }[] = [];
     for (const line of lines) {
       const parts = line.split(",").map((p) => p.trim());
-      if (parts.length < 2) {
-        setImportError(`Invalid line: "${line}" - expected "Name, YYYY-MM-DD"`);
-        return;
-      }
+      if (parts.length < 2) { setImportError(`Invalid line: "${line}" - expected "Name, YYYY-MM-DD"`); return; }
       entries.push({ name: parts[0], date: parts[1], isRecurring: parts[2]?.toLowerCase() === "true" });
     }
     for (const entry of entries) {
@@ -138,14 +104,50 @@ export function Holidays() {
 
   const f = (k: keyof HolidayForm, v: string | boolean) => setForm((p) => ({ ...p, [k]: v }));
 
-  const filtered = holidays.filter((h) => !search.trim() || h.name.toLowerCase().includes(search.toLowerCase()));
-  const sorted = [...filtered].sort((a, b) => {
-    const mul = sortDir === "asc" ? 1 : -1;
-    if (sortCol === "name") return mul * a.name.localeCompare(b.name);
-    if (sortCol === "date") return mul * a.date.localeCompare(b.date);
-    if (sortCol === "isRecurring") return mul * (Number(b.isRecurring) - Number(a.isRecurring));
-    return 0;
-  });
+  const columns: ColumnDef<Holiday>[] = [
+    {
+      key: "name",
+      label: "Name",
+      sortable: true,
+      sortValue: h => h.name,
+      render: h => (
+        <AppButton className="btn-table-link" variant="ghost" size="sm" onClick={() => openEdit(h)}>{h.name}</AppButton>
+      ),
+    },
+    {
+      key: "date",
+      label: "Date",
+      sortable: true,
+      sortValue: h => h.date,
+      width: "200px",
+      render: h => fmtDate(h.date),
+    },
+    {
+      key: "isRecurring",
+      label: "Recurrence",
+      sortable: true,
+      sortValue: h => Number(h.isRecurring),
+      width: "140px",
+      render: h => h.isRecurring
+        ? <span className="badge bg-purple-100 text-purple-700 border border-purple-300">Annual</span>
+        : <span className="badge badge-neutral">Once</span>,
+    },
+    {
+      key: "actions",
+      label: "Actions",
+      width: "110px",
+      render: h => (
+        <div className="flex gap-2">
+          <AppIconButton tone="edit" onClick={() => openEdit(h)} title={`Edit ${h.name}`} aria-label={`Edit ${h.name}`}>
+            <Pencil size={14} />
+          </AppIconButton>
+          <AppIconButton tone="danger" onClick={() => setDeleteId(h.id)} title={`Delete ${h.name}`} aria-label={`Delete ${h.name}`}>
+            <Trash2 size={14} />
+          </AppIconButton>
+        </div>
+      ),
+    },
+  ];
 
   const drawerTitle = editing === "new" ? "Add Holiday" : editing ? `Edit: ${(editing as Holiday).name}` : "";
 
@@ -238,54 +240,13 @@ export function Holidays() {
           </div>
           <AppButton variant="outline" size="sm">Export</AppButton>
         </div>
-        <div className="mgmt-toolbar px-4 pb-3">
-          <div className="input-icon-wrap mgmt-search-wrap">
-            <span className="input-icon">🔍</span>
-            <AppInput className="mgmt-search" placeholder="Search holidays..." value={search} onChange={(e) => setSearch(e.target.value)} />
-          </div>
-        </div>
-        <AppTableShell>
-          <table className="table-base mgmt-table">
-            <thead>
-              <tr>
-                <th className="th-sort" onClick={() => toggleSort("name")} aria-sort={sortCol === "name" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
-                  Name <SortIcon active={sortCol === "name"} dir={sortDir} />
-                </th>
-                <th className="th-sort w-[200px]" onClick={() => toggleSort("date")} aria-sort={sortCol === "date" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
-                  Date <SortIcon active={sortCol === "date"} dir={sortDir} />
-                </th>
-                <th className="th-sort w-[140px]" onClick={() => toggleSort("isRecurring")} aria-sort={sortCol === "isRecurring" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
-                  Recurrence <SortIcon active={sortCol === "isRecurring"} dir={sortDir} />
-                </th>
-                <th className="w-[110px]">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sorted.map((h) => (
-                <tr key={h.id}>
-                  <td><AppButton className="btn-table-link" variant="ghost" size="sm" onClick={() => openEdit(h)}>{h.name}</AppButton></td>
-                  <td>{fmtDate(h.date)}</td>
-                  <td>{h.isRecurring ? <span className="badge bg-purple-100 text-purple-700 border border-purple-300">Annual</span> : <span className="badge badge-neutral">Once</span>}</td>
-                  <td>
-                    <div className="flex gap-2">
-                      <AppIconButton tone="edit" onClick={() => openEdit(h)} title={`Edit ${h.name}`} aria-label={`Edit ${h.name}`}>
-                        <Pencil size={14} />
-                      </AppIconButton>
-                      <AppIconButton tone="danger" onClick={() => setDeleteId(h.id)} title={`Delete ${h.name}`} aria-label={`Delete ${h.name}`}>
-                        <Trash2 size={14} />
-                      </AppIconButton>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {sorted.length === 0 && <tr className="empty-row"><td colSpan={4}>{search ? "No holidays match your search." : `No holidays for ${year}.`}</td></tr>}
-            </tbody>
-          </table>
-        </AppTableShell>
-        <div className="mgmt-card-foot">
-          <span>Showing 1-{sorted.length} of {sorted.length} holiday{sorted.length === 1 ? "" : "s"}</span>
-          <AppPagination page={1} totalPages={1} onPrev={() => {}} onNext={() => {}} />
-        </div>
+        <AppDataTable
+          columns={columns}
+          data={holidays}
+          rowKey={h => h.id}
+          searchPlaceholder="Search holidays…"
+          emptyText={`No holidays for ${year}.`}
+        />
       </div>
     </section>
   );

@@ -5,16 +5,11 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { apiFetch } from "../../api/client";
 import type { TaskCategory } from "../../types";
-import { AppButton, AppCheckbox, AppIconButton, AppInput, AppPagination, AppTableShell } from "../ui";
+import { AppButton, AppCheckbox, AppIconButton, AppInput } from "../ui";
+import { AppDataTable, type ColumnDef } from "../ui/AppDataTable";
 
 type CatForm = { name: string; isBillable: boolean; isActive: boolean };
 const BLANK: CatForm = { name: "", isBillable: false, isActive: true };
-type SortDir = "asc" | "desc";
-
-function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
-  if (!active) return <span className="opacity-40 text-[0.7rem] ml-[3px]">↕</span>;
-  return <span className="text-[0.75rem] ml-[3px] text-brand-600">{dir === "asc" ? "↑" : "↓"}</span>;
-}
 
 function Drawer({ open, title, onClose, children, footer }: { open: boolean; title: string; onClose: () => void; children: ReactNode; footer?: ReactNode }) {
   if (!open) return null;
@@ -65,15 +60,7 @@ export function Categories() {
   const [form, setForm] = useState<CatForm>(BLANK);
   const [error, setError] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
-  const [sortCol, setSortCol] = useState<"name" | "isBillable" | "isActive">("name");
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
-
-  function toggleSort(col: typeof sortCol) {
-    if (sortCol === col) setSortDir(d => d === "asc" ? "desc" : "asc");
-    else { setSortCol(col); setSortDir("asc"); }
-  }
 
   function showToast(msg: string, ok = true) {
     setToast({ msg, ok });
@@ -109,47 +96,68 @@ export function Categories() {
   async function toggleBillable(c: TaskCategory) {
     const body = { name: c.name, isBillable: !c.isBillable, isActive: c.isActive };
     const r = await apiFetch(`/task-categories/${c.id}`, { method: "PUT", body: JSON.stringify(body) });
-    if (r.ok || r.status === 204) {
-      showToast(`${c.name} marked as ${!c.isBillable ? "billable" : "non-billable"}`);
-      void load();
-    } else {
-      showToast("Failed to update billability", false);
-    }
+    if (r.ok || r.status === 204) { showToast(`${c.name} marked as ${!c.isBillable ? "billable" : "non-billable"}`); void load(); }
+    else showToast("Failed to update billability", false);
   }
 
   async function toggleActive(c: TaskCategory) {
     const body = { name: c.name, isBillable: c.isBillable, isActive: !c.isActive };
     const r = await apiFetch(`/task-categories/${c.id}`, { method: "PUT", body: JSON.stringify(body) });
-    if (r.ok || r.status === 204) {
-      showToast(`${c.name} ${!c.isActive ? "activated" : "deactivated"}`);
-      void load();
-    } else {
-      showToast("Failed to update status", false);
-    }
+    if (r.ok || r.status === 204) { showToast(`${c.name} ${!c.isActive ? "activated" : "deactivated"}`); void load(); }
+    else showToast("Failed to update status", false);
   }
 
   const f = (k: keyof CatForm, v: string | boolean) => setForm((p) => ({ ...p, [k]: v }));
 
-  const filtered = categories.filter(c =>
-    !search.trim() || c.name.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const sorted = [...filtered].sort((a, b) => {
-    const mul = sortDir === "asc" ? 1 : -1;
-    if (sortCol === "name") return mul * a.name.localeCompare(b.name);
-    if (sortCol === "isBillable") return mul * (Number(b.isBillable) - Number(a.isBillable));
-    if (sortCol === "isActive") return mul * (Number(b.isActive) - Number(a.isActive));
-    return 0;
-  });
+  const columns: ColumnDef<TaskCategory>[] = [
+    {
+      key: "name",
+      label: "Name",
+      sortable: true,
+      sortValue: c => c.name,
+      render: c => (
+        <AppButton className="btn-table-link" variant="ghost" size="sm" onClick={() => openEdit(c)}>{c.name}</AppButton>
+      ),
+    },
+    {
+      key: "isBillable",
+      label: "Billable",
+      sortable: true,
+      sortValue: c => Number(c.isBillable),
+      width: "110px",
+      render: c => <ToggleSwitch checked={c.isBillable} onChange={() => void toggleBillable(c)} />,
+    },
+    {
+      key: "isActive",
+      label: "Active",
+      sortable: true,
+      sortValue: c => Number(c.isActive),
+      width: "110px",
+      render: c => <ToggleSwitch checked={c.isActive} onChange={() => void toggleActive(c)} />,
+    },
+    {
+      key: "actions",
+      label: "Actions",
+      width: "80px",
+      render: c => (
+        <div className="flex gap-2">
+          <AppIconButton tone="edit" onClick={() => openEdit(c)} title={`Edit ${c.name}`} aria-label={`Edit ${c.name}`}>
+            <Pencil size={14} />
+          </AppIconButton>
+          <AppIconButton tone="danger" onClick={() => setDeleteId(c.id)} title={`Delete ${c.name}`} aria-label={`Delete ${c.name}`}>
+            <Trash2 size={14} />
+          </AppIconButton>
+        </div>
+      ),
+    },
+  ];
 
   const drawerTitle = editing === "new" ? "New Category" : editing ? `Edit: ${(editing as TaskCategory).name}` : "";
 
   return (
     <section className="flex flex-col gap-6">
-      {/* Toast */}
       {toast && <div className={`toast${toast.ok ? " toast--ok" : " toast--err"}`}>{toast.ok ? "✓" : "✗"} {toast.msg}</div>}
 
-      {/* Drawer */}
       <Drawer open={!!editing} title={drawerTitle} onClose={() => setEditing(null)}
         footer={
           <>
@@ -173,7 +181,6 @@ export function Categories() {
         </label>
       </Drawer>
 
-      {/* Confirm delete modal */}
       <ConfirmModal
         open={!!deleteId}
         title="Delete Category?"
@@ -182,7 +189,6 @@ export function Categories() {
         onCancel={() => setDeleteId(null)}
       />
 
-      {/* Page header */}
       <div className="page-header">
         <div>
           <div className="page-title">Category Management</div>
@@ -194,7 +200,6 @@ export function Categories() {
         </div>
       </div>
 
-      {/* Table */}
       <div className="card overflow-visible">
         <div className="card-header mgmt-card-head">
           <div className="card-title">
@@ -203,66 +208,14 @@ export function Categories() {
           </div>
           <AppButton variant="outline" size="sm">Export</AppButton>
         </div>
-        <div className="mgmt-toolbar px-4 pb-3">
-          <div className="input-icon-wrap mgmt-search-wrap">
-            <span className="input-icon">🔍</span>
-            <AppInput className="mgmt-search" placeholder="Search categories..." value={search} onChange={e => setSearch(e.target.value)} />
-          </div>
-        </div>
-        <AppTableShell>
-          <table className="table-base mgmt-table">
-            <thead>
-              <tr>
-                <th className="th-sort" onClick={() => toggleSort("name")} aria-sort={sortCol === "name" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
-                  Name <SortIcon active={sortCol === "name"} dir={sortDir} />
-                </th>
-                <th className="th-sort w-[110px]" onClick={() => toggleSort("isBillable")} aria-sort={sortCol === "isBillable" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
-                  Billable <SortIcon active={sortCol === "isBillable"} dir={sortDir} />
-                </th>
-                <th className="th-sort w-[110px]" onClick={() => toggleSort("isActive")} aria-sort={sortCol === "isActive" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
-                  Active <SortIcon active={sortCol === "isActive"} dir={sortDir} />
-                </th>
-                <th className="w-20">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sorted.map((c) => (
-                <tr key={c.id} className={c.isActive ? "" : "opacity-[0.55]"}>
-                  <td>
-                    <AppButton className="btn-table-link" variant="ghost" size="sm" onClick={() => openEdit(c)}>{c.name}</AppButton>
-                  </td>
-                  <td><ToggleSwitch checked={c.isBillable} onChange={() => void toggleBillable(c)} /></td>
-                  <td><ToggleSwitch checked={c.isActive} onChange={() => void toggleActive(c)} /></td>
-                  <td>
-                    <div className="flex gap-2">
-                      <AppIconButton
-                        tone="edit"
-                        onClick={() => openEdit(c)}
-                        title={`Edit ${c.name}`}
-                        aria-label={`Edit ${c.name}`}
-                      >
-                        <Pencil size={14} />
-                      </AppIconButton>
-                      <AppIconButton
-                        tone="danger"
-                        onClick={() => setDeleteId(c.id)}
-                        title={`Delete ${c.name}`}
-                        aria-label={`Delete ${c.name}`}
-                      >
-                        <Trash2 size={14} />
-                      </AppIconButton>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {sorted.length === 0 && <tr className="empty-row"><td colSpan={4}>{search ? "No categories match your search." : "No categories found."}</td></tr>}
-            </tbody>
-          </table>
-        </AppTableShell>
-        <div className="mgmt-card-foot">
-          <span>Showing 1-{sorted.length} of {sorted.length} categor{sorted.length === 1 ? "y" : "ies"}</span>
-          <AppPagination page={1} totalPages={1} onPrev={() => {}} onNext={() => {}} />
-        </div>
+        <AppDataTable
+          columns={columns}
+          data={categories}
+          rowKey={c => c.id}
+          searchPlaceholder="Search categories…"
+          emptyText="No categories found."
+          rowOpacity={c => c.isActive ? 1 : 0.55}
+        />
       </div>
     </section>
   );

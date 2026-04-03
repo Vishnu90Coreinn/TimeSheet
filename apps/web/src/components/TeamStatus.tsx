@@ -546,17 +546,17 @@ export function TeamStatus() {
         <div className="page-header">
           <div>
             <div className="page-title">Team Status</div>
-            <div className="page-subtitle">{subtitle}</div>
-          </div>
-          <div className="page-actions">
-            <DatePicker value={date} onChange={setDate} />
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 2 }}>
+              <span className="page-subtitle" style={{ margin: 0 }}>{subtitle}</span>
+              <DatePicker value={date} onChange={setDate} />
+            </div>
           </div>
         </div>
 
         {/* ── KPI Stats Strip ─────────────────────────────────────────────────── */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
           {kpiCards.map(k => (
-            <div key={k.label} style={{ background: "var(--surface)", border: "1px solid var(--border-subtle)", borderLeft: `3px solid ${k.color}`, borderRadius: 10, padding: "14px 16px", display: "flex", alignItems: "flex-start", gap: 12 }}>
+            <div key={k.label} style={{ background: "transparent", border: "1px solid var(--border-subtle)", borderLeft: `3px solid ${k.color}`, borderRadius: 10, padding: "14px 16px", display: "flex", alignItems: "flex-start", gap: 12 }}>
               <div style={{ width: 36, height: 36, borderRadius: 8, background: k.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: k.color }}>
                 {k.icon}
               </div>
@@ -570,7 +570,7 @@ export function TeamStatus() {
         </div>
 
         {/* ── Main Card (filter tabs + table) ─────────────────────────────────── */}
-        <div style={{ background: "var(--surface)", border: "1px solid var(--border-subtle)", borderRadius: 12, overflow: "hidden" }}>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border-subtle)", borderRadius: 12, overflow: "clip" }}>
 
           {/* Filter tabs */}
           <div style={{ display: "flex", borderBottom: "1px solid var(--border-subtle)", padding: "0 4px", overflowX: "auto" }}>
@@ -627,7 +627,7 @@ export function TeamStatus() {
               No team members match this filter.
             </div>
           ) : (
-            <div style={{ overflowX: "auto" }}>
+            <div>
               <table className="data-table" style={{ tableLayout: "fixed", width: "100%" }} role="grid">
                 <thead>
                   <tr>

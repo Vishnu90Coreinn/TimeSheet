@@ -58,6 +58,7 @@ public class TimesheetQueryService : AppInterfaces.ITimesheetQueryService
             remaining,
             hasMismatch,
             mismatchReason,
+            timesheet?.ManagerComment,
             entries);
     }
 

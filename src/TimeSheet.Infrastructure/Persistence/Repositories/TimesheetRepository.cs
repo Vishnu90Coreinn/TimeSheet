@@ -27,6 +27,7 @@ public class TimesheetRepository(TimeSheetDbContext context)
         => await _dbSet
             .AsNoTracking()
             .Include(t => t.User)
+            .Include(t => t.Entries)
             .Where(t => t.Status == TimesheetStatus.Submitted && t.User.ManagerId == managerId)
             .ToListAsync(ct);
 

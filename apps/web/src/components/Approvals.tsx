@@ -67,7 +67,9 @@ function fmtHours(mins: number): string {
 
 function fmtResponseTime(hours: number | null): string {
   if (hours == null) return "-";
+  if (hours < 0) return "< 1m";
   const totalMins = Math.round(hours * 60);
+  if (totalMins <= 0) return "< 1m";
   if (totalMins < 60) return `${totalMins}m`;
   const h = Math.floor(totalMins / 60);
   const m = totalMins % 60;
@@ -409,7 +411,7 @@ export function Approvals() {
   async function bulkApprove() {
     if (selectedIds.size === 0) return;
     setBulkApproving(true);
-    const toApprove = filteredTsPending.filter((a) => selectedIds.has(a.timesheetId) && a.enteredMinutes > 0 && !sanitizeMismatch(a.mismatchReason));
+    const toApprove = filteredTsPending.filter((a) => selectedIds.has(a.timesheetId) && a.enteredMinutes > 0);
     await Promise.all(toApprove.map((a) =>
       apiFetch(`/approvals/timesheets/${a.timesheetId}/approve`, { method: "POST", body: JSON.stringify({ comment: "" }) }),
     ));
@@ -534,10 +536,10 @@ export function Approvals() {
   const hasManyTimesheets = filteredTsPending.length > 1;
   const canBulkApprove = selectedIds.size > 0 && !bulkApproving;
   const selectedCount = selectedIds.size;
-  const selectedEligibleCount = filteredTsPending.filter((a) => selectedIds.has(a.timesheetId) && a.enteredMinutes > 0 && !sanitizeMismatch(a.mismatchReason)).length;
+  const selectedEligibleCount = filteredTsPending.filter((a) => selectedIds.has(a.timesheetId) && a.enteredMinutes > 0).length;
   const selectedIneligibleCount = Math.max(0, selectedCount - selectedEligibleCount);
-  const reviewRequiredCount = tsPending.filter((a) => a.enteredMinutes === 0 || sanitizeMismatch(a.mismatchReason) !== null).length;
-  const readyNowCount = tsPending.filter((a) => a.enteredMinutes > 0 && !sanitizeMismatch(a.mismatchReason)).length + leavePending.length;
+  const reviewRequiredCount = tsPending.filter((a) => a.enteredMinutes === 0).length;
+  const readyNowCount = tsPending.filter((a) => a.enteredMinutes > 0).length + leavePending.length;
   const targetResponseHours = 24;
   const avgVsTarget = stats.avgResponseHours == null ? null : Math.round((targetResponseHours - stats.avgResponseHours) * 10) / 10;
   const avgTrendText = avgVsTarget == null ? "No benchmark yet" : avgVsTarget >= 0 ? `↓ ${Math.abs(avgVsTarget)}h vs ${targetResponseHours}h target` : `↑ ${Math.abs(avgVsTarget)}h vs ${targetResponseHours}h target`;
@@ -563,373 +565,704 @@ export function Approvals() {
   if (loading) return <SkeletonPage kpis={2} rows={5} cols={5} />;
 
   return (
-    <section className="flex flex-col gap-6">
-      <div className="page-header">
+    <section style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+
+      {/* ── Page header ── */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
         <div>
-          <div className="page-title">Approvals</div>
-          <div className="page-subtitle">{headerSubtitle}</div>
+          <h1 style={{ margin: 0, fontSize: "1.3rem", fontWeight: 700, color: "var(--text-primary)" }}>Approvals</h1>
+          <p style={{ margin: "3px 0 0", fontSize: "0.82rem", color: "var(--text-secondary)" }}>{headerSubtitle}</p>
         </div>
-        <div className="page-actions">
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          {delegation && (
+            <span style={{
+              display: "inline-flex", alignItems: "center", gap: 6,
+              padding: "5px 10px", borderRadius: 20,
+              background: "#fffbeb", border: "1px solid #fde68a",
+              fontSize: "0.76rem", color: "#92400e",
+            }}>
+              Delegated to <strong>{delegation.toUsername}</strong> until {fmtDate(delegation.toDate)}
+              <button
+                type="button"
+                onClick={() => void handleRevokeDelegate()}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "#b45309", fontSize: "0.75rem", padding: "0 0 0 4px" }}
+              >
+                Revoke
+              </button>
+            </span>
+          )}
           <AppButton variant="outline" size="sm" onClick={() => void openDelegateModal()}>
             Delegate Approvals
           </AppButton>
-          {delegation && (
-            <AppButton variant="ghost" size="sm" className="text-[#b91c1c]" onClick={() => void handleRevokeDelegate()}>
-              Revoke Delegation
-            </AppButton>
-          )}
         </div>
       </div>
 
-      {feedbackMessage && <div className="apr3-feedback">{feedbackMessage}</div>}
-
-      {delegation && (
-        <div className="apr3-delegation-note">
-          Delegated to <strong>{delegation.toUsername}</strong> until {fmtDate(delegation.toDate)}
+      {feedbackMessage && (
+        <div style={{
+          padding: "10px 14px", borderRadius: 8,
+          background: "#ecfdf5", border: "1px solid #a7f3d0",
+          fontSize: "0.82rem", color: "#065f46", fontWeight: 500,
+        }}>
+          {feedbackMessage}
         </div>
       )}
 
-      <div className="apr3-stats-toolbar-compact">
-          <div className="apr3-period-segment apr3-period-segment-compact" role="tablist" aria-label="Stats period">
-          <AppButton
-            className={`apr3-segment-btn ${statsPeriod === "thisWeek" ? "active" : ""}`}
-            onClick={() => setStatsPeriod("thisWeek")}
-            role="tab"
-            aria-selected={statsPeriod === "thisWeek"}
-            variant="ghost"
-            type="button"
-          >
-            This Week
-          </AppButton>
-          <AppButton
-            className={`apr3-segment-btn ${statsPeriod === "thisMonth" ? "active" : ""}`}
-            onClick={() => setStatsPeriod("thisMonth")}
-            role="tab"
-            aria-selected={statsPeriod === "thisMonth"}
-            variant="ghost"
-            type="button"
-          >
-            This Month
-          </AppButton>
-          <AppButton
-            className={`apr3-segment-btn ${statsPeriod === "custom" ? "active" : ""}`}
-            onClick={() => setStatsPeriod("custom")}
-            role="tab"
-            aria-selected={statsPeriod === "custom"}
-            variant="ghost"
-            type="button"
-          >
-            Custom
-          </AppButton>
-          </div>
-
-        {statsPeriod === "custom" ? (
-          <div className="apr3-period-inline-range">
-            <ModernDatePicker value={customFrom} onChange={setCustomFrom} ariaLabel={`From date ${customFrom ? fmtDate(customFrom) : "not selected"}`} />
-            <span className="apr3-range-sep">to</span>
-            <ModernDatePicker value={customTo} onChange={setCustomTo} ariaLabel={`To date ${customTo ? fmtDate(customTo) : "not selected"}`} />
-            <AppButton variant="primary" size="sm" onClick={() => loadData()} disabled={!customFrom || !customTo}>Apply</AppButton>
-          </div>
-        ) : (
-          <div className="apr3-period-inline-note">{statsPeriodLabel}</div>
-        )}
-      </div>
-
-      <div className="apr3-stats-split">
-        <div className="apr3-realtime-group">
-          <div className="apr3-stat apr3-stat-realtime">
-            <div className="apr3-stat-icon bg-[#fff7ed] text-[#ea580c]"><IconPending /></div>
-            <div>
-              <div className="apr3-stat-num text-[#ea580c]">{pendingCount}</div>
-              <div className="apr3-stat-label">Pending action</div>
-              <div className="apr3-stat-sub">Real-time</div>
-            </div>
-          </div>
-          <div className="apr3-stat apr3-stat-realtime">
-            <div className="apr3-stat-icon bg-[#ecfdf5] text-[#059669]"><IconCheckCircle /></div>
-            <div>
-              <div className="apr3-stat-num text-[#059669]">{readyNowCount}</div>
-              <div className="apr3-stat-label">Ready now</div>
-              <div className="apr3-stat-sub">Can be actioned now</div>
+      {/* ── Stats section ── */}
+      <div style={{
+        background: "var(--n-0)", borderRadius: 12,
+        border: "1px solid var(--border-default)",
+      }}>
+        {/* Stats header with period selector */}
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "14px 20px",
+          borderBottom: "1px solid var(--border-subtle)",
+        }}>
+          <span style={{ fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-secondary)" }}>
+            Overview
+          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            {statsPeriod === "custom" && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginRight: 6 }}>
+                <ModernDatePicker value={customFrom} onChange={setCustomFrom} ariaLabel="From date" />
+                <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>to</span>
+                <ModernDatePicker value={customTo} onChange={setCustomTo} ariaLabel="To date" />
+                <AppButton variant="primary" size="sm" onClick={() => loadData()} disabled={!customFrom || !customTo}>Apply</AppButton>
+              </div>
+            )}
+            {/* Segment pills */}
+            <div style={{
+              display: "flex", background: "var(--n-50)", borderRadius: 8,
+              padding: 3, border: "1px solid var(--border-default)", gap: 2,
+            }}>
+              {(["thisWeek", "thisMonth", "custom"] as StatsPeriod[]).map((p) => {
+                const label = p === "thisWeek" ? "This Week" : p === "thisMonth" ? "This Month" : "Custom";
+                const active = statsPeriod === p;
+                return (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setStatsPeriod(p)}
+                    style={{
+                      padding: "4px 10px", borderRadius: 6, border: "none", cursor: "pointer",
+                      fontSize: "0.74rem", fontWeight: active ? 600 : 400,
+                      background: active ? "var(--n-0)" : "transparent",
+                      color: active ? "var(--text-primary)" : "var(--text-secondary)",
+                      boxShadow: active ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                      transition: "all 0.12s",
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
-        <div className="apr3-scoped-group">
-          <div className="apr3-scoped-pill">Scoped by: {statsPeriodLabel}</div>
-          <div className="apr3-stats apr3-stats-scoped">
-            <div className="apr3-stat">
-              <div className="apr3-stat-icon bg-[#eef2ff] text-[#4f46e5]"><IconApproved /></div>
-              <div>
-                <div className="apr3-stat-num text-[#4f46e5]">{stats.approvedThisMonth ?? "-"}</div>
-                <div className="apr3-stat-label">Approved</div>
-                <div className="apr3-stat-sub">{statsPeriod}</div>
+
+        {/* 6 stat tiles */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)" }}>
+          {([
+            {
+              value: pendingCount,
+              label: "Pending",
+              sub: pendingCount === 0 ? "Queue is clear" : `${pendingCount} awaiting decision`,
+              color: "#ea580c", bg: "#fff7ed", border: "#fed7aa",
+              icon: (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>
+              ),
+            },
+            {
+              value: readyNowCount,
+              label: "Ready now",
+              sub: pendingCount > 0 ? `${readyNowCount} of ${pendingCount} can be approved` : "Nothing pending",
+              color: "#059669", bg: "#ecfdf5", border: "#a7f3d0",
+              icon: (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>
+                </svg>
+              ),
+            },
+            {
+              value: stats.approvedThisMonth ?? "-",
+              label: "Approved",
+              sub: stats.approvedThisMonth == null ? statsPeriodLabel : `${stats.approvedThisMonth === 0 ? "None yet" : `${stats.approvedThisMonth} approved`} · ${statsPeriodLabel}`,
+              color: "#4f46e5", bg: "#eef2ff", border: "#c7d2fe",
+              icon: (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 6 9 17l-5-5"/>
+                </svg>
+              ),
+            },
+            {
+              value: stats.rejectedThisMonth ?? "-",
+              label: "Corrections",
+              sub: stats.rejectedThisMonth == null ? statsPeriodLabel : `${stats.rejectedThisMonth === 0 ? "None sent" : `${stats.rejectedThisMonth} sent back`} · ${statsPeriodLabel}`,
+              color: "#dc2626", bg: "#fef2f2", border: "#fecaca",
+              icon: (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+              ),
+            },
+            {
+              value: reviewRequiredCount,
+              label: "Needs review",
+              sub: reviewRequiredCount === 0 ? "No issues in queue" : `${reviewRequiredCount} blocked — cannot approve yet`,
+              color: "#d97706", bg: "#fffbeb", border: "#fde68a",
+              icon: (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+              ),
+            },
+            {
+              value: fmtResponseTime(stats.avgResponseHours),
+              label: "Avg response",
+              sub: avgTrendText,
+              color: stats.avgResponseHours != null && stats.avgResponseHours > targetResponseHours ? "#dc2626" : "var(--text-primary)",
+              bg: "var(--n-50)", border: "transparent",
+              icon: (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>
+              ),
+            },
+          ] as const).map((s, i) => (
+            <div
+              key={i}
+              style={{
+                padding: "14px 18px",
+                borderRight: i < 5 ? "1px solid var(--border-subtle)" : "none",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 8, color: s.color }}>
+                {s.icon}
+                <span style={{ fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-secondary)" }}>{s.label}</span>
               </div>
-            </div>
-            <div className="apr3-stat">
-              <div className={`apr3-stat-icon ${rejectedCount > 0 ? "bg-[#fef2f2] text-[#dc2626]" : "bg-[var(--n-100)] text-[var(--text-tertiary)]"}`}><IconRejected /></div>
-              <div>
-                <div className={`apr3-stat-num ${rejectedCount > 0 ? "text-[#dc2626]" : "text-[var(--text-secondary)]"}`}>{stats.rejectedThisMonth ?? "-"}</div>
-                <div className="apr3-stat-label">Rejected</div>
-                <div className="apr3-stat-sub">{statsPeriod}</div>
+              <div style={{ fontSize: "1.6rem", fontWeight: 700, color: s.color, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+                {s.value}
               </div>
+              <div style={{ fontSize: "0.70rem", color: "var(--text-secondary)", marginTop: 5, lineHeight: 1.4 }}>{s.sub}</div>
             </div>
-            <div className="apr3-stat">
-              <div className={`apr3-stat-icon ${reviewRequiredCount > 0 ? "bg-[#fffbeb] text-[#d97706]" : "bg-[var(--n-100)] text-[var(--text-tertiary)]"}`}><IconAlert /></div>
-              <div>
-                <div className={`apr3-stat-num ${reviewRequiredCount > 0 ? "text-[#b45309]" : "text-[var(--text-secondary)]"}`}>{reviewRequiredCount}</div>
-                <div className="apr3-stat-label">Needs review</div>
-                <div className="apr3-stat-sub">Pending queue</div>
-              </div>
-            </div>
-            <div className="apr3-stat">
-              <div className="apr3-stat-icon bg-[#f8fafc] text-[var(--text-secondary)]" title="Average time from submission to final decision."><IconClock /></div>
-              <div>
-                <div className="apr3-stat-num">{fmtResponseTime(stats.avgResponseHours)}</div>
-                <div className="apr3-stat-label">Avg. response time</div>
-                <div className="apr3-stat-sub">{avgTrendText}</div>
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
       </div>
 
-      <div className="apr3-tabs">
-        {tabs.map(({ key, label, count, disabled }) => (
-          <AppButton key={key} variant="ghost" className={`apr3-tab${tab === key ? " active" : ""}${disabled ? " apr3-tab-disabled" : ""}`} onClick={() => !disabled && setTab(key)} disabled={disabled}>
-            {label}<span className="apr3-tab-count">{count}</span>
-          </AppButton>
-        ))}
-      </div>
+      {/* ── Queue section ── */}
+      <div style={{
+        background: "var(--n-0)", borderRadius: 12,
+        border: "1px solid var(--border-default)",
+        overflow: "hidden",
+      }}>
+        {/* Tabs header */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: 0,
+          borderBottom: "1px solid var(--border-default)",
+          padding: "0 20px",
+        }}>
+          {tabs.map(({ key, label, count, disabled }) => {
+            const active = tab === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => !disabled && setTab(key)}
+                disabled={disabled}
+                style={{
+                  padding: "13px 4px",
+                  marginRight: 20,
+                  background: "none",
+                  border: "none",
+                  borderBottom: active ? "2px solid var(--brand-600)" : "2px solid transparent",
+                  cursor: disabled ? "not-allowed" : "pointer",
+                  fontSize: "0.82rem",
+                  fontWeight: active ? 600 : 400,
+                  color: active ? "var(--brand-700)" : disabled ? "var(--text-tertiary)" : "var(--text-secondary)",
+                  display: "flex", alignItems: "center", gap: 6,
+                  transition: "color 0.12s",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {label}
+                <span style={{
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                  minWidth: 18, height: 18, padding: "0 5px",
+                  borderRadius: 9,
+                  background: active ? "var(--brand-600)" : "var(--n-100)",
+                  color: active ? "#fff" : "var(--text-secondary)",
+                  fontSize: "0.68rem", fontWeight: 700,
+                }}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
 
-      {showTs && (
-        <div className="apr3-filter-shell">
-          <div className="apr3-filter-search-wrap">
-            <span className="apr3-filter-search-icon" aria-hidden="true">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="11" cy="11" r="8" />
-                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        {/* Search + sort bar */}
+        {showTs && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 12,
+            padding: "12px 20px",
+            borderBottom: "1px solid var(--border-subtle)",
+          }}>
+            <div style={{ flex: 1, position: "relative" }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                   strokeLinecap="round" strokeLinejoin="round"
+                   style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--text-secondary)", pointerEvents: "none" }}
+                   aria-hidden="true">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
               </svg>
-            </span>
-            <AppInput
-              className="apr3-search apr3-search-modern"
-              placeholder="Search employee by name..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            {search && (
-              <AppButton className="apr3-filter-clear" variant="ghost" size="sm" onClick={() => setSearch("")} aria-label="Clear search">
-                Clear
+              <AppInput
+                style={{ paddingLeft: 32 }}
+                placeholder="Search employee by name…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+              <span style={{ fontSize: "0.74rem", color: "var(--text-secondary)", fontWeight: 500 }}>Sort</span>
+              <AppSelect
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as SortBy)}
+                style={{ fontSize: "0.80rem" }}
+              >
+                <option value="waiting">Longest waiting</option>
+                <option value="name">Employee name</option>
+                <option value="hours">Hours logged</option>
+                <option value="period">Period date</option>
+              </AppSelect>
+              <button
+                type="button"
+                onClick={() => setSortDirection((p) => (p === "asc" ? "desc" : "asc"))}
+                style={{
+                  width: 32, height: 32, borderRadius: 6,
+                  border: "1px solid var(--border-default)",
+                  background: "var(--n-0)", cursor: "pointer",
+                  fontSize: "0.80rem", color: "var(--text-secondary)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}
+                aria-label={`Sort ${sortDirection === "asc" ? "ascending" : "descending"}`}
+                title={`Sort ${sortDirection === "asc" ? "ascending" : "descending"}`}
+              >
+                {sortDirection === "asc" ? "↑" : "↓"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Bulk actions bar — shown when rows are selected */}
+        {showTs && filteredTsPending.length > 0 && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
+            padding: "10px 20px",
+            background: selectedIds.size > 0 ? "var(--brand-50)" : "var(--n-50)",
+            borderBottom: "1px solid var(--border-subtle)",
+            transition: "background 0.15s",
+          }}>
+            {hasManyTimesheets && (
+              <AppButton
+                variant="ghost"
+                style={{ padding: "0 6px", height: 28 }}
+                onClick={() => toggleSelectAll(filteredTsPending.map((a) => a.timesheetId))}
+                aria-label="Toggle select all"
+              >
+                <AppCheckbox readOnly checked={selectedIds.size === filteredTsPending.length && filteredTsPending.length > 0} />
               </AppButton>
             )}
-          </div>
-          <div className="apr3-filter-sort-wrap">
-            <label className="apr3-filter-sort-label" htmlFor="apr-sort-select">Sort by</label>
-            <AppSelect id="apr-sort-select" className="apr3-sort apr3-sort-modern" value={sortBy} onChange={(e) => setSortBy(e.target.value as SortBy)}>
-              <option value="waiting">Longest waiting</option>
-              <option value="name">Employee name</option>
-              <option value="hours">Hours logged</option>
-              <option value="period">Period date</option>
-            </AppSelect>
-            <AppButton
-              className="apr3-sort-direction"
-              variant="ghost"
-              size="sm"
-              onClick={() => setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"))}
-              aria-label={`Sort direction ${sortDirection === "asc" ? "ascending" : "descending"}`}
-              title={`Sort ${sortDirection === "asc" ? "ascending" : "descending"}`}
-            >
-              {sortDirection === "asc" ? "↑" : "↓"}
-            </AppButton>
-          </div>
-        </div>
-      )}
-
-      <div className="apr3-list">
-        {pendingCount === 0 && <EmptyApprovals />}
-
-        {showTs && filteredTsPending.length > 0 && (
-          <div className={`apr3-select-bar ${selectedIds.size > 0 ? "apr3-select-bar-active" : ""}`}>
-            {hasManyTimesheets ? (
-              <>
-                <AppButton variant="ghost" className="apr3-select-hit" onClick={() => toggleSelectAll(filteredTsPending.map((a) => a.timesheetId))} aria-label="Toggle select all timesheets">
-                  <AppCheckbox readOnly checked={selectedIds.size === filteredTsPending.length && filteredTsPending.length > 0} />
-                </AppButton>
-                <span className="text-[0.8rem] text-text-secondary">{selectedIds.size === filteredTsPending.length && filteredTsPending.length > 0 ? "Deselect all" : "Select all"}</span>
-              </>
-            ) : (
-              <span className="text-[0.8rem] text-text-secondary">1 timesheet pending</span>
-            )}
-            {selectedCount > 0 && <span className="text-[0.78rem] text-brand-600 font-semibold">{selectedCount} selected</span>}
-            {selectedCount > 0 && (
-              <span className="text-[0.74rem] text-[var(--text-secondary)]">
-                {selectedEligibleCount} eligible
-                {selectedIneligibleCount > 0 ? ` · ${selectedIneligibleCount} needs manual review` : ""}
+            <span style={{ fontSize: "0.78rem", color: "var(--text-secondary)" }}>
+              {hasManyTimesheets
+                ? (selectedIds.size === filteredTsPending.length && filteredTsPending.length > 0 ? "Deselect all" : "Select all")
+                : "1 timesheet pending"}
+            </span>
+            {selectedIds.size > 0 && (
+              <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--brand-700)" }}>
+                {selectedIds.size} selected
+                {selectedEligibleCount > 0 ? ` · ${selectedEligibleCount} eligible` : ""}
+                {selectedIneligibleCount > 0 ? ` · ${selectedIneligibleCount} need review` : ""}
               </span>
             )}
             <AppButton
-              className={(!canBulkApprove ? "apr3-bulk-disabled" : "")}
               variant="primary"
               size="sm"
               onClick={() => void bulkApprove()}
               disabled={!canBulkApprove || selectedEligibleCount === 0}
-              title={selectedEligibleCount > 0 ? `Approve ${selectedEligibleCount} eligible selected` : "Select one or more eligible timesheets"}
+              title={selectedEligibleCount > 0 ? `Approve ${selectedEligibleCount} eligible` : "Select eligible timesheets"}
             >
-              {bulkApproving ? "Approving..." : selectedCount > 0 ? `Approve ${selectedEligibleCount} selected` : "Approve selected"}
+              {bulkApproving ? "Approving…" : selectedIds.size > 0 ? `Approve ${selectedEligibleCount}` : "Approve selected"}
             </AppButton>
-            <AppButton variant="outline" size="sm" onClick={() => setBulkRejectMode((v) => !v)} disabled={selectedCount === 0}>
-              Request correction selected
+            <AppButton
+              variant="outline"
+              size="sm"
+              onClick={() => setBulkRejectMode((v) => !v)}
+              disabled={selectedIds.size === 0}
+            >
+              Request correction
             </AppButton>
             {bulkRejectMode && (
-              <div className="apr3-bulk-reject">
-                <label className="apr3-input-label" htmlFor="bulk-reject-comment">Correction note</label>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", marginTop: 6 }}>
                 <AppInput
-                  id="bulk-reject-comment"
-                  className="flex-1"
+                  style={{ flex: 1, maxWidth: 480 }}
                   value={bulkRejectComment}
                   onChange={(e) => setBulkRejectComment(e.target.value)}
-                  placeholder="What should be corrected?"
+                  placeholder="What needs to be corrected?"
                 />
-                <span className="apr3-char-count">{bulkRejectComment.length}/500</span>
-                <AppButton variant="primary" size="sm" onClick={() => void bulkRequestCorrection()} disabled={bulkRejecting || bulkRejectComment.trim().length === 0}>
-                  {bulkRejecting ? "Sending..." : "Send"}
+                <span style={{ fontSize: "0.72rem", color: "var(--text-secondary)" }}>{bulkRejectComment.length}/500</span>
+                <AppButton variant="primary" size="sm" onClick={() => void bulkRequestCorrection()} disabled={bulkRejecting || !bulkRejectComment.trim()}>
+                  {bulkRejecting ? "Sending…" : "Send"}
                 </AppButton>
               </div>
             )}
           </div>
         )}
 
+        {/* Column headers */}
         {showTs && filteredTsPending.length > 0 && (
-          <div className="apr3-table-head" aria-label="Approval columns">
-            <AppButton variant="ghost" className="apr3-head-btn" onClick={() => toggleSort("name")}>
-              Employee {sortBy === "name" ? (sortDirection === "asc" ? "↑" : "↓") : ""}
-            </AppButton>
-            <AppButton variant="ghost" className="apr3-head-btn" onClick={() => toggleSort("period")}>
-              Period {sortBy === "period" ? (sortDirection === "asc" ? "↑" : "↓") : ""}
-            </AppButton>
-            <AppButton variant="ghost" className="apr3-head-btn" onClick={() => toggleSort("hours")}>
-              Hours logged {sortBy === "hours" ? (sortDirection === "asc" ? "↑" : "↓") : ""}
-            </AppButton>
-            <AppButton variant="ghost" className="apr3-head-btn" onClick={() => toggleSort("waiting")}>
-              Waiting {sortBy === "waiting" ? (sortDirection === "asc" ? "↑" : "↓") : ""}
-            </AppButton>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "44px 1fr 130px 100px 120px 1fr 36px",
+            gap: 8,
+            padding: "8px 20px",
+            borderBottom: "1px solid var(--border-subtle)",
+            background: "var(--n-50)",
+          }}>
+            <div />
+            {(["name", "period", "hours", "waiting"] as SortBy[]).map((col) => {
+              const labels: Record<SortBy, string> = { name: "EMPLOYEE", period: "PERIOD", hours: "HOURS LOGGED", waiting: "WAITING" };
+              return (
+                <button
+                  key={col}
+                  type="button"
+                  onClick={() => toggleSort(col)}
+                  style={{
+                    background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left",
+                    fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.06em",
+                    color: sortBy === col ? "var(--brand-600)" : "var(--text-secondary)",
+                    display: "flex", alignItems: "center", gap: 3,
+                  }}
+                >
+                  {labels[col]}
+                  {sortBy === col && <span style={{ fontSize: "0.70rem" }}>{sortDirection === "asc" ? "↑" : "↓"}</span>}
+                </button>
+              );
+            })}
+            <div style={{ fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.06em", color: "var(--text-secondary)" }}>ACTIONS</div>
+            <div />
           </div>
         )}
 
-        {showTs && filteredTsPending.map((a) => {
-          const mismatch = sanitizeMismatch(a.mismatchReason);
-          const requiresReview = a.enteredMinutes === 0 || mismatch !== null;
-          const days = waitingDays(a.submittedAtUtc, a.workDate);
-          const tone = waitingTone(days);
-          const person = a.displayName && a.displayName.trim().length > 0 ? a.displayName : a.username;
+        {/* Timesheet rows */}
+        {showTs && filteredTsPending.map((a, rowIndex) => {
+          const mismatch      = sanitizeMismatch(a.mismatchReason);
+          const requiresReview = a.enteredMinutes === 0 || mismatch !== null; // warning chip only
+          const cannotApprove  = a.enteredMinutes === 0; // only true block on approval
+          const days          = waitingDays(a.submittedAtUtc, a.workDate);
+          const tone          = waitingTone(days);
+          const person        = (a.displayName ?? "").trim().length > 0 ? a.displayName! : a.username;
+          const isSelected    = selectedIds.has(a.timesheetId);
+          const isDetailOpen  = detailId === a.timesheetId;
+
+          const waitingColors = {
+            green: { bg: "#ecfdf5", color: "#065f46", border: "#a7f3d0" },
+            amber: { bg: "#fffbeb", color: "#92400e", border: "#fde68a" },
+            red:   { bg: "#fef2f2", color: "#991b1b", border: "#fecaca" },
+          }[tone];
 
           return (
-            <div key={a.timesheetId} className="apr3-card [border-left:3px_solid_var(--brand-500)]">
-              <div className="apr3-card-inner">
-                <AppButton variant="ghost" className="apr3-select-hit" onClick={() => toggleSelect(a.timesheetId)} aria-label={`Select ${person}`}>
-                  <AppCheckbox readOnly checked={selectedIds.has(a.timesheetId)} />
+            <div
+              key={a.timesheetId}
+              style={{
+                borderBottom: rowIndex < filteredTsPending.length - 1 ? "1px solid var(--border-subtle)" : "none",
+                background: isSelected ? "var(--brand-50)" : "var(--n-0)",
+                transition: "background 0.1s",
+              }}
+            >
+              {/* Main row */}
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "44px 1fr 130px 100px 120px 1fr 36px",
+                gap: 8,
+                padding: "14px 20px",
+                alignItems: "center",
+              }}>
+                {/* Checkbox */}
+                <AppButton
+                  variant="ghost"
+                  style={{ padding: "0 4px", height: 28, justifyContent: "center" }}
+                  onClick={() => toggleSelect(a.timesheetId)}
+                  aria-label={`Select ${person}`}
+                >
+                  <AppCheckbox readOnly checked={isSelected} />
                 </AppButton>
-                <div className="apr3-avatar" style={{ background: avatarColor(a.userId ?? a.username) }}>{initials(person)}</div>
-                <div className="apr3-meta">
-                  <div className="apr3-meta-title apr3-meta-grid">
-                    <span><span className="apr3-meta-label">Employee</span>{person}</span>
-                    <span><span className="apr3-meta-label">Period</span>{fmtDate(a.workDate)}</span>
-                    <span><span className="apr3-meta-label">Hours logged</span>{fmtHours(a.enteredMinutes)}</span>
-                    <span className={`apr3-age-pill apr3-age-${tone}`}>Waiting {days} day{days === 1 ? "" : "s"}</span>
+
+                {/* Employee */}
+                <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                  <div style={{
+                    width: 34, height: 34, borderRadius: "50%", flexShrink: 0,
+                    background: avatarColor(a.userId ?? a.username),
+                    color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: "0.72rem", fontWeight: 700,
+                  }}>
+                    {initials(person)}
                   </div>
-                  <div className="apr3-meta-sub">
-                    {requiresReview ? <span className="apr3-warning-chip">{a.enteredMinutes === 0 ? "Review required: 0h submitted" : `Review required: ${mismatch}`}</span> : <strong>Ready for approval</strong>}
-                    {a.delegatedFromUsername && <span className="apr3-tag">Delegate: {a.delegatedFromUsername}</span>}
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {person}
+                    </div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 2 }}>
+                      {requiresReview && (
+                        <span style={{
+                          display: "inline-flex", alignItems: "center", gap: 3,
+                          padding: "1px 7px", borderRadius: 4,
+                          background: "#fffbeb", border: "1px solid #fde68a",
+                          fontSize: "0.68rem", fontWeight: 600, color: "#92400e",
+                        }}>
+                          ⚠ {a.enteredMinutes === 0 ? "0h submitted" : mismatch}
+                        </span>
+                      )}
+                      {!requiresReview && (
+                        <span style={{
+                          display: "inline-flex", alignItems: "center", gap: 3,
+                          padding: "1px 7px", borderRadius: 4,
+                          background: "#ecfdf5", border: "1px solid #a7f3d0",
+                          fontSize: "0.68rem", fontWeight: 600, color: "#065f46",
+                        }}>
+                          ✓ Ready
+                        </span>
+                      )}
+                      {a.delegatedFromUsername && (
+                        <span style={{
+                          padding: "1px 7px", borderRadius: 4,
+                          background: "var(--brand-50)", border: "1px solid var(--brand-100)",
+                          fontSize: "0.68rem", color: "var(--brand-700)",
+                        }}>
+                          via {a.delegatedFromUsername}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <div className="apr3-right">
-                  <div className="apr3-actions">
-                    <AppButton variant="primary" size="sm" className={requiresReview ? "apr3-bulk-disabled" : ""} onClick={() => void approveTs(a.timesheetId, requiresReview)} disabled={requiresReview} title={requiresReview ? "Cannot approve: 0 hours or mismatch detected. Request correction first." : "Approve timesheet"} aria-label="Approve timesheet">Approve</AppButton>
-                    <AppButton variant="outline" size="sm" className="btn btn-outline-reject" onClick={() => toggleReject(a.timesheetId, "ts")} aria-label="Request correction">Request correction</AppButton>
-                    <AppButton
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => void openTimesheetDetail(a.timesheetId)}
-                      aria-expanded={detailId === a.timesheetId}
-                      aria-controls={`ts-detail-${a.timesheetId}`}
-                    >
-                      {detailId === a.timesheetId ? "Hide details" : "View details"}
-                    </AppButton>
-                  </div>
+
+                {/* Period */}
+                <div style={{ fontSize: "0.82rem", color: "var(--text-primary)", fontWeight: 500 }}>
+                  {fmtDate(a.workDate)}
                 </div>
+
+                {/* Hours */}
+                <div style={{ fontSize: "0.85rem", fontWeight: 600, color: a.enteredMinutes === 0 ? "var(--text-tertiary)" : "var(--text-primary)" }}>
+                  {fmtHours(a.enteredMinutes)}
+                </div>
+
+                {/* Waiting */}
+                <div>
+                  <span style={{
+                    display: "inline-flex", alignItems: "center",
+                    padding: "3px 9px", borderRadius: 20,
+                    background: waitingColors.bg,
+                    border: `1px solid ${waitingColors.border}`,
+                    fontSize: "0.74rem", fontWeight: 600,
+                    color: waitingColors.color,
+                  }}>
+                    {days === 0 ? "Today" : `${days}d waiting`}
+                  </span>
+                </div>
+
+                {/* Actions */}
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <AppButton
+                    variant="primary"
+                    size="sm"
+                    onClick={() => void approveTs(a.timesheetId, cannotApprove)}
+                    disabled={cannotApprove}
+                    title={cannotApprove ? "Cannot approve: no hours logged." : mismatch ? `Mismatch noted: ${mismatch}` : "Approve timesheet"}
+                    style={cannotApprove ? { opacity: 0.4 } : { background: "var(--brand-600)", borderColor: "var(--brand-600)" }}
+                  >
+                    Approve
+                  </AppButton>
+                  <AppButton
+                    variant="outline"
+                    size="sm"
+                    onClick={() => toggleReject(a.timesheetId, "ts")}
+                    style={{ fontSize: "0.78rem", color: "var(--text-secondary)", borderColor: "var(--border-default)" }}
+                  >
+                    Request Correction
+                  </AppButton>
+                </div>
+
+                {/* Expand/collapse chevron */}
+                <button
+                  type="button"
+                  onClick={() => void openTimesheetDetail(a.timesheetId)}
+                  title={isDetailOpen ? "Collapse details" : "Expand details"}
+                  aria-label={isDetailOpen ? "Collapse details" : "Expand details"}
+                  aria-expanded={isDetailOpen}
+                  style={{
+                    width: 28, height: 28, borderRadius: 6,
+                    border: "1px solid var(--border-default)",
+                    background: isDetailOpen ? "var(--brand-50)" : "var(--n-0)",
+                    cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                    color: isDetailOpen ? "var(--brand-600)" : "var(--text-secondary)",
+                    transition: "background 0.12s, color 0.12s",
+                    flexShrink: 0,
+                  }}
+                >
+                  <svg
+                    width="14" height="14" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                    style={{ transition: "transform 0.18s", transform: isDetailOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
               </div>
 
-              {detailId === a.timesheetId && (
-                <div id={`ts-detail-${a.timesheetId}`} className="apr3-detail-panel">
-                  {detailLoading && <div className="text-[0.82rem] text-[var(--text-secondary)]">Loading timesheet details...</div>}
-                  {!detailLoading && detail && (
-                    <>
-                      <div className="apr3-detail-head"><span>{detail.displayName} ({detail.username})</span><span>{fmtDate(detail.workDate)}</span></div>
-                      <div className="apr3-detail-list">
-                        {detail.entries.length === 0 && <div className="text-[0.8rem] text-[var(--text-secondary)]">No entries found.</div>}
-                        {detail.entries.map((entry) => (
-                          <div key={entry.id} className="apr3-detail-row">
-                            <div>
-                              <div className="font-semibold text-[0.82rem]">{entry.projectName}</div>
-                              <div className="text-[0.75rem] text-[var(--text-secondary)]">{entry.taskCategoryName}</div>
-                              {entry.notes && <div className="text-[0.75rem] text-[var(--text-tertiary)]">{entry.notes}</div>}
-                            </div>
-                            <div className="font-semibold text-[0.82rem]">{fmtHours(entry.minutes)}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                  {!detailLoading && !detail && <div className="text-[0.82rem] text-[var(--error)]">Unable to load details.</div>}
-                </div>
-              )}
-
+              {/* Correction input */}
               {rejectFor?.id === a.timesheetId && rejectFor.kind === "ts" && (
-                <div className="apr3-reject-row">
-                  <label className="apr3-input-label" htmlFor={`ts-correct-${a.timesheetId}`}>Correction note</label>
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap",
+                  padding: "10px 20px 14px",
+                  background: "#fffbeb",
+                  borderTop: "1px solid #fde68a",
+                }}>
+                  <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "#92400e", flexShrink: 0 }}>Correction note:</span>
                   <AppInput
-                    id={`ts-correct-${a.timesheetId}`}
-                    className="flex-1 max-w-[520px]"
+                    style={{ flex: 1, minWidth: 200, maxWidth: 480 }}
                     placeholder="What should be corrected?"
                     value={rejectComment}
                     onChange={(e) => setRejectComment(e.target.value.slice(0, 500))}
                     autoFocus
                   />
-                  <span className="apr3-char-count">{rejectComment.length}/500</span>
-                  <AppButton variant="primary" size="sm" onClick={() => void confirmRejectTs(a.timesheetId)}>Send correction request</AppButton>
+                  <span style={{ fontSize: "0.70rem", color: "var(--text-secondary)" }}>{rejectComment.length}/500</span>
+                  <AppButton variant="primary" size="sm" onClick={() => void confirmRejectTs(a.timesheetId)}>Send</AppButton>
                   <AppButton variant="ghost" size="sm" onClick={() => setRejectFor(null)}>Cancel</AppButton>
+                </div>
+              )}
+
+              {/* Detail panel */}
+              {isDetailOpen && (
+                <div style={{
+                  padding: "14px 20px 16px",
+                  background: "var(--n-50)",
+                  borderTop: "1px solid var(--border-subtle)",
+                }}>
+                  {detailLoading && (
+                    <p style={{ margin: 0, fontSize: "0.80rem", color: "var(--text-secondary)" }}>Loading details…</p>
+                  )}
+                  {!detailLoading && detail && (
+                    <>
+                      <p style={{ margin: "0 0 10px", fontSize: "0.78rem", color: "var(--text-secondary)" }}>
+                        {detail.displayName} ({detail.username}) · {fmtDate(detail.workDate)}
+                      </p>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        {detail.entries.length === 0 && (
+                          <p style={{ margin: 0, fontSize: "0.80rem", color: "var(--text-secondary)" }}>No entries.</p>
+                        )}
+                        {detail.entries.map((entry) => (
+                          <div key={entry.id} style={{
+                            display: "flex", alignItems: "flex-start", justifyContent: "space-between",
+                            padding: "8px 12px", borderRadius: 8,
+                            background: "var(--n-0)", border: "1px solid var(--border-subtle)",
+                          }}>
+                            <div>
+                              <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--text-primary)" }}>{entry.projectName}</div>
+                              <div style={{ fontSize: "0.74rem", color: "var(--text-secondary)" }}>{entry.taskCategoryName}</div>
+                              {entry.notes && <div style={{ fontSize: "0.72rem", color: "var(--text-tertiary)", marginTop: 2 }}>{entry.notes}</div>}
+                            </div>
+                            <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--text-primary)", flexShrink: 0, marginLeft: 12 }}>
+                              {fmtHours(entry.minutes)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  {!detailLoading && !detail && (
+                    <p style={{ margin: 0, fontSize: "0.80rem", color: "#b91c1c" }}>Unable to load details.</p>
+                  )}
                 </div>
               )}
             </div>
           );
         })}
 
+        {/* Timesheet empty state */}
         {tab === "timesheets" && filteredTsPending.length === 0 && (
-          <div className="apr3-empty">
-            <div className="apr3-empty-icon">✓</div>
-            <div className="font-semibold">You are all caught up</div>
-            <div>No timesheet approvals need your attention right now.</div>
+          <div style={{ padding: "48px 20px", textAlign: "center" }}>
+            <div style={{
+              width: 48, height: 48, borderRadius: "50%", margin: "0 auto 12px",
+              background: "#ecfdf5", display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>
+              </svg>
+            </div>
+            <div style={{ fontSize: "0.90rem", fontWeight: 600, color: "var(--text-primary)" }}>All caught up</div>
+            <div style={{ fontSize: "0.80rem", color: "var(--text-secondary)", marginTop: 4 }}>No timesheet approvals pending right now.</div>
           </div>
         )}
 
-        {showLeave && leavePending.map((l) => (
-          <div key={l.id} className="apr3-card [border-left:3px_solid_#f59e0b]">
-            <div className="apr3-card-inner">
-              <div className="apr3-avatar" style={{ background: avatarColor(l.username) }}>{initials(l.username)}</div>
-              <div className="apr3-meta">
-                <div className="apr3-meta-title">{l.username} - {l.leaveTypeName} Request</div>
-                <div className="apr3-meta-sub">{fmtDate(l.leaveDate)} - <strong>{l.isHalfDay ? "Half day" : "1 day"}</strong>{l.comment && <> - {l.comment}</>}</div>
-              </div>
-              <div className="apr3-right">
-                <div className="apr3-actions">
-                  <AppButton variant="primary" size="sm" onClick={() => void approveLeave(l.id)} aria-label="Approve leave">Approve</AppButton>
-                  <AppButton variant="outline" size="sm" className="btn btn-outline-reject" onClick={() => toggleReject(l.id, "leave")} aria-label="Reject leave">Reject</AppButton>
+        {/* Leave rows */}
+        {showLeave && leavePending.map((l, rowIndex) => (
+          <div
+            key={l.id}
+            style={{
+              borderBottom: rowIndex < leavePending.length - 1 ? "1px solid var(--border-subtle)" : "none",
+            }}
+          >
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "44px 1fr 130px 100px 120px 1fr 36px",
+              gap: 8,
+              padding: "14px 20px",
+              alignItems: "center",
+            }}>
+              <div />
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{
+                  width: 34, height: 34, borderRadius: "50%", flexShrink: 0,
+                  background: avatarColor(l.username),
+                  color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: "0.72rem", fontWeight: 700,
+                }}>
+                  {initials(l.username)}
+                </div>
+                <div>
+                  <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-primary)" }}>{l.username}</div>
+                  <span style={{
+                    padding: "1px 7px", borderRadius: 4,
+                    background: "#fffbeb", border: "1px solid #fde68a",
+                    fontSize: "0.68rem", fontWeight: 600, color: "#92400e",
+                  }}>
+                    {l.leaveTypeName}
+                  </span>
                 </div>
               </div>
+              <div style={{ fontSize: "0.82rem", color: "var(--text-primary)", fontWeight: 500 }}>{fmtDate(l.leaveDate)}</div>
+              <div style={{ fontSize: "0.82rem", color: "var(--text-secondary)" }}>{l.isHalfDay ? "Half day" : "Full day"}</div>
+              <div />
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <AppButton variant="primary" size="sm" onClick={() => void approveLeave(l.id)}>Approve</AppButton>
+                <AppButton variant="ghost" size="sm" style={{ color: "var(--text-secondary)" }} onClick={() => toggleReject(l.id, "leave")}>Reject</AppButton>
+              </div>
+              <div />
             </div>
             {rejectFor?.id === l.id && rejectFor.kind === "leave" && (
-              <div className="apr3-reject-row">
-                <AppInput className="flex-1 max-w-[520px]" placeholder="Reason for rejection (required)" value={rejectComment} onChange={(e) => setRejectComment(e.target.value)} autoFocus />
-                <AppButton variant="danger" size="sm" onClick={() => void confirmRejectLeave(l.id)}>Confirm reject</AppButton>
+              <div style={{
+                display: "flex", alignItems: "center", gap: 8,
+                padding: "10px 20px 14px",
+                background: "#fef2f2", borderTop: "1px solid #fecaca",
+              }}>
+                <AppInput
+                  style={{ flex: 1, maxWidth: 480 }}
+                  placeholder="Reason for rejection (required)"
+                  value={rejectComment}
+                  onChange={(e) => setRejectComment(e.target.value)}
+                  autoFocus
+                />
+                <AppButton variant="danger" size="sm" onClick={() => void confirmRejectLeave(l.id)}>Confirm</AppButton>
                 <AppButton variant="ghost" size="sm" onClick={() => setRejectFor(null)}>Cancel</AppButton>
               </div>
             )}
@@ -937,50 +1270,89 @@ export function Approvals() {
         ))}
 
         {tab === "leave" && leavePending.length === 0 && (
-          <div className="apr3-empty">
-            <div className="apr3-empty-icon">🌴</div>
-            <div className="font-semibold">You are all caught up</div>
-            <div>No leave requests need your attention right now.</div>
+          <div style={{ padding: "48px 20px", textAlign: "center" }}>
+            <div style={{
+              width: 48, height: 48, borderRadius: "50%", margin: "0 auto 12px",
+              background: "#ecfdf5", display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <span style={{ fontSize: "1.3rem" }}>🌴</span>
+            </div>
+            <div style={{ fontSize: "0.90rem", fontWeight: 600, color: "var(--text-primary)" }}>All caught up</div>
+            <div style={{ fontSize: "0.80rem", color: "var(--text-secondary)", marginTop: 4 }}>No leave requests pending right now.</div>
           </div>
         )}
+
+        {pendingCount === 0 && <EmptyApprovals />}
       </div>
 
+      {/* ── Delegate Modal ── */}
       {showDelegateModal && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={(e) => { if (e.target === e.currentTarget) setShowDelegateModal(false); }}>
-          <div style={{ background: "var(--color-n-0, #fff)", borderRadius: 12, padding: "28px 32px", width: "100%", maxWidth: 480, boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(16,16,26,0.45)", display: "flex", alignItems: "center", justifyContent: "center" }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowDelegateModal(false); }}
+        >
+          <div style={{
+            background: "var(--n-0)", borderRadius: 16, padding: "24px 28px",
+            width: "100%", maxWidth: 460,
+            boxShadow: "0 20px 60px rgba(16,16,26,0.18)",
+            border: "1px solid var(--border-default)",
+          }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-              <span style={{ fontWeight: 700, fontSize: "1.05rem" }}>Delegate Approvals</span>
-              <AppButton variant="ghost" size="sm" onClick={() => setShowDelegateModal(false)} aria-label="Close">x</AppButton>
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div>
-                <label style={{ fontSize: "0.82rem", fontWeight: 600, display: "block", marginBottom: 4 }}>Delegate to</label>
+                <h3 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700, color: "var(--text-primary)" }}>Delegate Approvals</h3>
+                <p style={{ margin: "3px 0 0", fontSize: "0.76rem", color: "var(--text-secondary)" }}>
+                  Another manager will act on your behalf during this period.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDelegateModal(false)}
+                style={{
+                  width: 28, height: 28, borderRadius: 8, border: "1px solid var(--border-default)",
+                  background: "transparent", cursor: "pointer", color: "var(--text-secondary)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}
+                aria-label="Close"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <label style={{ display: "block", fontSize: "0.76rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 5 }}>
+                  Delegate to
+                </label>
                 <AppSelect value={delegateToUserId} onChange={(e) => setDelegateToUserId(e.target.value)} className="w-full">
-                  <option value="">Select a manager or admin...</option>
-                  {delegateUsers.map((u) => (<option key={u.id} value={u.id}>{u.displayName || u.username}</option>))}
+                  <option value="">Select a manager or admin…</option>
+                  {delegateUsers.map((u) => (
+                    <option key={u.id} value={u.id}>{u.displayName || u.username}</option>
+                  ))}
                 </AppSelect>
               </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <div>
-                  <label style={{ fontSize: "0.82rem", fontWeight: 600, display: "block", marginBottom: 4 }}>From date</label>
+                  <label style={{ display: "block", fontSize: "0.76rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 5 }}>From</label>
                   <AppInput type="date" value={delegateFromDate} onChange={(e) => setDelegateFromDate(e.target.value)} className="w-full" />
                 </div>
                 <div>
-                  <label style={{ fontSize: "0.82rem", fontWeight: 600, display: "block", marginBottom: 4 }}>To date</label>
+                  <label style={{ display: "block", fontSize: "0.76rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 5 }}>To</label>
                   <AppInput type="date" value={delegateToDate} onChange={(e) => setDelegateToDate(e.target.value)} className="w-full" />
                 </div>
               </div>
-              {delegateDateError && <p className="apr3-form-error">{delegateDateError}</p>}
-
-              <p style={{ fontSize: "0.80rem", color: "#6b7280", margin: 0 }}>The selected manager will be able to approve, reject, and request correction on your behalf during this period.</p>
+              {delegateDateError && (
+                <p style={{ margin: 0, fontSize: "0.76rem", color: "#b91c1c" }}>{delegateDateError}</p>
+              )}
             </div>
-
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 24 }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20 }}>
               <AppButton variant="ghost" size="sm" onClick={() => setShowDelegateModal(false)} disabled={delegateSaving}>Cancel</AppButton>
-              <AppButton variant="primary" onClick={() => void handleSaveDelegate()} disabled={delegateSaving || !delegateToUserId || !delegateFromDate || !delegateToDate}>
-                {delegateSaving ? "Saving..." : "Save Delegation"}
+              <AppButton
+                variant="primary"
+                onClick={() => void handleSaveDelegate()}
+                disabled={delegateSaving || !delegateToUserId || !delegateFromDate || !delegateToDate}
+              >
+                {delegateSaving ? "Saving…" : "Save Delegation"}
               </AppButton>
             </div>
           </div>

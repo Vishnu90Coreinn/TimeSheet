@@ -54,6 +54,7 @@ public record TimesheetDayResult(
     int RemainingMinutes,
     bool HasMismatch,
     string? MismatchReason,
+    string? ManagerComment,
     IReadOnlyList<TimesheetEntryResult> Entries);
 
 public record TimesheetWeekDayResult(

@@ -202,7 +202,6 @@ public static class DbInitializer
         {
             db.Holidays.AddRange(
                 new Holiday { Id = Guid.NewGuid(), Name = "New Year's Day", Date = new DateOnly(2026, 1, 1), IsRecurring = true, CreatedAtUtc = DateTime.UtcNow },
-                new Holiday { Id = Guid.NewGuid(), Name = "Good Friday", Date = new DateOnly(2026, 4, 3), IsRecurring = false, CreatedAtUtc = DateTime.UtcNow },
                 new Holiday { Id = Guid.NewGuid(), Name = "Labour Day", Date = new DateOnly(2026, 5, 1), IsRecurring = true, CreatedAtUtc = DateTime.UtcNow },
                 new Holiday { Id = Guid.NewGuid(), Name = "Christmas Day", Date = new DateOnly(2026, 12, 25), IsRecurring = true, CreatedAtUtc = DateTime.UtcNow },
                 new Holiday { Id = Guid.NewGuid(), Name = "Boxing Day", Date = new DateOnly(2026, 12, 26), IsRecurring = true, CreatedAtUtc = DateTime.UtcNow }

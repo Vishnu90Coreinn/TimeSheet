@@ -326,7 +326,7 @@ export function NotificationBell() {
         onClick={() => setOpen((value) => !value)}
         aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
       >
-        <Bell size={18} />
+        <Bell size={20} />
         {unreadCount > 0 && (
           <span
             className={`notif-badge${badgePulse ? " notif-badge--pulse" : ""}`}
@@ -366,7 +366,7 @@ export function NotificationBell() {
             <div className="flex items-start justify-between gap-3 border-b border-border-subtle px-4 py-4">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-50 text-brand-700">
-                  <Bell size={18} />
+                  <Bell size={20} />
                 </div>
                 <div>
                   <div className="text-[0.95rem] font-semibold text-text-primary">Notifications</div>

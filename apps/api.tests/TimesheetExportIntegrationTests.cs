@@ -168,6 +168,29 @@ public class TimesheetExportIntegrationTests : IClassFixture<CustomWebApplicatio
     }
 
     [Fact]
+    public async Task Export_AsEmployee_WithMultipleUserIdsIncludingAnother_Returns403()
+    {
+        await EnsureEmployeeAsync("employee1");
+
+        using var client = _factory.CreateClient();
+        var adminToken = await GetTokenAsync("admin", "admin123");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+        var users = await (await client.GetAsync("/api/v1/timesheets/export/users")).Content.ReadFromJsonAsync<List<TimesheetExportUserDto>>();
+        var adminId = users!.Single(u => u.Username == "admin").Id;
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer",
+            await GetTokenAsync("employee1", "employee123"));
+
+        var employeeUsers = await (await client.GetAsync("/api/v1/timesheets/export/users")).Content.ReadFromJsonAsync<List<TimesheetExportUserDto>>();
+        var employeeId = employeeUsers!.Single().Id;
+
+        var r = await client.GetAsync(
+            $"/api/v1/timesheets/export?fromDate=2025-01-01&toDate=2025-01-31&userIds={employeeId}&userIds={adminId}");
+
+        Assert.Equal(HttpStatusCode.Forbidden, r.StatusCode);
+    }
+
+    [Fact]
     public async Task Export_DateRange_TooLarge_Returns400()
     {
         using var client = _factory.CreateClient();

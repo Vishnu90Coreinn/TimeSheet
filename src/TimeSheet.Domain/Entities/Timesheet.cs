@@ -23,13 +23,14 @@ public class Timesheet : Entity
     public ICollection<TimesheetEntry> Entries { get; set; } = new List<TimesheetEntry>();
     public ICollection<ApprovalAction> ApprovalActions { get; set; } = new List<ApprovalAction>();
 
-    /// <summary>Transitions the timesheet from Draft to Submitted.</summary>
+    /// <summary>Transitions the timesheet from Draft or Rejected to Submitted.</summary>
     public void Submit()
     {
-        if (Status != TimesheetStatus.Draft)
+        if (Status != TimesheetStatus.Draft && Status != TimesheetStatus.Rejected)
             throw new InvalidStateTransitionException(nameof(Timesheet), Status.ToString(), nameof(Submit));
 
         Status = TimesheetStatus.Submitted;
+        ManagerComment = null;
         SubmittedAtUtc = DateTime.UtcNow;
         AddDomainEvent(new TimesheetSubmittedEvent(Id, UserId, WorkDate));
     }

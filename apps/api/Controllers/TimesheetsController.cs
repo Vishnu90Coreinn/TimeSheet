@@ -132,6 +132,7 @@ public class TimesheetsController(ISender mediator) : ControllerBase
     private static TimesheetDayResponse MapDay(AppInterfaces.TimesheetDayResult r) =>
         new(r.TimesheetId, r.WorkDate, r.Status, r.AttendanceNetMinutes, r.ExpectedMinutes,
             r.EnteredMinutes, r.RemainingMinutes, r.HasMismatch, r.MismatchReason,
+            r.ManagerComment,
             r.Entries.Select(e => new TimesheetEntryResponse(e.Id, e.ProjectId, e.ProjectName,
                 e.TaskCategoryId, e.TaskCategoryName, e.Minutes, e.Notes)).ToList());
 

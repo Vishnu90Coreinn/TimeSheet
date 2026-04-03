@@ -11,6 +11,7 @@ import { EmptyTimesheets } from "./EmptyState";
 import { TimePickerInput } from "./TimePickerInput";
 import { TimesheetExportModal } from "./TimesheetExportModal";
 import { AppButton, AppInput, AppSelect, AppTextarea } from "./ui";
+import { Pencil, Trash2 } from "lucide-react";
 import type { AttendanceSummary } from "./AttendanceWidget";
 import type { OvertimeSummary, Project, TaskCategory, TimesheetDay, TimesheetEntry, WeekDayMeta, WeekSummary } from "../types";
 import { useTimezone } from "../hooks/useTimezone";
@@ -685,7 +686,7 @@ export function Timesheets() {
 
   // Count days with draft status + entries for "Submit Week" button enablement
   const submittableCount = (weekData?.days ?? []).filter(d =>
-    d.status === "draft" && d.enteredMinutes > 0
+    (d.status === "draft" || d.status === "rejected") && d.enteredMinutes > 0
   ).length;
 
   // Today by project (from dayData entries)
@@ -748,7 +749,7 @@ export function Timesheets() {
                   Submit Week ({submittableCount})
                 </AppButton>
               )}
-              {isDraft && dayEntries.length > 0 && (
+              {(isDraft || isRejected) && dayEntries.length > 0 && (
                 <AppButton
                   variant="outline"
                   size="sm"
@@ -980,7 +981,7 @@ export function Timesheets() {
           )}
 
           {/* Submit form */}
-          {showSubmitForm && isDraft && (
+          {showSubmitForm && (isDraft || isRejected) && (
             <div className="border-[1.5px] border-border-subtle rounded-xl bg-white p-5 flex flex-col gap-[14px]">
               <div className="text-[14px] font-semibold text-[var(--n-900,#111827)]">Submit for Review</div>
               <div className="flex flex-col gap-1">
@@ -1048,14 +1049,16 @@ export function Timesheets() {
             </div>
           )}
           {isRejected && (
-            <div className="flex items-center gap-[10px] rounded-[10px] px-4 py-3 text-[13px] bg-[#fef2f2] border-[1.5px] border-[#fca5a5] text-[#991b1b]">
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" className="shrink-0">
+            <div className="flex items-start gap-[10px] rounded-[10px] px-4 py-3 text-[13px] bg-[#fef2f2] border-[1.5px] border-[#fca5a5] text-[#991b1b]">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" className="shrink-0 mt-[1px]">
                 <circle cx="10" cy="10" r="9" stroke="#ef4444" strokeWidth="1.8"/>
                 <path d="M7 7l6 6M13 7l-6 6" stroke="#ef4444" strokeWidth="1.8" strokeLinecap="round"/>
               </svg>
               <div>
-                <strong>Timesheet rejected</strong>
-                <span className="font-normal opacity-85"> — Please review and resubmit.</span>
+                <div><strong>Timesheet rejected</strong><span className="font-normal opacity-85"> — Please review and resubmit.</span></div>
+                {dayData?.managerComment && (
+                  <div className="mt-1 opacity-90"><span className="font-semibold">Manager&apos;s note:</span> {dayData.managerComment}</div>
+                )}
               </div>
             </div>
           )}
@@ -1122,14 +1125,14 @@ export function Timesheets() {
                     <div className="text-[14px] font-bold text-[var(--n-900,#111827)] whitespace-nowrap min-w-[40px] text-right">
                       {fmtHours(entry.minutes)}
                     </div>
-                    {isDraft ? (
+                    {(isDraft || isRejected) ? (
                       <div className="flex gap-1">
-                        <AppButton variant="ghost" size="sm" className="ts-icon-btn" title="Edit" onClick={() => openEdit(entry)}>
-                          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M14.7 3.3a1 1 0 0 1 1.4 1.4L5.5 15.3l-3 .7.7-3L14.7 3.3z"/></svg>
-                        </AppButton>
-                        <AppButton variant="ghost" size="sm" className="ts-icon-btn ts-icon-btn--danger" title="Delete" onClick={() => void deleteEntry(entry.id)}>
-                          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 6h14M8 6V4h4v2M6 6l1 11h6l1-11"/></svg>
-                        </AppButton>
+                        <button type="button" className="ts-icon-btn" title="Edit" onClick={() => openEdit(entry)}>
+                          <Pencil size={14} />
+                        </button>
+                        <button type="button" className="ts-icon-btn ts-icon-btn--danger" title="Delete" onClick={() => void deleteEntry(entry.id)}>
+                          <Trash2 size={14} />
+                        </button>
                       </div>
                     ) : (
                       <div className="w-[28px] h-[28px] flex items-center justify-center text-[var(--n-400,#9ca3af)] shrink-0" title={`Locked — ${dayData?.status}`}>

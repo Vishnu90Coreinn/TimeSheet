@@ -58,8 +58,8 @@ public class UpsertTimesheetEntryCommandHandler(
             timesheetRepo.Add(timesheet);
         }
 
-        if (timesheet.Status != TimesheetStatus.Draft)
-            return Result<TimesheetDayResult>.Conflict("Only draft timesheets can be edited.");
+        if (timesheet.Status != TimesheetStatus.Draft && timesheet.Status != TimesheetStatus.Rejected)
+            return Result<TimesheetDayResult>.Conflict("Only draft or rejected timesheets can be edited.");
 
         // Upsert entry
         timesheet.Entries ??= new List<TimesheetEntry>();

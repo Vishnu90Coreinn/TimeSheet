@@ -570,10 +570,10 @@ export function TeamStatus() {
         </div>
 
         {/* ── Main Card (filter tabs + table) ─────────────────────────────────── */}
-        <div style={{ background: "var(--surface)", border: "1px solid var(--border-subtle)", borderRadius: 12, overflow: "hidden" }}>
+        <div style={{ background: "var(--n-0)", border: "1px solid var(--border-subtle)", borderRadius: 12, overflow: "hidden" }}>
 
           {/* Filter tabs */}
-          <div style={{ display: "flex", borderBottom: "1px solid var(--border-subtle)", padding: "0 4px", overflowX: "auto" }}>
+          <div style={{ display: "flex", borderBottom: "1px solid var(--border-subtle)", padding: "0 4px" }}>
             {(Object.keys(FILTER_LABELS) as Filter[]).map(f => {
               const isActive = filter === f;
               return (

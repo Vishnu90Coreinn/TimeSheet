@@ -556,7 +556,7 @@ export function TeamStatus() {
         {/* ── KPI Stats Strip ─────────────────────────────────────────────────── */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
           {kpiCards.map(k => (
-            <div key={k.label} style={{ background: "var(--surface)", border: "1px solid var(--border-subtle)", borderLeft: `3px solid ${k.color}`, borderRadius: 10, padding: "14px 16px", display: "flex", alignItems: "flex-start", gap: 12 }}>
+            <div key={k.label} style={{ background: "var(--n-0)", border: "1px solid var(--border-subtle)", borderLeft: `3px solid ${k.color}`, borderRadius: 10, padding: "14px 16px", display: "flex", alignItems: "flex-start", gap: 12 }}>
               <div style={{ width: 36, height: 36, borderRadius: 8, background: k.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: k.color }}>
                 {k.icon}
               </div>

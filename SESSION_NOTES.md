@@ -1443,17 +1443,60 @@ All Sprint 22 tasks are done. Branch is ready to raise a PR to master.
 
 ---
 
-## Pending For Next Session
+---
 
-> Last updated: Session 29 (2026-03-27).
+## Session 30 — UI Audit Quick Wins + Date Range Redesign (2026-04-04)
 
-### Sprint 23 — complete on `feature/sprint-23-command-palette`
+### Branch
+`feature/BackendAPIPagedResponse`
 
-**To merge:**
-1. User smoke-tests: Cmd+K opens palette, ?, N/S/A shortcuts, navigate between views
-2. User raises PR: `feature/sprint-23-command-palette` → `master`
+### What Was Done
 
-### Sprint Roadmap
+#### Quick wins — shared component library cleanup (continued from prior sessions)
+
+**1. Empty States consistency (#4)**
+- `ServerDataTable.tsx` — replaced plain `<span>{emptyText}</span>` with `EmptyState` (when no search) or `EmptySearch` (when search active); padding bumped to 40px
+- `LeavePolicies.tsx` — fixed raw `empty-row` class on leave types table → styled `<span>` in centered `<td>`
+- Import `EmptyState, EmptySearch` added to ServerDataTable
+
+**2. AppDatePicker (#5) — no new component needed**
+- `TimesheetExportModal.tsx` was the only file still using raw `<input type="date">` with inline styles
+- Replaced with `<AppInput type="date">` + added `import { AppInput } from "./ui"`
+- All other files (Leave, Approvals, Reports, Holidays, Timesheets) already used `AppInput type="date"`
+
+**3. AuditLogViewer improvements (#6)**
+- **Date preset filter UI was missing** — `DATE_PRESETS`, `preset`, `customFrom`/`customTo` states were wired in data fetching but never rendered in the UI; now rendered
+- Added `DateRangeFilter` component (pill buttons + animated custom inputs reveal)
+- Replaced local `AVATAR_COLORS` array + `avatarColor` function with shared `avatarColor` from `utils/avatar`
+- Removed dead `pageWindow` computed variable (unused since `AppPagination` handles pagination)
+- Toolbar "Clear" button consolidated to call `clearFilters()` (was duplicating the logic inline)
+
+**4. DateRangeFilter redesign — smooth transition**
+- Replaced the plain `FilterSelect` (native `<select>`) approach with a proper `DateRangeFilter` component
+- **Pill row**: `All time · Today · Last 7 days · Last 30 days · This month · Custom` — rounded pill buttons, active = brand-500 fill + indigo glow shadow, hover = border highlight
+- **Animated reveal**: custom date inputs use `grid-template-rows: 0fr → 1fr` + `opacity 0 → 1` CSS transition (the trick for animating height:auto)
+- **Arrow connector**: small inline SVG arrow between the two date inputs
+- **"Clear dates"** link appears inside custom row only when dates are set
+- Date range row placed in its own section below the search/filter toolbar with a subtle border separator
+
+### Files Modified
+- `apps/web/src/components/ui/ServerDataTable.tsx`
+- `apps/web/src/components/Admin/LeavePolicies.tsx`
+- `apps/web/src/components/TimesheetExportModal.tsx`
+- `apps/web/src/components/Admin/AuditLogViewer.tsx`
+
+### Pending For Next Session
+
+> Last updated: Session 30 (2026-04-04). Branch: `feature/BackendAPIPagedResponse`
+
+#### Remaining UI audit items:
+| # | Item | Status |
+|---|------|--------|
+| 1 | Reports Page — No Charts (High Impact) | ❌ not started |
+| 2 | Admin Hub redesign — plain link grid needs icons/counts/status | ❌ not started |
+| 3 | Profile Page — Templates Tab Incomplete | ❌ not started |
+
+#### Sprint Roadmap (on hold)
 | Sprint | Feature |
 |--------|---------|
 | 24 | Mobile PWA |

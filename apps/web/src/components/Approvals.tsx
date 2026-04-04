@@ -4,6 +4,7 @@ import { SkeletonPage } from "./Skeleton";
 import { EmptyApprovals } from "./EmptyState";
 import type { ApprovalItem, LeaveRequest, PagedResponse, User } from "../types";
 import { AppButton, AppCheckbox, AppInput, AppSelect } from "./ui";
+import { avatarColor } from "../utils/avatar";
 
 type Tab = "all" | "timesheets" | "leave";
 type StatsPeriod = "thisWeek" | "thisMonth" | "custom";
@@ -112,13 +113,6 @@ function waitingTone(days: number): "green" | "amber" | "red" {
   if (days > 5) return "red";
   if (days >= 2) return "amber";
   return "green";
-}
-
-const AVATAR_PALETTE = ["#818cf8", "#a78bfa", "#34d399", "#60a5fa", "#f472b6", "#fb923c", "#facc15", "#4ade80", "#38bdf8", "#f87171"];
-function avatarColor(name: string): string {
-  let n = 0;
-  for (const c of name) n = (n * 31 + c.charCodeAt(0)) & 0xffff;
-  return AVATAR_PALETTE[n % AVATAR_PALETTE.length];
 }
 
 const CAL_MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];

@@ -40,6 +40,8 @@ public class TimeSheetDbContext(DbContextOptions<TimeSheetDbContext> options) : 
     public DbSet<DataExportRequest> DataExportRequests => Set<DataExportRequest>();
     public DbSet<ConsentLog> ConsentLogs => Set<ConsentLog>();
     public DbSet<RetentionPolicy> RetentionPolicies => Set<RetentionPolicy>();
+    public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
+    public DbSet<PasswordPolicy> PasswordPolicies => Set<PasswordPolicy>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

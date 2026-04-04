@@ -7,7 +7,7 @@ import { SkeletonPage } from "./Skeleton";
 import type { LeaveBalance, OvertimeSummary, TeamLeaveEntry, PagedResponse, Project, User } from "../types";
 import { OnboardingChecklist } from "./OnboardingChecklist";
 import { useTimezone } from "../hooks/useTimezone";
-import { AppButton } from "./ui";
+import { AppBadge, AppButton } from "./ui";
 
 interface DashboardProps { role: string; username: string; onboardingCompletedAt?: string | null; onNavigate?: (view: string) => void; }
 
@@ -102,12 +102,12 @@ function todayStr(): string {
   return new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric", year: "numeric" });
 }
 function statusBadge(s: string) {
-  const m: Record<string, string> = { draft: "badge badge-warning", submitted: "badge badge-info", approved: "badge badge-success", rejected: "badge badge-error" };
-  return <span className={m[s?.toLowerCase()] ?? "badge badge-neutral"}>{s}</span>;
+  const m: Record<string, "warning" | "info" | "success" | "error"> = { draft: "warning", submitted: "info", approved: "success", rejected: "error" };
+  return <AppBadge variant={m[s?.toLowerCase()] ?? "neutral"}>{s}</AppBadge>;
 }
 function loadBadge(s: string) {
-  const m: Record<string, string> = { underutilized: "badge badge-warning", balanced: "badge badge-success", overloaded: "badge badge-error" };
-  return <span className={m[s] ?? "badge badge-neutral"}>{s}</span>;
+  const m: Record<string, "warning" | "success" | "error"> = { underutilized: "warning", balanced: "success", overloaded: "error" };
+  return <AppBadge variant={m[s] ?? "neutral"}>{s}</AppBadge>;
 }
 function avatarColor(name: string): string {
   const colors = [
@@ -1131,7 +1131,7 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
         <div className="card">
           <div className="card-header">
             <div><h2 className="card-title">Recent Activity</h2><div className="card-subtitle">Team attendance & timesheet flags</div></div>
-            {mismatches.length > 0 && <span className="badge badge-error">{mismatches.length}</span>}
+            {mismatches.length > 0 && <AppBadge variant="error">{mismatches.length}</AppBadge>}
           </div>
           <div className="card-body">
             {mismatches.length === 0 ? (
@@ -1183,7 +1183,7 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
         <div className="card">
           <div className="card-header">
             <div><h2 className="card-title">Pending Approvals</h2><div className="card-subtitle">Requires your action</div></div>
-            {timesheetHealth.pendingApprovals > 0 && <span className="badge badge-danger">{timesheetHealth.pendingApprovals}</span>}
+            {timesheetHealth.pendingApprovals > 0 && <AppBadge variant="danger">{timesheetHealth.pendingApprovals}</AppBadge>}
           </div>
           <div className="card-body">
             {pendingList.length === 0 && timesheetHealth.pendingApprovals === 0 ? (

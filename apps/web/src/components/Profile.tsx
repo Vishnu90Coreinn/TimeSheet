@@ -161,6 +161,15 @@ export function Profile({ onBack }: { onBack: () => void }) {
   // Notification prefs
   const [savingPrefs, setSavingPrefs] = useState(false);
 
+  // Security question
+  const [sqHasQuestion, setSqHasQuestion] = useState(false);
+  const [sqQuestion, setSqQuestion]       = useState<string | null>(null);
+  const [sqEditing, setSqEditing]         = useState(false);
+  const [sqNewQuestion, setSqNewQuestion] = useState("");
+  const [sqAnswer, setSqAnswer]           = useState("");
+  const [sqCurrentPwd, setSqCurrentPwd]   = useState("");
+  const [sqSaving, setSqSaving]           = useState(false);
+
   // Templates state
   const [templates, setTemplates] = useState<TemplateItem[]>([]);
   const [entryOptions, setEntryOptions] = useState<EntryOptions | null>(null);
@@ -201,6 +210,13 @@ export function Profile({ onBack }: { onBack: () => void }) {
     });
     apiFetch("/timesheets/entry-options").then(async r => {
       if (r.ok) setEntryOptions(await r.json() as EntryOptions);
+    });
+    apiFetch("/profile/security-question").then(async r => {
+      if (r.ok) {
+        const d = await r.json() as { hasQuestion: boolean; question: string | null };
+        setSqHasQuestion(d.hasQuestion);
+        setSqQuestion(d.question ?? null);
+      }
     });
   }, []);
 
@@ -276,6 +292,31 @@ export function Profile({ onBack }: { onBack: () => void }) {
       showToast(false, d.message ?? "Password change failed.");
     }
     setSavingPwd(false);
+  }
+
+  // ── Security question ────────────────────────────────────────────────────────
+
+  async function saveSecurityQuestion() {
+    if (!sqNewQuestion.trim() || !sqAnswer.trim() || !sqCurrentPwd) {
+      showToast(false, "All fields are required.");
+      return;
+    }
+    setSqSaving(true);
+    const r = await apiFetch("/profile/security-question", {
+      method: "PUT",
+      body: JSON.stringify({ question: sqNewQuestion.trim(), answer: sqAnswer, currentPassword: sqCurrentPwd }),
+    });
+    if (r.ok || r.status === 204) {
+      showToast(true, "Security question saved.");
+      setSqHasQuestion(true);
+      setSqQuestion(sqNewQuestion.trim());
+      setSqEditing(false);
+      setSqNewQuestion(""); setSqAnswer(""); setSqCurrentPwd("");
+    } else {
+      const d = await r.json().catch(() => ({})) as { message?: string };
+      showToast(false, d.message ?? "Failed to save security question.");
+    }
+    setSqSaving(false);
   }
 
   // ── Notification prefs ──────────────────────────────────────────────────────
@@ -613,6 +654,47 @@ export function Profile({ onBack }: { onBack: () => void }) {
                 >
                   {savingPwd ? "Changing…" : "Change Password"}
                 </AppButton>
+              </div>
+            </div>
+
+            {/* Security Question card */}
+            <div className="card">
+              <div className="card-header">
+                <div>
+                  <div className="card-title">Security Question</div>
+                  <div className="card-subtitle">Used to verify your identity if you forget your password</div>
+                </div>
+                {sqHasQuestion && !sqEditing && (
+                  <AppButton variant="outline" size="sm" onClick={() => { setSqEditing(true); setSqNewQuestion(sqQuestion ?? ""); setSqAnswer(""); setSqCurrentPwd(""); }}>
+                    Change Question
+                  </AppButton>
+                )}
+              </div>
+              <div className="p-6 flex flex-col gap-4">
+                {sqHasQuestion && !sqEditing ? (
+                  <div className="text-[0.85rem] text-text-secondary">
+                    <span className="font-semibold text-text-primary">Your question: </span>{sqQuestion}
+                  </div>
+                ) : (
+                  <>
+                    {!sqHasQuestion && (
+                      <div className="text-[0.82rem] text-text-tertiary">No security question set. Set one now to enable self-service password reset.</div>
+                    )}
+                    <PwdField label="Security Question" value={sqNewQuestion} onChange={setSqNewQuestion} placeholder="e.g. What was the name of your first pet?" />
+                    <PwdField label="Answer" value={sqAnswer} onChange={setSqAnswer} placeholder="Your answer (case-sensitive)" />
+                    <PwdField label="Current Password" value={sqCurrentPwd} onChange={setSqCurrentPwd} placeholder="Verify your identity" />
+                    <div className="flex gap-2">
+                      <AppButton variant="primary" onClick={() => void saveSecurityQuestion()} disabled={sqSaving}>
+                        {sqSaving ? "Saving…" : "Save Security Question"}
+                      </AppButton>
+                      {sqEditing && (
+                        <AppButton variant="ghost" onClick={() => { setSqEditing(false); setSqNewQuestion(""); setSqAnswer(""); setSqCurrentPwd(""); }}>
+                          Cancel
+                        </AppButton>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 

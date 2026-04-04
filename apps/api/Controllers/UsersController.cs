@@ -109,6 +109,21 @@ public class UsersController(ISender mediator) : ControllerBase
         return result.IsSuccess ? NoContent() : Fail(result);
     }
 
+    [HttpPost("{id:guid}/reset-password")]
+    public async Task<IActionResult> AdminResetPassword(Guid id, CancellationToken ct)
+    {
+        var result = await mediator.Send(new AdminResetPasswordCommand(id), ct);
+        if (!result.IsSuccess) return Fail(result);
+        return Ok(new { temporaryPassword = result.Value });
+    }
+
+    [HttpPost("{id:guid}/revoke-sessions")]
+    public async Task<IActionResult> RevokeSessions(Guid id, CancellationToken ct)
+    {
+        var result = await mediator.Send(new RevokeUserSessionsCommand(id), ct);
+        return result.IsSuccess ? NoContent() : Fail(result);
+    }
+
     private static UserResponse ToResponse(UserListItemResult u)
         => new(
             u.Id,

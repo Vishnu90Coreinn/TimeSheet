@@ -8,7 +8,8 @@ public record LoginResponse(
     string Email,
     string Role,
     DateTime? OnboardingCompletedAt,
-    DateTime? LeaveWorkflowVisitedAt
+    DateTime? LeaveWorkflowVisitedAt,
+    bool MustChangePassword = false
 );
 
 public record RefreshTokenRequest(string RefreshToken);

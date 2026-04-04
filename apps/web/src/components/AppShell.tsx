@@ -38,6 +38,7 @@ const NAV_ITEMS: NavItem[] = [
   { view: "branding",          label: "Branding",         icon: <PaletteIcon size={18} />,    group: "admin" },
   { view: "retention-policy",  label: "Data Retention",   icon: <ShieldIcon size={18} />,     group: "admin" },
   { view: "audit-logs",        label: "Audit Logs",       icon: <ScrollTextIcon size={18} />, group: "admin" },
+  { view: "password-policy",   label: "Password Policy",  icon: <ShieldCheckIcon />,          group: "admin" },
 ];
 
 const VIEW_LABELS: Record<View, string> = {
@@ -58,6 +59,7 @@ const VIEW_LABELS: Record<View, string> = {
   branding: "Branding",
   "retention-policy": "Data Retention",
   "audit-logs": "Audit Logs",
+  "password-policy": "Password Policy",
 };
 
 interface AppShellProps {
@@ -513,6 +515,15 @@ function BriefcaseIcon() {
       <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
       <line x1="12" y1="12" x2="12" y2="12"/>
       <line x1="8" y1="12" x2="16" y2="12"/>
+    </svg>
+  );
+}
+/** Password Policy — shield with checkmark */
+function ShieldCheckIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      <polyline points="9 12 11 14 15 10"/>
     </svg>
   );
 }

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { apiFetch } from "../api/client";
+import { AppInput } from "./ui";
 
 interface ExportUser {
   id: string;
@@ -340,25 +341,14 @@ export function TimesheetExportModal({ open, onClose }: Props) {
                   >
                     {side === "from" ? "Start date" : "End date"}
                   </label>
-                  <input
+                  <AppInput
                     id={`export-${side}`}
                     type="date"
                     value={side === "from" ? fromDate : toDate}
                     max={side === "from" ? toDate || undefined : undefined}
                     min={side === "to"   ? fromDate || undefined : undefined}
                     onChange={e => side === "from" ? handleFromChange(e.target.value) : handleToChange(e.target.value)}
-                    style={{
-                      width: "100%",
-                      height: 36,
-                      padding: "0 10px",
-                      borderRadius: 8,
-                      border: "1px solid var(--border-default)",
-                      background: "var(--n-0)",
-                      color: "var(--text-primary)",
-                      fontSize: "0.82rem",
-                      outline: "none",
-                      boxSizing: "border-box",
-                    }}
+                    className="w-full"
                   />
                 </div>
               ))}

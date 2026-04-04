@@ -110,7 +110,7 @@ export type CompOffBalance = {
   expiresInDays?: number;
   expiryDays?: number;
 };
-export type View = "dashboard" | "reports" | "timesheets" | "leave" | "approvals" | "team" | "projects" | "categories" | "users" | "holidays" | "leave-policies" | "work-policies" | "profile" | "branding" | "retention-policy" | "audit-logs" | "admin";
+export type View = "dashboard" | "reports" | "timesheets" | "leave" | "approvals" | "team" | "projects" | "categories" | "users" | "holidays" | "leave-policies" | "work-policies" | "profile" | "branding" | "retention-policy" | "audit-logs" | "admin" | "password-policy";
 
 export type TeamMemberStatus = {
   userId: string;

@@ -1,61 +1,16 @@
 /**
  * Categories.tsx — Pulse SaaS design v3.0
  */
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { apiFetch } from "../../api/client";
 import type { PagedResponse, TaskCategory } from "../../types";
-import { AppButton, AppCheckbox, AppIconButton, AppInput } from "../ui";
+import { AppButton, AppCheckbox, AppDrawer, AppIconButton, AppInput, AppModal, AppToggle } from "../ui";
 import { ServerDataTable, type ServerColumnDef, type ServerTableQuery } from "../ui";
 import { useToast } from "../../contexts/ToastContext";
 
 type CatForm = { name: string; isBillable: boolean; isActive: boolean };
 const BLANK: CatForm = { name: "", isBillable: false, isActive: true };
-
-function Drawer({ open, title, onClose, children, footer }: { open: boolean; title: string; onClose: () => void; children: ReactNode; footer?: ReactNode }) {
-  if (!open) return null;
-  return (
-    <>
-      <div className="drawer-overlay" onClick={onClose} />
-      <div className="drawer" role="dialog" aria-modal="true">
-        <div className="drawer-header">
-          <div className="drawer-title">{title}</div>
-          <button className="drawer-close" onClick={onClose} aria-label="Close">
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><line x1="1" y1="1" x2="12" y2="12"/><line x1="12" y1="1" x2="1" y2="12"/></svg>
-          </button>
-        </div>
-        <div className="drawer-body">{children}</div>
-        {footer && <div className="drawer-footer">{footer}</div>}
-      </div>
-    </>
-  );
-}
-
-function ConfirmModal({ open, title, body, onConfirm, onCancel }: { open: boolean; title: string; body: string; onConfirm: () => void; onCancel: () => void }) {
-  if (!open) return null;
-  return (
-    <div className="modal-overlay" onClick={onCancel}>
-      <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-title">{title}</div>
-        <div className="modal-body">{body}</div>
-        <div className="modal-actions">
-          <AppButton variant="ghost" size="sm" onClick={onCancel}>Cancel</AppButton>
-          <AppButton variant="danger" size="sm" onClick={onConfirm}>Delete</AppButton>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <div className="toggle-wrap cursor-pointer" onClick={() => onChange(!checked)}>
-      <div className={`toggle-track${checked ? " on" : ""}`}>
-        <div className="toggle-thumb" />
-      </div>
-    </div>
-  );
-}
 
 export function Categories() {
   const toast = useToast();
@@ -156,7 +111,7 @@ export function Categories() {
       sortable: true,
       sortValue: c => Number(c.isBillable),
       width: "110px",
-      render: c => <ToggleSwitch checked={c.isBillable} onChange={() => void toggleBillable(c)} />,
+      render: c => <AppToggle checked={c.isBillable} onChange={() => void toggleBillable(c)} />,
     },
     {
       key: "isActive",
@@ -164,7 +119,7 @@ export function Categories() {
       sortable: true,
       sortValue: c => Number(c.isActive),
       width: "110px",
-      render: c => <ToggleSwitch checked={c.isActive} onChange={() => void toggleActive(c)} />,
+      render: c => <AppToggle checked={c.isActive} onChange={() => void toggleActive(c)} />,
     },
     {
       key: "actions",
@@ -187,7 +142,7 @@ export function Categories() {
 
   return (
     <section className="flex flex-col gap-6">
-      <Drawer open={!!editing} title={drawerTitle} onClose={() => setEditing(null)}
+      <AppDrawer open={!!editing} title={drawerTitle} onClose={() => setEditing(null)}
         footer={
           <>
             <AppButton variant="primary" onClick={() => void save()}>Save</AppButton>
@@ -210,9 +165,9 @@ export function Categories() {
             Active
           </label>
         </div>
-      </Drawer>
+      </AppDrawer>
 
-      <ConfirmModal
+      <AppModal
         open={!!deleteId}
         title="Delete Category?"
         body="This will permanently delete the category. This action cannot be undone."

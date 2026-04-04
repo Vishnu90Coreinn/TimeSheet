@@ -7,11 +7,18 @@ namespace TimeSheet.Application.Leave.Queries;
 public class GetMyLeaveRequestsQueryHandler(
     ILeaveQueryService leaveQuery,
     ICurrentUserService currentUser)
-    : IRequestHandler<GetMyLeaveRequestsQuery, Result<List<LeaveRequestResult>>>
+    : IRequestHandler<GetMyLeaveRequestsQuery, Result<PagedResult<LeaveRequestResult>>>
 {
-    public async Task<Result<List<LeaveRequestResult>>> Handle(GetMyLeaveRequestsQuery request, CancellationToken ct)
+    public async Task<Result<PagedResult<LeaveRequestResult>>> Handle(GetMyLeaveRequestsQuery request, CancellationToken ct)
     {
-        var items = await leaveQuery.GetMyRequestsAsync(currentUser.UserId, ct);
-        return Result<List<LeaveRequestResult>>.Success(items);
+        var page = await leaveQuery.GetMyRequestsPageAsync(
+            currentUser.UserId,
+            request.Search,
+            request.SortBy,
+            request.Descending,
+            request.Page,
+            request.PageSize,
+            ct);
+        return Result<PagedResult<LeaveRequestResult>>.Success(page);
     }
 }

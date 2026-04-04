@@ -14,4 +14,26 @@ public interface ITimesheetRepository
     void RemoveEntry(TimesheetEntry entry);
     void AddApprovalAction(ApprovalAction action);
     Task<IReadOnlyList<Timesheet>> GetByUserAndWeekTrackedAsync(Guid userId, DateOnly weekStart, DateOnly weekEnd, CancellationToken ct = default);
+    Task<(IReadOnlyList<PendingApprovalTimesheetRow> Items, int TotalCount, int Page)> GetPendingForManagersPageAsync(
+        IReadOnlyCollection<Guid> managerIds,
+        string? search,
+        bool? hasMismatch,
+        string sortBy,
+        bool descending,
+        int page,
+        int pageSize,
+        CancellationToken ct = default);
 }
+
+public record PendingApprovalTimesheetRow(
+    Guid TimesheetId,
+    Guid UserId,
+    Guid? ManagerId,
+    string Username,
+    string DisplayName,
+    DateOnly WorkDate,
+    int EnteredMinutes,
+    string Status,
+    DateTime? SubmittedAtUtc,
+    bool HasMismatch,
+    string? MismatchReason);

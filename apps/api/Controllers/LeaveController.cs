@@ -1,8 +1,6 @@
-using System.Security.Claims;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using TimeSheet.Api.Dtos;
 using TimeSheet.Api.Extensions;
 using TimeSheet.Application.Leave.Commands;
@@ -13,7 +11,7 @@ namespace TimeSheet.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/v1/leave")]
-public class LeaveController(TimeSheetDbContext dbContext, ISender mediator) : ControllerBase
+public class LeaveController(ISender mediator) : ControllerBase
 {
     [HttpGet("types")]
     public async Task<IActionResult> GetLeaveTypes(CancellationToken ct)
@@ -48,18 +46,39 @@ public class LeaveController(TimeSheetDbContext dbContext, ISender mediator) : C
     }
 
     [HttpGet("requests/my")]
-    public async Task<IActionResult> GetMyLeaveRequests(CancellationToken ct)
+    public async Task<IActionResult> GetMyLeaveRequests([FromQuery] LeaveRequestsListQuery queryParams, CancellationToken ct)
     {
-        var result = await mediator.Send(new GetMyLeaveRequestsQuery(), ct);
-        return result.IsSuccess ? Ok(result.Value) : result.ToActionResult();
+        var sortBy = (queryParams.SortBy ?? "leaveDate").Trim().ToLowerInvariant();
+        var sortDir = (queryParams.SortDir ?? "desc").Trim().ToLowerInvariant();
+        var desc = sortDir == "desc";
+        var result = await mediator.Send(new GetMyLeaveRequestsQuery(
+            queryParams.Search,
+            sortBy,
+            desc,
+            Math.Max(1, queryParams.Page),
+            Math.Clamp(queryParams.PageSize, 1, 200)), ct);
+        if (!result.IsSuccess) return result.ToActionResult();
+
+        var page = result.Value!;
+        return Ok(ToPagedLeaveRequestResponse(page));
     }
 
     [HttpGet("requests/pending")]
     [Authorize(Roles = "manager,admin")]
-    public async Task<IActionResult> GetPendingLeaveRequests(CancellationToken ct)
+    public async Task<IActionResult> GetPendingLeaveRequests([FromQuery] LeaveRequestsListQuery queryParams, CancellationToken ct)
     {
-        var result = await mediator.Send(new GetPendingLeaveRequestsQuery(), ct);
-        return result.IsSuccess ? Ok(result.Value) : result.ToActionResult();
+        var sortBy = (queryParams.SortBy ?? "leaveDate").Trim().ToLowerInvariant();
+        var sortDir = (queryParams.SortDir ?? "desc").Trim().ToLowerInvariant();
+        var desc = sortDir == "desc";
+        var result = await mediator.Send(new GetPendingLeaveRequestsQuery(
+            queryParams.Search,
+            sortBy,
+            desc,
+            Math.Max(1, queryParams.Page),
+            Math.Clamp(queryParams.PageSize, 1, 200)), ct);
+        if (!result.IsSuccess) return result.ToActionResult();
+        var page = result.Value!;
+        return Ok(ToPagedLeaveRequestResponse(page));
     }
 
     [HttpPost("requests/{leaveRequestId:guid}/review")]
@@ -74,10 +93,22 @@ public class LeaveController(TimeSheetDbContext dbContext, ISender mediator) : C
 
     [HttpGet("policies")]
     [Authorize(Roles = "admin")]
-    public async Task<IActionResult> GetPolicies(CancellationToken ct)
+    public async Task<IActionResult> GetPolicies([FromQuery] LeavePoliciesListQuery queryParams, CancellationToken ct)
     {
-        var result = await mediator.Send(new GetLeavePoliciesQuery(), ct);
-        return result.IsSuccess ? Ok(result.Value) : result.ToActionResult();
+        var sortBy = (queryParams.SortBy ?? "name").Trim().ToLowerInvariant();
+        var sortDir = (queryParams.SortDir ?? "asc").Trim().ToLowerInvariant();
+        var desc = sortDir == "desc";
+        var result = await mediator.Send(new GetLeavePoliciesPageQuery(
+            queryParams.Search,
+            queryParams.IsActive,
+            sortBy,
+            desc,
+            Math.Max(1, queryParams.Page),
+            Math.Clamp(queryParams.PageSize, 1, 200)), ct);
+        if (!result.IsSuccess) return result.ToActionResult();
+
+        var page = result.Value!;
+        return Ok(ToPagedLeavePolicyResponse(page));
     }
 
     [HttpPost("policies")]
@@ -160,215 +191,96 @@ public class LeaveController(TimeSheetDbContext dbContext, ISender mediator) : C
     // ── Leave Calendar ────────────────────────────────────────────
 
     [HttpGet("calendar")]
-    public async Task<IActionResult> GetCalendar([FromQuery] int year, [FromQuery] int month)
+    public async Task<IActionResult> GetCalendar([FromQuery] int year, [FromQuery] int month, CancellationToken ct)
     {
-        var userId = GetUserId();
-        if (userId is null) return Unauthorized();
-
-        var leaveRequests = await dbContext.LeaveRequests
-            .Where(lr => lr.UserId == userId.Value
-                && lr.LeaveDate.Year == year
-                && lr.LeaveDate.Month == month)
-            .Select(lr => new { lr.LeaveDate, lr.Status })
-            .ToListAsync();
-
-        var result = leaveRequests.Select(r => new LeaveCalendarDay(
-            r.LeaveDate,
-            r.Status == LeaveRequestStatus.Approved ? "approved"
-                : r.Status == LeaveRequestStatus.Rejected ? "rejected"
-                : "pending"
-        ));
-
-        return Ok(result);
+        var result = await mediator.Send(new GetLeaveCalendarQuery(year, month), ct);
+        return result.IsSuccess
+            ? Ok(result.Value!.Select(x => new LeaveCalendarDay(x.Date, x.Type)).ToList())
+            : result.ToActionResult();
     }
 
     // ── Team Leave Calendar ───────────────────────────────────────
 
     [HttpGet("team-calendar")]
-    public async Task<IActionResult> GetTeamCalendar([FromQuery] int? year, [FromQuery] int? month)
+    public async Task<IActionResult> GetTeamCalendar([FromQuery] int? year, [FromQuery] int? month, CancellationToken ct)
     {
-        var userId = GetUserId();
-        if (userId is null) return Unauthorized();
-
-        var now = DateTime.UtcNow;
-        var y = year ?? now.Year;
-        var m = month ?? now.Month;
-
-        var role = User.FindFirstValue(ClaimTypes.Role) ?? "employee";
-        var currentUser = await dbContext.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId.Value);
-        if (currentUser is null) return Ok(Array.Empty<TeamLeaveCalendarDay>());
-
-        List<Guid> teamUserIds;
-        if (string.Equals(role, "manager", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase))
-        {
-            // manager/admin: direct reports + themselves
-            teamUserIds = await dbContext.Users
-                .AsNoTracking()
-                .Where(u => u.IsActive && (u.ManagerId == userId.Value || u.Id == userId.Value))
-                .Select(u => u.Id)
-                .ToListAsync();
-        }
-        else
-        {
-            // employee: same department (including themselves)
-            if (currentUser.DepartmentId is null)
-                return Ok(Array.Empty<TeamLeaveCalendarDay>());
-
-            teamUserIds = await dbContext.Users
-                .AsNoTracking()
-                .Where(u => u.IsActive && u.DepartmentId == currentUser.DepartmentId)
-                .Select(u => u.Id)
-                .ToListAsync();
-        }
-
-        if (teamUserIds.Count == 0)
-            return Ok(Array.Empty<TeamLeaveCalendarDay>());
-
-        var requests = await dbContext.LeaveRequests
-            .AsNoTracking()
-            .Include(lr => lr.User)
-            .Include(lr => lr.LeaveType)
-            .Where(lr => teamUserIds.Contains(lr.UserId)
-                && lr.LeaveDate.Year == y
-                && lr.LeaveDate.Month == m
-                && lr.Status != LeaveRequestStatus.Rejected)
-            .OrderBy(lr => lr.LeaveDate)
-            .ToListAsync();
-
-        var grouped = requests
-            .GroupBy(lr => lr.LeaveDate)
-            .Select(g => new TeamLeaveCalendarDay(
-                g.Key,
-                g.Select(lr => new TeamLeaveEntry(
-                    lr.UserId,
-                    lr.User.Username,
-                    lr.User.DisplayName,
-                    lr.LeaveType.Name,
-                    lr.Status.ToString().ToLowerInvariant()
-                )).ToList()
-            ))
-            .OrderBy(d => d.Date)
-            .ToList();
-
-        return Ok(grouped);
+        var result = await mediator.Send(new GetTeamLeaveCalendarQuery(year, month), ct);
+        return result.IsSuccess
+            ? Ok(result.Value!.Select(day => new TeamLeaveCalendarDay(
+                day.Date,
+                day.Entries.Select(entry => new TeamLeaveEntry(
+                    entry.UserId,
+                    entry.Username,
+                    entry.DisplayName,
+                    entry.LeaveTypeName,
+                    entry.Status)).ToList())).ToList())
+            : result.ToActionResult();
     }
 
     [HttpGet("conflicts")]
-    public async Task<IActionResult> GetConflicts([FromQuery] DateOnly fromDate, [FromQuery] DateOnly toDate, [FromQuery] Guid? userId)
+    public async Task<IActionResult> GetConflicts([FromQuery] DateOnly fromDate, [FromQuery] DateOnly toDate, [FromQuery] Guid? userId, CancellationToken ct)
     {
-        var currentUserId = GetUserId();
-        if (currentUserId is null) return Unauthorized();
-
-        var targetUserId = userId ?? currentUserId.Value;
-
-        var role = User.FindFirstValue(ClaimTypes.Role) ?? "employee";
-        var currentUser = await dbContext.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == currentUserId.Value);
-        if (currentUser is null) return Ok(new LeaveConflictResponse(0, Array.Empty<string>()));
-
-        List<Guid> teamUserIds;
-        if (string.Equals(role, "manager", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase))
-        {
-            teamUserIds = await dbContext.Users
-                .AsNoTracking()
-                .Where(u => u.IsActive && (u.ManagerId == currentUserId.Value || u.Id == currentUserId.Value))
-                .Select(u => u.Id)
-                .ToListAsync();
-        }
-        else
-        {
-            if (currentUser.DepartmentId is null)
-                return Ok(new LeaveConflictResponse(0, Array.Empty<string>()));
-
-            teamUserIds = await dbContext.Users
-                .AsNoTracking()
-                .Where(u => u.IsActive && u.DepartmentId == currentUser.DepartmentId)
-                .Select(u => u.Id)
-                .ToListAsync();
-        }
-
-        // Exclude the target user themselves
-        teamUserIds = teamUserIds.Where(id => id != targetUserId).ToList();
-
-        if (teamUserIds.Count == 0)
-            return Ok(new LeaveConflictResponse(0, Array.Empty<string>()));
-
-        var conflictingUsers = await dbContext.LeaveRequests
-            .AsNoTracking()
-            .Include(lr => lr.User)
-            .Where(lr => teamUserIds.Contains(lr.UserId)
-                && lr.LeaveDate >= fromDate
-                && lr.LeaveDate <= toDate
-                && lr.Status != LeaveRequestStatus.Rejected)
-            .Select(lr => new { lr.UserId, lr.User.Username })
-            .Distinct()
-            .ToListAsync();
-
-        var distinct = conflictingUsers
-            .GroupBy(x => x.UserId)
-            .Select(g => g.First().Username)
-            .ToList();
-
-        return Ok(new LeaveConflictResponse(distinct.Count, distinct.Take(5).ToList()));
+        var result = await mediator.Send(new GetLeaveConflictsQuery(fromDate, toDate, userId), ct);
+        return result.IsSuccess
+            ? Ok(new LeaveConflictResponse(result.Value!.ConflictingCount, result.Value.ConflictingUsernames))
+            : result.ToActionResult();
     }
 
     // ── Team on Leave ─────────────────────────────────────────────
 
     [HttpGet("team-on-leave")]
-    public async Task<IActionResult> GetTeamOnLeave()
+    public async Task<IActionResult> GetTeamOnLeave(CancellationToken ct)
     {
-        var userId = GetUserId();
-        if (userId is null) return Unauthorized();
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var window = today.AddDays(14);
-
-        // Get teammates: users who share the same manager OR are direct reports
-        var currentUser = await dbContext.Users.FindAsync(userId.Value);
-        if (currentUser is null) return Ok(Array.Empty<object>());
-
-        var teamUserIds = await dbContext.Users
-            .Where(u => u.Id != userId.Value && u.IsActive &&
-                        (u.ManagerId == currentUser.ManagerId || u.ManagerId == userId.Value))
-            .Select(u => u.Id)
-            .ToListAsync();
-
-        if (teamUserIds.Count == 0) return Ok(Array.Empty<object>());
-
-        var teamRequests = await dbContext.LeaveRequests
-            .Include(lr => lr.User)
-            .Include(lr => lr.LeaveType)
-            .Where(lr => teamUserIds.Contains(lr.UserId)
-                && lr.LeaveDate >= today
-                && lr.LeaveDate <= window
-                && lr.Status != LeaveRequestStatus.Rejected)
-            .OrderBy(lr => lr.LeaveDate)
-            .ToListAsync();
-
-        var grouped = teamRequests
-            .GroupBy(lr => new { lr.UserId, GroupKey = lr.LeaveGroupId ?? lr.Id, lr.LeaveType.Name })
-            .Select(g =>
-            {
-                var first = g.First();
-                return new TeamLeaveEntryResponse(
-                    UserId: first.UserId,
-                    Username: first.User.Username,
-                    FromDate: g.Min(r => r.LeaveDate),
-                    ToDate: g.Max(r => r.LeaveDate),
-                    LeaveTypeName: first.LeaveType.Name,
-                    Status: g.Min(r => r.LeaveDate) <= today ? "away" : "upcoming"
-                );
-            })
-            .ToList();
-
-        return Ok(grouped);
+        var result = await mediator.Send(new GetTeamOnLeaveQuery(), ct);
+        return result.IsSuccess
+            ? Ok(result.Value!.Select(x => new TeamLeaveEntryResponse(x.UserId, x.Username, x.FromDate, x.ToDate, x.LeaveTypeName, x.Status)).ToList())
+            : result.ToActionResult();
     }
 
-    private Guid? GetUserId()
-    {
-        var sub = User.FindFirstValue(ClaimTypes.NameIdentifier)
-                  ?? User.FindFirstValue(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub);
+    private static PagedResponse<LeaveRequestResponse> ToPagedLeaveRequestResponse(
+        Application.Common.Models.PagedResult<TimeSheet.Application.Common.Interfaces.LeaveRequestResult> page)
+        => new(
+            page.Items.Select(ToLeaveRequestResponse).ToList(),
+            page.Page,
+            page.PageSize,
+            page.TotalCount,
+            page.TotalPages,
+            page.SortBy,
+            page.SortDir);
 
-        return Guid.TryParse(sub, out var userId) ? userId : null;
-    }
+    private static LeaveRequestResponse ToLeaveRequestResponse(TimeSheet.Application.Common.Interfaces.LeaveRequestResult request)
+        => new(
+            request.Id,
+            request.UserId,
+            request.Username,
+            request.LeaveDate,
+            request.LeaveTypeId,
+            request.LeaveTypeName,
+            request.IsHalfDay,
+            request.Status,
+            request.Comment,
+            request.ReviewedByUserId,
+            request.ReviewedByUsername,
+            request.ReviewerComment,
+            request.CreatedAtUtc,
+            request.ReviewedAtUtc);
+
+    private static PagedResponse<LeavePolicyResponse> ToPagedLeavePolicyResponse(
+        Application.Common.Models.PagedResult<TimeSheet.Application.Common.Interfaces.LeavePolicyResult> page)
+        => new(
+            page.Items.Select(ToLeavePolicyResponse).ToList(),
+            page.Page,
+            page.PageSize,
+            page.TotalCount,
+            page.TotalPages,
+            page.SortBy,
+            page.SortDir);
+
+    private static LeavePolicyResponse ToLeavePolicyResponse(TimeSheet.Application.Common.Interfaces.LeavePolicyResult policy)
+        => new(
+            policy.Id,
+            policy.Name,
+            policy.IsActive,
+            policy.Allocations.Select(a => new LeavePolicyAllocationResponse(a.LeaveTypeId, a.LeaveTypeName, a.DaysPerYear)).ToList());
+
 }

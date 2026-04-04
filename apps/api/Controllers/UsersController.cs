@@ -1,250 +1,139 @@
-using System.Security.Claims;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using TimeSheet.Api.Dtos;
-using AppInterfaces = TimeSheet.Application.Common.Interfaces;
+using TimeSheet.Application.Common.Models;
+using TimeSheet.Application.Users.Commands;
+using TimeSheet.Application.Users.Queries;
 
 namespace TimeSheet.Api.Controllers;
 
 [ApiController]
 [Authorize(Roles = "admin")]
 [Route("api/v1/users")]
-public class UsersController(TimeSheetDbContext dbContext, AppInterfaces.IPasswordHasher passwordHasher, AppInterfaces.IAuditService auditService) : ControllerBase
+public class UsersController(ISender mediator) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<UserResponse>>> GetAll([FromQuery] string? q)
+    public async Task<ActionResult<PagedResponse<UserResponse>>> GetAll([FromQuery] UsersListQuery queryParams)
     {
-        var query = dbContext.Users.AsNoTracking()
-            .Include(u => u.Department)
-            .Include(u => u.WorkPolicy)
-            .Include(u => u.LeavePolicy)
-            .Include(u => u.Manager)
-            .AsQueryable();
+        var sortBy = (queryParams.SortBy ?? "username").Trim().ToLowerInvariant();
+        var sortDir = (queryParams.SortDir ?? "asc").Trim().ToLowerInvariant();
+        var pageSize = Math.Clamp(queryParams.PageSize, 1, 200);
 
-        if (!string.IsNullOrWhiteSpace(q))
-        {
-            var term = q.Trim();
-            query = query.Where(u =>
-                u.Username.Contains(term) ||
-                u.Email.Contains(term) ||
-                u.EmployeeId.Contains(term));
-        }
+        var result = await mediator.Send(new GetUsersPageQuery(
+            queryParams.Search,
+            queryParams.Role,
+            queryParams.DepartmentId,
+            queryParams.IsActive,
+            sortBy,
+            sortDir == "desc",
+            Math.Max(1, queryParams.Page),
+            pageSize));
 
-        var users = await query
-            .OrderBy(u => u.Username)
-            .Select(u => new UserResponse(
-                u.Id,
-                u.Username,
-                u.Email,
-                u.EmployeeId,
-                u.Role,
-                u.IsActive,
-                u.DepartmentId,
-                u.Department != null ? u.Department.Name : null,
-                u.WorkPolicyId,
-                u.WorkPolicy != null ? u.WorkPolicy.Name : null,
-                u.LeavePolicyId,
-                u.LeavePolicy != null ? u.LeavePolicy.Name : null,
-                u.ManagerId,
-                u.Manager != null ? u.Manager.Username : null,
-                u.OnboardingCompletedAt,
-                u.LeaveWorkflowVisitedAt))
-            .ToListAsync();
+        if (!result.IsSuccess)
+            return BadRequest(new { message = result.Error });
 
-        return Ok(users);
+        var page = result.Value!;
+        return Ok(new PagedResponse<UserResponse>(
+            page.Items.Select(ToResponse).ToList(),
+            page.Page,
+            page.PageSize,
+            page.TotalCount,
+            page.TotalPages,
+            page.SortBy,
+            page.SortDir));
     }
 
     [HttpGet("{id:guid}")]
-    public async Task<ActionResult<UserResponse>> GetById(Guid id)
+    public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
-        var user = await dbContext.Users.AsNoTracking()
-            .Include(u => u.Department)
-            .Include(u => u.WorkPolicy)
-            .Include(u => u.LeavePolicy)
-            .Include(u => u.Manager)
-            .SingleOrDefaultAsync(u => u.Id == id);
-
-        if (user is null)
-        {
-            return NotFound();
-        }
-
-        return Ok(new UserResponse(
-            user.Id, user.Username, user.Email, user.EmployeeId, user.Role, user.IsActive,
-            user.DepartmentId, user.Department?.Name, user.WorkPolicyId, user.WorkPolicy?.Name,
-            user.LeavePolicyId, user.LeavePolicy?.Name, user.ManagerId, user.Manager?.Username, user.OnboardingCompletedAt, user.LeaveWorkflowVisitedAt));
+        var result = await mediator.Send(new GetUserByIdQuery(id), ct);
+        return result.IsSuccess ? Ok(ToResponse(result.Value!)) : Fail(result);
     }
 
     [HttpPost]
-    public async Task<ActionResult<UserResponse>> Create([FromBody] UpsertUserRequest request)
+    public async Task<IActionResult> Create([FromBody] UpsertUserRequest request, CancellationToken ct)
     {
-        if (await dbContext.Users.AnyAsync(u => u.Username == request.Username || u.Email == request.Email || u.EmployeeId == request.EmployeeId))
-        {
-            return Conflict(new { message = "Username, email, or employee id already exists." });
-        }
+        var result = await mediator.Send(new CreateUserCommand(
+            request.Username,
+            request.Email,
+            request.EmployeeId,
+            request.Password,
+            request.Role,
+            request.IsActive,
+            request.DepartmentId,
+            request.WorkPolicyId,
+            request.LeavePolicyId,
+            request.ManagerId), ct);
 
-        if (request.ManagerId.HasValue && !await dbContext.Users.AnyAsync(u => u.Id == request.ManagerId.Value))
-        {
-            return BadRequest(new { message = "Manager does not exist." });
-        }
-
-        var role = await dbContext.Roles.SingleOrDefaultAsync(r => r.Name == request.Role);
-        if (role is null)
-        {
-            return BadRequest(new { message = "Invalid role." });
-        }
-
-        var user = new User
-        {
-            Id = Guid.NewGuid(),
-            Username = request.Username.Trim(),
-            Email = request.Email.Trim(),
-            EmployeeId = request.EmployeeId.Trim(),
-            PasswordHash = passwordHasher.Hash(request.Password),
-            Role = request.Role,
-            IsActive = request.IsActive,
-            DepartmentId = request.DepartmentId,
-            WorkPolicyId = request.WorkPolicyId,
-            LeavePolicyId = request.LeavePolicyId,
-            ManagerId = request.ManagerId
-        };
-
-        dbContext.Users.Add(user);
-        dbContext.UserRoles.Add(new UserRole { UserId = user.Id, RoleId = role.Id });
-
-        // Field-level audit is handled automatically by AuditInterceptor on SaveChangesAsync.
-        await dbContext.SaveChangesAsync();
-
-        return CreatedAtAction(nameof(GetById), new { id = user.Id },
-            new UserResponse(user.Id, user.Username, user.Email, user.EmployeeId, user.Role, user.IsActive,
-                user.DepartmentId, null, user.WorkPolicyId, null, user.LeavePolicyId, null, user.ManagerId, null, user.OnboardingCompletedAt, user.LeaveWorkflowVisitedAt));
+        return result.IsSuccess
+            ? CreatedAtAction(nameof(GetById), new { id = result.Value!.Id }, ToResponse(result.Value))
+            : Fail(result);
     }
 
     [HttpPut("{id:guid}")]
-    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateUserRequest request)
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateUserRequest request, CancellationToken ct)
     {
-        var user = await dbContext.Users
-            .Include(u => u.UserRoles)
-            .SingleOrDefaultAsync(u => u.Id == id);
-        if (user is null)
-        {
-            return NotFound();
-        }
-
-        var role = await dbContext.Roles.SingleOrDefaultAsync(r => r.Name == request.Role);
-        if (role is null)
-        {
-            return BadRequest(new { message = "Invalid role." });
-        }
-
-        var duplicateExists = await dbContext.Users.AnyAsync(u => u.Id != id &&
-            (u.Username == request.Username || u.Email == request.Email || u.EmployeeId == request.EmployeeId));
-        if (duplicateExists)
-        {
-            return Conflict(new { message = "Username, email, or employee id already exists." });
-        }
-
-        if (request.ManagerId == id)
-        {
-            return BadRequest(new { message = "User cannot be their own manager." });
-        }
-
-        user.Username = request.Username.Trim();
-        user.Email = request.Email.Trim();
-        user.EmployeeId = request.EmployeeId.Trim();
-        user.Role = request.Role;
-        user.IsActive = request.IsActive;
-        user.DepartmentId = request.DepartmentId;
-        user.WorkPolicyId = request.WorkPolicyId;
-        user.LeavePolicyId = request.LeavePolicyId;
-        user.ManagerId = request.ManagerId;
-
-        SyncUserRole(user, role.Id);
-
-        // Field-level audit is handled automatically by AuditInterceptor on SaveChangesAsync.
-        await dbContext.SaveChangesAsync();
-
-        return NoContent();
+        var result = await mediator.Send(new UpdateUserCommand(
+            id,
+            request.Username,
+            request.Email,
+            request.EmployeeId,
+            request.Role,
+            request.IsActive,
+            request.DepartmentId,
+            request.WorkPolicyId,
+            request.LeavePolicyId,
+            request.ManagerId), ct);
+        return result.IsSuccess ? NoContent() : Fail(result);
     }
 
     [HttpPost("{id:guid}/manager")]
-    public async Task<IActionResult> SetManager(Guid id, [FromBody] SetManagerRequest request)
+    public async Task<IActionResult> SetManager(Guid id, [FromBody] SetManagerRequest request, CancellationToken ct)
     {
-        if (id == request.ManagerId)
-        {
-            return BadRequest(new { message = "User cannot be their own manager." });
-        }
-
-        var user = await dbContext.Users.SingleOrDefaultAsync(u => u.Id == id);
-        var manager = await dbContext.Users.SingleOrDefaultAsync(u => u.Id == request.ManagerId);
-
-        if (user is null || manager is null)
-        {
-            return NotFound();
-        }
-
-        user.ManagerId = request.ManagerId;
-
-        await auditService.WriteAsync("ManagerAssigned", "User", user.Id.ToString(), $"Assigned manager {manager.Username} to {user.Username}", GetUserId());
-        await dbContext.SaveChangesAsync();
-
-        return NoContent();
+        var result = await mediator.Send(new SetUserManagerCommand(id, request.ManagerId), ct);
+        return result.IsSuccess ? NoContent() : Fail(result);
     }
 
     [HttpGet("{id:guid}/reportees")]
-    public async Task<ActionResult<IEnumerable<UserResponse>>> GetReportees(Guid id)
+    public async Task<IActionResult> GetReportees(Guid id, CancellationToken ct)
     {
-        var reportees = await dbContext.Users.AsNoTracking()
-            .Where(u => u.ManagerId == id)
-            .OrderBy(u => u.Username)
-            .Select(u => new UserResponse(
-                u.Id, u.Username, u.Email, u.EmployeeId, u.Role, u.IsActive,
-                u.DepartmentId, null, u.WorkPolicyId, null, u.LeavePolicyId, null, u.ManagerId, null, u.OnboardingCompletedAt, u.LeaveWorkflowVisitedAt))
-            .ToListAsync();
-
-        return Ok(reportees);
+        var result = await mediator.Send(new GetUserReporteesQuery(id), ct);
+        return result.IsSuccess ? Ok(result.Value!.Select(ToResponse).ToList()) : Fail(result);
     }
 
     [HttpPost("{id:guid}/roles")]
-    public async Task<IActionResult> AssignRole(Guid id, [FromBody] AssignRoleRequest request)
+    public async Task<IActionResult> AssignRole(Guid id, [FromBody] AssignRoleRequest request, CancellationToken ct)
     {
-        var user = await dbContext.Users.Include(u => u.UserRoles).SingleOrDefaultAsync(u => u.Id == id);
-        var role = await dbContext.Roles.SingleOrDefaultAsync(r => r.Name == request.RoleName);
-
-        if (user is null || role is null)
-        {
-            return NotFound();
-        }
-
-        if (user.Role == request.RoleName && user.UserRoles.Count == 1 && user.UserRoles.Any(ur => ur.RoleId == role.Id))
-        {
-            return Conflict(new { message = "Role already assigned." });
-        }
-
-        SyncUserRole(user, role.Id);
-        user.Role = request.RoleName;
-
-        await auditService.WriteAsync("RoleAssigned", "User", user.Id.ToString(), $"Assigned role {role.Name} to {user.Username}", GetUserId());
-        await dbContext.SaveChangesAsync();
-
-        return NoContent();
+        var result = await mediator.Send(new AssignUserRoleCommand(id, request.RoleName), ct);
+        return result.IsSuccess ? NoContent() : Fail(result);
     }
 
-    private Guid? GetUserId()
-    {
-        var sub = User.FindFirstValue(ClaimTypes.NameIdentifier)
-                  ?? User.FindFirstValue(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub);
-        return Guid.TryParse(sub, out var id) ? id : null;
-    }
+    private static UserResponse ToResponse(UserListItemResult u)
+        => new(
+            u.Id,
+            u.Username,
+            u.Email,
+            u.EmployeeId,
+            u.Role,
+            u.IsActive,
+            u.DepartmentId,
+            u.DepartmentName,
+            u.WorkPolicyId,
+            u.WorkPolicyName,
+            u.LeavePolicyId,
+            u.LeavePolicyName,
+            u.ManagerId,
+            u.ManagerUsername,
+            u.OnboardingCompletedAt,
+            u.LeaveWorkflowVisitedAt);
 
-    private void SyncUserRole(User user, Guid roleId)
+    private IActionResult Fail(Result result) => result.Status switch
     {
-        dbContext.UserRoles.RemoveRange(user.UserRoles);
-        user.UserRoles.Clear();
-
-        var userRole = new UserRole { UserId = user.Id, RoleId = roleId };
-        dbContext.UserRoles.Add(userRole);
-        user.UserRoles.Add(userRole);
-    }
+        ResultStatus.NotFound => NotFound(new { message = result.Error }),
+        ResultStatus.Forbidden => Unauthorized(),
+        ResultStatus.Conflict => Conflict(new { message = result.Error }),
+        ResultStatus.Validation => BadRequest(new { message = result.Error }),
+        _ => BadRequest(new { message = result.Error })
+    };
 }

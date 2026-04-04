@@ -105,8 +105,13 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
   // Load pending approvals count for the Approvals badge
   useEffect(() => {
     if (!nav.includes("approvals")) return;
-    apiFetch("/approvals/pending-timesheets")
-      .then(async r => { if (r.ok) { const d = await r.json() as unknown[]; setPendingCount(d.length); } })
+    apiFetch("/approvals/pending-timesheets?page=1&pageSize=1")
+      .then(async r => {
+        if (r.ok) {
+          const d = await r.json() as { totalCount?: number };
+          setPendingCount(d.totalCount ?? 0);
+        }
+      })
       .catch(() => {});
   }, [nav]);
 
@@ -182,6 +187,7 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
         className={`nav-item${view === item.view ? " active" : ""}`}
         onClick={() => { onNavigate(item.view); setMobileOpen(false); }}
         data-tooltip={item.label}
+        title={item.label}
       >
         {item.icon}
         <span className="flex-1">{item.label}</span>

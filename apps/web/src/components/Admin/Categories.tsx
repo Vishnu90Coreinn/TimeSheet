@@ -4,9 +4,10 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { apiFetch } from "../../api/client";
-import type { TaskCategory } from "../../types";
+import type { PagedResponse, TaskCategory } from "../../types";
 import { AppButton, AppCheckbox, AppIconButton, AppInput } from "../ui";
-import { AppDataTable, type ColumnDef } from "../ui/AppDataTable";
+import { ServerDataTable, type ServerColumnDef, type ServerTableQuery } from "../ui";
+import { useToast } from "../../contexts/ToastContext";
 
 type CatForm = { name: string; isBillable: boolean; isActive: boolean };
 const BLANK: CatForm = { name: "", isBillable: false, isActive: true };
@@ -19,7 +20,9 @@ function Drawer({ open, title, onClose, children, footer }: { open: boolean; tit
       <div className="drawer" role="dialog" aria-modal="true">
         <div className="drawer-header">
           <div className="drawer-title">{title}</div>
-          <AppButton className="drawer-close" variant="ghost" size="sm" onClick={onClose}>x</AppButton>
+          <button className="drawer-close" onClick={onClose} aria-label="Close">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><line x1="1" y1="1" x2="12" y2="12"/><line x1="12" y1="1" x2="1" y2="12"/></svg>
+          </button>
         </div>
         <div className="drawer-body">{children}</div>
         {footer && <div className="drawer-footer">{footer}</div>}
@@ -55,61 +58,89 @@ function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: (v: b
 }
 
 export function Categories() {
+  const toast = useToast();
   const [categories, setCategories] = useState<TaskCategory[]>([]);
   const [editing, setEditing] = useState<TaskCategory | "new" | null>(null);
   const [form, setForm] = useState<CatForm>(BLANK);
   const [error, setError] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
-
-  function showToast(msg: string, ok = true) {
-    setToast({ msg, ok });
-    setTimeout(() => setToast(null), 3000);
-  }
+  const [totalCount, setTotalCount] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [tableQuery, setTableQuery] = useState<ServerTableQuery>({
+    page: 1,
+    pageSize: 25,
+    search: "",
+    sortBy: "name",
+    sortDir: "asc",
+  });
 
   async function load() {
-    const r = await apiFetch("/task-categories/admin");
-    if (r.ok) setCategories(await r.json());
+    setLoading(true);
+    const params = new URLSearchParams({
+      page: String(tableQuery.page),
+      pageSize: String(tableQuery.pageSize),
+      sortBy: tableQuery.sortBy,
+      sortDir: tableQuery.sortDir,
+    });
+    if (tableQuery.search.trim()) params.set("search", tableQuery.search.trim());
+    const r = await apiFetch(`/task-categories/admin?${params.toString()}`);
+    if (r.ok) {
+      const d = await r.json() as PagedResponse<TaskCategory>;
+      setCategories(d.items);
+      setTotalCount(d.totalCount);
+    }
+    setLoading(false);
   }
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, [tableQuery]);
 
   function openCreate() { setForm(BLANK); setError(""); setEditing("new"); }
   function openEdit(c: TaskCategory) { setForm({ name: c.name, isBillable: c.isBillable, isActive: c.isActive }); setError(""); setEditing(c); }
 
   async function save() {
     setError("");
+    const isNew = editing === "new";
     const body = { name: form.name, isBillable: form.isBillable, isActive: form.isActive };
-    const r = editing === "new"
+    const r = isNew
       ? await apiFetch("/task-categories", { method: "POST", body: JSON.stringify(body) })
       : await apiFetch(`/task-categories/${(editing as TaskCategory).id}`, { method: "PUT", body: JSON.stringify(body) });
-    if (r.ok || r.status === 204) { setEditing(null); void load(); }
-    else { const d = await r.json().catch(() => ({})); setError((d as { message?: string }).message ?? "Save failed"); }
+    if (r.ok || r.status === 204) {
+      setEditing(null);
+      void load();
+      toast.success(isNew ? "Category created" : "Category updated", form.name);
+    } else {
+      const d = await r.json().catch(() => ({}));
+      const msg = (d as { message?: string }).message ?? "Save failed";
+      setError(msg);
+      toast.error("Save failed", msg);
+    }
   }
 
   async function doDelete(id: string) {
-    await apiFetch(`/task-categories/${id}`, { method: "DELETE" });
+    const r = await apiFetch(`/task-categories/${id}`, { method: "DELETE" });
     setDeleteId(null);
     void load();
+    if (r.ok || r.status === 204) toast.success("Category deleted");
+    else toast.error("Failed to delete category");
   }
 
   async function toggleBillable(c: TaskCategory) {
     const body = { name: c.name, isBillable: !c.isBillable, isActive: c.isActive };
     const r = await apiFetch(`/task-categories/${c.id}`, { method: "PUT", body: JSON.stringify(body) });
-    if (r.ok || r.status === 204) { showToast(`${c.name} marked as ${!c.isBillable ? "billable" : "non-billable"}`); void load(); }
-    else showToast("Failed to update billability", false);
+    if (r.ok || r.status === 204) { toast.success(`${c.name} marked as ${!c.isBillable ? "billable" : "non-billable"}`); void load(); }
+    else toast.error("Failed to update billability");
   }
 
   async function toggleActive(c: TaskCategory) {
     const body = { name: c.name, isBillable: c.isBillable, isActive: !c.isActive };
     const r = await apiFetch(`/task-categories/${c.id}`, { method: "PUT", body: JSON.stringify(body) });
-    if (r.ok || r.status === 204) { showToast(`${c.name} ${!c.isActive ? "activated" : "deactivated"}`); void load(); }
-    else showToast("Failed to update status", false);
+    if (r.ok || r.status === 204) { toast.success(`${c.name} ${!c.isActive ? "activated" : "deactivated"}`); void load(); }
+    else toast.error("Failed to update status");
   }
 
   const f = (k: keyof CatForm, v: string | boolean) => setForm((p) => ({ ...p, [k]: v }));
 
-  const columns: ColumnDef<TaskCategory>[] = [
+  const columns: ServerColumnDef<TaskCategory>[] = [
     {
       key: "name",
       label: "Name",
@@ -156,8 +187,6 @@ export function Categories() {
 
   return (
     <section className="flex flex-col gap-6">
-      {toast && <div className={`toast${toast.ok ? " toast--ok" : " toast--err"}`}>{toast.ok ? "✓" : "✗"} {toast.msg}</div>}
-
       <Drawer open={!!editing} title={drawerTitle} onClose={() => setEditing(null)}
         footer={
           <>
@@ -167,18 +196,20 @@ export function Categories() {
         }
       >
         {error && <div className="alert alert-error">{error}</div>}
-        <div className="form-field">
-          <label className="form-label" htmlFor="cat-name">Name <span className="required">*</span></label>
-          <AppInput id="cat-name" value={form.name} onChange={(e) => f("name", e.target.value)} maxLength={120} required />
+        <div className="drawer-section">
+          <div className="form-field">
+            <label className="form-label" htmlFor="cat-name">Name <span className="required">*</span></label>
+            <AppInput id="cat-name" value={form.name} onChange={(e) => f("name", e.target.value)} maxLength={120} required />
+          </div>
+          <label className="flex items-center gap-2 text-[0.825rem] text-text-secondary">
+            <AppCheckbox checked={form.isBillable} onChange={(e) => f("isBillable", e.target.checked)} />
+            Billable
+          </label>
+          <label className="flex items-center gap-2 text-[0.825rem] text-text-secondary">
+            <AppCheckbox checked={form.isActive} onChange={(e) => f("isActive", e.target.checked)} />
+            Active
+          </label>
         </div>
-        <label className="flex items-center gap-2 text-[0.825rem] text-text-secondary">
-          <AppCheckbox checked={form.isBillable} onChange={(e) => f("isBillable", e.target.checked)} />
-          Billable
-        </label>
-        <label className="flex items-center gap-2 text-[0.825rem] text-text-secondary">
-          <AppCheckbox checked={form.isActive} onChange={(e) => f("isActive", e.target.checked)} />
-          Active
-        </label>
       </Drawer>
 
       <ConfirmModal
@@ -204,16 +235,20 @@ export function Categories() {
         <div className="card-header mgmt-card-head">
           <div className="card-title">
             All Categories
-            <span className="mgmt-count-pill">{categories.length} categor{categories.length === 1 ? "y" : "ies"}</span>
+            <span className="mgmt-count-pill">{totalCount} categor{totalCount === 1 ? "y" : "ies"}</span>
           </div>
           <AppButton variant="outline" size="sm">Export</AppButton>
         </div>
-        <AppDataTable
+        <ServerDataTable
           columns={columns}
           data={categories}
+          totalCount={totalCount}
+          query={tableQuery}
+          onQueryChange={setTableQuery}
           rowKey={c => c.id}
           searchPlaceholder="Search categories…"
           emptyText="No categories found."
+          loading={loading}
           rowOpacity={c => c.isActive ? 1 : 0.55}
         />
       </div>

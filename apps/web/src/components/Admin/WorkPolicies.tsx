@@ -4,9 +4,9 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { apiFetch } from "../../api/client";
-import type { WorkPolicy } from "../../types";
-import { AppButton, AppCheckbox, AppIconButton, AppInput, AppSelect } from "../ui";
-import { AppDataTable, type ColumnDef } from "../ui/AppDataTable";
+import type { PagedResponse, WorkPolicy } from "../../types";
+import { AppButton, AppCheckbox, AppIconButton, AppInput, AppSelect, ServerDataTable, type ServerColumnDef, type ServerTableQuery } from "../ui";
+import { useToast } from "../../contexts/ToastContext";
 
 type PolicyForm = {
   name: string;
@@ -47,7 +47,9 @@ function Drawer({ open, title, onClose, children, footer }: { open: boolean; tit
       <div className="drawer" role="dialog" aria-modal="true">
         <div className="drawer-header">
           <div className="drawer-title">{title}</div>
-          <AppButton className="drawer-close" variant="ghost" size="sm" onClick={onClose}>x</AppButton>
+          <button className="drawer-close" onClick={onClose} aria-label="Close">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><line x1="1" y1="1" x2="12" y2="12"/><line x1="12" y1="1" x2="1" y2="12"/></svg>
+          </button>
         </div>
         <div className="drawer-body">{children}</div>
         {footer && <div className="drawer-footer">{footer}</div>}
@@ -73,19 +75,42 @@ function ConfirmModal({ open, title, body, onConfirm, onCancel }: { open: boolea
 }
 
 export function WorkPolicies() {
+  const toast = useToast();
   const [policies, setPolicies] = useState<WorkPolicy[]>([]);
   const [editing, setEditing] = useState<WorkPolicy | "new" | null>(null);
   const [form, setForm] = useState<PolicyForm>(BLANK);
   const [error, setError] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<WorkPolicy | null>(null);
   const [overtimeRulesOpen, setOvertimeRulesOpen] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [tableQuery, setTableQuery] = useState<ServerTableQuery>({
+    page: 1,
+    pageSize: 25,
+    search: "",
+    sortBy: "name",
+    sortDir: "asc",
+  });
 
   async function load() {
-    const r = await apiFetch("/masters/work-policies");
-    if (r.ok) setPolicies(await r.json());
+    setLoading(true);
+    const params = new URLSearchParams({
+      page: String(tableQuery.page),
+      pageSize: String(tableQuery.pageSize),
+      sortBy: tableQuery.sortBy,
+      sortDir: tableQuery.sortDir,
+    });
+    if (tableQuery.search.trim()) params.set("search", tableQuery.search.trim());
+    const r = await apiFetch(`/masters/work-policies?${params.toString()}`);
+    if (r.ok) {
+      const d = await r.json() as PagedResponse<WorkPolicy>;
+      setPolicies(d.items);
+      setTotalCount(d.totalCount);
+    }
+    setLoading(false);
   }
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, [tableQuery]);
 
   function openCreate() { setForm(BLANK); setError(""); setEditing("new"); setOvertimeRulesOpen(true); }
   function openEdit(p: WorkPolicy) {
@@ -128,17 +153,28 @@ export function WorkPolicies() {
       compOffEnabled: form.compOffEnabled,
       compOffExpiryDays,
     };
-    const r = editing === "new"
+    const isNew = editing === "new";
+    const r = isNew
       ? await apiFetch("/masters/work-policies", { method: "POST", body: JSON.stringify(body) })
       : await apiFetch(`/masters/work-policies/${(editing as WorkPolicy).id}`, { method: "PUT", body: JSON.stringify(body) });
-    if (r.ok) { setEditing(null); void load(); }
-    else { const d = await r.json().catch(() => ({})); setError((d as { message?: string }).message ?? "Save failed."); }
+    if (r.ok) {
+      setEditing(null);
+      void load();
+      toast.success(isNew ? "Policy created" : "Policy updated", form.name.trim());
+    } else {
+      const d = await r.json().catch(() => ({}));
+      const msg = (d as { message?: string }).message ?? "Save failed.";
+      setError(msg);
+      toast.error("Save failed", msg);
+    }
   }
 
   async function doDelete(p: WorkPolicy) {
-    await apiFetch(`/masters/work-policies/${p.id}`, { method: "DELETE" });
+    const r = await apiFetch(`/masters/work-policies/${p.id}`, { method: "DELETE" });
     setDeleteTarget(null);
     void load();
+    if (r.ok || r.status === 204) toast.success("Work policy deleted", p.name);
+    else toast.error("Failed to delete work policy");
   }
 
   const f = (k: keyof PolicyForm, v: string | boolean | number) => setForm((prev) => ({ ...prev, [k]: v }));
@@ -167,7 +203,7 @@ export function WorkPolicies() {
     return `OT after ${dailyThreshold}h/day, ${weeklyThreshold}h/week · ${multiplier}x · ${compOff ? `Comp-off ${compOffExpiry}d` : "No comp-off"}`;
   }
 
-  const columns: ColumnDef<WorkPolicy>[] = [
+  const columns: ServerColumnDef<WorkPolicy>[] = [
     {
       key: "name",
       label: "Policy Name",
@@ -239,23 +275,24 @@ export function WorkPolicies() {
         }
       >
         {error && <p className="text-danger text-[0.825rem] m-0">{error}</p>}
+        <div className="drawer-section">
           <div className="grid grid-cols-2 gap-4">
             <div className="form-field col-span-2">
               <label className="form-label">Policy Name <span className="required">*</span></label>
               <AppInput placeholder="e.g. Standard 8h, Consultant 2h" value={form.name} onChange={(e) => f("name", e.target.value)} />
             </div>
-          <div className="form-field">
-            <label className="form-label">Daily Hours <span className="required">*</span></label>
-            <AppInput type="number" min="0.5" max="24" step="0.5" placeholder="e.g. 8" value={form.dailyHours} onChange={(e) => f("dailyHours", e.target.value)} />
-            {weeklyPreview && <div className="text-[0.75rem] text-text-tertiary mt-1">{weeklyPreview}</div>}
-          </div>
-          <div className="form-field">
-            <label className="form-label">Work Days / Week</label>
-            <AppSelect value={form.workDaysPerWeek} onChange={(e) => f("workDaysPerWeek", Number(e.target.value))}>
-              <option value={5}>5 days (Mon–Fri)</option>
-              <option value={6}>6 days (Mon–Sat)</option>
-            </AppSelect>
-          </div>
+            <div className="form-field">
+              <label className="form-label">Daily Hours <span className="required">*</span></label>
+              <AppInput type="number" min="0.5" max="24" step="0.5" placeholder="e.g. 8" value={form.dailyHours} onChange={(e) => f("dailyHours", e.target.value)} />
+              {weeklyPreview && <div className="text-[0.75rem] text-text-tertiary mt-1">{weeklyPreview}</div>}
+            </div>
+            <div className="form-field">
+              <label className="form-label">Work Days / Week</label>
+              <AppSelect value={form.workDaysPerWeek} onChange={(e) => f("workDaysPerWeek", Number(e.target.value))}>
+                <option value={5}>5 days (Mon–Fri)</option>
+                <option value={6}>6 days (Mon–Sat)</option>
+              </AppSelect>
+            </div>
             <div className="form-field">
               <label className="form-label">Status</label>
               <label className="flex items-center gap-2 h-[38px] cursor-pointer text-[0.825rem] text-text-secondary">
@@ -264,7 +301,8 @@ export function WorkPolicies() {
               </label>
             </div>
           </div>
-          <div className="mt-4 border border-border-subtle rounded-xl bg-n-50 overflow-hidden">
+        </div>
+        <div className="border border-border-subtle rounded-xl bg-n-0 overflow-hidden">
             <AppButton
               type="button"
               variant="ghost"
@@ -334,16 +372,20 @@ export function WorkPolicies() {
         <div className="card-header mgmt-card-head">
           <div className="card-title">
             All Work Policies
-            <span className="mgmt-count-pill">{policies.length} polic{policies.length === 1 ? "y" : "ies"}</span>
+            <span className="mgmt-count-pill">{totalCount} polic{totalCount === 1 ? "y" : "ies"}</span>
           </div>
           <AppButton variant="outline" size="sm">Export</AppButton>
         </div>
-        <AppDataTable
+        <ServerDataTable
           columns={columns}
           data={policies}
+          totalCount={totalCount}
+          query={tableQuery}
+          onQueryChange={setTableQuery}
           rowKey={p => p.id}
           searchPlaceholder="Search policies…"
           emptyText="No work policies. Click &quot;+ New Policy&quot; to create one."
+          loading={loading}
         />
       </div>
 

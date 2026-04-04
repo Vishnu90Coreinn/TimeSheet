@@ -22,10 +22,30 @@ public class TaskCategoriesController(ISender mediator) : ControllerBase
 
     [Authorize(Roles = "admin")]
     [HttpGet("admin")]
-    public async Task<IActionResult> GetAllForAdmin(CancellationToken ct)
+    public async Task<IActionResult> GetAllForAdmin([FromQuery] TaskCategoriesListQuery queryParams, CancellationToken ct)
     {
-        var result = await mediator.Send(new GetTaskCategoriesQuery(AdminAll: true), ct);
-        return result.IsSuccess ? Ok(result.Value) : Fail(result);
+        var sortBy = (queryParams.SortBy ?? "name").Trim().ToLowerInvariant();
+        var sortDir = (queryParams.SortDir ?? "asc").Trim().ToLowerInvariant();
+        var desc = sortDir == "desc";
+        var result = await mediator.Send(new GetTaskCategoriesPageQuery(
+            queryParams.Search,
+            queryParams.IsActive,
+            queryParams.IsBillable,
+            sortBy,
+            desc,
+            Math.Max(1, queryParams.Page),
+            Math.Clamp(queryParams.PageSize, 1, 200)), ct);
+        if (!result.IsSuccess) return Fail(result);
+
+        var page = result.Value!;
+        return Ok(new PagedResponse<TaskCategoryResult>(
+            page.Items,
+            page.Page,
+            page.PageSize,
+            page.TotalCount,
+            page.TotalPages,
+            page.SortBy,
+            page.SortDir));
     }
 
     [Authorize(Roles = "admin")]

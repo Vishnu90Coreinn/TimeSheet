@@ -1,15 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using TimeSheet.Application.Common.Interfaces;
 using TimeSheet.Domain.Interfaces;
 using TimeSheet.Infrastructure.BackgroundJobs;
 using TimeSheet.Infrastructure.Persistence;
 using TimeSheet.Infrastructure.Persistence.Interceptors;
-using TimeSheet.Infrastructure.Persistence.Repositories;
 using TimeSheet.Infrastructure.Services;
-using AppInterfaces = TimeSheet.Application.Common.Interfaces;
-using InfraInterfaces = TimeSheet.Infrastructure.Services;
 
 namespace TimeSheet.Infrastructure;
 
@@ -19,56 +17,41 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        const string repositoriesNamespace = "TimeSheet.Infrastructure.Persistence.Repositories";
+        const string servicesNamespace = "TimeSheet.Infrastructure.Services";
+
         // Persistence
         services.AddScoped<AuditInterceptor>();
         services.AddDbContext<TimeSheetDbContext>((serviceProvider, options) =>
             options.UseSqlServer(configuration.GetConnectionString("DefaultConnection"),
-                    b => b.MigrationsAssembly("TimeSheet.Infrastructure"))
+                    sql => sql.MigrationsAssembly("TimeSheet.Infrastructure"))
                 .AddInterceptors(serviceProvider.GetRequiredService<AuditInterceptor>()));
 
-        // Repositories
-        services.AddScoped<ITimesheetRepository, TimesheetRepository>();
-        services.AddScoped<IUserRepository, UserRepository>();
-        services.AddScoped<ILeaveRepository, LeaveRepository>();
-        services.AddScoped<ILeaveTypeRepository, LeaveTypeRepository>();
-        services.AddScoped<ILeavePolicyRepository, LeavePolicyRepository>();
-        services.AddScoped<IProjectRepository, ProjectRepository>();
-        services.AddScoped<INotificationRepository, NotificationRepository>();
-        services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
-        services.AddScoped<IRoleRepository, RoleRepository>();
-        services.AddScoped<ITaskCategoryRepository, TaskCategoryRepository>();
-        services.AddScoped<IHolidayRepository, HolidayRepository>();
-        services.AddScoped<IDepartmentRepository, DepartmentRepository>();
-        services.AddScoped<IWorkPolicyRepository, WorkPolicyRepository>();
-        services.AddScoped<IOvertimePolicyRepository, OvertimePolicyRepository>();
+        // Convention-based registration for repositories and infrastructure services.
+        // We keep special registrations explicit below where lifetime or behavior matters.
+        services.Scan(scan => scan
+            .FromAssemblyOf<TimeSheetDbContext>()
+            .AddClasses(classes => classes
+                .InNamespaces(repositoriesNamespace)
+                .Where(type => type.Name.EndsWith("Repository", StringComparison.Ordinal)))
+                .AsImplementedInterfaces()
+                .WithScopedLifetime()
+            .AddClasses(classes => classes
+                .InNamespaces(servicesNamespace)
+                .Where(type => type.Name.EndsWith("Service", StringComparison.Ordinal)))
+                .AsImplementedInterfaces()
+                .WithScopedLifetime());
+
+        // Explicit registrations for non-conventional and configuration-backed types.
         services.AddScoped<IUnitOfWork, UnitOfWork>();
-        services.AddScoped<ISavedReportRepository, SavedReportRepository>();
-        services.AddScoped<IApprovalDelegationRepository, ApprovalDelegationRepository>();
-        services.AddScoped<IAdminPrivacyRepository, AdminPrivacyRepository>();
-
-        // Core services — registered for Application interfaces (used by handlers)
         services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
-        services.AddScoped<AppInterfaces.IPasswordHasher, PasswordHasher>();
-        services.AddScoped<AppInterfaces.ITokenService, TokenService>();
+        services.AddScoped<IPasswordHasher, PasswordHasher>();
+        services.AddScoped<ITokenService, TokenService>();
+        services.AddSingleton<IJwtSettings, JwtSettings>();
 
-        services.AddScoped<IAttendanceCalculationService, AttendanceCalculationService>();
-        services.AddScoped<InfraInterfaces.INotificationService, NotificationService>();
-
-        services.AddScoped<AppInterfaces.IAuditService, AuditService>();
-        services.AddScoped<AppInterfaces.INotificationService, NotificationService>();
-        services.AddScoped<AppInterfaces.IOvertimeCalculationService, OvertimeCalculationService>();
-        services.AddScoped<AppInterfaces.ICompOffBalanceService, CompOffBalanceService>();
-        services.AddSingleton<AppInterfaces.IJwtSettings, JwtSettings>();
-
-        services.AddScoped<AppInterfaces.ITimesheetQueryService, TimesheetQueryService>();
-        services.AddScoped<AppInterfaces.IApprovalQueryService, ApprovalQueryService>();
-        services.AddScoped<AppInterfaces.ILeaveQueryService, LeaveQueryService>();
-        services.AddScoped<AppInterfaces.IOnboardingQueryService, OnboardingQueryService>();
-
-        // CurrentUserService (requires IHttpContextAccessor)
         services.AddHttpContextAccessor();
-        services.AddScoped<ICurrentUserService, CurrentUserService>();
-        services.AddScoped<ICorrelationIdAccessor, HttpContextCorrelationIdAccessor>();
+        services.TryAddScoped<ICurrentUserService, CurrentUserService>();
+        services.TryAddScoped<ICorrelationIdAccessor, HttpContextCorrelationIdAccessor>();
 
         // Background jobs
         services.AddHostedService<RefreshTokenCleanupService>();

@@ -3,7 +3,13 @@ using TimeSheet.Application.Common.Models;
 
 namespace TimeSheet.Application.Approvals.Queries;
 
-public record GetPendingTimesheetsQuery : IRequest<Result<List<PendingTimesheetItem>>>;
+public record GetPendingTimesheetsQuery(
+    string? Search,
+    bool? HasMismatch,
+    string SortBy,
+    bool Descending,
+    int Page,
+    int PageSize) : IRequest<Result<PagedResult<PendingTimesheetItem>>>;
 
 public record PendingTimesheetItem(
     Guid TimesheetId,

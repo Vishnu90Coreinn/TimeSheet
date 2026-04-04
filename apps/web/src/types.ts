@@ -7,6 +7,15 @@ export type Session = {
   onboardingCompletedAt?: string | null;
   leaveWorkflowVisitedAt?: string | null;
 };
+export type PagedResponse<T> = {
+  items: T[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+  sortBy?: string | null;
+  sortDir?: string | null;
+};
 export type Project = { id: string; name: string; code: string; isActive: boolean; isArchived: boolean; budgetedHours: number };
 export type TaskCategory = { id: string; name: string; isActive: boolean; isBillable: boolean };
 export type LeaveType = { id: string; name: string; isActive: boolean };

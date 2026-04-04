@@ -22,13 +22,14 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { view: "dashboard",       label: "Dashboard",      icon: <DashboardIcon />,   group: "main" },
-  { view: "timesheets",      label: "Timesheets",     icon: <ClockIcon />,       group: "main" },
-  { view: "leave",           label: "Leave",          icon: <CalendarIcon />,    group: "main" },
-  { view: "reports",         label: "Reports",        icon: <ChartIcon />,       group: "main" },
-  { view: "approvals",       label: "Approvals",      icon: <CheckIcon />,       group: "manager", badgeVariant: "danger" },
-  { view: "team",            label: "Team Status",    icon: <TeamIcon />,        group: "manager" },
-  { view: "projects",        label: "Projects",       icon: <FolderIcon />,      group: "admin" },
+  { view: "dashboard",       label: "Dashboard",      icon: <DashboardIcon />,    group: "main" },
+  { view: "timesheets",      label: "Timesheets",     icon: <ClockIcon />,        group: "main" },
+  { view: "leave",           label: "Leave",          icon: <CalendarIcon />,     group: "main" },
+  { view: "reports",         label: "Reports",        icon: <ChartIcon />,        group: "main" },
+  { view: "approvals",       label: "Approvals",      icon: <CheckIcon />,        group: "manager", badgeVariant: "danger" },
+  { view: "team",            label: "Team Status",    icon: <TeamIcon />,         group: "manager" },
+  { view: "admin",           label: "Admin Hub",      icon: <LayoutGridIcon />,   group: "admin" },
+  { view: "projects",        label: "Projects",       icon: <FolderIcon />,       group: "admin" },
   { view: "users",           label: "Users",          icon: <UsersIcon />,       group: "admin" },
   { view: "categories",      label: "Categories",     icon: <TagIcon />,         group: "admin" },
   { view: "holidays",        label: "Holidays",       icon: <StarIcon />,        group: "admin" },
@@ -40,6 +41,7 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 const VIEW_LABELS: Record<View, string> = {
+  admin: "Admin Hub",
   dashboard: "Dashboard",
   timesheets: "Timesheets",
   leave: "Leave",
@@ -489,6 +491,17 @@ function TeamIcon() {
       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
       <circle cx="9" cy="7" r="4"/>
       <polyline points="16 11 18 13 22 9"/>
+    </svg>
+  );
+}
+/** Admin Hub — 2×2 grid of squares */
+function LayoutGridIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="3" width="7" height="7" rx="1"/>
+      <rect x="14" y="3" width="7" height="7" rx="1"/>
+      <rect x="3" y="14" width="7" height="7" rx="1"/>
+      <rect x="14" y="14" width="7" height="7" rx="1"/>
     </svg>
   );
 }

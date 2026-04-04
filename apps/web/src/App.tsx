@@ -26,11 +26,12 @@ import { Users } from "./components/Admin/Users";
 import { TenantBranding } from "./components/Admin/Branding/TenantBranding";
 import { RetentionPolicy } from "./components/Admin/RetentionPolicy";
 import { AuditLogViewer } from "./components/Admin/AuditLogViewer";
+import { AdminHub } from "./components/Admin/AdminHub";
 import { ConsentBanner } from "./components/ConsentBanner";
 import { useSession } from "./hooks/useSession";
 import type { View } from "./types";
 
-export function hasViewAccess(role: string, view: View | "admin"): boolean {
+export function hasViewAccess(role: string, view: View): boolean {
   if (view === "admin" || view === "projects" || view === "categories" || view === "users" || view === "holidays" || view === "leave-policies" || view === "work-policies" || view === "branding" || view === "retention-policy" || view === "audit-logs") return role === "admin";
   if (view === "approvals") return role === "manager" || role === "admin";
   return true;
@@ -57,6 +58,7 @@ const VIEW_PATHS: Record<View, string> = {
   branding:           "/branding",
   "retention-policy": "/retention-policy",
   "audit-logs":       "/audit-logs",
+  admin:              "/admin",
 };
 
 const PATH_VIEWS: Record<string, View> = Object.fromEntries(
@@ -74,7 +76,7 @@ function AppRoutes() {
   const showOnboarding = Boolean(session && !onboardingCompletedAt);
 
   const nav = useMemo(
-    () => ["dashboard", "timesheets", "leave", "reports", ...(isManager ? ["approvals", "team"] : []), ...(isAdmin ? ["projects", "categories", "users", "holidays", "leave-policies", "work-policies", "branding", "retention-policy", "audit-logs"] : [])] as View[],
+    () => ["dashboard", "timesheets", "leave", "reports", ...(isManager ? ["approvals", "team"] : []), ...(isAdmin ? ["admin", "projects", "categories", "users", "holidays", "leave-policies", "work-policies", "branding", "retention-policy", "audit-logs"] : [])] as View[],
     [isAdmin, isManager]
   );
 
@@ -121,6 +123,7 @@ function AppRoutes() {
           <Route path="/profile"    element={<ErrorBoundary><Profile onBack={() => navigate(-1)} /></ErrorBoundary>} />
           {isManager && <Route path="/approvals"  element={<ErrorBoundary><Approvals /></ErrorBoundary>} />}
           {isManager && <Route path="/team"       element={<ErrorBoundary><TeamStatus /></ErrorBoundary>} />}
+          {isAdmin   && <Route path="/admin"        element={<ErrorBoundary><AdminHub onNavigate={view => navigate(`/${view}`)} /></ErrorBoundary>} />}
           {isAdmin   && <Route path="/projects"   element={<ErrorBoundary><Projects /></ErrorBoundary>} />}
           {isAdmin   && <Route path="/categories" element={<ErrorBoundary><Categories /></ErrorBoundary>} />}
           {isAdmin   && <Route path="/users"      element={<ErrorBoundary><Users /></ErrorBoundary>} />}

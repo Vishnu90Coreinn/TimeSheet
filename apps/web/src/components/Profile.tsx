@@ -3,7 +3,7 @@
  * All roles. Accessible from topbar avatar.
  */
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Eye, EyeOff, Lock, Camera, Download, Trash2 } from "lucide-react";
+import { Eye, EyeOff, Lock, Camera, Download, Trash2, ChevronDown, ChevronUp, Pencil } from "lucide-react";
 import { apiFetch } from "../api/client";
 import type { MyProfile, NotificationPreferences } from "../types";
 import { TimezoneSelect, type TimezoneOption } from "./TimezoneSelect";
@@ -14,6 +14,29 @@ interface TemplateEntryRow { projectId: string; categoryId: string; minutes: num
 interface TemplateItem { id: string; name: string; createdAtUtc: string; entries: { projectId: string; categoryId: string; minutes: number; note: string | null }[]; }
 interface EntryOption { id: string; name: string; }
 interface EntryOptions { projects: EntryOption[]; taskCategories: EntryOption[]; }
+
+// ── Duration helpers ──────────────────────────────────────────────────────────
+
+function minsToHhmm(m: number): string {
+  if (!m || m <= 0) return "";
+  const h = Math.floor(m / 60);
+  const min = m % 60;
+  return `${h}:${String(min).padStart(2, "0")}`;
+}
+
+function hhmmToMins(s: string): number {
+  const trimmed = s.trim();
+  if (!trimmed) return 0;
+  const parts = trimmed.split(":");
+  if (parts.length === 2) {
+    const h = parseInt(parts[0], 10);
+    const min = parseInt(parts[1], 10);
+    if (!isNaN(h) && !isNaN(min)) return h * 60 + min;
+  }
+  // fallback: treat as plain minutes number
+  const n = parseInt(trimmed, 10);
+  return isNaN(n) ? 0 : n;
+}
 
 // ── Toast system ─────────────────────────────────────────────────────────────
 
@@ -149,6 +172,11 @@ export function Profile({ onBack }: { onBack: () => void }) {
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null);
   const [confirmDeleteTemplateId, setConfirmDeleteTemplateId] = useState<string | null>(null);
+  const [expandedTemplateId, setExpandedTemplateId] = useState<string | null>(null);
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+
+  // hh:mm display values for the duration inputs — kept in sync with newTemplateRows minutes
+  const [durationInputs, setDurationInputs] = useState<string[]>(["1:00"]);
 
   useEffect(() => {
     apiFetch("/profile").then(async r => {
@@ -268,26 +296,36 @@ export function Profile({ onBack }: { onBack: () => void }) {
     const validRows = newTemplateRows.filter(r => r.projectId && r.categoryId && r.minutes > 0);
     if (validRows.length === 0) return;
     setSavingTemplate(true);
-    const r = await apiFetch("/timesheets/templates", {
-      method: "POST",
-      body: JSON.stringify({
-        name: newTemplateName.trim(),
-        entries: validRows.map(row => ({
-          projectId: row.projectId,
-          categoryId: row.categoryId,
-          minutes: row.minutes,
-          note: row.note.trim() || null,
-        })),
-      }),
+    const body = JSON.stringify({
+      name: newTemplateName.trim(),
+      entries: validRows.map(row => ({
+        projectId: row.projectId,
+        categoryId: row.categoryId,
+        minutes: row.minutes,
+        note: row.note.trim() || null,
+      })),
     });
+    const isEdit = editingTemplateId !== null;
+    const r = await apiFetch(
+      isEdit ? `/timesheets/templates/${editingTemplateId}` : "/timesheets/templates",
+      { method: isEdit ? "PUT" : "POST", body },
+    );
     setSavingTemplate(false);
     if (r.ok) {
-      const created = await r.json() as TemplateItem;
-      setTemplates(prev => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+      if (isEdit) {
+        const updated = await r.json() as TemplateItem;
+        setTemplates(prev => prev.map(t => t.id === updated.id ? updated : t).sort((a, b) => a.name.localeCompare(b.name)));
+        showToast(true, "Template updated.");
+      } else {
+        const created = await r.json() as TemplateItem;
+        setTemplates(prev => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+        showToast(true, "Template saved.");
+      }
       setShowNewTemplateForm(false);
       setNewTemplateName("");
       setNewTemplateRows([{ projectId: "", categoryId: "", minutes: 60, note: "" }]);
-      showToast(true, "Template saved.");
+      setDurationInputs(["1:00"]);
+      setEditingTemplateId(null);
     } else {
       const d = await r.json().catch(() => ({})) as { message?: string };
       showToast(false, d.message ?? "Failed to save template.");
@@ -658,16 +696,29 @@ export function Profile({ onBack }: { onBack: () => void }) {
               variant="outline"
               size="sm"
               onClick={() => {
-                setNewTemplateName("");
-                setNewTemplateRows([{ projectId: entryOptions?.projects[0]?.id ?? "", categoryId: entryOptions?.taskCategories[0]?.id ?? "", minutes: 60, note: "" }]);
-                setShowNewTemplateForm(v => !v);
+                if (showNewTemplateForm) {
+                  // Cancel
+                  setShowNewTemplateForm(false);
+                  setEditingTemplateId(null);
+                  setNewTemplateName("");
+                  setNewTemplateRows([{ projectId: "", categoryId: "", minutes: 60, note: "" }]);
+                  setDurationInputs(["1:00"]);
+                } else {
+                  // Open blank create form
+                  setEditingTemplateId(null);
+                  setNewTemplateName("");
+                  const firstRow = { projectId: entryOptions?.projects[0]?.id ?? "", categoryId: entryOptions?.taskCategories[0]?.id ?? "", minutes: 60, note: "" };
+                  setNewTemplateRows([firstRow]);
+                  setDurationInputs(["1:00"]);
+                  setShowNewTemplateForm(true);
+                }
               }}
             >
               {showNewTemplateForm ? "Cancel" : "+ New Template"}
             </AppButton>
           </div>
 
-          {/* New template form */}
+          {/* New / edit template form */}
           {showNewTemplateForm && (
             <div className="px-5 pb-5 flex flex-col gap-4">
               <div className="form-field">
@@ -684,8 +735,18 @@ export function Profile({ onBack }: { onBack: () => void }) {
               {/* Entry rows */}
               <div className="flex flex-col gap-2">
                 <div className="text-[0.72rem] font-bold text-text-tertiary uppercase tracking-[0.05em]">Entries</div>
+
+                {/* Column header */}
+                <div className="grid gap-2" style={{ gridTemplateColumns: "1fr 1fr 100px 1fr auto" }}>
+                  <div className="text-[0.68rem] font-bold text-text-tertiary uppercase">Project</div>
+                  <div className="text-[0.68rem] font-bold text-text-tertiary uppercase">Category</div>
+                  <div className="text-[0.68rem] font-bold text-text-tertiary uppercase">Duration</div>
+                  <div className="text-[0.68rem] font-bold text-text-tertiary uppercase">Note</div>
+                  <div />
+                </div>
+
                 {newTemplateRows.map((row, idx) => (
-                  <div key={idx} className="grid gap-2 items-center" style={{ gridTemplateColumns: "1fr 1fr 80px 1fr auto" }}>
+                  <div key={idx} className="grid gap-2 items-center" style={{ gridTemplateColumns: "1fr 1fr 100px 1fr auto" }}>
                     <AppSelect
                       className="input-field text-[0.82rem]"
                       value={row.projectId}
@@ -704,12 +765,23 @@ export function Profile({ onBack }: { onBack: () => void }) {
                     </AppSelect>
                     <AppInput
                       className="input-field text-[0.82rem]"
-                      type="number"
-                      min={1}
-                      max={1440}
-                      placeholder="min"
-                      value={row.minutes}
-                      onChange={e => setNewTemplateRows(prev => prev.map((r, i) => i === idx ? { ...r, minutes: parseInt(e.target.value) || 0 } : r))}
+                      placeholder="hh:mm"
+                      value={durationInputs[idx] ?? minsToHhmm(row.minutes)}
+                      onChange={e => setDurationInputs(prev => {
+                        const next = [...prev];
+                        next[idx] = e.target.value;
+                        return next;
+                      })}
+                      onBlur={() => {
+                        const raw = durationInputs[idx] ?? "";
+                        const mins = hhmmToMins(raw);
+                        setNewTemplateRows(prev => prev.map((r, i) => i === idx ? { ...r, minutes: mins } : r));
+                        setDurationInputs(prev => {
+                          const next = [...prev];
+                          next[idx] = mins > 0 ? minsToHhmm(mins) : "";
+                          return next;
+                        });
+                      }}
                     />
                     <AppInput
                       className="input-field text-[0.82rem]"
@@ -723,7 +795,10 @@ export function Profile({ onBack }: { onBack: () => void }) {
                       variant="ghost"
                       size="sm"
                       className="py-[4px] px-2 text-danger text-[0.8rem]"
-                      onClick={() => setNewTemplateRows(prev => prev.filter((_, i) => i !== idx))}
+                      onClick={() => {
+                        setNewTemplateRows(prev => prev.filter((_, i) => i !== idx));
+                        setDurationInputs(prev => prev.filter((_, i) => i !== idx));
+                      }}
                       title="Remove row"
                     >
                       ✕
@@ -734,10 +809,13 @@ export function Profile({ onBack }: { onBack: () => void }) {
                   type="button"
                   variant="ghost"
                   className="self-start text-[0.82rem] text-brand-500"
-                  onClick={() => setNewTemplateRows(prev => [
-                    ...prev,
-                    { projectId: entryOptions?.projects[0]?.id ?? "", categoryId: entryOptions?.taskCategories[0]?.id ?? "", minutes: 60, note: "" },
-                  ])}
+                  onClick={() => {
+                    setNewTemplateRows(prev => [
+                      ...prev,
+                      { projectId: entryOptions?.projects[0]?.id ?? "", categoryId: entryOptions?.taskCategories[0]?.id ?? "", minutes: 60, note: "" },
+                    ]);
+                    setDurationInputs(prev => [...prev, "1:00"]);
+                  }}
                 >
                   + Add Row
                 </AppButton>
@@ -749,7 +827,7 @@ export function Profile({ onBack }: { onBack: () => void }) {
                 disabled={savingTemplate || !newTemplateName.trim() || newTemplateRows.filter(r => r.projectId && r.categoryId && r.minutes > 0).length === 0}
                 onClick={() => void saveNewTemplate()}
               >
-                {savingTemplate ? "Saving…" : "Save Template"}
+                {savingTemplate ? "Saving…" : editingTemplateId ? "Update Template" : "Save Template"}
               </AppButton>
             </div>
           )}
@@ -762,46 +840,115 @@ export function Profile({ onBack }: { onBack: () => void }) {
               </div>
             ) : (
               <div className="flex flex-col gap-2">
-                {templates.map(t => (
-                  <div key={t.id} className="flex items-center justify-between py-[var(--space-3)] px-[var(--space-4)] border border-border-subtle rounded-md bg-n-50">
-                    <div>
-                      <div className="font-semibold text-[0.85rem] text-text-primary">{t.name}</div>
-                      <div className="text-[0.75rem] text-text-tertiary mt-[2px]">
-                        {t.entries.length} entr{t.entries.length === 1 ? "y" : "ies"}
+                {templates.map(t => {
+                  const isExpanded = expandedTemplateId === t.id;
+                  return (
+                    <div key={t.id} className="border border-border-subtle rounded-md bg-n-50 overflow-hidden">
+                      {/* Row header */}
+                      <div className="flex items-center justify-between py-[var(--space-3)] px-[var(--space-4)]">
+                        <div>
+                          <div className="font-semibold text-[0.85rem] text-text-primary">{t.name}</div>
+                          <div className="text-[0.75rem] text-text-tertiary mt-[2px]">
+                            {t.entries.length} entr{t.entries.length === 1 ? "y" : "ies"}
+                          </div>
+                        </div>
+                        {confirmDeleteTemplateId === t.id ? (
+                          <div className="flex gap-2 items-center">
+                            <span className="text-[0.75rem] text-text-tertiary">Delete?</span>
+                            <AppButton
+                              variant="danger"
+                              size="sm"
+                              className="py-[3px] px-[10px]"
+                              disabled={deletingTemplateId === t.id}
+                              onClick={() => void deleteTemplate(t.id)}
+                            >
+                              {deletingTemplateId === t.id ? "…" : "Yes"}
+                            </AppButton>
+                            <AppButton
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setConfirmDeleteTemplateId(null)}
+                            >
+                              No
+                            </AppButton>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            {/* Edit button */}
+                            <AppButton
+                              variant="outline"
+                              size="sm"
+                              className="py-[3px] px-[8px] flex items-center gap-1"
+                              onClick={() => {
+                                setEditingTemplateId(t.id);
+                                setNewTemplateName(t.name);
+                                const rows = t.entries.map(e => ({
+                                  projectId: e.projectId,
+                                  categoryId: e.categoryId,
+                                  minutes: e.minutes,
+                                  note: e.note ?? "",
+                                }));
+                                setNewTemplateRows(rows);
+                                setDurationInputs(rows.map(r => minsToHhmm(r.minutes)));
+                                setShowNewTemplateForm(true);
+                                setExpandedTemplateId(null);
+                              }}
+                            >
+                              <Pencil size={12} />
+                              <span>Edit</span>
+                            </AppButton>
+                            {/* Expand toggle */}
+                            <AppIconButton
+                              type="button"
+                              className="text-text-tertiary"
+                              aria-label={isExpanded ? "Collapse entries" : "Expand entries"}
+                              onClick={() => setExpandedTemplateId(isExpanded ? null : t.id)}
+                            >
+                              {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                            </AppIconButton>
+                            {/* Delete button */}
+                            <AppButton
+                              variant="ghost"
+                              size="sm"
+                              className="text-danger"
+                              onClick={() => setConfirmDeleteTemplateId(t.id)}
+                            >
+                              Delete
+                            </AppButton>
+                          </div>
+                        )}
                       </div>
+
+                      {/* Expanded entry details */}
+                      {isExpanded && (
+                        <div className="border-t border-border-subtle bg-n-0 px-[var(--space-4)] py-[var(--space-3)] flex flex-col gap-[6px]">
+                          {t.entries.map((entry, ei) => {
+                            const projectName = entryOptions?.projects.find(p => p.id === entry.projectId)?.name ?? entry.projectId;
+                            const categoryName = entryOptions?.taskCategories.find(c => c.id === entry.categoryId)?.name ?? entry.categoryId;
+                            const h = Math.floor(entry.minutes / 60);
+                            const m = entry.minutes % 60;
+                            const duration = m > 0 ? `${h}h ${m}m` : `${h}h`;
+                            return (
+                              <div key={ei} className="flex items-center gap-2 text-[0.8rem] text-text-secondary">
+                                <span className="font-medium text-text-primary">{projectName}</span>
+                                <span className="text-text-tertiary">→</span>
+                                <span>{categoryName}</span>
+                                <span className="text-text-tertiary">—</span>
+                                <span className="font-medium">{duration}</span>
+                                {entry.note && (
+                                  <>
+                                    <span className="text-text-tertiary">·</span>
+                                    <span className="text-text-tertiary italic">{entry.note}</span>
+                                  </>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
-                    {confirmDeleteTemplateId === t.id ? (
-                      <div className="flex gap-2 items-center">
-                        <span className="text-[0.75rem] text-text-tertiary">Delete?</span>
-                        <AppButton
-                          variant="danger"
-                          size="sm"
-                          className="py-[3px] px-[10px]"
-                          disabled={deletingTemplateId === t.id}
-                          onClick={() => void deleteTemplate(t.id)}
-                        >
-                          {deletingTemplateId === t.id ? "…" : "Yes"}
-                        </AppButton>
-                        <AppButton
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setConfirmDeleteTemplateId(null)}
-                        >
-                          No
-                        </AppButton>
-                      </div>
-                    ) : (
-                      <AppButton
-                        variant="ghost"
-                        size="sm"
-                        className="text-danger"
-                        onClick={() => setConfirmDeleteTemplateId(t.id)}
-                      >
-                        Delete
-                      </AppButton>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

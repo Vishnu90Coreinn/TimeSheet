@@ -5,7 +5,7 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { apiFetch } from "../api/client";
 import { SkeletonPage } from "./Skeleton";
 import { EmptyLeave } from "./EmptyState";
-import type { CompOffBalance, LeaveBalance, LeaveRequest, LeaveRequestGroup, LeaveType, TeamLeaveEntry, User } from "../types";
+import type { CompOffBalance, LeaveBalance, LeaveRequest, LeaveRequestGroup, LeaveType, TeamLeaveEntry, User, PagedResponse } from "../types";
 import { AppButton, AppInput, AppSelect, AppTextarea } from "./ui";
 
 // ─── Types ─────────────────────────────────────────────────────
@@ -297,15 +297,25 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
         if (r.ok) { setHistory(await r.json()); setUseFallback(false); }
         else {
           setUseFallback(true);
-          apiFetch("/leave/requests/my")
-            .then(async (r2) => { if (r2.ok) setHistFallback(await r2.json()); })
+          apiFetch("/leave/requests/my?page=1&pageSize=200")
+            .then(async (r2) => {
+              if (r2.ok) {
+                const d = await r2.json() as PagedResponse<LeaveRequest>;
+                setHistFallback(d.items);
+              }
+            })
             .catch(() => {});
         }
       })
       .catch(() => {
         setUseFallback(true);
-        apiFetch("/leave/requests/my")
-          .then(async (r2) => { if (r2.ok) setHistFallback(await r2.json()); })
+        apiFetch("/leave/requests/my?page=1&pageSize=200")
+          .then(async (r2) => {
+            if (r2.ok) {
+              const d = await r2.json() as PagedResponse<LeaveRequest>;
+              setHistFallback(d.items);
+            }
+          })
           .catch(() => {});
       });
   }
@@ -336,15 +346,25 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
 
   function loadPending() {
     if (!isManager) return;
-    apiFetch("/leave/requests/pending")
-      .then(async (r) => { if (r.ok) setPendingLeaves(await r.json()); })
+    apiFetch("/leave/requests/pending?page=1&pageSize=200")
+      .then(async (r) => {
+        if (r.ok) {
+          const d = await r.json() as PagedResponse<LeaveRequest>;
+          setPendingLeaves(d.items);
+        }
+      })
       .catch(() => {});
   }
 
   function loadUsers() {
     if (!isAdmin) return;
-    apiFetch("/users")
-      .then(async (r) => { if (r.ok) setAllUsers(await r.json()); })
+    apiFetch("/users?page=1&pageSize=200")
+      .then(async (r) => {
+        if (r.ok) {
+          const d = await r.json() as PagedResponse<User>;
+          setAllUsers(d.items);
+        }
+      })
       .catch(() => {});
   }
 

@@ -578,7 +578,9 @@
   position: sticky;
   top: var(--topbar-height);
   height: calc(100vh - var(--topbar-height));
-  overflow-y: auto;
+  /* overflow-y on sidebar-nav-area handles scrolling; keeping sidebar overflow visible
+     so collapsed-state CSS tooltips (::after) are not clipped horizontally */
+  overflow: visible;
 }
 
 /* Sidebar header wrapper (brand + org switcher) */
@@ -687,24 +689,47 @@
 
 /* Aliases used by AppShell v3 */
 .nav-item {
-  display: flex; align-items: center; gap: var(--space-3);
-  padding: 7px var(--space-3); border-radius: var(--r-md);
-  font-family: var(--font-sans); font-size: 0.83rem; font-weight: 500;
+  position: relative;
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 10px 6px 12px;
+  border-radius: var(--r-md);
+  font-family: var(--font-sans); font-size: 0.82rem; font-weight: 500;
   color: var(--text-secondary);
   cursor: pointer; border: none; background: none; width: 100%; text-align: left;
-  transition: all 0.12s; user-select: none;
-  margin-bottom: 1px;
+  transition: background 0.13s ease, color 0.13s ease; user-select: none;
+  margin-bottom: 2px;
 }
-.nav-item:hover { background: var(--n-50); color: var(--text-primary); }
-.nav-item.active { background: #e9ecff; color: var(--brand-700); font-weight: 600; border: 1px solid #dfe4ff; }
-.nav-item.active svg { color: var(--brand-600); }
-.nav-item svg { flex-shrink: 0; color: var(--n-400); transition: color 0.12s; } /* FIX 10 — color not opacity */
+.nav-item:hover { background: var(--n-100); color: var(--text-primary); }
 .nav-item:hover svg { color: var(--text-primary); }
-.nav-section { display: flex; flex-direction: column; gap: 4px; margin-bottom: var(--space-4); } /* FIX 8 — gap 1px→4px */
+
+/* Active: left accent bar + tinted background */
+.nav-item.active {
+  background: var(--brand-50);
+  color: var(--brand-700);
+  font-weight: 600;
+}
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 18%; bottom: 18%;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--brand-500);
+}
+.nav-item.active svg { color: var(--brand-600); }
+.nav-item svg { flex-shrink: 0; color: var(--n-400); transition: color 0.13s ease; }
+
+/* Section groups */
+.nav-section { display: flex; flex-direction: column; gap: 1px; margin-bottom: var(--space-5); }
 .nav-section-label {
-  font-size: 0.67rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
-  color: var(--text-tertiary); padding: 0 var(--space-2) var(--space-2);
-  display: block;
+  font-size: 0.645rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-tertiary);
+  padding: 0 10px var(--space-2);
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 2px;
+}
+.nav-section-label::after {
+  content: ''; flex: 1; height: 1px; background: var(--border-subtle);
 }
 
 /* Nav badge */
@@ -1007,6 +1032,8 @@
   justify-content: center;
   padding: 7px;
 }
+/* Hide left accent bar when collapsed — icon speaks for itself */
+.shell-sidebar.collapsed .nav-item.active::before { display: none; }
 .shell-sidebar.collapsed .sidebar-brand {
   justify-content: center;
   padding: var(--space-3) var(--space-2);
@@ -1017,6 +1044,8 @@
 .shell-sidebar.collapsed .sidebar-user-row { justify-content: center; padding: var(--space-1); }
 /* FIX 4 — Hide badges when collapsed (would overflow icon-only layout) */
 .shell-sidebar.collapsed .nav-badge { display: none; }
+/* When collapsed, nav area needs overflow: visible so ::after tooltips can escape */
+.shell-sidebar.collapsed .sidebar-nav-area { overflow: visible; }
 /* FIX 2 — CSS-only tooltips for collapsed nav items */
 .shell-sidebar.collapsed .nav-item { position: relative; }
 .shell-sidebar.collapsed .nav-item::after {
@@ -1100,20 +1129,87 @@
 }
 
 /* ── Drawer (slide-over panel) ─────────────────────────── */
-.drawer-overlay { position: fixed; inset: 0; background: rgba(16,16,26,0.35); z-index: 200; }
-.drawer { position: fixed; top: 0; right: 0; height: 100vh; width: 480px; max-width: 100vw;
-  background: var(--n-0); box-shadow: var(--shadow-xl); z-index: 201;
-  display: flex; flex-direction: column; }
-.drawer-header { padding: var(--space-5) var(--space-6); border-bottom: 1px solid var(--border-subtle);
-  display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
-.drawer-title { font-size: 1rem; font-weight: 700; color: var(--text-primary); }
-.drawer-close { width: 32px; height: 32px; border-radius: var(--r-md); border: none;
-  background: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
-  color: var(--text-secondary); transition: background 0.15s; font-size: 1rem; }
-.drawer-close:hover { background: var(--n-100); color: var(--text-primary); }
-.drawer-body { flex: 1; min-height: 0; overflow-y: auto; padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-4); }
-.drawer-footer { padding: var(--space-4) var(--space-6); border-top: 1px solid var(--border-subtle);
-  display: flex; gap: var(--space-3); flex-shrink: 0; }
+@keyframes drawer-enter {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+@keyframes drawer-overlay-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.drawer-overlay {
+  position: fixed; inset: 0; background: rgba(16,16,26,0.45); z-index: 200;
+  animation: drawer-overlay-fade 0.2s ease;
+  backdrop-filter: blur(3px);
+}
+.drawer {
+  position: fixed; top: 0; right: 0; height: 100vh; width: 480px; max-width: 100vw;
+  background: var(--n-0);
+  box-shadow: -12px 0 40px rgba(0,0,0,0.14), -2px 0 8px rgba(0,0,0,0.06);
+  border-left: 1px solid var(--border-subtle);
+  z-index: 201;
+  display: flex; flex-direction: column;
+  animation: drawer-enter 0.24s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.drawer-header {
+  padding: var(--space-5) var(--space-6);
+  background: var(--n-0);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
+  position: relative;
+  gap: var(--space-3);
+}
+/* Brand accent bar across the top */
+.drawer-header::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, var(--brand-500), var(--brand-400));
+}
+.drawer-title {
+  font-size: 1.05rem; font-weight: 700; color: var(--text-primary);
+  letter-spacing: -0.01em; flex: 1; min-width: 0;
+}
+.drawer-subtitle {
+  font-size: 0.78rem; color: var(--text-tertiary); margin-top: 2px;
+}
+.drawer-close {
+  width: 30px; height: 30px; border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--n-50); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-secondary);
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  flex-shrink: 0; padding: 0; font-size: 1.1rem; line-height: 1;
+}
+.drawer-close:hover { background: var(--n-100); border-color: var(--border-default); color: var(--text-primary); }
+.drawer-body {
+  flex: 1; min-height: 0; overflow-y: auto;
+  padding: var(--space-6);
+  display: flex; flex-direction: column; gap: var(--space-5);
+  background: var(--n-50, #f9f9fb);
+}
+/* Form sections within drawer */
+.drawer-section {
+  background: var(--n-0);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  padding: var(--space-5);
+  display: flex; flex-direction: column; gap: var(--space-4);
+}
+.drawer-section-label {
+  font-size: 0.7rem; font-weight: 600; color: var(--text-tertiary);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  margin-bottom: var(--space-1);
+}
+.drawer-footer {
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--border-subtle);
+  display: flex; gap: var(--space-3); justify-content: flex-end;
+  flex-shrink: 0; background: var(--n-0);
+}
 
 /* ── Confirm Modal ──────────────────────────────────────── */
 .modal-overlay { position: fixed; inset: 0; background: rgba(16,16,26,0.4); z-index: 300;
@@ -1388,11 +1484,9 @@ button:focus-visible, a:focus-visible {
 }
 button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
 
-/* ── Nav section separators (Issue 14) ──────────────────── */
+/* Nav sections — spacing between groups */
 .nav-section + .nav-section {
   margin-top: var(--space-2);
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--border-subtle);
 }
 
 /* ── Card footer link ───────────────────────────────────── */
@@ -2680,6 +2774,10 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
 [data-theme="dark"] .drawer {
   background: var(--n-0);
   border-color: var(--border-subtle);
+}
+[data-theme="dark"] .drawer-section {
+  background: var(--n-100);
+  border-color: var(--border-default);
 }
 
 /* Dark mode overflow menu */

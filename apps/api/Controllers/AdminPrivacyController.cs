@@ -1,43 +1,36 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TimeSheet.Api.Dtos;
-using TimeSheet.Domain.Interfaces;
+using TimeSheet.Application.AdminPrivacy.Queries;
+using TimeSheet.Application.Common.Models;
 
 namespace TimeSheet.Api.Controllers;
 
 [ApiController]
 [Authorize(Roles = "admin")]
 [Route("api/v1/admin")]
-public class AdminPrivacyController(IAdminPrivacyRepository adminPrivacyRepository) : ControllerBase
+public class AdminPrivacyController(ISender mediator) : ControllerBase
 {
-    private static readonly (string DataType, int DefaultDays)[] Defaults =
-    [
-        ("timesheets", 2555),
-        ("auditlogs", 365),
-        ("notifications", 90),
-        ("sessions", 180)
-    ];
-
     [HttpGet("retention-policy")]
-    public async Task<ActionResult<RetentionPolicyResponse>> GetRetentionPolicy()
+    public async Task<ActionResult<RetentionPolicyResponse>> GetRetentionPolicy(CancellationToken ct)
     {
-        var stored = await adminPrivacyRepository.GetRetentionPoliciesAsync();
-        var result = Defaults.Select(d =>
-        {
-            var row = stored.FirstOrDefault(s => s.DataType == d.DataType);
-            return new RetentionPolicyItem(d.DataType, row?.RetentionDays ?? d.DefaultDays);
-        }).ToList();
-
-        return Ok(new RetentionPolicyResponse(result));
+        var result = await mediator.Send(new GetRetentionPolicyQuery(), ct);
+        return result.IsSuccess
+            ? Ok(new RetentionPolicyResponse(result.Value!.Policies.Select(x => new RetentionPolicyItem(x.DataType, x.RetentionDays)).ToList()))
+            : Fail(result);
     }
 
     [HttpPut("retention-policy")]
-    public async Task<ActionResult<RetentionPolicyResponse>> UpdateRetentionPolicy([FromBody] IEnumerable<RetentionPolicyItem> items)
+    public async Task<ActionResult<RetentionPolicyResponse>> UpdateRetentionPolicy([FromBody] IEnumerable<RetentionPolicyItem> items, CancellationToken ct)
     {
-        await adminPrivacyRepository.UpsertRetentionPoliciesAsync(
-            items.Select(i => new RetentionPolicyReadModel(i.DataType, i.RetentionDays)));
+        var result = await mediator.Send(
+            new UpdateRetentionPolicyCommand(items.Select(i => new RetentionPolicyItemResult(i.DataType, i.RetentionDays)).ToList()),
+            ct);
 
-        return await GetRetentionPolicy();
+        return result.IsSuccess
+            ? Ok(new RetentionPolicyResponse(result.Value!.Policies.Select(x => new RetentionPolicyItem(x.DataType, x.RetentionDays)).ToList()))
+            : Fail(result);
     }
 
     [HttpGet("audit-logs")]
@@ -50,36 +43,25 @@ public class AdminPrivacyController(IAdminPrivacyRepository adminPrivacyReposito
         [FromQuery] DateTime? toDate,
         [FromQuery] string? sortOrder,
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 25)
+        [FromQuery] int pageSize = 25,
+        CancellationToken ct = default)
     {
-        var result = await adminPrivacyRepository.GetAuditLogsAsync(new AuditLogFilterReadModel(
-            search, actorId, action, entityType, fromDate, toDate, sortOrder, page, pageSize));
+        var result = await mediator.Send(
+            new GetAuditLogsQuery(search, actorId, action, entityType, fromDate, toDate, sortOrder, Math.Max(1, page), Math.Clamp(pageSize, 1, 200)),
+            ct);
 
-        var items = result.Items.Select(a => new AuditLogEntry(
-            a.Id,
-            a.ActorUserId,
-            a.ActorName,
-            a.ActorUsername,
-            a.Action,
-            a.EntityType,
-            a.EntityId,
-            a.Details,
-            a.CreatedAtUtc,
-            a.HasFieldChanges)).ToList();
-
-        return Ok(new AuditLogPageResponse(items, result.TotalCount, result.Page, result.PageSize));
+        return result.IsSuccess
+            ? Ok(new AuditLogPageResponse(result.Value!.Items.Select(ToAuditLogEntry).ToList(), result.Value.TotalCount, result.Value.Page, result.Value.PageSize))
+            : Fail(result);
     }
 
     [HttpGet("audit-logs/{id:guid}/changes")]
-    public async Task<ActionResult<IReadOnlyList<AuditChangeDto>>> GetAuditChanges(Guid id)
+    public async Task<ActionResult<IReadOnlyList<AuditChangeDto>>> GetAuditChanges(Guid id, CancellationToken ct)
     {
-        var items = await adminPrivacyRepository.GetAuditChangesAsync(id);
-        if (items is null)
-        {
-            return NotFound();
-        }
-
-        return Ok(items.Select(c => new AuditChangeDto(c.FieldName, c.OldValue, c.NewValue, c.ValueType)).ToList());
+        var result = await mediator.Send(new GetAuditChangesQuery(id), ct);
+        return result.IsSuccess
+            ? Ok(result.Value!.Select(c => new AuditChangeDto(c.FieldName, c.OldValue, c.NewValue, c.ValueType)).ToList())
+            : Fail(result);
     }
 
     [HttpGet("audit-logs/entities/{entityType}/{entityId}")]
@@ -87,35 +69,34 @@ public class AdminPrivacyController(IAdminPrivacyRepository adminPrivacyReposito
         string entityType,
         string entityId,
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20)
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
     {
-        var items = await adminPrivacyRepository.GetEntityHistoryAsync(entityType, entityId, page, pageSize);
+        var result = await mediator.Send(
+            new GetEntityAuditHistoryQuery(entityType, entityId, Math.Max(1, page), Math.Clamp(pageSize, 1, 200)),
+            ct);
 
-        return Ok(items.Select(a => new AuditLogEntry(
-            a.Id,
-            a.ActorUserId,
-            a.ActorName,
-            a.ActorUsername,
-            a.Action,
-            a.EntityType,
-            a.EntityId,
-            a.Details,
-            a.CreatedAtUtc,
-            a.HasFieldChanges)).ToList());
+        return result.IsSuccess
+            ? Ok(result.Value!.Select(ToAuditLogEntry).ToList())
+            : Fail(result);
     }
 
     [HttpGet("audit-logs/stats")]
-    public async Task<ActionResult<AuditLogStats>> GetAuditLogStats()
+    public async Task<ActionResult<AuditLogStats>> GetAuditLogStats(CancellationToken ct)
     {
-        var stats = await adminPrivacyRepository.GetAuditStatsAsync();
-        return Ok(new AuditLogStats(stats.TotalCount, stats.LastEventAt, stats.RetentionDays));
+        var result = await mediator.Send(new GetAuditLogStatsQuery(), ct);
+        return result.IsSuccess
+            ? Ok(new AuditLogStats(result.Value!.TotalCount, result.Value.LastEventAt, result.Value.RetentionDays))
+            : Fail(result);
     }
 
     [HttpGet("audit-logs/actors")]
-    public async Task<ActionResult<IReadOnlyList<AuditActorSummary>>> GetAuditActors()
+    public async Task<ActionResult<IReadOnlyList<AuditActorSummary>>> GetAuditActors(CancellationToken ct)
     {
-        var actors = await adminPrivacyRepository.GetAuditActorsAsync();
-        return Ok(actors.Select(a => new AuditActorSummary(a.UserId, a.DisplayName, a.Username)).ToList());
+        var result = await mediator.Send(new GetAuditActorsQuery(), ct);
+        return result.IsSuccess
+            ? Ok(result.Value!.Select(a => new AuditActorSummary(a.UserId, a.DisplayName, a.Username)).ToList())
+            : Fail(result);
     }
 
     [HttpGet("audit-logs/export")]
@@ -125,29 +106,24 @@ public class AdminPrivacyController(IAdminPrivacyRepository adminPrivacyReposito
         [FromQuery] string? action,
         [FromQuery] string? entityType,
         [FromQuery] DateTime? fromDate,
-        [FromQuery] DateTime? toDate)
+        [FromQuery] DateTime? toDate,
+        CancellationToken ct = default)
     {
-        var rows = await adminPrivacyRepository.GetAuditLogsForExportAsync(
-            new AuditLogFilterReadModel(search, actorId, action, entityType, fromDate, toDate, null, 1, 500));
-
-        // Fetch field-change summaries for all rows in one batch
-        var summaries = await adminPrivacyRepository.GetFieldChangeSummariesAsync(
-            rows.Select(r => r.Id));
-
-        var sb = new System.Text.StringBuilder();
-        sb.AppendLine("Id,Timestamp,Actor,Action,EntityType,EntityId,Details,FieldChanges");
-        foreach (var row in rows)
-        {
-            var actorName = row.ActorName ?? row.ActorUserId?.ToString() ?? "System";
-            var details = (row.Details ?? string.Empty).Replace("\"", "\"\"");
-            summaries.TryGetValue(row.Id, out var fieldChanges);
-            sb.AppendLine($"{row.Id},{row.CreatedAtUtc:O},{CsvQuote(actorName)},{row.Action},{row.EntityType},{row.EntityId},{CsvQuote(details)},{CsvQuote(fieldChanges ?? string.Empty)}");
-        }
-
-        var bytes = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
-        return File(bytes, "text/csv", $"audit-logs-{DateTime.UtcNow:yyyy-MM-dd}.csv");
+        var result = await mediator.Send(new ExportAuditLogsQuery(search, actorId, action, entityType, fromDate, toDate), ct);
+        return result.IsSuccess
+            ? File(result.Value!.Content, result.Value.ContentType, result.Value.FileName)
+            : Fail(result);
     }
 
-    private static string CsvQuote(string value) =>
-        value.Contains(',') || value.Contains('"') || value.Contains('\n') ? $"\"{value}\"" : value;
+    private static AuditLogEntry ToAuditLogEntry(AuditLogEntryResult entry)
+        => new(entry.Id, entry.ActorUserId, entry.ActorName, entry.ActorUsername, entry.Action, entry.EntityType, entry.EntityId, entry.Details, entry.CreatedAtUtc, entry.HasFieldChanges);
+
+    private ActionResult Fail(Result result) => result.Status switch
+    {
+        ResultStatus.NotFound => NotFound(new { message = result.Error }),
+        ResultStatus.Forbidden => Forbid(),
+        ResultStatus.Conflict => Conflict(new { message = result.Error }),
+        ResultStatus.Validation => BadRequest(new { message = result.Error }),
+        _ => BadRequest(new { message = result.Error })
+    };
 }

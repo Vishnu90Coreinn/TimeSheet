@@ -74,4 +74,49 @@ public class ReportsIntegrationTests : IClassFixture<CustomWebApplicationFactory
         var response = await client.GetAsync("/api/v1/reports/leave-utilization");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
+
+    [Fact]
+    public async Task LeaveUtilization_AsAdmin_WithPaging_ReturnsPagedEnvelope()
+    {
+        using var client = _factory.CreateClient();
+        var token = await GetAdminTokenAsync();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await client.GetFromJsonAsync<PagedReportResponse<LeaveUtilizationReportRow>>("/api/v1/reports/leave-utilization?page=1&pageSize=1");
+        Assert.NotNull(response);
+        Assert.Equal(1, response!.Page);
+        Assert.Equal(1, response.PageSize);
+        Assert.True(response.Items.Count <= 1);
+        Assert.True(response.Total >= response.Items.Count);
+    }
+
+    [Fact]
+    public async Task LeaveBalance_AsAdmin_WithPaging_ReturnsPagedEnvelope()
+    {
+        using var client = _factory.CreateClient();
+        var token = await GetAdminTokenAsync();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await client.GetFromJsonAsync<PagedReportResponse<LeaveBalanceReportRow>>("/api/v1/reports/leave-balance?page=1&pageSize=1");
+        Assert.NotNull(response);
+        Assert.Equal(1, response!.Page);
+        Assert.Equal(1, response.PageSize);
+        Assert.True(response.Items.Count <= 1);
+        Assert.True(response.Total >= response.Items.Count);
+    }
+
+    [Fact]
+    public async Task OvertimeDeficit_AsAdmin_WithPaging_ReturnsPagedEnvelope()
+    {
+        using var client = _factory.CreateClient();
+        var token = await GetAdminTokenAsync();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await client.GetFromJsonAsync<PagedReportResponse<OvertimeDeficitReportRow>>("/api/v1/reports/overtime-deficit?page=1&pageSize=1");
+        Assert.NotNull(response);
+        Assert.Equal(1, response!.Page);
+        Assert.Equal(1, response.PageSize);
+        Assert.True(response.Items.Count <= 1);
+        Assert.True(response.Total >= response.Items.Count);
+    }
 }

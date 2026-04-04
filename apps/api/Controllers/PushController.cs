@@ -1,76 +1,44 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
-using TimeSheet.Domain.Entities;
-using TimeSheet.Infrastructure.Persistence;
+using TimeSheet.Application.Common.Models;
+using TimeSheet.Application.Push.Queries;
 
 namespace TimeSheet.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/push")]
 [Authorize]
-public class PushController : ControllerBase
+public class PushController(ISender mediator) : ControllerBase
 {
-    private readonly TimeSheetDbContext _db;
-    private readonly IConfiguration _config;
-
-    public PushController(TimeSheetDbContext db, IConfiguration config)
-    {
-        _db = db;
-        _config = config;
-    }
-
     [HttpGet("vapid-key")]
-    public IActionResult GetVapidKey()
+    public async Task<IActionResult> GetVapidKey(CancellationToken ct)
     {
-        var publicKey = _config["WebPush:VapidPublicKey"] ?? string.Empty;
-        return Ok(new { publicKey });
+        var result = await mediator.Send(new GetVapidKeyQuery(), ct);
+        return result.IsSuccess ? Ok(new { publicKey = result.Value! }) : Fail(result);
     }
 
     [HttpPost("subscribe")]
     public async Task<IActionResult> Subscribe([FromBody] PushSubscribeRequest req, CancellationToken ct)
     {
-        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!Guid.TryParse(userIdClaim, out var userId)) return Unauthorized();
-
-        var existing = await _db.PushSubscriptions
-            .FirstOrDefaultAsync(p => p.Endpoint == req.Endpoint, ct);
-
-        if (existing is not null)
-        {
-            existing.P256dh = req.Keys.P256dh;
-            existing.Auth   = req.Keys.Auth;
-        }
-        else
-        {
-            _db.PushSubscriptions.Add(new PushSubscription
-            {
-                UserId   = userId,
-                Endpoint = req.Endpoint,
-                P256dh   = req.Keys.P256dh,
-                Auth     = req.Keys.Auth,
-            });
-        }
-
-        await _db.SaveChangesAsync(ct);
-        return Ok();
+        var result = await mediator.Send(new SubscribePushCommand(req.Endpoint, req.Keys.P256dh, req.Keys.Auth), ct);
+        return result.IsSuccess ? Ok() : Fail(result);
     }
 
     [HttpPost("unsubscribe")]
     public async Task<IActionResult> Unsubscribe([FromBody] PushUnsubscribeRequest req, CancellationToken ct)
     {
-        var sub = await _db.PushSubscriptions
-            .FirstOrDefaultAsync(p => p.Endpoint == req.Endpoint, ct);
-
-        if (sub is not null)
-        {
-            _db.PushSubscriptions.Remove(sub);
-            await _db.SaveChangesAsync(ct);
-        }
-
-        return Ok();
+        var result = await mediator.Send(new UnsubscribePushCommand(req.Endpoint), ct);
+        return result.IsSuccess ? Ok() : Fail(result);
     }
+
+    private IActionResult Fail(Result result) => result.Status switch
+    {
+        ResultStatus.NotFound => NotFound(new { message = result.Error }),
+        ResultStatus.Forbidden => Unauthorized(),
+        ResultStatus.Validation => BadRequest(new { message = result.Error }),
+        _ => BadRequest(new { message = result.Error })
+    };
 }
 
 public record PushSubscribeRequest(string Endpoint, PushSubscribeKeys Keys);

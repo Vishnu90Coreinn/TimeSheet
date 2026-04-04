@@ -7,7 +7,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../api/client";
 import { StatusBadge, toBadgeStatus } from "./StatusBadge";
-import type { TeamMemberStatus } from "../types";
+import type { TeamMemberStatus, PagedResponse } from "../types";
 import { AppButton } from "./ui";
 
 type Filter = "all" | "missing" | "needs-approval" | "on-leave";
@@ -453,8 +453,11 @@ export function TeamStatus() {
 
   const load = useCallback(async (d: string) => {
     setLoading(true);
-    const r = await apiFetch(`/manager/team-status?date=${d}`);
-    if (r.ok) setMembers(await r.json() as TeamMemberStatus[]);
+    const r = await apiFetch(`/manager/team-status?date=${d}&page=1&pageSize=200`);
+    if (r.ok) {
+      const page = await r.json() as PagedResponse<TeamMemberStatus>;
+      setMembers(page.items);
+    }
     setLoading(false);
   }, []);
 

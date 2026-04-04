@@ -14,10 +14,29 @@ namespace TimeSheet.Api.Controllers;
 public class ApprovalsController(ISender mediator) : ControllerBase
 {
     [HttpGet("pending-timesheets")]
-    public async Task<IActionResult> GetPendingTimesheets(CancellationToken ct)
+    public async Task<IActionResult> GetPendingTimesheets([FromQuery] PendingTimesheetsListQuery queryParams, CancellationToken ct)
     {
-        var result = await mediator.Send(new GetPendingTimesheetsQuery(), ct);
-        return result.IsSuccess ? Ok(result.Value) : Fail(result);
+        var sortBy = (queryParams.SortBy ?? "workDate").Trim().ToLowerInvariant();
+        var sortDir = (queryParams.SortDir ?? "desc").Trim().ToLowerInvariant();
+        var desc = sortDir == "desc";
+        var result = await mediator.Send(new GetPendingTimesheetsQuery(
+            queryParams.Search,
+            queryParams.HasMismatch,
+            sortBy,
+            desc,
+            Math.Max(1, queryParams.Page),
+            Math.Clamp(queryParams.PageSize, 1, 200)), ct);
+        if (!result.IsSuccess) return Fail(result);
+
+        var page = result.Value!;
+        return Ok(new PagedResponse<PendingTimesheetItem>(
+            page.Items,
+            page.Page,
+            page.PageSize,
+            page.TotalCount,
+            page.TotalPages,
+            page.SortBy,
+            page.SortDir));
     }
 
     [HttpGet("timesheets/{timesheetId:guid}")]

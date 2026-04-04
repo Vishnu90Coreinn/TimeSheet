@@ -4,7 +4,7 @@ import { apiFetch } from "../api/client";
 import { AttendanceWidget } from "./AttendanceWidget";
 import { useConfirm } from "../hooks/useConfirm";
 import { SkeletonPage } from "./Skeleton";
-import type { LeaveBalance, OvertimeSummary, TeamLeaveEntry } from "../types";
+import type { LeaveBalance, OvertimeSummary, TeamLeaveEntry, PagedResponse, Project, User } from "../types";
 import { OnboardingChecklist } from "./OnboardingChecklist";
 import { useTimezone } from "../hooks/useTimezone";
 import { AppButton } from "./ui";
@@ -840,8 +840,11 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
   const { confirming, payload: confirmPayload, request: requestConfirm, confirm: doConfirm, cancel: cancelConfirm } = useConfirm<PendingApproval>();
 
   const fetchPending = useCallback(async () => {
-    const r = await apiFetch("/approvals/pending-timesheets").catch(() => null);
-    if (r?.ok) { const d = await r.json(); setPendingList((d as PendingApproval[]).slice(0, 5)); }
+    const r = await apiFetch("/approvals/pending-timesheets?page=1&pageSize=5").catch(() => null);
+    if (r?.ok) {
+      const d = await r.json() as PagedResponse<PendingApproval>;
+      setPendingList(d.items.slice(0, 5));
+    }
     setLastRefreshed(new Date());
   }, []);
 
@@ -1335,17 +1338,17 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
       try {
         const [leaveRes, pendingRes, usersRes, anomalyRes] = await Promise.all([
           apiFetch("/leave/team-on-leave"),
-          apiFetch("/approvals/pending-timesheets"),
-          apiFetch("/users"),
+          apiFetch("/approvals/pending-timesheets?page=1&pageSize=200"),
+          apiFetch("/users?page=1&pageSize=200"),
           apiFetch("/admin/anomalies"),
         ]);
         if (leaveRes.ok) setLeaveToday(await leaveRes.json() as TeamLeaveEntry[]);
         if (pendingRes.ok) {
-          const pList = await pendingRes.json() as unknown[];
-          setPendingCount(pList.length);
+          const pList = await pendingRes.json() as PagedResponse<PendingApproval>;
+          setPendingCount(pList.totalCount);
         }
         if (usersRes.ok) {
-          const uList = await usersRes.json() as Array<{ isActive: boolean }>;
+          const uList = (await usersRes.json() as PagedResponse<User>).items;
           const active = uList.filter(u => u.isActive).length;
           setTotalStaff(active);
           setSubmittedCount(Math.round(active * 0.7)); // placeholder — no dedicated endpoint
@@ -1815,11 +1818,11 @@ export function Dashboard({ role, username, onboardingCompletedAt, onNavigate }:
         apiFetch("/dashboard/employee").then(r => r.ok ? r.json() : null),
         apiFetch("/timesheets/week").then(r => r.ok ? r.json() : null),
         apiFetch("/leave/balance/my").then(r => r.ok ? r.json() : null),
-        apiFetch("/projects").then(r => r.ok ? r.json() : null),
+        apiFetch("/projects?page=1&pageSize=200").then(r => r.ok ? r.json() : null),
       ]).then(([employee, week, leaveBalances, projects]) => {
         if (employee) {
-          const activeProjectCount = Array.isArray(projects)
-            ? (projects as Array<{ isActive: boolean }>).filter(p => p.isActive).length
+          const activeProjectCount = projects && typeof projects === "object" && "items" in (projects as object)
+            ? ((projects as PagedResponse<Project>).items).filter(p => p.isActive).length
             : 0;
           setEmpState({
             employee,

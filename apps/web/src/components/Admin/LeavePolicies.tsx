@@ -4,9 +4,10 @@
 import { FormEvent, useEffect, useState, type ReactNode } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { apiFetch } from "../../api/client";
-import type { LeavePolicy, LeavePolicyAlloc, LeaveType } from "../../types";
+import type { LeavePolicy, LeavePolicyAlloc, LeaveType, PagedResponse } from "../../types";
 import { AppButton, AppCheckbox, AppIconButton, AppInput, AppTableShell } from "../ui";
-import { AppDataTable, type ColumnDef } from "../ui/AppDataTable";
+import { ServerDataTable, type ServerColumnDef, type ServerTableQuery } from "../ui";
+import { useToast } from "../../contexts/ToastContext";
 
 type PolicyForm = {
   name: string;
@@ -24,7 +25,9 @@ function Drawer({ open, title, onClose, children, footer }: { open: boolean; tit
       <div className="drawer" role="dialog" aria-modal="true">
         <div className="drawer-header">
           <div className="drawer-title">{title}</div>
-          <AppButton className="drawer-close" variant="ghost" size="sm" onClick={onClose}>x</AppButton>
+          <button className="drawer-close" onClick={onClose} aria-label="Close">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><line x1="1" y1="1" x2="12" y2="12"/><line x1="12" y1="1" x2="1" y2="12"/></svg>
+          </button>
         </div>
         <div className="drawer-body">{children}</div>
         {footer && <div className="drawer-footer">{footer}</div>}
@@ -66,6 +69,7 @@ function AllocPills({ allocs }: { allocs: LeavePolicyAlloc[] }) {
 }
 
 export function LeavePolicies() {
+  const toast = useToast();
   const [policies, setPolicies] = useState<LeavePolicy[]>([]);
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
   const [editing, setEditing] = useState<LeavePolicy | "new" | null>(null);
@@ -77,10 +81,32 @@ export function LeavePolicies() {
   const [ltActive, setLtActive] = useState(true);
   const [ltError, setLtError] = useState("");
   const [ltSuccess, setLtSuccess] = useState("");
+  const [totalCount, setTotalCount] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [tableQuery, setTableQuery] = useState<ServerTableQuery>({
+    page: 1,
+    pageSize: 25,
+    search: "",
+    sortBy: "name",
+    sortDir: "asc",
+  });
 
   async function load() {
-    const r = await apiFetch("/leave/policies");
-    if (r.ok) setPolicies(await r.json());
+    setLoading(true);
+    const params = new URLSearchParams({
+      page: String(tableQuery.page),
+      pageSize: String(tableQuery.pageSize),
+      sortBy: tableQuery.sortBy,
+      sortDir: tableQuery.sortDir,
+    });
+    if (tableQuery.search.trim()) params.set("search", tableQuery.search.trim());
+    const r = await apiFetch(`/leave/policies?${params.toString()}`);
+    if (r.ok) {
+      const d = await r.json() as PagedResponse<LeavePolicy>;
+      setPolicies(d.items);
+      setTotalCount(d.totalCount);
+    }
+    setLoading(false);
   }
 
   async function loadTypes() {
@@ -88,7 +114,8 @@ export function LeavePolicies() {
     if (r.ok) setLeaveTypes(await r.json());
   }
 
-  useEffect(() => { void load(); void loadTypes(); }, []);
+  useEffect(() => { void loadTypes(); }, []);
+  useEffect(() => { void load(); }, [tableQuery]);
 
   async function saveLeaveType(e: FormEvent) {
     e.preventDefault();
@@ -100,9 +127,12 @@ export function LeavePolicies() {
       setLtName(""); setLtActive(true);
       setLtSuccess(`Leave type "${name}" saved.`);
       void loadTypes();
+      toast.success("Leave type created", name);
     } else {
       const d = await r.json().catch(() => ({})) as { message?: string };
-      setLtError(d.message ?? "Failed to save leave type.");
+      const msg = d.message ?? "Failed to save leave type.";
+      setLtError(msg);
+      toast.error("Failed to create leave type", msg);
     }
   }
 
@@ -125,19 +155,30 @@ export function LeavePolicies() {
 
   async function save() {
     setError("");
+    const isNew = editing === "new";
     const allocations = Object.entries(form.allocations).map(([leaveTypeId, daysPerYear]) => ({ leaveTypeId, daysPerYear }));
     const body = { name: form.name, isActive: form.isActive, allocations };
-    const r = editing === "new"
+    const r = isNew
       ? await apiFetch("/leave/policies", { method: "POST", body: JSON.stringify(body) })
       : await apiFetch(`/leave/policies/${(editing as LeavePolicy).id}`, { method: "PUT", body: JSON.stringify(body) });
-    if (r.ok || r.status === 204) { setEditing(null); void load(); }
-    else { const d = await r.json().catch(() => ({})); setError((d as { message?: string }).message ?? "Save failed"); }
+    if (r.ok || r.status === 204) {
+      setEditing(null);
+      void load();
+      toast.success(isNew ? "Policy created" : "Policy updated", form.name);
+    } else {
+      const d = await r.json().catch(() => ({}));
+      const msg = (d as { message?: string }).message ?? "Save failed";
+      setError(msg);
+      toast.error("Save failed", msg);
+    }
   }
 
   async function doDelete(id: string) {
-    await apiFetch(`/leave/policies/${id}`, { method: "DELETE" });
+    const r = await apiFetch(`/leave/policies/${id}`, { method: "DELETE" });
     setDeleteId(null);
     void load();
+    if (r.ok || r.status === 204) toast.success("Leave policy deleted");
+    else toast.error("Failed to delete leave policy");
   }
 
   function setAlloc(leaveTypeId: string, days: number) {
@@ -147,7 +188,7 @@ export function LeavePolicies() {
   const activeLeaveTypes = leaveTypes.filter((t) => t.isActive);
   const hasZeroAlloc = editing && Object.values(form.allocations).some(v => v === 0);
 
-  const columns: ColumnDef<LeavePolicy>[] = [
+  const columns: ServerColumnDef<LeavePolicy>[] = [
     {
       key: "name",
       label: "Name",
@@ -202,28 +243,28 @@ export function LeavePolicies() {
         }
       >
         {error && <div className="alert alert-error">{error}</div>}
-        <div className="form-field">
-          <label className="form-label" htmlFor="lp-name">Policy Name <span className="required">*</span></label>
-          <AppInput
-            id="lp-name"
-            value={form.name}
-            onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-            maxLength={120}
-            required
-          />
+        <div className="drawer-section">
+          <div className="form-field">
+            <label className="form-label" htmlFor="lp-name">Policy Name <span className="required">*</span></label>
+            <AppInput
+              id="lp-name"
+              value={form.name}
+              onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+              maxLength={120}
+              required
+            />
+          </div>
+          <label className="flex items-center gap-2 text-[0.825rem] text-text-secondary">
+            <AppCheckbox checked={form.isActive} onChange={(e) => setForm((p) => ({ ...p, isActive: e.target.checked }))} />
+            Active
+          </label>
         </div>
-        <label className="flex items-center gap-2 text-[0.825rem] text-text-secondary">
-          <AppCheckbox checked={form.isActive} onChange={(e) => setForm((p) => ({ ...p, isActive: e.target.checked }))} />
-          Active
-        </label>
-
-        <div className="border-t border-border-subtle my-2" />
 
         {activeLeaveTypes.length > 0 && (
-          <div>
-            <div className="form-label mb-2">Leave Allocations (days/year)</div>
+          <div className="drawer-section">
+            <div className="drawer-section-label">Leave Allocations (days/year)</div>
             {hasZeroAlloc && (
-              <div className="text-[0.78rem] text-warning-dark bg-warning-light border border-[rgba(245,158,11,0.3)] rounded-md px-3 py-2 mb-3">
+              <div className="text-[0.78rem] text-warning-dark bg-warning-light border border-[rgba(245,158,11,0.3)] rounded-md px-3 py-2">
                 ⚠ Some leave types have 0 days allocated. Employees on this policy will have no entitlement for those types.
               </div>
             )}
@@ -268,16 +309,20 @@ export function LeavePolicies() {
         <div className="card-header mgmt-card-head">
           <div className="card-title">
             All Leave Policies
-            <span className="mgmt-count-pill">{policies.length} polic{policies.length === 1 ? "y" : "ies"}</span>
+            <span className="mgmt-count-pill">{totalCount} polic{totalCount === 1 ? "y" : "ies"}</span>
           </div>
           <AppButton variant="outline" size="sm">Export</AppButton>
         </div>
-        <AppDataTable
+        <ServerDataTable
           columns={columns}
           data={policies}
+          totalCount={totalCount}
+          query={tableQuery}
+          onQueryChange={setTableQuery}
           rowKey={p => p.id}
           searchPlaceholder="Search policies…"
           emptyText="No leave policies found."
+          loading={loading}
         />
       </div>
 

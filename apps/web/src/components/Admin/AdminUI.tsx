@@ -21,7 +21,9 @@ export function Drawer({ open, title, onClose, children, footer }: DrawerProps) 
       <div className="drawer" role="dialog" aria-modal="true" aria-label={title}>
         <div className="drawer-header">
           <div className="drawer-title">{title}</div>
-          <AppButton className="drawer-close" variant="ghost" size="sm" onClick={onClose} aria-label="Close">x</AppButton>
+          <button className="drawer-close" onClick={onClose} aria-label="Close">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><line x1="1" y1="1" x2="12" y2="12"/><line x1="12" y1="1" x2="1" y2="12"/></svg>
+          </button>
         </div>
         <div className="drawer-body">{children}</div>
         {footer && <div className="drawer-footer">{footer}</div>}

@@ -554,29 +554,36 @@ export function Reports() {
   // Aggregate attendance rows by employee+date
   const items = reportKey === "attendance-summary" ? aggregateAttendance(rawItems) : rawItems;
 
-  // Unique employee names for filter dropdown (from current page)
-  const uniqueEmployees = Array.from(new Set(items.map(r => String(r.username ?? "")).filter(Boolean))).sort();
+  const totalFromApi = data?.total ?? 0;
+  const clientTransformsEnabled = totalFromApi <= pageSize;
 
-  const filtered = items
-    .filter(row => !employeeFilter || String(row.username) === employeeFilter)
-    .filter(row => !search.trim() || Object.values(row).some(v => String(v ?? "").toLowerCase().includes(search.toLowerCase())));
+  // Unique employee names for filter dropdown (from current page only)
+  const uniqueEmployees = clientTransformsEnabled
+    ? Array.from(new Set(items.map(r => String(r.username ?? "")).filter(Boolean))).sort()
+    : [];
 
-  const sorted = sortCol
+  const filtered = clientTransformsEnabled
+    ? items
+        .filter(row => !employeeFilter || String(row.username) === employeeFilter)
+        .filter(row => !search.trim() || Object.values(row).some(v => String(v ?? "").toLowerCase().includes(search.toLowerCase())))
+    : items;
+
+  const sorted = clientTransformsEnabled && sortCol
     ? [...filtered].sort((a, b) => {
         const cmp = String(a[sortCol] ?? "").localeCompare(String(b[sortCol] ?? ""), undefined, { numeric: true });
         return sortDir === "asc" ? cmp : -cmp;
       })
     : filtered;
-
-  const totalFromApi = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalFromApi / pageSize));
   const showStart = (page - 1) * pageSize + 1;
   const showEnd = Math.min(page * pageSize, totalFromApi);
   const showingText = totalFromApi === 0
     ? "No records"
-    : search.trim() || employeeFilter
+    : clientTransformsEnabled && (search.trim() || employeeFilter)
       ? `${sorted.length} of ${totalFromApi} records (filtered)`
-      : `Showing ${showStart}–${showEnd} of ${totalFromApi}`;
+      : !clientTransformsEnabled && (search.trim() || employeeFilter || sortCol)
+        ? "Client-side filtering/sorting is disabled for paged datasets"
+        : `Showing ${showStart}-${showEnd} of ${totalFromApi}`;
 
   const kpis = computeKpi(reportKey, items);
 
@@ -751,7 +758,7 @@ export function Reports() {
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", color: "var(--text-tertiary)", pointerEvents: "none" }}>
                 <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
               </svg>
-              <AppInput type="text" style={{ paddingLeft: 28, width: 190, height: 30, fontSize: "0.8rem" }} placeholder="Search rows…" value={search} onChange={e => setSearch(e.target.value)} />
+              <AppInput type="text" style={{ paddingLeft: 28, width: 190, height: 30, fontSize: "0.8rem" }} placeholder={clientTransformsEnabled ? "Search rows…" : "Search disabled on paged data"} value={search} onChange={e => setSearch(e.target.value)} disabled={!clientTransformsEnabled} />
             </div>
             <div style={{ position: "relative", display: "inline-block" }}>
               <AppButton variant="outline" size="sm" style={{ display: "flex", alignItems: "center", gap: 5 }} onClick={() => setExportOpen(o => !o)}>
@@ -795,7 +802,7 @@ export function Reports() {
                   <thead>
                     <tr>
                       {cols.map(c => (
-                        <th key={c.key} className={[c.sortable && "rpt-th-sort", c.align === "right" && "text-right"].filter(Boolean).join(" ")} aria-sort={c.sortable ? (sortCol === c.key ? (sortDir === "asc" ? "ascending" : "descending") : "none") : undefined} onClick={c.sortable ? () => toggleSort(c.key) : undefined}>
+                        <th key={c.key} className={[c.sortable && clientTransformsEnabled && "rpt-th-sort", c.align === "right" && "text-right"].filter(Boolean).join(" ")} aria-sort={c.sortable && clientTransformsEnabled ? (sortCol === c.key ? (sortDir === "asc" ? "ascending" : "descending") : "none") : undefined} onClick={c.sortable && clientTransformsEnabled ? () => toggleSort(c.key) : undefined}>
                           {c.label}{c.sortable && <SortIcon active={sortCol === c.key} dir={sortDir} />}
                         </th>
                       ))}
@@ -954,3 +961,4 @@ export function Reports() {
     </section>
   );
 }
+

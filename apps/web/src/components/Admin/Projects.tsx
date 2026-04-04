@@ -1,9 +1,9 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Pencil, PauseCircle, PlayCircle } from "lucide-react";
 import { apiFetch } from "../../api/client";
-import type { Project } from "../../types";
-import { AppButton, AppCheckbox, AppIconButton, AppInput, AppSelect } from "../ui";
-import { AppDataTable, type ColumnDef } from "../ui/AppDataTable";
+import type { PagedResponse, Project } from "../../types";
+import { AppButton, AppCheckbox, AppIconButton, AppInput, AppSelect, ServerDataTable, type ServerColumnDef, type ServerTableQuery } from "../ui";
+import { useToast } from "../../contexts/ToastContext";
 
 type ProjectForm = { name: string; code: string; isActive: boolean };
 const BLANK: ProjectForm = { name: "", code: "", isActive: true };
@@ -27,7 +27,9 @@ function Drawer({ open, title, onClose, children, footer }: { open: boolean; tit
       <div className="drawer" role="dialog" aria-modal="true">
         <div className="drawer-header">
           <div className="drawer-title">{title}</div>
-          <AppButton className="drawer-close" variant="ghost" size="sm" onClick={onClose}>x</AppButton>
+          <button className="drawer-close" onClick={onClose} aria-label="Close">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><line x1="1" y1="1" x2="12" y2="12"/><line x1="12" y1="1" x2="1" y2="12"/></svg>
+          </button>
         </div>
         <div className="drawer-body">{children}</div>
         {footer && <div className="drawer-footer">{footer}</div>}
@@ -37,46 +39,81 @@ function Drawer({ open, title, onClose, children, footer }: { open: boolean; tit
 }
 
 export function Projects() {
+  const toast = useToast();
   const [projects, setProjects] = useState<Project[]>([]);
   const [editing, setEditing] = useState<Project | "new" | null>(null);
   const [form, setForm] = useState<ProjectForm>(BLANK);
   const [error, setError] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [totalCount, setTotalCount] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [tableQuery, setTableQuery] = useState<ServerTableQuery>({
+    page: 1,
+    pageSize: 25,
+    search: "",
+    sortBy: "name",
+    sortDir: "asc",
+  });
 
   async function load() {
-    const r = await apiFetch("/projects");
-    if (r.ok) setProjects(await r.json());
+    setLoading(true);
+    const params = new URLSearchParams({
+      page: String(tableQuery.page),
+      pageSize: String(tableQuery.pageSize),
+      sortBy: tableQuery.sortBy,
+      sortDir: tableQuery.sortDir,
+    });
+    if (tableQuery.search.trim()) params.set("search", tableQuery.search.trim());
+    if (statusFilter) params.set("status", statusFilter);
+    const r = await apiFetch(`/projects?${params.toString()}`);
+    if (r.ok) {
+      const d = await r.json() as PagedResponse<Project>;
+      setProjects(d.items);
+      setTotalCount(d.totalCount);
+    }
+    setLoading(false);
   }
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, [tableQuery, statusFilter]);
 
   function openCreate() { setForm(BLANK); setError(""); setEditing("new"); }
   function openEdit(p: Project) { setForm({ name: p.name, code: p.code, isActive: p.isActive }); setError(""); setEditing(p); }
 
   async function save() {
     setError("");
+    const isNew = editing === "new";
     const body = { name: form.name, code: form.code, isActive: form.isActive };
-    const r = editing === "new"
+    const r = isNew
       ? await apiFetch("/projects", { method: "POST", body: JSON.stringify(body) })
       : await apiFetch(`/projects/${(editing as Project).id}`, { method: "PUT", body: JSON.stringify(body) });
-    if (r.ok || r.status === 204) { setEditing(null); void load(); return; }
+    if (r.ok || r.status === 204) {
+      setEditing(null);
+      void load();
+      toast.success(isNew ? "Project created" : "Project updated", form.name);
+      return;
+    }
     const d = await r.json().catch(() => ({}));
-    setError((d as { message?: string }).message ?? "Save failed");
+    const msg = (d as { message?: string }).message ?? "Save failed";
+    setError(msg);
+    toast.error("Save failed", msg);
   }
 
   async function toggleProjectActive(p: Project) {
     if (p.isArchived) return;
     const body = { name: p.name, code: p.code, isActive: !p.isActive };
     const r = await apiFetch(`/projects/${p.id}`, { method: "PUT", body: JSON.stringify(body) });
-    if (r.ok || r.status === 204) void load();
+    if (r.ok || r.status === 204) {
+      toast.success(`${p.name} ${p.isActive ? "deactivated" : "activated"}`);
+      void load();
+    } else {
+      toast.error("Failed to update project status");
+    }
   }
 
   const statusOf = (p: Project) => (p.isArchived ? "archived" : p.isActive ? "active" : "inactive");
   const f = (k: keyof ProjectForm, v: string | boolean) => setForm((p) => ({ ...p, [k]: v }));
 
-  const preFiltered = statusFilter ? projects.filter(p => statusOf(p) === statusFilter) : projects;
-
-  const columns: ColumnDef<Project>[] = [
+  const columns: ServerColumnDef<Project>[] = [
     {
       key: "name",
       label: "Project Name",
@@ -105,7 +142,6 @@ export function Projects() {
       key: "status",
       label: "Status",
       sortable: true,
-      sortValue: p => statusOf(p),
       width: "160px",
       render: p => p.isArchived
         ? <span className="badge badge-neutral">Archived</span>
@@ -158,18 +194,20 @@ export function Projects() {
         }
       >
         {error && <div className="alert alert-error">{error}</div>}
-        <div className="form-field">
-          <label className="form-label" htmlFor="p-name">Name <span className="required">*</span></label>
-          <AppInput id="p-name" value={form.name} onChange={(e) => f("name", e.target.value)} maxLength={200} required />
+        <div className="drawer-section">
+          <div className="form-field">
+            <label className="form-label" htmlFor="p-name">Name <span className="required">*</span></label>
+            <AppInput id="p-name" value={form.name} onChange={(e) => f("name", e.target.value)} maxLength={200} required />
+          </div>
+          <div className="form-field">
+            <label className="form-label" htmlFor="p-code">Code <span className="required">*</span></label>
+            <AppInput id="p-code" value={form.code} onChange={(e) => f("code", e.target.value.toUpperCase())} maxLength={50} required />
+          </div>
+          <label className="flex items-center gap-2 text-[0.825rem] text-text-secondary">
+            <AppCheckbox checked={form.isActive} onChange={(e) => f("isActive", e.target.checked)} />
+            Active
+          </label>
         </div>
-        <div className="form-field">
-          <label className="form-label" htmlFor="p-code">Code <span className="required">*</span></label>
-          <AppInput id="p-code" value={form.code} onChange={(e) => f("code", e.target.value.toUpperCase())} maxLength={50} required />
-        </div>
-        <label className="flex items-center gap-2 text-[0.825rem] text-text-secondary">
-          <AppCheckbox checked={form.isActive} onChange={(e) => f("isActive", e.target.checked)} />
-          Active
-        </label>
       </Drawer>
 
       <div className="page-header">
@@ -187,19 +225,23 @@ export function Projects() {
         <div className="card-header mgmt-card-head">
           <div className="card-title">
             All Projects
-            <span className="mgmt-count-pill">{projects.length} project{projects.length === 1 ? "" : "s"}</span>
+            <span className="mgmt-count-pill">{totalCount} project{totalCount === 1 ? "" : "s"}</span>
           </div>
           <AppButton variant="outline" size="sm">Export</AppButton>
         </div>
-        <AppDataTable
+        <ServerDataTable
           columns={columns}
-          data={preFiltered}
+          data={projects}
+          totalCount={totalCount}
+          query={tableQuery}
+          onQueryChange={setTableQuery}
           rowKey={p => p.id}
           searchPlaceholder="Search by name or code…"
           emptyText={statusFilter ? "No projects match your filters." : "No projects found."}
+          loading={loading}
           rowOpacity={p => p.isActive ? 1 : 0.6}
           toolbar={
-            <AppSelect style={{ height: 34, fontSize: 13 }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+            <AppSelect style={{ height: 34, fontSize: 13 }} value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setTableQuery((q) => ({ ...q, page: 1 })); }}>
               <option value="">All Statuses</option>
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>

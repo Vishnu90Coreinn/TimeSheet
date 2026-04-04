@@ -12,7 +12,7 @@ public static class ResultExtensions
         ResultStatus.Forbidden  => new ObjectResult(new { error = result.Error }) { StatusCode = 403 },
         ResultStatus.Conflict   => new ConflictObjectResult(new { error = result.Error }),
         ResultStatus.Validation => new UnprocessableEntityObjectResult(new { error = result.Error }),
-        _                       => new ObjectResult(new { error = result.Error }) { StatusCode = 500 }
+        _                       => new BadRequestObjectResult(new { error = result.Error })
     };
 
     public static IActionResult ToActionResult<T>(this Result<T> result) => result.Status switch
@@ -22,6 +22,6 @@ public static class ResultExtensions
         ResultStatus.Forbidden  => new ObjectResult(new { error = result.Error }) { StatusCode = 403 },
         ResultStatus.Conflict   => new ConflictObjectResult(new { error = result.Error }),
         ResultStatus.Validation => new UnprocessableEntityObjectResult(new { error = result.Error }),
-        _                       => new ObjectResult(new { error = result.Error }) { StatusCode = 500 }
+        _                       => new BadRequestObjectResult(new { error = result.Error })
     };
 }

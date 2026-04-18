@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { apiFetch } from "../api/client";
+import { useSignalREvent, HUB_EVENTS } from "../contexts/SignalRContext";
 import { AttendanceWidget } from "./AttendanceWidget";
 import { useConfirm } from "../hooks/useConfirm";
 import { SkeletonPage } from "./Skeleton";
@@ -1874,6 +1875,26 @@ export function Dashboard({ role, username, onboardingCompletedAt, onNavigate }:
         .finally(() => setLoading(false));
     }
   }, [role]);
+
+  // Live: attendance check-in or approval → lightweight KPI refresh without full page reload
+  useSignalREvent(HUB_EVENTS.DashboardUpdated, () => {
+    if (!loading) {
+      // Re-run the same fetch logic silently (no loading spinner)
+      if (role === "employee") {
+        apiFetch("/dashboard/employee").then(r => r.ok ? r.json() : null).then(d => {
+          if (d) setEmpState(prev => prev ? { ...prev, employee: d } : null);
+        }).catch(() => {});
+      } else if (role === "manager") {
+        apiFetch("/dashboard/manager").then(r => r.ok ? r.json() : null).then(d => {
+          if (d) setMgrData(d);
+        }).catch(() => {});
+      } else if (role === "admin") {
+        apiFetch("/dashboard/management").then(r => r.ok ? r.json() : null).then(d => {
+          if (d) setAdminData(d);
+        }).catch(() => {});
+      }
+    }
+  });
 
   if (loading) return <SkeletonPage kpis={role === "manager" ? 5 : 4} rows={5} cols={5} />;
 

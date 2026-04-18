@@ -1,7 +1,11 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using TimeSheet.Api.Dtos;
+using TimeSheet.Api.Hubs;
 using TimeSheet.Application.Attendance.Commands;
 using TimeSheet.Application.Attendance.Queries;
 using TimeSheet.Application.Common.Models;
@@ -11,11 +15,27 @@ namespace TimeSheet.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/v1/attendance")]
-public class AttendanceController(ISender mediator) : ControllerBase
+public class AttendanceController(ISender mediator, IHubContext<TimeSheetHub> hub, TimeSheetDbContext db) : ControllerBase
 {
     [HttpPost("check-in")]
     public async Task<ActionResult<AttendanceSummaryResponse>> CheckIn([FromBody] CheckInRequest request, CancellationToken ct)
-        => FromSummaryResult(await mediator.Send(new CheckInCommand(request.CheckInAtUtc), ct));
+    {
+        var result = await mediator.Send(new CheckInCommand(request.CheckInAtUtc), ct);
+        if (!result.IsSuccess) return Fail(result);
+
+        var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var user = await db.Users.AsNoTracking()
+            .Select(u => new { u.Id, u.ManagerId, u.Username })
+            .FirstOrDefaultAsync(u => u.Id == currentUserId, ct);
+        if (user?.ManagerId != null)
+            await hub.Clients.Group($"manager-{user.ManagerId}").SendAsync(
+                TimeSheetHub.TeamClockIn,
+                new { userId = currentUserId, username = user.Username },
+                ct);
+        await hub.Clients.All.SendAsync(TimeSheetHub.DashboardUpdated, new { }, ct);
+
+        return Ok(ToSummaryResponse(result.Value!));
+    }
 
     [HttpPost("check-out")]
     public async Task<ActionResult<AttendanceSummaryResponse>> CheckOut([FromBody] CheckOutRequest request, CancellationToken ct)

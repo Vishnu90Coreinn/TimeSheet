@@ -3,6 +3,7 @@
  */
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { apiFetch } from "../api/client";
+import { useSignalREvent, HUB_EVENTS } from "../contexts/SignalRContext";
 import { SkeletonPage } from "./Skeleton";
 import { EmptyLeave } from "./EmptyState";
 import type { CompOffBalance, LeaveBalance, LeaveRequest, LeaveRequestGroup, LeaveType, TeamLeaveEntry, User, PagedResponse } from "../types";
@@ -388,6 +389,9 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
     ]).finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isManager, isAdmin]);
+
+  // Live: leave status changed (approved/rejected) → reload balances and history
+  useSignalREvent(HUB_EVENTS.LeaveStatusChanged, () => { loadBalances(); loadHistory(); });
 
   // ── Apply form submit ────────────────────────────────────────
   async function applyLeave(e: FormEvent) {

@@ -1,6 +1,8 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using TimeSheet.Api.Dtos;
 using TimeSheet.Api.Extensions;
 using TimeSheet.Application.Notifications.Commands;
@@ -11,7 +13,7 @@ namespace TimeSheet.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/v1/notifications")]
-public class NotificationsController(ISender mediator, ILogger<NotificationsController> logger) : ControllerBase
+public class NotificationsController(ISender mediator, ILogger<NotificationsController> logger, TimeSheetDbContext db) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> Get([FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
@@ -32,6 +34,14 @@ public class NotificationsController(ISender mediator, ILogger<NotificationsCont
                 item.ActionUrl)).ToList(),
             v.TotalUnread,
             v.HasMore));
+    }
+
+    [HttpGet("count")]
+    public async Task<IActionResult> GetUnreadCount(CancellationToken ct)
+    {
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var count = await db.Notifications.CountAsync(n => n.UserId == userId && !n.IsRead, ct);
+        return Ok(new { unreadCount = count });
     }
 
     [HttpPut("{id:guid}/read")]

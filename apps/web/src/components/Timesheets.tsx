@@ -5,6 +5,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch } from "../api/client";
+import { useSignalREvent, HUB_EVENTS } from "../contexts/SignalRContext";
 import { useToast } from "../contexts/ToastContext";
 import { SkeletonPage } from "./Skeleton";
 import { EmptyTimesheets } from "./EmptyState";
@@ -291,6 +292,9 @@ export function Timesheets() {
     ]).finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Live: manager approved/rejected → reload current week to update status badges
+  useSignalREvent(HUB_EVENTS.TimesheetStatusChanged, () => { void loadWeek(selectedDate); });
 
   // Task timer live counter
   useEffect(() => {

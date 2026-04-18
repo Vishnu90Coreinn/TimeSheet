@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { apiFetch } from "../api/client";
+import { useSignalREvent, HUB_EVENTS } from "../contexts/SignalRContext";
 import { SkeletonPage } from "./Skeleton";
 import { EmptyApprovals } from "./EmptyState";
 import type { ApprovalItem, LeaveRequest, PagedResponse, User } from "../types";
@@ -362,6 +363,9 @@ export function Approvals() {
 
   useEffect(() => { loadData(); void loadDelegation(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
   useEffect(() => { if (!loading) loadData(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [statsPeriod]);
+
+  // Live: a team member submitted a new timesheet → refresh the pending list
+  useSignalREvent(HUB_EVENTS.TimesheetSubmitted, () => { loadData(); });
 
   async function approveTs(timesheetId: string, requiresReview: boolean) {
     if (requiresReview) return;

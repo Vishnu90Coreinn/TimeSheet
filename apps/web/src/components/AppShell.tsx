@@ -4,6 +4,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { apiFetch } from "../api/client";
 import { NotificationBell } from "./Notifications";
+import { useSignalR } from "../contexts/SignalRContext";
 import type { Session } from "../types";
 import type { View } from "../types";
 import { CommandPalette } from "./CommandPalette";
@@ -97,6 +98,7 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
     return window.innerWidth >= 1280;
   });
   const [pendingCount, setPendingCount] = useState(0);
+  const { state: signalRState } = useSignalR();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(() => {
@@ -268,6 +270,21 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
             <kbd>⌘K</kbd>
           </button>
           <ThemeToggle />
+          {signalRState === "reconnecting" && (
+            <span
+              title="Reconnecting to live updates…"
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 4,
+                fontSize: "0.72rem", color: "var(--n-500, #6b7280)",
+                padding: "2px 6px", borderRadius: 6,
+                background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)",
+              }}
+              aria-label="Reconnecting to live updates"
+            >
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#d97706", display: "inline-block", animation: "pulse-dot 1s ease-in-out infinite" }} aria-hidden="true" />
+              Reconnecting
+            </span>
+          )}
           <NotificationBell />
           <div className="topbar-divider" />
           <button

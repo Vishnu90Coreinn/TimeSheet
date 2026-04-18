@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Serilog.Events;
+using TimeSheet.Api.Hubs;
 using TimeSheet.Api.Middleware;
 using TimeSheet.Api.Services;
 using TimeSheet.Api.Utilities;
@@ -31,6 +32,7 @@ try
         });
     builder.Services.AddApplication();
     builder.Services.AddInfrastructure(builder.Configuration);
+    builder.Services.AddSignalR();
     builder.Services.AddScoped<IWebPushService, WebPushService>();
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
@@ -57,6 +59,17 @@ try
                 ValidAudience = jwt["Audience"],
                 IssuerSigningKey = key
             };
+            options.Events = new JwtBearerEvents
+            {
+                OnMessageReceived = ctx =>
+                {
+                    var token = ctx.Request.Query["access_token"];
+                    var path  = ctx.HttpContext.Request.Path;
+                    if (!string.IsNullOrEmpty(token) && path.StartsWithSegments("/hubs"))
+                        ctx.Token = token;
+                    return Task.CompletedTask;
+                }
+            };
         });
 
     var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
@@ -67,7 +80,8 @@ try
         options.AddPolicy("WebClient", policy =>
             policy.WithOrigins(allowedOrigins)
                   .AllowAnyHeader()
-                  .AllowAnyMethod());
+                  .AllowAnyMethod()
+                  .AllowCredentials());
     });
 
     builder.Services.AddRateLimiter(options =>
@@ -121,6 +135,7 @@ try
     app.UseAuthorization();
 
     app.MapControllers();
+    app.MapHub<TimeSheetHub>("/hubs/timesheet");
 
     await DbInitializer.MigrateAsync(app.Services);
     await DbInitializer.SeedAsync(app.Services);

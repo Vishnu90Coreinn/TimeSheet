@@ -31,6 +31,7 @@ import { AdminHub } from "./components/Admin/AdminHub";
 import { PasswordPolicy } from "./components/Admin/PasswordPolicy";
 import { ConsentBanner } from "./components/ConsentBanner";
 import { useSession } from "./hooks/useSession";
+import { SignalRProvider } from "./contexts/SignalRContext";
 import type { View } from "./types";
 
 export function hasViewAccess(role: string, view: View): boolean {
@@ -102,7 +103,7 @@ function AppRoutes() {
   }
 
   return (
-    <>
+    <SignalRProvider userId={session.userId} managerId={session.role === "manager" || session.role === "admin" ? session.userId : null}>
       <OnboardingWizard
         open={showOnboarding}
         role={session.role}
@@ -142,7 +143,7 @@ function AppRoutes() {
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </AppShell>
-    </>
+    </SignalRProvider>
   );
 }
 

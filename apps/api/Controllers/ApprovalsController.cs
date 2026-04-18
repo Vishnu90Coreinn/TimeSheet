@@ -1,17 +1,20 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
+using TimeSheet.Api.Dtos;
+using TimeSheet.Api.Hubs;
 using TimeSheet.Application.Approvals.Commands;
 using TimeSheet.Application.Approvals.Queries;
 using TimeSheet.Application.Common.Models;
-using TimeSheet.Api.Dtos;
 
 namespace TimeSheet.Api.Controllers;
 
 [ApiController]
 [Authorize(Roles = "manager,admin")]
 [Route("api/v1/approvals")]
-public class ApprovalsController(ISender mediator) : ControllerBase
+public class ApprovalsController(ISender mediator, IHubContext<TimeSheetHub> hub, TimeSheetDbContext db) : ControllerBase
 {
     [HttpGet("pending-timesheets")]
     public async Task<IActionResult> GetPendingTimesheets([FromQuery] PendingTimesheetsListQuery queryParams, CancellationToken ct)
@@ -78,21 +81,42 @@ public class ApprovalsController(ISender mediator) : ControllerBase
     public async Task<IActionResult> Approve(Guid id, [FromBody] TimesheetDecisionRequest request, CancellationToken ct)
     {
         var result = await mediator.Send(new ApproveTimesheetCommand(id, request.Comment), ct);
-        return result.IsSuccess ? Ok(new { message = "Action completed." }) : Fail(result);
+        if (!result.IsSuccess) return Fail(result);
+
+        var ts = await db.Timesheets.AsNoTracking().FirstOrDefaultAsync(t => t.Id == id, ct);
+        if (ts != null)
+        {
+            await hub.Clients.Group($"user-{ts.UserId}").SendAsync(TimeSheetHub.TimesheetStatusChanged, new { timesheetId = id, status = "approved" }, ct);
+            await hub.Clients.All.SendAsync(TimeSheetHub.DashboardUpdated, new { }, ct);
+        }
+
+        return Ok(new { message = "Action completed." });
     }
 
     [HttpPost("timesheets/{id:guid}/reject")]
     public async Task<IActionResult> Reject(Guid id, [FromBody] TimesheetDecisionRequest request, CancellationToken ct)
     {
         var result = await mediator.Send(new RejectTimesheetCommand(id, request.Comment ?? string.Empty), ct);
-        return result.IsSuccess ? Ok(new { message = "Action completed." }) : Fail(result);
+        if (!result.IsSuccess) return Fail(result);
+
+        var ts = await db.Timesheets.AsNoTracking().FirstOrDefaultAsync(t => t.Id == id, ct);
+        if (ts != null)
+            await hub.Clients.Group($"user-{ts.UserId}").SendAsync(TimeSheetHub.TimesheetStatusChanged, new { timesheetId = id, status = "rejected" }, ct);
+
+        return Ok(new { message = "Action completed." });
     }
 
     [HttpPost("timesheets/{id:guid}/push-back")]
     public async Task<IActionResult> PushBack(Guid id, [FromBody] TimesheetDecisionRequest request, CancellationToken ct)
     {
         var result = await mediator.Send(new PushBackTimesheetCommand(id, request.Comment ?? string.Empty), ct);
-        return result.IsSuccess ? Ok(new { message = "Action completed." }) : Fail(result);
+        if (!result.IsSuccess) return Fail(result);
+
+        var ts = await db.Timesheets.AsNoTracking().FirstOrDefaultAsync(t => t.Id == id, ct);
+        if (ts != null)
+            await hub.Clients.Group($"user-{ts.UserId}").SendAsync(TimeSheetHub.TimesheetStatusChanged, new { timesheetId = id, status = "draft" }, ct);
+
+        return Ok(new { message = "Action completed." });
     }
 
     [HttpGet("stats")]

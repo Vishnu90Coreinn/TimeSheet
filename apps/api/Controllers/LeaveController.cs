@@ -1,8 +1,12 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using TimeSheet.Api.Dtos;
 using TimeSheet.Api.Extensions;
+using TimeSheet.Api.Hubs;
 using TimeSheet.Application.Leave.Commands;
 using TimeSheet.Application.Leave.Queries;
 
@@ -11,7 +15,7 @@ namespace TimeSheet.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/v1/leave")]
-public class LeaveController(ISender mediator) : ControllerBase
+public class LeaveController(ISender mediator, IHubContext<TimeSheetHub> hub, TimeSheetDbContext db) : ControllerBase
 {
     [HttpGet("types")]
     public async Task<IActionResult> GetLeaveTypes(CancellationToken ct)
@@ -35,6 +39,17 @@ public class LeaveController(ISender mediator) : ControllerBase
         var result = await mediator.Send(
             new ApplyLeaveCommand(request.FromDate, request.ToDate, request.LeaveTypeId, request.IsHalfDay, request.Comment), ct);
         if (!result.IsSuccess) return result.ToActionResult();
+
+        var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var user = await db.Users.AsNoTracking()
+            .Select(u => new { u.Id, u.ManagerId })
+            .FirstOrDefaultAsync(u => u.Id == currentUserId, ct);
+        if (user?.ManagerId != null)
+            await hub.Clients.Group($"user-{currentUserId}").SendAsync(
+                TimeSheetHub.LeaveStatusChanged,
+                new { status = "pending" },
+                ct);
+
         return Ok(new { leaveGroupId = result.Value!.LeaveGroupId, count = result.Value.Count });
     }
 
@@ -83,9 +98,25 @@ public class LeaveController(ISender mediator) : ControllerBase
 
     [HttpPost("requests/{leaveRequestId:guid}/review")]
     [Authorize(Roles = "manager,admin")]
-    public async Task<IActionResult> ReviewLeave(Guid leaveRequestId, [FromBody] ReviewLeaveRequest request)
+    public async Task<IActionResult> ReviewLeave(Guid leaveRequestId, [FromBody] ReviewLeaveRequest request, CancellationToken ct)
     {
+        // Look up the leave request owner before sending the command
+        var leaveRequest = await db.LeaveRequests.AsNoTracking()
+            .Select(lr => new { lr.Id, lr.UserId })
+            .FirstOrDefaultAsync(lr => lr.Id == leaveRequestId, ct);
+
         var result = await mediator.Send(new ReviewLeaveCommand(leaveRequestId, request.Approve, request.Comment));
+        if (!result.IsSuccess) return result.ToActionResult();
+
+        if (leaveRequest != null)
+        {
+            var status = request.Approve ? "approved" : "rejected";
+            await hub.Clients.Group($"user-{leaveRequest.UserId}").SendAsync(
+                TimeSheetHub.LeaveStatusChanged,
+                new { status },
+                ct);
+        }
+
         return result.ToActionResult();
     }
 

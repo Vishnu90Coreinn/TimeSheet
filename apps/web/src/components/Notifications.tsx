@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bell, CalendarClock, CheckCircle2, ChevronRight, Clock3, RefreshCw, TriangleAlert, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../api/client";
+import { useSignalREvent, HUB_EVENTS } from "../contexts/SignalRContext";
 import type { Notification, NotificationListResponse } from "../types";
 import { EmptyNotifications } from "./EmptyState";
 import { useConfirm } from "./ConfirmDialog";
@@ -201,6 +202,15 @@ export function NotificationBell() {
   useEffect(() => {
     void loadPage(1, "replace");
   }, [loadPage]);
+
+  // Live: new notification arrives → increment badge and pulse without full reload
+  useSignalREvent(HUB_EVENTS.NewNotification, () => {
+    setTotalUnread(prev => prev + 1);
+    setBadgePulse(true);
+    setTimeout(() => setBadgePulse(false), 600);
+    // If drawer is open, reload to show the new item
+    if (open) void loadPage(1, "replace");
+  });
 
   useEffect(() => {
     if (prevUnreadRef.current === null) {

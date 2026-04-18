@@ -61,7 +61,13 @@ export default defineConfig({
       "/api": {
         target: "https://localhost:7012",
         changeOrigin: true,
-        secure: false, // trust the ASP.NET Core self-signed dev cert
+        secure: false,
+      },
+      "/hubs": {
+        target: "https://localhost:7012",
+        changeOrigin: true,
+        secure: false,
+        ws: true, // proxy WebSocket connections for SignalR
       },
     },
   },

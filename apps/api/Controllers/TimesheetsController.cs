@@ -1,7 +1,11 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using TimeSheet.Api.Dtos;
+using TimeSheet.Api.Hubs;
 using AppInterfaces = TimeSheet.Application.Common.Interfaces;
 using TimeSheet.Application.Common.Models;
 using TimeSheet.Application.Timesheets.Commands;
@@ -12,7 +16,7 @@ namespace TimeSheet.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/v1/timesheets")]
-public class TimesheetsController(ISender mediator) : ControllerBase
+public class TimesheetsController(ISender mediator, IHubContext<TimeSheetHub> hub, TimeSheetDbContext db) : ControllerBase
 {
     [HttpGet("entry-options")]
     public async Task<IActionResult> GetEntryOptions(CancellationToken ct)
@@ -104,6 +108,19 @@ public class TimesheetsController(ISender mediator) : ControllerBase
         var result = await mediator.Send(
             new SubmitTimesheetCommand(request.WorkDate, request.Notes, request.MismatchReason), ct);
         if (!result.IsSuccess) return Fail(result);
+
+        var timesheetId = result.Value!.TimesheetId;
+        var currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+        var user = await db.Users.AsNoTracking()
+            .Select(u => new { u.Id, u.ManagerId, u.Username })
+            .FirstOrDefaultAsync(u => u.Id == currentUserId, ct);
+        if (user?.ManagerId != null)
+            await hub.Clients.Group($"manager-{user.ManagerId}").SendAsync(
+                TimeSheetHub.TimesheetSubmitted,
+                new { timesheetId, userId = currentUserId, username = user.Username },
+                ct);
+
         return Ok(MapDay(result.Value!));
     }
 

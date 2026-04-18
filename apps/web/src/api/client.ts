@@ -9,6 +9,8 @@ export function setTokens(access: string, refresh: string) {
   _refreshToken = refresh;
 }
 
+export function getAccessToken(): string { return _accessToken; }
+
 export function setOnSessionExpired(cb: () => void) {
   _onSessionExpired = cb;
 }

@@ -13,16 +13,17 @@ import { EmailsTab } from "./tabs/EmailsTab";
 import { AdvancedTab } from "./tabs/AdvancedTab";
 import { useToast } from "../../../contexts/ToastContext";
 import { API_BASE } from "../../../api/client";
+import { AppTabs, type AppTab } from "../../ui";
 
 type Tab = "identity" | "colors" | "assets" | "login" | "emails" | "advanced";
 
-const TABS: { id: Tab; label: string; disabled?: boolean }[] = [
-  { id: "identity", label: "Identity" },
-  { id: "colors",   label: "Colours" },
-  { id: "assets",   label: "Assets" },
-  { id: "login",    label: "Login",   disabled: true },
-  { id: "emails",   label: "Emails",  disabled: true },
-  { id: "advanced", label: "Advanced" },
+const TABS: AppTab<Tab>[] = [
+  { key: "identity", label: "Identity" },
+  { key: "colors",   label: "Colours" },
+  { key: "assets",   label: "Assets" },
+  { key: "login",    label: "Login",   disabled: true },
+  { key: "emails",   label: "Emails",  disabled: true },
+  { key: "advanced", label: "Advanced" },
 ];
 
 export function TenantBranding() {
@@ -71,27 +72,13 @@ export function TenantBranding() {
         {/* Left: tab card */}
         <div className="card overflow-hidden">
           {/* Tab bar */}
-          <div className="flex border-b border-[var(--border-subtle)] overflow-x-auto">
-            {TABS.map(tab => (
-              <button
-                key={tab.id}
-                type="button"
-                title={tab.disabled ? "Coming soon — available in a future release." : undefined}
-                aria-label={tab.disabled ? `${tab.label} — coming soon` : tab.label}
-                className={[
-                  "px-4 py-3 text-[0.82rem] font-medium whitespace-nowrap border-b-2 transition-colors",
-                  tab.disabled ? "opacity-40 cursor-not-allowed" : "",
-                ].join(" ")}
-                style={!tab.disabled && activeTab === tab.id
-                  ? { borderBottomColor: "var(--color-primary, #6366f1)", color: "var(--color-primary, #6366f1)" }
-                  : { borderBottomColor: "transparent", color: "var(--text-secondary, #64748b)" }
-                }
-                onClick={() => { if (!tab.disabled) setActiveTab(tab.id); }}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+          <AppTabs
+            tabs={TABS}
+            active={activeTab}
+            onChange={setActiveTab}
+            variant="line"
+            className="overflow-x-auto px-1"
+          />
 
           {/* Tab content */}
           <div className="p-6">

@@ -32,6 +32,12 @@ public class User
     public User? Manager { get; set; }
     public ICollection<User> DirectReports { get; set; } = new List<User>();
 
+    public string? SecurityQuestion { get; set; }
+    [Sensitive(SensitiveDataReason.Credential)]
+    public string? SecurityAnswerHash { get; set; }
+    public bool MustChangePasswordOnLogin { get; set; } = false;
+    public DateTime? PasswordChangedAtUtc { get; set; }
+
     public ICollection<ProjectMember> ProjectMemberships { get; set; } = new List<ProjectMember>();
     public ICollection<WorkSession> WorkSessions { get; set; } = new List<WorkSession>();
     public ICollection<Timesheet> Timesheets { get; set; } = new List<Timesheet>();

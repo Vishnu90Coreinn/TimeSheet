@@ -23,19 +23,40 @@ public class LeaveApprovalIntegrationTests : IClassFixture<CustomWebApplicationF
         var setup = await CreateManagerEmployeeSetup("employee.leave.halfday");
 
         var leaveTypeId = await GetLeaveTypeId();
-        var apply = await setup.EmployeeClient.PostAsJsonAsync("/api/v1/leave/requests", new ApplyLeaveRequest(setup.WorkDate, setup.WorkDate, leaveTypeId, true, "medical"));
+        var leaveDate = ToNextWeekday(setup.WorkDate);
+        var apply = await setup.EmployeeClient.PostAsJsonAsync("/api/v1/leave/requests", new ApplyLeaveRequest(leaveDate, leaveDate, leaveTypeId, true, "medical"));
         Assert.Equal(HttpStatusCode.OK, apply.StatusCode);
 
-        var pending = await setup.ManagerClient.GetFromJsonAsync<List<LeaveRequestResponse>>("/api/v1/leave/requests/pending");
+        var pending = await setup.ManagerClient.GetFromJsonAsync<PagedResponse<LeaveRequestResponse>>("/api/v1/leave/requests/pending");
         Assert.NotNull(pending);
-        var leave = Assert.Single(pending!);
+        var leave = Assert.Single(pending!.Items);
 
         var review = await setup.ManagerClient.PostAsJsonAsync($"/api/v1/leave/requests/{leave.Id}/review", new ReviewLeaveRequest(true, "ok"));
         Assert.Equal(HttpStatusCode.OK, review.StatusCode);
 
-        var day = await setup.EmployeeClient.GetFromJsonAsync<TimesheetDayResponse>($"/api/v1/timesheets/day?workDate={setup.WorkDate:yyyy-MM-dd}");
+        var day = await setup.EmployeeClient.GetFromJsonAsync<TimesheetDayResponse>($"/api/v1/timesheets/day?workDate={leaveDate:yyyy-MM-dd}");
         Assert.NotNull(day);
         Assert.Equal(240, day!.ExpectedMinutes);
+    }
+
+    [Fact]
+    public async Task Leave_PendingRequests_PagedQuery_ReturnsOk()
+    {
+        var setup = await CreateManagerEmployeeSetup("employee.leave.paged");
+
+        var leaveTypeId = await GetLeaveTypeId();
+        var leaveDate = ToNextWeekday(setup.WorkDate);
+        var apply = await setup.EmployeeClient.PostAsJsonAsync(
+            "/api/v1/leave/requests",
+            new ApplyLeaveRequest(leaveDate, leaveDate, leaveTypeId, false, "paged query"));
+        Assert.Equal(HttpStatusCode.OK, apply.StatusCode);
+
+        var response = await setup.ManagerClient.GetAsync("/api/v1/leave/requests/pending?page=1&pageSize=200&sortBy=leaveDate&sortDir=desc");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var payload = await response.Content.ReadFromJsonAsync<PagedResponse<LeaveRequestResponse>>();
+        Assert.NotNull(payload);
+        Assert.Single(payload!.Items);
     }
 
     [Fact]
@@ -114,5 +135,15 @@ public class LeaveApprovalIntegrationTests : IClassFixture<CustomWebApplicationF
         managerClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", managerPayload!.AccessToken);
 
         return (employeeClient, managerClient, project.Id, category.Id, timesheet.Id, workDate);
+    }
+
+    private static DateOnly ToNextWeekday(DateOnly date)
+    {
+        while (date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
+        {
+            date = date.AddDays(1);
+        }
+
+        return date;
     }
 }

@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { apiFetch } from "../api/client";
 import { AttendanceWidget } from "./AttendanceWidget";
 import { useConfirm } from "../hooks/useConfirm";
 import { SkeletonPage } from "./Skeleton";
-import type { LeaveBalance, OvertimeSummary, TeamLeaveEntry } from "../types";
+import type { LeaveBalance, OvertimeSummary, TeamLeaveEntry, PagedResponse, Project, User } from "../types";
 import { OnboardingChecklist } from "./OnboardingChecklist";
 import { useTimezone } from "../hooks/useTimezone";
-import { AppButton } from "./ui";
+import { AppBadge, AppButton } from "./ui";
 
 interface DashboardProps { role: string; username: string; onboardingCompletedAt?: string | null; onNavigate?: (view: string) => void; }
 
@@ -102,12 +103,12 @@ function todayStr(): string {
   return new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric", year: "numeric" });
 }
 function statusBadge(s: string) {
-  const m: Record<string, string> = { draft: "badge badge-warning", submitted: "badge badge-info", approved: "badge badge-success", rejected: "badge badge-error" };
-  return <span className={m[s?.toLowerCase()] ?? "badge badge-neutral"}>{s}</span>;
+  const m: Record<string, "warning" | "info" | "success" | "error"> = { draft: "warning", submitted: "info", approved: "success", rejected: "error" };
+  return <AppBadge variant={m[s?.toLowerCase()] ?? "neutral"}>{s}</AppBadge>;
 }
 function loadBadge(s: string) {
-  const m: Record<string, string> = { underutilized: "badge badge-warning", balanced: "badge badge-success", overloaded: "badge badge-error" };
-  return <span className={m[s] ?? "badge badge-neutral"}>{s}</span>;
+  const m: Record<string, "warning" | "success" | "error"> = { underutilized: "warning", balanced: "success", overloaded: "error" };
+  return <AppBadge variant={m[s] ?? "neutral"}>{s}</AppBadge>;
 }
 function avatarColor(name: string): string {
   const colors = [
@@ -473,17 +474,17 @@ function UtilBar({ minutes, status }: { minutes: number; status?: string }) {
   const actualH = (minutes / 60).toFixed(1);
   let fillClass: string;
   let labelColor: string;
-  let label: string;
+  let label: React.ReactNode;
   if (status === "overloaded") {
-    fillClass = "progress-fill--critical"; labelColor = "var(--danger)"; label = "↓ Critical";
+    fillClass = "progress-fill--critical"; labelColor = "var(--danger)"; label = <><TrendingDown size={11} strokeWidth={2.5} /> Critical</>;
   } else if (status === "balanced") {
-    fillClass = "progress-fill--success"; labelColor = "var(--success)"; label = "↑ On track";
+    fillClass = "progress-fill--success"; labelColor = "var(--success)"; label = <><TrendingUp size={11} strokeWidth={2.5} /> On track</>;
   } else if (barPct < 10) {
-    fillClass = "progress-fill--critical"; labelColor = "var(--danger)"; label = "↓ Critical";
+    fillClass = "progress-fill--critical"; labelColor = "var(--danger)"; label = <><TrendingDown size={11} strokeWidth={2.5} /> Critical</>;
   } else if (barPct < 60) {
-    fillClass = "progress-fill--warning"; labelColor = "var(--warning)"; label = "↓ Below target";
+    fillClass = "progress-fill--warning"; labelColor = "var(--warning)"; label = <><TrendingDown size={11} strokeWidth={2.5} /> Below target</>;
   } else {
-    fillClass = "progress-fill--caution"; labelColor = "#f97316"; label = "~ Near target";
+    fillClass = "progress-fill--caution"; labelColor = "#f97316"; label = <><Minus size={11} strokeWidth={2.5} /> Near target</>;
   }
   return (
     <div className="flex flex-col gap-[2px]">
@@ -636,9 +637,9 @@ function EmployeeDashboard({ employee, week, leaveBalances, activeProjectCount, 
       <div className="stat-grid-4">
         <div className="stat-card">
           <div className="stat-card-top">
-            <div className="stat-icon" style={{ background: "var(--brand-50)" }}><IconClock color="#6366f1" /></div>
+            <div className="stat-icon" style={{ background: "var(--brand-50)", color: "var(--brand-600)" }}><IconClock color="currentColor" /></div>
             <span className={`stat-trend ${pctTarget >= 80 ? "trend-up" : "trend-flat"}`}>
-              {pctTarget > 0 ? `↑ ${pctTarget}% target` : "No entries"}
+              {pctTarget > 0 ? <><TrendingUp size={11} strokeWidth={2.5} /> {pctTarget}% target</> : "No entries"}
             </span>
           </div>
           <div className="stat-value">{hoursThisWeek.toFixed(1)}<span className="text-[1rem] text-[var(--text-tertiary)]">h</span></div>
@@ -648,9 +649,9 @@ function EmployeeDashboard({ employee, week, leaveBalances, activeProjectCount, 
 
         <div className="stat-card">
           <div className="stat-card-top">
-            <div className="stat-icon" style={{ background: "var(--success-light)" }}><IconCheckCircle color="#10b981" /></div>
+            <div className="stat-icon" style={{ background: "var(--success-light)", color: "var(--success)" }}><IconCheckCircle color="currentColor" /></div>
             <span className={`stat-trend ${approvalRate >= 90 ? "trend-up" : "trend-flat"}`}>
-              {approvalRate >= 90 ? `↑ ${approvalRate}%` : "On track"}
+              {approvalRate >= 90 ? <><TrendingUp size={11} strokeWidth={2.5} /> {approvalRate}%</> : "On track"}
             </span>
           </div>
           <div className="stat-value">{approvalRate}<span className="text-[1rem] text-[var(--text-tertiary)]">%</span></div>
@@ -660,7 +661,7 @@ function EmployeeDashboard({ employee, week, leaveBalances, activeProjectCount, 
 
         <div className="stat-card">
           <div className="stat-card-top">
-            <div className="stat-icon" style={{ background: "var(--info-light)" }}><IconLayers color="#3b82f6" /></div>
+            <div className="stat-icon" style={{ background: "var(--info-light)", color: "var(--info)" }}><IconLayers color="currentColor" /></div>
             <span className="stat-trend trend-flat">{projectEffort.length} with hours</span>
           </div>
           <div className="stat-value">{activeProjectCount}</div>
@@ -670,7 +671,7 @@ function EmployeeDashboard({ employee, week, leaveBalances, activeProjectCount, 
 
         <div className="stat-card">
           <div className="stat-card-top">
-            <div className="stat-icon" style={{ background: "var(--warning-light)" }}><IconLeaf color="#f59e0b" /></div>
+            <div className="stat-icon" style={{ background: "var(--warning-light)", color: "var(--warning)" }}><IconLeaf color="currentColor" /></div>
             <span className="stat-trend trend-flat">FY {new Date().getFullYear()}</span>
           </div>
           <div className="stat-value">{annualLeave?.remainingDays ?? 0}<span className="text-[1rem] text-[var(--text-tertiary)]">d</span></div>
@@ -688,7 +689,7 @@ function EmployeeDashboard({ employee, week, leaveBalances, activeProjectCount, 
             </div>
             {pctTarget > 0 && (
               <span className={`stat-trend ${pctTarget >= 100 ? "trend-up" : "trend-flat"}`}>
-                {pctTarget >= 100 ? "↑ " : ""}{pctTarget}% target hit
+                {pctTarget >= 100 ? <><TrendingUp size={11} strokeWidth={2.5} /> </> : ""}{pctTarget}% target hit
               </span>
             )}
           </div>
@@ -840,8 +841,11 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
   const { confirming, payload: confirmPayload, request: requestConfirm, confirm: doConfirm, cancel: cancelConfirm } = useConfirm<PendingApproval>();
 
   const fetchPending = useCallback(async () => {
-    const r = await apiFetch("/approvals/pending-timesheets").catch(() => null);
-    if (r?.ok) { const d = await r.json(); setPendingList((d as PendingApproval[]).slice(0, 5)); }
+    const r = await apiFetch("/approvals/pending-timesheets?page=1&pageSize=5").catch(() => null);
+    if (r?.ok) {
+      const d = await r.json() as PagedResponse<PendingApproval>;
+      setPendingList(d.items.slice(0, 5));
+    }
     setLastRefreshed(new Date());
   }, []);
 
@@ -922,10 +926,10 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
           onKeyDown={e => { if (e.key === "Enter" || e.key === " ") onNavigate?.("team"); }}
         >
           <div className="stat-card-top">
-            <div className="stat-icon" style={{ background: "var(--success-light)" }}><IconPeople color="#10b981" /></div>
+            <div className="stat-icon" style={{ background: "var(--success-light)", color: "var(--success)" }}><IconPeople color="currentColor" /></div>
             {/* C1 — "↑ All in" on Present card when all team is present */}
             <span className={`stat-trend ${allPresent ? "trend-up" : "trend-flat"}`}>
-              {allPresent ? "↑ All in" : "Today"}
+              {allPresent ? <><TrendingUp size={11} strokeWidth={2.5} /> All in</> : "Today"}
             </span>
           </div>
           <div className="stat-value">{teamAttendance.present}</div>
@@ -943,7 +947,7 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
           onKeyDown={e => { if (e.key === "Enter" || e.key === " ") onNavigate?.("team"); }}
         >
           <div className="stat-card-top">
-            <div className="stat-icon" style={{ background: "var(--info-light)" }}><IconLeaf color="#3b82f6" /></div>
+            <div className="stat-icon" style={{ background: "var(--info-light)", color: "var(--info)" }}><IconLeaf color="currentColor" /></div>
             <span className="stat-trend trend-flat">{teamAttendance.onLeave > 0 ? `${teamAttendance.onLeave} away` : "None today"}</span>
           </div>
           <div className="stat-value">{teamAttendance.onLeave}</div>
@@ -961,12 +965,12 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
           onKeyDown={e => { if (e.key === "Enter" || e.key === " ") onNavigate?.("team"); }}
         >
           <div className="stat-card-top">
-            <div className="stat-icon" style={{ background: teamAttendance.notCheckedIn > 0 ? "var(--warning-light)" : "var(--success-light)" }}>
-              <IconClock color={teamAttendance.notCheckedIn > 0 ? "#f59e0b" : "#10b981"} />
+            <div className="stat-icon" style={{ background: teamAttendance.notCheckedIn > 0 ? "var(--warning-light)" : "var(--success-light)", color: teamAttendance.notCheckedIn > 0 ? "var(--warning)" : "var(--success)" }}>
+              <IconClock color="currentColor" />
             </div>
             {/* C1 — not checked in: neutral when 0, warning when >0 */}
             <span className={`stat-trend ${teamAttendance.notCheckedIn > 0 ? "trend-down" : "trend-up"}`}>
-              {teamAttendance.notCheckedIn > 0 ? "↓ Attention" : "✓ None missing"}
+              {teamAttendance.notCheckedIn > 0 ? <><TrendingDown size={11} strokeWidth={2.5} /> Attention</> : "✓ None missing"}
             </span>
           </div>
           <div className="stat-value">{teamAttendance.notCheckedIn}</div>
@@ -984,8 +988,8 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
           onKeyDown={e => { if (e.key === "Enter" || e.key === " ") onNavigate?.("approvals"); }}
         >
           <div className="stat-card-top">
-            <div className="stat-icon" style={{ background: timesheetHealth.pendingApprovals > 0 ? "var(--warning-light)" : "var(--success-light)" }}>
-              <IconAlert color={timesheetHealth.pendingApprovals > 0 ? "#f59e0b" : "#10b981"} />
+            <div className="stat-icon" style={{ background: timesheetHealth.pendingApprovals > 0 ? "var(--warning-light)" : "var(--success-light)", color: timesheetHealth.pendingApprovals > 0 ? "var(--warning)" : "var(--success)" }}>
+              <IconAlert color="currentColor" />
             </div>
             <span className={`stat-trend ${timesheetHealth.pendingApprovals > 0 ? "trend-down" : "trend-up"}`}>
               {timesheetHealth.pendingApprovals > 0 ? `${timesheetHealth.pendingApprovals} pending` : "All clear"}
@@ -998,7 +1002,7 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
 
         <div className="stat-card">
           <div className="stat-card-top">
-            <div className="stat-icon" style={{ background: "var(--warning-light)" }}><IconClock color="#f59e0b" /></div>
+            <div className="stat-icon" style={{ background: "var(--warning-light)", color: "var(--warning)" }}><IconClock color="currentColor" /></div>
             <span className={`stat-trend ${overtimeHours > 0 ? "trend-up" : "trend-flat"}`}>
               {overtimeHours > 0 ? "Above threshold" : "No overtime"}
             </span>
@@ -1128,7 +1132,7 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
         <div className="card">
           <div className="card-header">
             <div><h2 className="card-title">Recent Activity</h2><div className="card-subtitle">Team attendance & timesheet flags</div></div>
-            {mismatches.length > 0 && <span className="badge badge-error">{mismatches.length}</span>}
+            {mismatches.length > 0 && <AppBadge variant="error">{mismatches.length}</AppBadge>}
           </div>
           <div className="card-body">
             {mismatches.length === 0 ? (
@@ -1180,7 +1184,7 @@ function ManagerDashboard({ data, username, onNavigate }: { data: ManagerData; u
         <div className="card">
           <div className="card-header">
             <div><h2 className="card-title">Pending Approvals</h2><div className="card-subtitle">Requires your action</div></div>
-            {timesheetHealth.pendingApprovals > 0 && <span className="badge badge-danger">{timesheetHealth.pendingApprovals}</span>}
+            {timesheetHealth.pendingApprovals > 0 && <AppBadge variant="danger">{timesheetHealth.pendingApprovals}</AppBadge>}
           </div>
           <div className="card-body">
             {pendingList.length === 0 && timesheetHealth.pendingApprovals === 0 ? (
@@ -1335,17 +1339,17 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
       try {
         const [leaveRes, pendingRes, usersRes, anomalyRes] = await Promise.all([
           apiFetch("/leave/team-on-leave"),
-          apiFetch("/approvals/pending-timesheets"),
-          apiFetch("/users"),
+          apiFetch("/approvals/pending-timesheets?page=1&pageSize=200"),
+          apiFetch("/users?page=1&pageSize=200"),
           apiFetch("/admin/anomalies"),
         ]);
         if (leaveRes.ok) setLeaveToday(await leaveRes.json() as TeamLeaveEntry[]);
         if (pendingRes.ok) {
-          const pList = await pendingRes.json() as unknown[];
-          setPendingCount(pList.length);
+          const pList = await pendingRes.json() as PagedResponse<PendingApproval>;
+          setPendingCount(pList.totalCount);
         }
         if (usersRes.ok) {
-          const uList = await usersRes.json() as Array<{ isActive: boolean }>;
+          const uList = (await usersRes.json() as PagedResponse<User>).items;
           const active = uList.filter(u => u.isActive).length;
           setTotalStaff(active);
           setSubmittedCount(Math.round(active * 0.7)); // placeholder — no dedicated endpoint
@@ -1441,7 +1445,7 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
       <div className="stat-grid-4">
         <div className="stat-card">
           <div className="stat-card-top">
-            <div className="stat-icon" style={{ background: "var(--brand-50)" }}><IconBuilding color="#6366f1" /></div>
+            <div className="stat-icon" style={{ background: "var(--brand-50)", color: "var(--brand-600)" }}><IconBuilding color="currentColor" /></div>
             <span className="stat-trend trend-flat">{PERIOD_LABELS[period]}</span>
           </div>
           <div className="stat-value">{effortByDepartment.length}</div>
@@ -1450,12 +1454,12 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
         </div>
         <div className="stat-card">
           <div className="stat-card-top">
-            <div className="stat-icon" style={{ background: billablePct >= 70 ? "var(--success-light)" : "var(--warning-light)" }}>
-              <IconBarChart color={billablePct >= 70 ? "#10b981" : "#f59e0b"} />
+            <div className="stat-icon" style={{ background: billablePct >= 70 ? "var(--success-light)" : "var(--warning-light)", color: billablePct >= 70 ? "var(--success)" : "var(--warning)" }}>
+              <IconBarChart color="currentColor" />
             </div>
             <div className="flex flex-col items-end gap-[2px]">
               <span className={`stat-trend ${billablePct >= 70 ? "trend-up" : "trend-down"}`}>
-                {billablePct >= 70 ? "↑ On track" : "↓ Below target"}
+                {billablePct >= 70 ? <><TrendingUp size={11} strokeWidth={2.5} /> On track</> : <><TrendingDown size={11} strokeWidth={2.5} /> Below target</>}
               </span>
               <Sparkline values={sparklineValues} color={billablePct >= 70 ? "#10b981" : "#f59e0b"} width={52} height={16} />
             </div>
@@ -1468,7 +1472,7 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
         </div>
         <div className="stat-card">
           <div className="stat-card-top">
-            <div className="stat-icon" style={{ background: "var(--info-light)" }}><IconPeople color="#3b82f6" /></div>
+            <div className="stat-icon" style={{ background: "var(--info-light)", color: "var(--info)" }}><IconPeople color="currentColor" /></div>
             <span className="stat-trend trend-flat" title={`${consultantVsInternal.internal} Internal · ${consultantVsInternal.consultant} Consultants`}>
               {consultantVsInternal.internal} Internal · {consultantVsInternal.consultant} Consultants
             </span>
@@ -1479,8 +1483,8 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
         </div>
         <div className="stat-card">
           <div className="stat-card-top">
-            <div className="stat-icon" style={{ background: pendingCount > 0 ? "var(--warning-light)" : "var(--success-light)" }}>
-              <IconAlert color={pendingCount > 0 ? "#f59e0b" : "#10b981"} />
+            <div className="stat-icon" style={{ background: pendingCount > 0 ? "var(--warning-light)" : "var(--success-light)", color: pendingCount > 0 ? "var(--warning)" : "var(--success)" }}>
+              <IconAlert color="currentColor" />
             </div>
             <span className={`stat-trend ${pendingCount > 0 ? "trend-flat" : "trend-up"}`}>
               {pendingCount > 0 ? `${pendingCount} pending` : "All clear"}
@@ -1815,11 +1819,11 @@ export function Dashboard({ role, username, onboardingCompletedAt, onNavigate }:
         apiFetch("/dashboard/employee").then(r => r.ok ? r.json() : null),
         apiFetch("/timesheets/week").then(r => r.ok ? r.json() : null),
         apiFetch("/leave/balance/my").then(r => r.ok ? r.json() : null),
-        apiFetch("/projects").then(r => r.ok ? r.json() : null),
+        apiFetch("/projects?page=1&pageSize=200").then(r => r.ok ? r.json() : null),
       ]).then(([employee, week, leaveBalances, projects]) => {
         if (employee) {
-          const activeProjectCount = Array.isArray(projects)
-            ? (projects as Array<{ isActive: boolean }>).filter(p => p.isActive).length
+          const activeProjectCount = projects && typeof projects === "object" && "items" in (projects as object)
+            ? ((projects as PagedResponse<Project>).items).filter(p => p.isActive).length
             : 0;
           setEmpState({
             employee,

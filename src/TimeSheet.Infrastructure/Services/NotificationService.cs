@@ -1,7 +1,6 @@
-using Microsoft.EntityFrameworkCore;
 using TimeSheet.Domain.Entities;
 using TimeSheet.Domain.Enums;
-using TimeSheet.Infrastructure.Persistence;
+using TimeSheet.Domain.Interfaces;
 using AppInterfaces = TimeSheet.Application.Common.Interfaces;
 
 namespace TimeSheet.Infrastructure.Services;
@@ -18,11 +17,11 @@ public interface INotificationService
     Task<int> DeleteAllAsync(Guid userId);
 }
 
-public class NotificationService(TimeSheetDbContext dbContext) : INotificationService, AppInterfaces.INotificationService
+public class NotificationService(INotificationRepository notificationRepository, IUnitOfWork unitOfWork) : INotificationService, AppInterfaces.INotificationService
 {
     public async Task CreateAsync(Guid userId, string title, string message, NotificationType type, string? groupKey = null, string? actionUrl = null)
     {
-        dbContext.Notifications.Add(new Notification
+        notificationRepository.Add(new Notification
         {
             Id = Guid.NewGuid(),
             UserId = userId,
@@ -34,87 +33,62 @@ public class NotificationService(TimeSheetDbContext dbContext) : INotificationSe
             IsRead = false,
             CreatedAtUtc = DateTime.UtcNow
         });
-        await dbContext.SaveChangesAsync();
+        await unitOfWork.SaveChangesAsync();
     }
 
     public async Task<List<Notification>> GetUnreadAsync(Guid userId)
-    {
-        return await dbContext.Notifications
-            .AsNoTracking()
-            .Where(n => n.UserId == userId && !n.IsRead)
-            .OrderByDescending(n => n.CreatedAtUtc)
-            .ToListAsync();
-    }
+        => (await notificationRepository.GetUnreadByUserAsync(userId)).ToList();
 
     public async Task<(IReadOnlyList<Notification> Items, bool HasMore)> GetPageAsync(Guid userId, int page, int pageSize)
     {
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 100);
-
-        var items = await dbContext.Notifications
-            .AsNoTracking()
-            .Where(n => n.UserId == userId)
-            .OrderByDescending(n => n.CreatedAtUtc)
-            .ThenByDescending(n => n.Id)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize + 1)
-            .ToListAsync();
-
-        var hasMore = items.Count > pageSize;
-        if (hasMore)
-            items = items.Take(pageSize).ToList();
-
-        return (items, hasMore);
+        return await notificationRepository.GetPageByUserAsync(userId, page, pageSize);
     }
 
     public Task<int> CountUnreadAsync(Guid userId)
-        => dbContext.Notifications.CountAsync(n => n.UserId == userId && !n.IsRead);
+        => notificationRepository.CountUnreadByUserAsync(userId);
 
     public async Task<bool> MarkReadAsync(Guid notificationId, Guid userId)
     {
-        var notification = await dbContext.Notifications.SingleOrDefaultAsync(n => n.Id == notificationId && n.UserId == userId);
-        if (notification is not null)
-        {
-            notification.IsRead = true;
-            await dbContext.SaveChangesAsync();
-            return true;
-        }
+        var notification = await notificationRepository.GetByIdAsync(notificationId);
+        if (notification is null || notification.UserId != userId)
+            return false;
 
-        return false;
+        notification.IsRead = true;
+        await unitOfWork.SaveChangesAsync();
+        return true;
     }
 
     public async Task<int> MarkAllReadAsync(Guid userId)
     {
-        var unread = await dbContext.Notifications
-            .Where(n => n.UserId == userId && !n.IsRead)
-            .ToListAsync();
+        var unread = (await notificationRepository.GetAllByUserAsync(userId))
+            .Where(n => !n.IsRead)
+            .ToList();
         foreach (var n in unread) n.IsRead = true;
-        if (unread.Count > 0) await dbContext.SaveChangesAsync();
+        if (unread.Count > 0) await unitOfWork.SaveChangesAsync();
         return unread.Count;
     }
 
     public async Task<bool> DeleteAsync(Guid notificationId, Guid userId)
     {
-        var notification = await dbContext.Notifications.SingleOrDefaultAsync(n => n.Id == notificationId && n.UserId == userId);
-        if (notification is null)
+        var notification = await notificationRepository.GetByIdAsync(notificationId);
+        if (notification is null || notification.UserId != userId)
             return false;
 
-        dbContext.Notifications.Remove(notification);
-        await dbContext.SaveChangesAsync();
+        notificationRepository.Remove(notification);
+        await unitOfWork.SaveChangesAsync();
         return true;
     }
 
     public async Task<int> DeleteAllAsync(Guid userId)
     {
-        var notifications = await dbContext.Notifications
-            .Where(n => n.UserId == userId)
-            .ToListAsync();
-
+        var notifications = await notificationRepository.GetAllByUserAsync(userId);
         if (notifications.Count == 0)
             return 0;
 
-        dbContext.Notifications.RemoveRange(notifications);
-        await dbContext.SaveChangesAsync();
+        notificationRepository.RemoveRange(notifications);
+        await unitOfWork.SaveChangesAsync();
         return notifications.Count;
     }
 }

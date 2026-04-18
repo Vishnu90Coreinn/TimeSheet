@@ -1,158 +1,107 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using TimeSheet.Api.Dtos;
+using TimeSheet.Api.Extensions;
+using TimeSheet.Application.Common.Interfaces;
+using TimeSheet.Application.Projects.Commands;
+using TimeSheet.Application.Projects.Queries;
 
 namespace TimeSheet.Api.Controllers;
 
 [ApiController]
 [Authorize]
 [Route("api/v1/projects")]
-public class ProjectsController(TimeSheetDbContext dbContext) : ControllerBase
+public class ProjectsController(ISender mediator) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<ProjectResponse>>> GetAll()
+    public async Task<ActionResult<PagedResponse<ProjectResponse>>> GetAll([FromQuery] ProjectsListQuery queryParams)
     {
-        var projects = await dbContext.Projects.AsNoTracking()
-            .Where(p => !p.IsArchived)
-            .OrderBy(p => p.Name)
-            .Select(p => new ProjectResponse(p.Id, p.Name, p.Code, p.IsActive, p.IsArchived, p.BudgetedHours))
-            .ToListAsync();
+        var sortBy = (queryParams.SortBy ?? "name").Trim().ToLowerInvariant();
+        var sortDir = (queryParams.SortDir ?? "asc").Trim().ToLowerInvariant();
+        var pageSize = Math.Clamp(queryParams.PageSize, 1, 200);
 
-        return Ok(projects);
+        var result = await mediator.Send(new GetProjectsPageQuery(
+            queryParams.Search,
+            queryParams.Status,
+            sortBy,
+            sortDir == "desc",
+            Math.Max(1, queryParams.Page),
+            pageSize));
+
+        if (!result.IsSuccess)
+            return BadRequest(new { message = result.Error });
+
+        var page = result.Value!;
+        return Ok(new PagedResponse<ProjectResponse>(
+            page.Items.Select(ToProjectResponse).ToList(),
+            page.Page,
+            page.PageSize,
+            page.TotalCount,
+            page.TotalPages,
+            page.SortBy,
+            page.SortDir));
     }
 
     [HttpGet("{id:guid}")]
-    public async Task<ActionResult<ProjectResponse>> GetById(Guid id)
+    public async Task<IActionResult> GetById(Guid id)
     {
-        var project = await dbContext.Projects.AsNoTracking().SingleOrDefaultAsync(p => p.Id == id);
-        if (project is null)
-        {
-            return NotFound();
-        }
-
-        return Ok(new ProjectResponse(project.Id, project.Name, project.Code, project.IsActive, project.IsArchived, project.BudgetedHours));
+        var result = await mediator.Send(new GetProjectByIdQuery(id));
+        return result.IsSuccess ? Ok(ToProjectResponse(result.Value!)) : result.ToActionResult();
     }
 
     [Authorize(Roles = "admin")]
     [HttpPost]
-    public async Task<ActionResult<ProjectResponse>> Create([FromBody] UpsertProjectRequest request)
+    public async Task<IActionResult> Create([FromBody] UpsertProjectRequest request)
     {
-        if (await dbContext.Projects.AnyAsync(p => p.Code == request.Code))
-        {
-            return Conflict(new { message = "Project code already exists." });
-        }
-
-        var project = new Project
-        {
-            Id = Guid.NewGuid(),
-            Name = request.Name.Trim(),
-            Code = request.Code.Trim(),
-            IsActive = request.IsActive,
-            BudgetedHours = request.BudgetedHours
-        };
-
-        dbContext.Projects.Add(project);
-        await dbContext.SaveChangesAsync();
-
-        return Ok(new ProjectResponse(project.Id, project.Name, project.Code, project.IsActive, project.IsArchived, project.BudgetedHours));
+        var result = await mediator.Send(new CreateProjectCommand(request.Name, request.Code, request.IsActive, request.BudgetedHours));
+        return result.IsSuccess ? Ok(ToProjectResponse(result.Value!)) : result.ToActionResult();
     }
 
     [Authorize(Roles = "admin")]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpsertProjectRequest request)
     {
-        var project = await dbContext.Projects.SingleOrDefaultAsync(x => x.Id == id);
-        if (project is null)
-        {
-            return NotFound();
-        }
-
-        var duplicateCode = await dbContext.Projects.AnyAsync(p => p.Id != id && p.Code == request.Code);
-        if (duplicateCode)
-        {
-            return Conflict(new { message = "Project code already exists." });
-        }
-
-        project.Name = request.Name.Trim();
-        project.Code = request.Code.Trim();
-        project.IsActive = request.IsActive && !project.IsArchived;
-        project.BudgetedHours = request.BudgetedHours;
-        await dbContext.SaveChangesAsync();
-        return NoContent();
+        var result = await mediator.Send(new UpdateProjectCommand(id, request.Name, request.Code, request.IsActive, request.BudgetedHours));
+        return result.IsSuccess ? NoContent() : result.ToActionResult();
     }
 
     [Authorize(Roles = "admin")]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var project = await dbContext.Projects.SingleOrDefaultAsync(x => x.Id == id);
-        if (project is null)
-        {
-            return NotFound();
-        }
-
-        dbContext.Projects.Remove(project);
-        await dbContext.SaveChangesAsync();
-        return NoContent();
+        var result = await mediator.Send(new DeleteProjectCommand(id));
+        return result.IsSuccess ? NoContent() : result.ToActionResult();
     }
 
     [Authorize(Roles = "admin")]
     [HttpPost("{id:guid}/archive")]
     public async Task<IActionResult> Archive(Guid id)
     {
-        var project = await dbContext.Projects.SingleOrDefaultAsync(x => x.Id == id);
-        if (project is null)
-        {
-            return NotFound();
-        }
-
-        project.IsArchived = true;
-        project.IsActive = false;
-        await dbContext.SaveChangesAsync();
-
-        return NoContent();
+        var result = await mediator.Send(new ArchiveProjectCommand(id));
+        return result.IsSuccess ? NoContent() : result.ToActionResult();
     }
 
     [Authorize(Roles = "admin")]
     [HttpPut("{id:guid}/members")]
     public async Task<IActionResult> SetMembers(Guid id, [FromBody] AssignProjectMembersRequest request)
     {
-        var project = await dbContext.Projects.Include(x => x.Members).SingleOrDefaultAsync(x => x.Id == id);
-        if (project is null)
-        {
-            return NotFound();
-        }
-
-        var userIds = request.UserIds.Distinct().ToList();
-        var existingUsers = await dbContext.Users.Where(u => userIds.Contains(u.Id)).Select(u => u.Id).ToListAsync();
-        if (existingUsers.Count != userIds.Count)
-        {
-            return BadRequest(new { message = "One or more users do not exist." });
-        }
-
-        dbContext.ProjectMembers.RemoveRange(project.Members);
-        project.Members = userIds.Select(uid => new ProjectMember { ProjectId = project.Id, UserId = uid }).ToList();
-        await dbContext.SaveChangesAsync();
-        return NoContent();
+        var result = await mediator.Send(new SetProjectMembersCommand(id, request.UserIds.Distinct().ToList()));
+        return result.IsSuccess ? NoContent() : result.ToActionResult();
     }
 
     [HttpGet("{id:guid}/members")]
-    public async Task<ActionResult<IEnumerable<ProjectMemberResponse>>> GetMembers(Guid id)
+    public async Task<IActionResult> GetMembers(Guid id)
     {
-        var projectExists = await dbContext.Projects.AnyAsync(p => p.Id == id);
-        if (!projectExists)
-        {
-            return NotFound();
-        }
-
-        var members = await dbContext.ProjectMembers.AsNoTracking()
-            .Where(pm => pm.ProjectId == id)
-            .Include(pm => pm.User)
-            .OrderBy(pm => pm.User.Username)
-            .Select(pm => new ProjectMemberResponse(pm.UserId, pm.User.Username, pm.User.Email, pm.User.IsActive))
-            .ToListAsync();
-
-        return Ok(members);
+        var result = await mediator.Send(new GetProjectMembersQuery(id));
+        return result.IsSuccess
+            ? Ok(result.Value!.Select(x => new ProjectMemberResponse(x.UserId, x.Username, x.Email, x.IsActive)).ToList())
+            : result.ToActionResult();
     }
+
+    private static ProjectResponse ToProjectResponse(ProjectDetailResult project)
+        => new(project.Id, project.Name, project.Code, project.IsActive, project.IsArchived, project.BudgetedHours);
+
+    private static ProjectResponse ToProjectResponse(ProjectListItemResult project)
+        => new(project.Id, project.Name, project.Code, project.IsActive, project.IsArchived, project.BudgetedHours);
 }

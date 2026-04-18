@@ -1,22 +1,13 @@
-using Microsoft.EntityFrameworkCore;
 using TimeSheet.Application.Common.Interfaces;
-using TimeSheet.Infrastructure.Persistence;
+using TimeSheet.Domain.Interfaces;
 
 namespace TimeSheet.Infrastructure.Services;
 
-public class CompOffBalanceService(TimeSheetDbContext dbContext) : ICompOffBalanceService
+public class CompOffBalanceService(ICompOffBalanceRepository compOffBalanceRepository) : ICompOffBalanceService
 {
     public async Task<(decimal Credits, DateTime? NextExpiryAtUtc)> GetActiveBalanceAsync(Guid userId, CancellationToken ct = default)
     {
-        var now = DateTime.UtcNow;
-        var balances = await dbContext.CompOffBalances
-            .AsNoTracking()
-            .Where(x => x.UserId == userId && x.ExpiresAt > now)
-            .ToListAsync(ct);
-
-        var credits = balances.Sum(x => x.Credits);
-        var nextExpiry = balances.Count == 0 ? (DateTime?)null : balances.Min(x => x.ExpiresAt);
-        return (Math.Round(credits, 2, MidpointRounding.AwayFromZero), nextExpiry);
+        var summary = await compOffBalanceRepository.GetActiveBalanceAsync(userId, DateTime.UtcNow, ct);
+        return (summary.Credits, summary.NextExpiryAtUtc);
     }
 }
-

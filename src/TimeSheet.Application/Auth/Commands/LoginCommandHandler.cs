@@ -55,6 +55,7 @@ public class LoginCommandHandler(
             user.Email,
             roleName,
             user.OnboardingCompletedAt,
-            user.LeaveWorkflowVisitedAt));
+            user.LeaveWorkflowVisitedAt,
+            user.MustChangePasswordOnLogin));
     }
 }

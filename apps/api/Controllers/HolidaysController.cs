@@ -13,10 +13,31 @@ namespace TimeSheet.Api.Controllers;
 public class HolidaysController(ISender mediator) : ControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] int? year, CancellationToken ct)
+    public async Task<IActionResult> GetAll([FromQuery] HolidaysListQuery queryParams, CancellationToken ct)
     {
-        var result = await mediator.Send(new GetHolidaysQuery(year), ct);
-        return result.IsSuccess ? Ok(result.Value) : Fail(result);
+        var year = queryParams.Year ?? DateTime.UtcNow.Year;
+        var sortBy = (queryParams.SortBy ?? "date").Trim().ToLowerInvariant();
+        var sortDir = (queryParams.SortDir ?? "asc").Trim().ToLowerInvariant();
+        var desc = sortDir == "desc";
+        var result = await mediator.Send(new GetHolidaysPageQuery(
+            year,
+            queryParams.Search,
+            queryParams.IsRecurring,
+            sortBy,
+            desc,
+            Math.Max(1, queryParams.Page),
+            Math.Clamp(queryParams.PageSize, 1, 200)), ct);
+        if (!result.IsSuccess) return Fail(result);
+
+        var page = result.Value!;
+        return Ok(new PagedResponse<HolidayResult>(
+            page.Items,
+            page.Page,
+            page.PageSize,
+            page.TotalCount,
+            page.TotalPages,
+            page.SortBy,
+            page.SortDir));
     }
 
     [HttpPost]

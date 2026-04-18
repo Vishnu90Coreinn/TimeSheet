@@ -7,6 +7,8 @@ import {
 } from "lucide-react";
 import { apiFetch } from "../../api/client";
 import { AppButton, AppInput, AppPagination, AppTableShell } from "../ui";
+import { timeAgo, todayIso } from "../../utils/date";
+import { avatarColor as sharedAvatarColor } from "../../utils/avatar";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -112,7 +114,7 @@ const ENTITY_ICONS: Record<string, string> = {
 
 // ── Date presets ───────────────────────────────────────────────────────────────
 
-function isoDate(d: Date) { return d.toISOString().slice(0, 10); }
+function isoDate(d: Date) { return d.toISOString().slice(0, 10); }  // local helper for Date object → string
 
 const DATE_PRESETS = [
   { label: "All time",    key: "all" },
@@ -127,7 +129,7 @@ type PresetKey = (typeof DATE_PRESETS)[number]["key"];
 
 function presetRange(key: PresetKey): { from: string; to: string } {
   const now = new Date();
-  const today = isoDate(now);
+  const today = todayIso();
   const sub = (days: number) => { const d = new Date(now); d.setDate(d.getDate() - days); return isoDate(d); };
   if (key === "today")  return { from: today, to: today };
   if (key === "7d")     return { from: sub(6), to: today };
@@ -145,18 +147,7 @@ function absoluteTime(iso: string): string {
   });
 }
 
-function relativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const s = Math.floor(diff / 1000);
-  if (s < 60) return "just now";
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  const d = Math.floor(h / 24);
-  if (d < 7) return `${d}d ago`;
-  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
+const relativeTime = timeAgo;
 
 function initials(name: string | null, fallback: string | null): string {
   if (name) {
@@ -167,14 +158,8 @@ function initials(name: string | null, fallback: string | null): string {
   return "??";
 }
 
-const AVATAR_COLORS = [
-  "#6366f1","#8b5cf6","#06b6d4","#10b981","#f59e0b","#ef4444","#ec4899","#84cc16",
-];
 function avatarColor(id: string | null): string {
-  if (!id) return AVATAR_COLORS[0];
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) & 0xffffffff;
-  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
+  return sharedAvatarColor(id ?? "");
 }
 
 function humanLabel(action: string): string {
@@ -457,6 +442,115 @@ function FilterSelect({
           aria-hidden="true"
         />
       )}
+    </div>
+  );
+}
+
+// ── DateRangeFilter — pill presets + animated custom inputs ───────────────────
+
+const DATE_PRESET_SHORT: Record<PresetKey, string> = {
+  all:    "All time",
+  today:  "Today",
+  "7d":   "Last 7 days",
+  "30d":  "Last 30 days",
+  month:  "This month",
+  custom: "Custom",
+};
+
+function DateRangeFilter({
+  preset, onPreset, customFrom, customTo, onCustomFrom, onCustomTo,
+}: {
+  preset: PresetKey;
+  onPreset: (k: PresetKey) => void;
+  customFrom: string;
+  customTo: string;
+  onCustomFrom: (v: string) => void;
+  onCustomTo: (v: string) => void;
+}) {
+  const isCustom = preset === "custom";
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      {/* Pill row */}
+      <div style={{ display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center" }}>
+        <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.06em", marginRight: 4, whiteSpace: "nowrap" }}>
+          Date range
+        </span>
+        {DATE_PRESETS.map(({ key }) => {
+          const active = preset === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => onPreset(key)}
+              style={{
+                height: 28,
+                padding: "0 11px",
+                borderRadius: 20,
+                border: `1.5px solid ${active ? "var(--brand-500, #6366f1)" : "var(--border-default)"}`,
+                background: active ? "var(--brand-500, #6366f1)" : "transparent",
+                color: active ? "#fff" : "var(--text-secondary)",
+                fontSize: 12,
+                fontWeight: active ? 600 : 400,
+                cursor: "pointer",
+                transition: "background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s",
+                whiteSpace: "nowrap",
+                outline: "none",
+                boxShadow: active ? "0 1px 6px rgba(99,102,241,0.25)" : "none",
+              }}
+              onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--brand-300, #a5b4fc)"; }}
+              onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border-default)"; }}
+            >
+              {DATE_PRESET_SHORT[key]}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Custom inputs — smooth height + fade reveal */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateRows: isCustom ? "1fr" : "0fr",
+          opacity: isCustom ? 1 : 0,
+          transition: "grid-template-rows 0.22s ease, opacity 0.18s ease",
+        }}
+      >
+        <div style={{ overflow: "hidden" }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", paddingTop: 4 }}>
+            <AppInput
+              type="date"
+              value={customFrom}
+              max={customTo || undefined}
+              onChange={e => onCustomFrom(e.target.value)}
+              aria-label="From date"
+              style={{ width: 148 }}
+            />
+            <svg width="16" height="8" viewBox="0 0 16 8" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
+              <path d="M0 4h14M10 1l4 3-4 3" stroke="var(--text-tertiary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <AppInput
+              type="date"
+              value={customTo}
+              min={customFrom || undefined}
+              onChange={e => onCustomTo(e.target.value)}
+              aria-label="To date"
+              style={{ width: 148 }}
+            />
+            {(customFrom || customTo) && (
+              <button
+                type="button"
+                onClick={() => { onCustomFrom(""); onCustomTo(""); }}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-tertiary)", fontSize: 11, padding: "0 4px", transition: "color 0.12s" }}
+                aria-label="Clear custom dates"
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = "var(--text-primary)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = "var(--text-tertiary)"; }}
+              >
+                Clear dates
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -939,14 +1033,6 @@ export function AuditLogViewer() {
   const rangeEnd   = data ? Math.min(data.page * data.pageSize, data.totalCount) : 0;
   const hasFilters = Boolean(search || actionFilters.length || entityFilters.length || actorFilters.length || fromDate || toDate);
 
-  const pageWindow = (() => {
-    const pages: number[] = [];
-    const start = Math.max(1, page - 2);
-    const end = Math.min(totalPages, page + 2);
-    for (let i = start; i <= end; i++) pages.push(i);
-    return pages;
-  })();
-
   const actionOptions: MultiSelectOption[] = knownActions.map(a => ({ value: a, label: humanLabel(a) }));
   const entityOptions: MultiSelectOption[] = knownEntities.map(e => ({ value: e, label: e }));
   const actorOptions: MultiSelectOption[] = actors.map((a) => ({
@@ -1012,22 +1098,22 @@ export function AuditLogViewer() {
             Search
           </AppButton>
           {hasFilters && (
-            <AppButton
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setSearch("");
-                setSearchInput("");
-                setActionFilters([]);
-                setEntityFilters([]);
-                setActorFilters([]);
-                setPage(1);
-              }}
-            >
+            <AppButton type="button" variant="outline" size="sm" onClick={clearFilters}>
               Clear
             </AppButton>
           )}
+        </div>
+
+        {/* Date range filter */}
+        <div style={{ padding: "12px 16px 14px", borderTop: "1px solid var(--border-subtle)" }}>
+          <DateRangeFilter
+            preset={preset}
+            onPreset={(v) => { setPreset(v); resetPage(); }}
+            customFrom={customFrom}
+            customTo={customTo}
+            onCustomFrom={(v) => { setCustomFrom(v); resetPage(); }}
+            onCustomTo={(v) => { setCustomTo(v); resetPage(); }}
+          />
         </div>
 
         {/* Record count summary */}

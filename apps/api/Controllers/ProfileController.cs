@@ -1,175 +1,119 @@
-using System.Security.Claims;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using TimeSheet.Api.Dtos;
-using TimeSheet.Api.Utilities;
-using AppInterfaces = TimeSheet.Application.Common.Interfaces;
+using TimeSheet.Application.Common.Models;
+using TimeSheet.Application.Profile.Commands;
+using TimeSheet.Application.Profile.Queries;
 
 namespace TimeSheet.Api.Controllers;
 
 [ApiController]
 [Authorize]
 [Route("api/v1/profile")]
-public class ProfileController(TimeSheetDbContext dbContext, AppInterfaces.IPasswordHasher passwordHasher) : ControllerBase
+public class ProfileController(ISender mediator) : ControllerBase
 {
-    private Guid? GetUserId()
-    {
-        var raw = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        return Guid.TryParse(raw, out var id) ? id : null;
-    }
-
-    // ── GET /profile ────────────────────────────────────────────────────────
-
     [HttpGet]
-    public async Task<ActionResult<MyProfileResponse>> GetMyProfile()
+    public async Task<IActionResult> GetMyProfile(CancellationToken ct)
     {
-        var userId = GetUserId();
-        if (userId is null) return Unauthorized();
-
-        var user = await dbContext.Users.AsNoTracking()
-            .Include(u => u.Department)
-            .Include(u => u.WorkPolicy)
-            .Include(u => u.LeavePolicy)
-            .Include(u => u.Manager)
-            .SingleOrDefaultAsync(u => u.Id == userId.Value);
-
-        if (user is null) return NotFound();
-
+        var result = await mediator.Send(new GetMyProfileQuery(), ct);
+        if (!result.IsSuccess) return Fail(result);
         return Ok(new MyProfileResponse(
-            user.Id,
-            user.Username,
-            user.DisplayName,
-            user.Email,
-            user.EmployeeId,
-            user.Role,
-            user.Department?.Name,
-            user.WorkPolicy?.Name,
-            user.LeavePolicy?.Name,
-            user.Manager?.Username,
-            user.AvatarDataUrl,
-            TimeZoneIdMapper.NormalizeForClient(user.TimeZoneId)
-        ));
+                result.Value!.Id,
+                result.Value.Username,
+                result.Value.DisplayName,
+                result.Value.Email,
+                result.Value.EmployeeId,
+                result.Value.Role,
+                result.Value.DepartmentName,
+                result.Value.WorkPolicyName,
+                result.Value.LeavePolicyName,
+                result.Value.ManagerUsername,
+                result.Value.AvatarDataUrl,
+                result.Value.TimeZoneId));
     }
-
-    // ── PUT /profile ────────────────────────────────────────────────────────
 
     [HttpPut]
-    public async Task<IActionResult> UpdateMyProfile([FromBody] UpdateMyProfileRequest request)
+    public async Task<IActionResult> UpdateMyProfile([FromBody] UpdateMyProfileRequest request, CancellationToken ct)
     {
-        var userId = GetUserId();
-        if (userId is null) return Unauthorized();
-
-        var user = await dbContext.Users.SingleOrDefaultAsync(u => u.Id == userId.Value);
-        if (user is null) return NotFound();
-
-        var duplicate = await dbContext.Users.AnyAsync(u =>
-            u.Id != userId.Value &&
-            (u.Username == request.Username.Trim() || u.Email == request.Email.Trim()));
-        if (duplicate)
-            return Conflict(new { message = "Username or email already in use by another account." });
-
-        user.Username = request.Username.Trim();
-        user.DisplayName = request.DisplayName?.Trim() ?? string.Empty;
-        user.Email = request.Email.Trim();
-        if (!TimeZoneIdMapper.TryNormalize(request.TimeZoneId, out var requestedTimeZoneId))
-            return BadRequest(new { message = "Invalid timeZoneId." });
-        user.TimeZoneId = requestedTimeZoneId;
-
-        await dbContext.SaveChangesAsync();
-        return NoContent();
+        var result = await mediator.Send(new UpdateMyProfileCommand(request.Username, request.DisplayName, request.Email, request.TimeZoneId), ct);
+        return result.IsSuccess ? NoContent() : Fail(result);
     }
-
-    // ── PUT /profile/avatar ──────────────────────────────────────────────────
 
     [HttpPut("avatar")]
-    public async Task<IActionResult> UpdateAvatar([FromBody] UpdateAvatarRequest request)
+    public async Task<IActionResult> UpdateAvatar([FromBody] UpdateAvatarRequest request, CancellationToken ct)
     {
-        var userId = GetUserId();
-        if (userId is null) return Unauthorized();
-
-        var user = await dbContext.Users.SingleOrDefaultAsync(u => u.Id == userId.Value);
-        if (user is null) return NotFound();
-
-        // Validate it's a valid image data URL when provided
-        if (request.AvatarDataUrl is not null &&
-            !request.AvatarDataUrl.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase))
-            return BadRequest(new { message = "Invalid image format." });
-
-        user.AvatarDataUrl = request.AvatarDataUrl;
-        await dbContext.SaveChangesAsync();
-        return NoContent();
+        var result = await mediator.Send(new UpdateAvatarCommand(request.AvatarDataUrl), ct);
+        return result.IsSuccess ? NoContent() : Fail(result);
     }
-
-    // ── PUT /profile/password ────────────────────────────────────────────────
 
     [HttpPut("password")]
-    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request, CancellationToken ct)
     {
-        var userId = GetUserId();
-        if (userId is null) return Unauthorized();
-
-        var user = await dbContext.Users.SingleOrDefaultAsync(u => u.Id == userId.Value);
-        if (user is null) return NotFound();
-
-        if (!passwordHasher.Verify(request.CurrentPassword, user.PasswordHash))
-            return BadRequest(new { message = "Current password is incorrect." });
-
-        user.PasswordHash = passwordHasher.Hash(request.NewPassword);
-        await dbContext.SaveChangesAsync();
-        return NoContent();
+        var result = await mediator.Send(new ChangePasswordCommand(request.CurrentPassword, request.NewPassword), ct);
+        return result.IsSuccess ? NoContent() : Fail(result);
     }
 
-    // ── GET /profile/notification-preferences ───────────────────────────────
+    [HttpGet("security-question")]
+    public async Task<IActionResult> GetSecurityQuestionStatus(CancellationToken ct)
+    {
+        var userId = GetCurrentUserId();
+        if (userId == Guid.Empty) return Unauthorized();
+        var result = await mediator.Send(new GetSecurityQuestionStatusQuery(userId), ct);
+        if (!result.IsSuccess) return Fail(result);
+        return Ok(new SecurityQuestionStatusResponse(result.Value!.HasQuestion, result.Value.Question));
+    }
+
+    [HttpPut("security-question")]
+    public async Task<IActionResult> SetSecurityQuestion([FromBody] SetSecurityQuestionRequest request, CancellationToken ct)
+    {
+        var userId = GetCurrentUserId();
+        if (userId == Guid.Empty) return Unauthorized();
+        var result = await mediator.Send(new SetSecurityQuestionCommand(userId, request.Question, request.Answer, request.CurrentPassword), ct);
+        return result.IsSuccess ? NoContent() : Fail(result);
+    }
+
+    private Guid GetCurrentUserId()
+    {
+        var claim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)
+                    ?? User.FindFirst("sub");
+        return claim is not null && Guid.TryParse(claim.Value, out var id) ? id : Guid.Empty;
+    }
 
     [HttpGet("notification-preferences")]
-    public async Task<ActionResult<NotificationPreferencesResponse>> GetNotificationPreferences()
+    public async Task<IActionResult> GetNotificationPreferences(CancellationToken ct)
     {
-        var userId = GetUserId();
-        if (userId is null) return Unauthorized();
-
-        var prefs = await dbContext.UserNotificationPreferences
-            .AsNoTracking()
-            .SingleOrDefaultAsync(p => p.UserId == userId.Value);
-
-        if (prefs is null)
-            return Ok(new NotificationPreferencesResponse(true, true, true, true, true, false));
-
+        var result = await mediator.Send(new GetNotificationPreferencesQuery(), ct);
+        if (!result.IsSuccess) return Fail(result);
         return Ok(new NotificationPreferencesResponse(
-            prefs.OnApproval,
-            prefs.OnRejection,
-            prefs.OnLeaveStatus,
-            prefs.OnReminder,
-            prefs.InAppEnabled,
-            prefs.EmailEnabled
-        ));
+                result.Value!.OnApproval,
+                result.Value.OnRejection,
+                result.Value.OnLeaveStatus,
+                result.Value.OnReminder,
+                result.Value.InAppEnabled,
+                result.Value.EmailEnabled));
     }
-
-    // ── PUT /profile/notification-preferences ───────────────────────────────
 
     [HttpPut("notification-preferences")]
-    public async Task<IActionResult> UpdateNotificationPreferences([FromBody] UpdateNotificationPreferencesRequest request)
+    public async Task<IActionResult> UpdateNotificationPreferences([FromBody] UpdateNotificationPreferencesRequest request, CancellationToken ct)
     {
-        var userId = GetUserId();
-        if (userId is null) return Unauthorized();
-
-        var prefs = await dbContext.UserNotificationPreferences
-            .SingleOrDefaultAsync(p => p.UserId == userId.Value);
-
-        if (prefs is null)
-        {
-            prefs = new UserNotificationPreferences { UserId = userId.Value };
-            dbContext.UserNotificationPreferences.Add(prefs);
-        }
-
-        prefs.OnApproval = request.OnApproval;
-        prefs.OnRejection = request.OnRejection;
-        prefs.OnLeaveStatus = request.OnLeaveStatus;
-        prefs.OnReminder = request.OnReminder;
-        prefs.InAppEnabled = request.InAppEnabled;
-        prefs.EmailEnabled = request.EmailEnabled;
-
-        await dbContext.SaveChangesAsync();
-        return NoContent();
+        var result = await mediator.Send(new UpdateNotificationPreferencesCommand(
+            new NotificationPreferencesResult(
+                request.OnApproval,
+                request.OnRejection,
+                request.OnLeaveStatus,
+                request.OnReminder,
+                request.InAppEnabled,
+                request.EmailEnabled)), ct);
+        return result.IsSuccess ? NoContent() : Fail(result);
     }
+
+    private IActionResult Fail(Result result) => result.Status switch
+    {
+        ResultStatus.NotFound => NotFound(new { message = result.Error }),
+        ResultStatus.Forbidden => Unauthorized(),
+        ResultStatus.Conflict => Conflict(new { message = result.Error }),
+        ResultStatus.Validation => BadRequest(new { message = result.Error }),
+        _ => BadRequest(new { message = result.Error })
+    };
 }

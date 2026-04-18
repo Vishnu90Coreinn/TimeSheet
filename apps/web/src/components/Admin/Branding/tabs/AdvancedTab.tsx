@@ -1,3 +1,5 @@
+import { AppBadge } from "../../../ui";
+
 interface AdvancedTabProps {
   customDomain: string;
   onCustomDomainChange: (v: string) => void;
@@ -53,7 +55,7 @@ export function AdvancedTab({ customDomain, onCustomDomainChange }: AdvancedTabP
           </p>
         </div>
 
-        <span className="badge badge-info self-start text-[0.68rem]">Coming soon</span>
+        <AppBadge variant="info" className="self-start text-[0.68rem]">Coming soon</AppBadge>
       </div>
 
       {/* Branding Export / Import */}

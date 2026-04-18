@@ -1,12 +1,13 @@
 /**
  * LeavePolicies.tsx — Pulse SaaS design v3.0
  */
-import { FormEvent, useEffect, useState, type ReactNode } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { apiFetch } from "../../api/client";
-import type { LeavePolicy, LeavePolicyAlloc, LeaveType } from "../../types";
-import { AppButton, AppCheckbox, AppIconButton, AppInput, AppTableShell } from "../ui";
-import { AppDataTable, type ColumnDef } from "../ui/AppDataTable";
+import type { LeavePolicy, LeavePolicyAlloc, LeaveType, PagedResponse } from "../../types";
+import { AppBadge, AppButton, AppCheckbox, AppDrawer, AppIconButton, AppInput, AppModal, AppTableShell } from "../ui";
+import { ServerDataTable, type ServerColumnDef, type ServerTableQuery } from "../ui";
+import { useToast } from "../../contexts/ToastContext";
 
 type PolicyForm = {
   name: string;
@@ -15,39 +16,6 @@ type PolicyForm = {
 };
 
 const BLANK: PolicyForm = { name: "", isActive: true, allocations: {} };
-
-function Drawer({ open, title, onClose, children, footer }: { open: boolean; title: string; onClose: () => void; children: ReactNode; footer?: ReactNode }) {
-  if (!open) return null;
-  return (
-    <>
-      <div className="drawer-overlay" onClick={onClose} />
-      <div className="drawer" role="dialog" aria-modal="true">
-        <div className="drawer-header">
-          <div className="drawer-title">{title}</div>
-          <AppButton className="drawer-close" variant="ghost" size="sm" onClick={onClose}>x</AppButton>
-        </div>
-        <div className="drawer-body">{children}</div>
-        {footer && <div className="drawer-footer">{footer}</div>}
-      </div>
-    </>
-  );
-}
-
-function ConfirmModal({ open, title, body, onConfirm, onCancel }: { open: boolean; title: string; body: string; onConfirm: () => void; onCancel: () => void }) {
-  if (!open) return null;
-  return (
-    <div className="modal-overlay" onClick={onCancel}>
-      <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-title">{title}</div>
-        <div className="modal-body">{body}</div>
-        <div className="modal-actions">
-          <AppButton variant="ghost" size="sm" onClick={onCancel}>Cancel</AppButton>
-          <AppButton variant="danger" size="sm" onClick={onConfirm}>Delete</AppButton>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function AllocPills({ allocs }: { allocs: LeavePolicyAlloc[] }) {
   const nonZero = allocs.filter(a => a.daysPerYear > 0);
@@ -66,6 +34,7 @@ function AllocPills({ allocs }: { allocs: LeavePolicyAlloc[] }) {
 }
 
 export function LeavePolicies() {
+  const toast = useToast();
   const [policies, setPolicies] = useState<LeavePolicy[]>([]);
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
   const [editing, setEditing] = useState<LeavePolicy | "new" | null>(null);
@@ -77,10 +46,32 @@ export function LeavePolicies() {
   const [ltActive, setLtActive] = useState(true);
   const [ltError, setLtError] = useState("");
   const [ltSuccess, setLtSuccess] = useState("");
+  const [totalCount, setTotalCount] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [tableQuery, setTableQuery] = useState<ServerTableQuery>({
+    page: 1,
+    pageSize: 25,
+    search: "",
+    sortBy: "name",
+    sortDir: "asc",
+  });
 
   async function load() {
-    const r = await apiFetch("/leave/policies");
-    if (r.ok) setPolicies(await r.json());
+    setLoading(true);
+    const params = new URLSearchParams({
+      page: String(tableQuery.page),
+      pageSize: String(tableQuery.pageSize),
+      sortBy: tableQuery.sortBy,
+      sortDir: tableQuery.sortDir,
+    });
+    if (tableQuery.search.trim()) params.set("search", tableQuery.search.trim());
+    const r = await apiFetch(`/leave/policies?${params.toString()}`);
+    if (r.ok) {
+      const d = await r.json() as PagedResponse<LeavePolicy>;
+      setPolicies(d.items);
+      setTotalCount(d.totalCount);
+    }
+    setLoading(false);
   }
 
   async function loadTypes() {
@@ -88,7 +79,8 @@ export function LeavePolicies() {
     if (r.ok) setLeaveTypes(await r.json());
   }
 
-  useEffect(() => { void load(); void loadTypes(); }, []);
+  useEffect(() => { void loadTypes(); }, []);
+  useEffect(() => { void load(); }, [tableQuery]);
 
   async function saveLeaveType(e: FormEvent) {
     e.preventDefault();
@@ -100,9 +92,12 @@ export function LeavePolicies() {
       setLtName(""); setLtActive(true);
       setLtSuccess(`Leave type "${name}" saved.`);
       void loadTypes();
+      toast.success("Leave type created", name);
     } else {
       const d = await r.json().catch(() => ({})) as { message?: string };
-      setLtError(d.message ?? "Failed to save leave type.");
+      const msg = d.message ?? "Failed to save leave type.";
+      setLtError(msg);
+      toast.error("Failed to create leave type", msg);
     }
   }
 
@@ -125,19 +120,30 @@ export function LeavePolicies() {
 
   async function save() {
     setError("");
+    const isNew = editing === "new";
     const allocations = Object.entries(form.allocations).map(([leaveTypeId, daysPerYear]) => ({ leaveTypeId, daysPerYear }));
     const body = { name: form.name, isActive: form.isActive, allocations };
-    const r = editing === "new"
+    const r = isNew
       ? await apiFetch("/leave/policies", { method: "POST", body: JSON.stringify(body) })
       : await apiFetch(`/leave/policies/${(editing as LeavePolicy).id}`, { method: "PUT", body: JSON.stringify(body) });
-    if (r.ok || r.status === 204) { setEditing(null); void load(); }
-    else { const d = await r.json().catch(() => ({})); setError((d as { message?: string }).message ?? "Save failed"); }
+    if (r.ok || r.status === 204) {
+      setEditing(null);
+      void load();
+      toast.success(isNew ? "Policy created" : "Policy updated", form.name);
+    } else {
+      const d = await r.json().catch(() => ({}));
+      const msg = (d as { message?: string }).message ?? "Save failed";
+      setError(msg);
+      toast.error("Save failed", msg);
+    }
   }
 
   async function doDelete(id: string) {
-    await apiFetch(`/leave/policies/${id}`, { method: "DELETE" });
+    const r = await apiFetch(`/leave/policies/${id}`, { method: "DELETE" });
     setDeleteId(null);
     void load();
+    if (r.ok || r.status === 204) toast.success("Leave policy deleted");
+    else toast.error("Failed to delete leave policy");
   }
 
   function setAlloc(leaveTypeId: string, days: number) {
@@ -147,7 +153,7 @@ export function LeavePolicies() {
   const activeLeaveTypes = leaveTypes.filter((t) => t.isActive);
   const hasZeroAlloc = editing && Object.values(form.allocations).some(v => v === 0);
 
-  const columns: ColumnDef<LeavePolicy>[] = [
+  const columns: ServerColumnDef<LeavePolicy>[] = [
     {
       key: "name",
       label: "Name",
@@ -169,8 +175,8 @@ export function LeavePolicies() {
       sortValue: p => Number(p.isActive),
       width: "100px",
       render: p => p.isActive
-        ? <span className="badge badge-success">Active</span>
-        : <span className="badge badge-neutral">Inactive</span>,
+        ? <AppBadge variant="success">Active</AppBadge>
+        : <AppBadge variant="neutral">Inactive</AppBadge>,
     },
     {
       key: "actions",
@@ -193,7 +199,7 @@ export function LeavePolicies() {
 
   return (
     <section className="flex flex-col gap-6">
-      <Drawer open={!!editing} title={drawerTitle} onClose={() => setEditing(null)}
+      <AppDrawer open={!!editing} title={drawerTitle} onClose={() => setEditing(null)}
         footer={
           <>
             <AppButton variant="primary" onClick={() => void save()}>Save Policy</AppButton>
@@ -202,28 +208,28 @@ export function LeavePolicies() {
         }
       >
         {error && <div className="alert alert-error">{error}</div>}
-        <div className="form-field">
-          <label className="form-label" htmlFor="lp-name">Policy Name <span className="required">*</span></label>
-          <AppInput
-            id="lp-name"
-            value={form.name}
-            onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-            maxLength={120}
-            required
-          />
+        <div className="drawer-section">
+          <div className="form-field">
+            <label className="form-label" htmlFor="lp-name">Policy Name <span className="required">*</span></label>
+            <AppInput
+              id="lp-name"
+              value={form.name}
+              onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+              maxLength={120}
+              required
+            />
+          </div>
+          <label className="flex items-center gap-2 text-[0.825rem] text-text-secondary">
+            <AppCheckbox checked={form.isActive} onChange={(e) => setForm((p) => ({ ...p, isActive: e.target.checked }))} />
+            Active
+          </label>
         </div>
-        <label className="flex items-center gap-2 text-[0.825rem] text-text-secondary">
-          <AppCheckbox checked={form.isActive} onChange={(e) => setForm((p) => ({ ...p, isActive: e.target.checked }))} />
-          Active
-        </label>
-
-        <div className="border-t border-border-subtle my-2" />
 
         {activeLeaveTypes.length > 0 && (
-          <div>
-            <div className="form-label mb-2">Leave Allocations (days/year)</div>
+          <div className="drawer-section">
+            <div className="drawer-section-label">Leave Allocations (days/year)</div>
             {hasZeroAlloc && (
-              <div className="text-[0.78rem] text-warning-dark bg-warning-light border border-[rgba(245,158,11,0.3)] rounded-md px-3 py-2 mb-3">
+              <div className="text-[0.78rem] text-warning-dark bg-warning-light border border-[rgba(245,158,11,0.3)] rounded-md px-3 py-2">
                 ⚠ Some leave types have 0 days allocated. Employees on this policy will have no entitlement for those types.
               </div>
             )}
@@ -243,9 +249,9 @@ export function LeavePolicies() {
             </div>
           </div>
         )}
-      </Drawer>
+      </AppDrawer>
 
-      <ConfirmModal
+      <AppModal
         open={!!deleteId}
         title="Delete Leave Policy?"
         body="This will permanently delete the policy. Users assigned to it will lose their leave entitlements."
@@ -268,16 +274,20 @@ export function LeavePolicies() {
         <div className="card-header mgmt-card-head">
           <div className="card-title">
             All Leave Policies
-            <span className="mgmt-count-pill">{policies.length} polic{policies.length === 1 ? "y" : "ies"}</span>
+            <span className="mgmt-count-pill">{totalCount} polic{totalCount === 1 ? "y" : "ies"}</span>
           </div>
           <AppButton variant="outline" size="sm">Export</AppButton>
         </div>
-        <AppDataTable
+        <ServerDataTable
           columns={columns}
           data={policies}
+          totalCount={totalCount}
+          query={tableQuery}
+          onQueryChange={setTableQuery}
           rowKey={p => p.id}
           searchPlaceholder="Search policies…"
           emptyText="No leave policies found."
+          loading={loading}
         />
       </div>
 
@@ -334,10 +344,14 @@ export function LeavePolicies() {
                 {leaveTypes.map((t) => (
                   <tr key={t.id}>
                     <td><strong>{t.name}</strong></td>
-                    <td>{t.isActive ? <span className="badge badge-success">Active</span> : <span className="badge badge-neutral">Inactive</span>}</td>
+                    <td>{t.isActive ? <AppBadge variant="success">Active</AppBadge> : <AppBadge variant="neutral">Inactive</AppBadge>}</td>
                   </tr>
                 ))}
-                {leaveTypes.length === 0 && <tr className="empty-row"><td colSpan={2}>No leave types defined.</td></tr>}
+                {leaveTypes.length === 0 && (
+                  <tr><td colSpan={2} style={{ textAlign: "center", padding: "24px 16px" }}>
+                    <span style={{ color: "var(--text-tertiary)", fontSize: 13 }}>No leave types defined.</span>
+                  </td></tr>
+                )}
               </tbody>
             </table>
           </AppTableShell>

@@ -1,170 +1,70 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 using TimeSheet.Api.Dtos;
+using TimeSheet.Application.Common.Models;
+using TimeSheet.Application.Timers.Queries;
 
 namespace TimeSheet.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/timers")]
 [Authorize]
-public class TimersController(TimeSheetDbContext dbContext) : ControllerBase
+public class TimersController(ISender mediator) : ControllerBase
 {
-    private Guid CurrentUserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
-    /// <summary>GET /timers/active — returns running timer or 404.</summary>
     [HttpGet("active")]
-    public async Task<IActionResult> GetActive()
+    public async Task<IActionResult> GetActive(CancellationToken ct)
     {
-        var timer = await dbContext.TimerSessions
-            .AsNoTracking()
-            .Include(t => t.Project)
-            .Include(t => t.Category)
-            .Where(t => t.UserId == CurrentUserId && t.StoppedAtUtc == null)
-            .FirstOrDefaultAsync();
-
-        if (timer == null) return NotFound();
-        return Ok(MapToResponse(timer));
+        var result = await mediator.Send(new GetActiveTimerQuery(), ct);
+        return result.IsSuccess ? Ok(ToResponse(result.Value!)) : Fail(result);
     }
 
-    /// <summary>POST /timers/start — starts a new timer; one active per user.</summary>
     [HttpPost("start")]
-    public async Task<IActionResult> Start([FromBody] StartTimerRequest request)
+    public async Task<IActionResult> Start([FromBody] StartTimerRequest request, CancellationToken ct)
     {
-        var existing = await dbContext.TimerSessions
-            .Where(t => t.UserId == CurrentUserId && t.StoppedAtUtc == null)
-            .FirstOrDefaultAsync();
-
-        if (existing != null)
-            return Conflict(new { message = "A timer is already running. Stop it before starting a new one." });
-
-        var project = await dbContext.Projects.FindAsync(request.ProjectId);
-        if (project == null) return BadRequest(new { message = "Project not found." });
-
-        var category = await dbContext.TaskCategories.FindAsync(request.CategoryId);
-        if (category == null) return BadRequest(new { message = "Category not found." });
-
-        var timer = new TimerSession
-        {
-            Id = Guid.NewGuid(),
-            UserId = CurrentUserId,
-            ProjectId = request.ProjectId,
-            CategoryId = request.CategoryId,
-            Note = request.Note?.Trim(),
-            StartedAtUtc = DateTime.UtcNow,
-        };
-
-        dbContext.TimerSessions.Add(timer);
-        await dbContext.SaveChangesAsync();
-
-        timer.Project = project;
-        timer.Category = category;
-        return Ok(MapToResponse(timer));
+        var result = await mediator.Send(new StartTimerCommand(request.ProjectId, request.CategoryId, request.Note), ct);
+        return result.IsSuccess ? Ok(ToResponse(result.Value!)) : Fail(result);
     }
 
-    /// <summary>POST /timers/stop — stops running timer and computes duration.</summary>
     [HttpPost("stop")]
-    public async Task<IActionResult> Stop()
+    public async Task<IActionResult> Stop(CancellationToken ct)
     {
-        var timer = await dbContext.TimerSessions
-            .Include(t => t.Project)
-            .Include(t => t.Category)
-            .Where(t => t.UserId == CurrentUserId && t.StoppedAtUtc == null)
-            .FirstOrDefaultAsync();
-
-        if (timer == null) return NotFound(new { message = "No active timer found." });
-
-        timer.StoppedAtUtc = DateTime.UtcNow;
-        timer.DurationMinutes = (int)Math.Max(1, Math.Round(
-            (timer.StoppedAtUtc.Value - timer.StartedAtUtc).TotalMinutes));
-
-        await dbContext.SaveChangesAsync();
-        return Ok(MapToResponse(timer));
+        var result = await mediator.Send(new StopTimerCommand(), ct);
+        return result.IsSuccess ? Ok(ToResponse(result.Value!)) : Fail(result);
     }
 
-    /// <summary>POST /timers/{id}/convert — creates a draft timesheet entry from a stopped timer.</summary>
     [HttpPost("{id:guid}/convert")]
-    public async Task<IActionResult> Convert(Guid id, [FromBody] ConvertTimerRequest request)
+    public async Task<IActionResult> Convert(Guid id, [FromBody] ConvertTimerRequest request, CancellationToken ct)
     {
-        var timer = await dbContext.TimerSessions
-            .Where(t => t.Id == id && t.UserId == CurrentUserId)
-            .FirstOrDefaultAsync();
-
-        if (timer == null) return NotFound();
-        if (timer.StoppedAtUtc == null)
-            return BadRequest(new { message = "Timer must be stopped before converting." });
-        if (timer.ConvertedToEntryId != null)
-            return Conflict(new { message = "Timer has already been converted to an entry." });
-        if (timer.DurationMinutes is null or < 1)
-            return BadRequest(new { message = "Timer duration is invalid." });
-
-        var timesheet = await dbContext.Timesheets
-            .Where(ts => ts.UserId == CurrentUserId && ts.WorkDate == request.WorkDate)
-            .FirstOrDefaultAsync();
-
-        if (timesheet == null)
-        {
-            timesheet = new Timesheet
-            {
-                UserId = CurrentUserId,
-                WorkDate = request.WorkDate,
-                Status = TimesheetStatus.Draft,
-            };
-            dbContext.Timesheets.Add(timesheet);
-            await dbContext.SaveChangesAsync();
-        }
-        else if (timesheet.Status != TimesheetStatus.Draft)
-        {
-            return BadRequest(new { message = "Cannot add entries to a submitted or approved timesheet." });
-        }
-
-        var entry = new TimesheetEntry
-        {
-            Id = Guid.NewGuid(),
-            TimesheetId = timesheet.Id,
-            ProjectId = timer.ProjectId,
-            TaskCategoryId = timer.CategoryId,
-            Minutes = timer.DurationMinutes.Value,
-            Notes = timer.Note,
-        };
-
-        dbContext.TimesheetEntries.Add(entry);
-        timer.ConvertedToEntryId = entry.Id;
-        await dbContext.SaveChangesAsync();
-
-        return Ok(new { entryId = entry.Id, timesheetId = timesheet.Id });
+        var result = await mediator.Send(new ConvertTimerCommand(id, request.WorkDate), ct);
+        return result.IsSuccess ? Ok(new { entryId = result.Value!.EntryId, timesheetId = result.Value.TimesheetId }) : Fail(result);
     }
 
-    /// <summary>GET /timers/history?date=YYYY-MM-DD — timer sessions for a given day.</summary>
     [HttpGet("history")]
-    public async Task<IActionResult> GetHistory([FromQuery] DateOnly? date)
+    public async Task<IActionResult> GetHistory([FromQuery] DateOnly? date, CancellationToken ct)
     {
-        var targetDate = date ?? DateOnly.FromDateTime(DateTime.UtcNow);
-
-        var timers = await dbContext.TimerSessions
-            .AsNoTracking()
-            .Include(t => t.Project)
-            .Include(t => t.Category)
-            .Where(t => t.UserId == CurrentUserId &&
-                        DateOnly.FromDateTime(t.StartedAtUtc) == targetDate)
-            .OrderByDescending(t => t.StartedAtUtc)
-            .ToListAsync();
-
-        return Ok(timers.Select(MapToResponse));
+        var result = await mediator.Send(new GetTimerHistoryQuery(date), ct);
+        return result.IsSuccess ? Ok(result.Value!.Select(ToResponse).ToList()) : Fail(result);
     }
 
-    private static TimerSessionResponse MapToResponse(TimerSession t) => new(
+    private static TimerSessionResponse ToResponse(TimerSessionResult t) => new(
         t.Id,
         t.ProjectId,
-        t.Project?.Name ?? "",
+        t.ProjectName,
         t.CategoryId,
-        t.Category?.Name ?? "",
+        t.CategoryName,
         t.Note,
-        DateTime.SpecifyKind(t.StartedAtUtc, DateTimeKind.Utc).ToString("O"),
-        t.StoppedAtUtc.HasValue
-            ? DateTime.SpecifyKind(t.StoppedAtUtc.Value, DateTimeKind.Utc).ToString("O")
-            : null,
+        t.StartedAtUtc,
+        t.StoppedAtUtc,
         t.DurationMinutes,
         t.ConvertedToEntryId);
+
+    private IActionResult Fail(Result result) => result.Status switch
+    {
+        ResultStatus.NotFound => NotFound(new { message = result.Error }),
+        ResultStatus.Forbidden => Unauthorized(),
+        ResultStatus.Conflict => Conflict(new { message = result.Error }),
+        ResultStatus.Validation => BadRequest(new { message = result.Error }),
+        _ => BadRequest(new { message = result.Error })
+    };
 }

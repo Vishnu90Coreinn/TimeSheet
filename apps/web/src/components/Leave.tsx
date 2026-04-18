@@ -5,8 +5,10 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { apiFetch } from "../api/client";
 import { SkeletonPage } from "./Skeleton";
 import { EmptyLeave } from "./EmptyState";
-import type { CompOffBalance, LeaveBalance, LeaveRequest, LeaveRequestGroup, LeaveType, TeamLeaveEntry, User } from "../types";
-import { AppButton, AppInput, AppSelect, AppTextarea } from "./ui";
+import type { CompOffBalance, LeaveBalance, LeaveRequest, LeaveRequestGroup, LeaveType, TeamLeaveEntry, User, PagedResponse } from "../types";
+import { AppBadge, AppButton, AppInput, AppSelect, AppTextarea } from "./ui";
+import { fmtDate, fmtDateShort, todayIso } from "../utils/date";
+import { avatarColor } from "../utils/avatar";
 
 // ─── Types ─────────────────────────────────────────────────────
 interface CalendarEntry { date: string; type: "pending" | "approved" | "rejected" }
@@ -21,26 +23,12 @@ interface LeaveProps {
 const LEAVE_WORKFLOW_VISITED_KEY = "leaveWorkflowVisited";
 
 // ─── Helpers ───────────────────────────────────────────────────
-const AVATAR_PALETTE = ["#818cf8","#a78bfa","#34d399","#60a5fa","#f472b6","#fb923c","#facc15","#4ade80","#38bdf8","#f87171"];
-function avatarColor(name: string): string {
-  let n = 0;
-  for (const c of name) n = (n * 31 + c.charCodeAt(0)) & 0xffff;
-  return AVATAR_PALETTE[n % AVATAR_PALETTE.length];
-}
-
 function initials(name: string): string {
   return name.split(/[\s_]+/).map((p) => p[0] ?? "").join("").toUpperCase().slice(0, 2) || "?";
 }
 
-function today(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-/** "Mar 26, 2026" */
-function fmtDate(iso: string): string {
-  return new Date(iso + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-}
+/** Alias todayIso as today() for local usage */
+function today(): string { return todayIso(); }
 
 /** "Mar 17–18, 2026" for same month; "Mar 26 – Apr 2, 2026" for cross-month */
 function fmtDateRange(from: string, to: string): string {
@@ -48,7 +36,7 @@ function fmtDateRange(from: string, to: string): string {
   const f = new Date(from + "T00:00:00");
   const t = new Date(to + "T00:00:00");
   if (f.getFullYear() === t.getFullYear() && f.getMonth() === t.getMonth()) {
-    return `${f.toLocaleDateString(undefined, { month: "short", day: "numeric" })}–${t.getDate()}, ${t.getFullYear()}`;
+    return `${fmtDateShort(from)}–${t.getDate()}, ${t.getFullYear()}`;
   }
   return `${fmtDate(from)} – ${fmtDate(to)}`;
 }
@@ -82,10 +70,10 @@ function compOffHours(balance: CompOffBalance | null): number {
 }
 
 function statusBadge(status: string) {
-  if (status === "approved") return <span className="badge badge-success">{status}</span>;
-  if (status === "rejected") return <span className="badge badge-error">{status}</span>;
-  if (status === "pending")  return <span className="badge badge-warning">{status}</span>;
-  return <span className="badge badge-neutral">{status}</span>;
+  if (status === "approved") return <AppBadge variant="success">{status}</AppBadge>;
+  if (status === "rejected") return <AppBadge variant="error">{status}</AppBadge>;
+  if (status === "pending")  return <AppBadge variant="warning">{status}</AppBadge>;
+  return <AppBadge variant="neutral">{status}</AppBadge>;
 }
 
 const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -297,15 +285,25 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
         if (r.ok) { setHistory(await r.json()); setUseFallback(false); }
         else {
           setUseFallback(true);
-          apiFetch("/leave/requests/my")
-            .then(async (r2) => { if (r2.ok) setHistFallback(await r2.json()); })
+          apiFetch("/leave/requests/my?page=1&pageSize=200")
+            .then(async (r2) => {
+              if (r2.ok) {
+                const d = await r2.json() as PagedResponse<LeaveRequest>;
+                setHistFallback(d.items);
+              }
+            })
             .catch(() => {});
         }
       })
       .catch(() => {
         setUseFallback(true);
-        apiFetch("/leave/requests/my")
-          .then(async (r2) => { if (r2.ok) setHistFallback(await r2.json()); })
+        apiFetch("/leave/requests/my?page=1&pageSize=200")
+          .then(async (r2) => {
+            if (r2.ok) {
+              const d = await r2.json() as PagedResponse<LeaveRequest>;
+              setHistFallback(d.items);
+            }
+          })
           .catch(() => {});
       });
   }
@@ -336,15 +334,25 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
 
   function loadPending() {
     if (!isManager) return;
-    apiFetch("/leave/requests/pending")
-      .then(async (r) => { if (r.ok) setPendingLeaves(await r.json()); })
+    apiFetch("/leave/requests/pending?page=1&pageSize=200")
+      .then(async (r) => {
+        if (r.ok) {
+          const d = await r.json() as PagedResponse<LeaveRequest>;
+          setPendingLeaves(d.items);
+        }
+      })
       .catch(() => {});
   }
 
   function loadUsers() {
     if (!isAdmin) return;
-    apiFetch("/users")
-      .then(async (r) => { if (r.ok) setAllUsers(await r.json()); })
+    apiFetch("/users?page=1&pageSize=200")
+      .then(async (r) => {
+        if (r.ok) {
+          const d = await r.json() as PagedResponse<User>;
+          setAllUsers(d.items);
+        }
+      })
       .catch(() => {});
   }
 
@@ -803,7 +811,7 @@ export function Leave({ isManager, isAdmin }: LeaveProps) {
                   <div className="card-title">Pending Leave Approvals</div>
                   <div className="card-subtitle">Leave requests awaiting your decision</div>
                 </div>
-                {pendingLeaves.length > 0 && <span className="badge badge-warning">{pendingLeaves.length}</span>}
+                {pendingLeaves.length > 0 && <AppBadge variant="warning">{pendingLeaves.length}</AppBadge>}
               </div>
 
               {pendingLeaves.length === 0 ? (

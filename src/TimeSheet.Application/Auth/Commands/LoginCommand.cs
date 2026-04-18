@@ -13,4 +13,5 @@ public record LoginResult(
     string Email,
     string Role,
     DateTime? OnboardingCompletedAt,
-    DateTime? LeaveWorkflowVisitedAt);
+    DateTime? LeaveWorkflowVisitedAt,
+    bool MustChangePassword = false);

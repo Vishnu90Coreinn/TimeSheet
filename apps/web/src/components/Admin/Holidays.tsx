@@ -1,53 +1,17 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { apiFetch } from "../../api/client";
-import type { Holiday } from "../../types";
-import { AppButton, AppCheckbox, AppIconButton, AppInput, AppTextarea } from "../ui";
-import { AppDataTable, type ColumnDef } from "../ui/AppDataTable";
+import type { Holiday, PagedResponse } from "../../types";
+import { AppBadge, AppButton, AppCheckbox, AppDrawer, AppIconButton, AppInput, AppModal, AppTextarea } from "../ui";
+import { ServerDataTable, type ServerColumnDef, type ServerTableQuery } from "../ui";
+import { useToast } from "../../contexts/ToastContext";
+import { fmtDateLong as fmtDate } from "../../utils/date";
 
 type HolidayForm = { name: string; date: string; isRecurring: boolean };
 const BLANK: HolidayForm = { name: "", date: "", isRecurring: false };
 
-function fmtDate(iso: string): string {
-  if (!iso) return "—";
-  const d = new Date(iso.includes("T") ? iso : `${iso}T00:00:00`);
-  return d.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
-}
-
-function Drawer({ open, title, onClose, children, footer }: { open: boolean; title: string; onClose: () => void; children: ReactNode; footer?: ReactNode }) {
-  if (!open) return null;
-  return (
-    <>
-      <div className="drawer-overlay" onClick={onClose} />
-      <div className="drawer" role="dialog" aria-modal="true">
-        <div className="drawer-header">
-          <div className="drawer-title">{title}</div>
-          <AppButton className="drawer-close" variant="ghost" size="sm" onClick={onClose}>x</AppButton>
-        </div>
-        <div className="drawer-body">{children}</div>
-        {footer && <div className="drawer-footer">{footer}</div>}
-      </div>
-    </>
-  );
-}
-
-function ConfirmModal({ open, title, body, onConfirm, onCancel }: { open: boolean; title: string; body: string; onConfirm: () => void; onCancel: () => void }) {
-  if (!open) return null;
-  return (
-    <div className="modal-overlay" onClick={onCancel}>
-      <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-title">{title}</div>
-        <div className="modal-body">{body}</div>
-        <div className="modal-actions">
-          <AppButton variant="ghost" size="sm" onClick={onCancel}>Cancel</AppButton>
-          <AppButton variant="danger" size="sm" onClick={onConfirm}>Delete</AppButton>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export function Holidays() {
+  const toast = useToast();
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [year, setYear] = useState(new Date().getFullYear());
   const [editing, setEditing] = useState<Holiday | "new" | null>(null);
@@ -57,32 +21,65 @@ export function Holidays() {
   const [showImport, setShowImport] = useState(false);
   const [importText, setImportText] = useState("");
   const [importError, setImportError] = useState("");
+  const [totalCount, setTotalCount] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [tableQuery, setTableQuery] = useState<ServerTableQuery>({
+    page: 1,
+    pageSize: 25,
+    search: "",
+    sortBy: "date",
+    sortDir: "asc",
+  });
 
   async function load(y: number) {
-    const r = await apiFetch(`/holidays?year=${y}`);
-    if (r.ok) setHolidays(await r.json());
+    setLoading(true);
+    const params = new URLSearchParams({
+      year: String(y),
+      page: String(tableQuery.page),
+      pageSize: String(tableQuery.pageSize),
+      sortBy: tableQuery.sortBy,
+      sortDir: tableQuery.sortDir,
+    });
+    if (tableQuery.search.trim()) params.set("search", tableQuery.search.trim());
+    const r = await apiFetch(`/holidays?${params.toString()}`);
+    if (r.ok) {
+      const d = await r.json() as PagedResponse<Holiday>;
+      setHolidays(d.items);
+      setTotalCount(d.totalCount);
+    }
+    setLoading(false);
   }
 
-  useEffect(() => { void load(year); }, [year]);
+  useEffect(() => { void load(year); }, [year, tableQuery]);
 
   function openCreate() { setForm(BLANK); setError(""); setEditing("new"); }
   function openEdit(h: Holiday) { setForm({ name: h.name, date: h.date, isRecurring: h.isRecurring }); setError(""); setEditing(h); }
 
   async function save() {
     setError("");
+    const isNew = editing === "new";
     const body = { name: form.name, date: form.date, isRecurring: form.isRecurring };
-    const r = editing === "new"
+    const r = isNew
       ? await apiFetch("/holidays", { method: "POST", body: JSON.stringify(body) })
       : await apiFetch(`/holidays/${(editing as Holiday).id}`, { method: "PUT", body: JSON.stringify(body) });
-    if (r.ok) { setEditing(null); void load(year); return; }
+    if (r.ok) {
+      setEditing(null);
+      void load(year);
+      toast.success(isNew ? "Holiday added" : "Holiday updated", form.name);
+      return;
+    }
     const d = await r.json().catch(() => ({}));
-    setError((d as { message?: string }).message ?? "Save failed");
+    const msg = (d as { message?: string }).message ?? "Save failed";
+    setError(msg);
+    toast.error("Save failed", msg);
   }
 
   async function doDelete(id: string) {
-    await apiFetch(`/holidays/${id}`, { method: "DELETE" });
+    const r = await apiFetch(`/holidays/${id}`, { method: "DELETE" });
     setDeleteId(null);
     void load(year);
+    if (r.ok || r.status === 204) toast.success("Holiday deleted");
+    else toast.error("Failed to delete holiday");
   }
 
   async function importHolidays() {
@@ -100,11 +97,12 @@ export function Holidays() {
     setShowImport(false);
     setImportText("");
     void load(year);
+    toast.success(`${entries.length} holiday${entries.length !== 1 ? "s" : ""} imported`);
   }
 
   const f = (k: keyof HolidayForm, v: string | boolean) => setForm((p) => ({ ...p, [k]: v }));
 
-  const columns: ColumnDef<Holiday>[] = [
+  const columns: ServerColumnDef<Holiday>[] = [
     {
       key: "name",
       label: "Name",
@@ -130,7 +128,7 @@ export function Holidays() {
       width: "140px",
       render: h => h.isRecurring
         ? <span className="badge bg-purple-100 text-purple-700 border border-purple-300">Annual</span>
-        : <span className="badge badge-neutral">Once</span>,
+        : <AppBadge variant="neutral">Once</AppBadge>,
     },
     {
       key: "actions",
@@ -153,7 +151,7 @@ export function Holidays() {
 
   return (
     <section className="flex flex-col gap-6">
-      <Drawer
+      <AppDrawer
         open={!!editing}
         title={drawerTitle}
         onClose={() => setEditing(null)}
@@ -165,21 +163,23 @@ export function Holidays() {
         }
       >
         {error && <div className="alert alert-error">{error}</div>}
-        <div className="form-field">
-          <label className="form-label" htmlFor="hol-name">Name <span className="required">*</span></label>
-          <AppInput id="hol-name" value={form.name} onChange={(e) => f("name", e.target.value)} maxLength={200} required />
+        <div className="drawer-section">
+          <div className="form-field">
+            <label className="form-label" htmlFor="hol-name">Name <span className="required">*</span></label>
+            <AppInput id="hol-name" value={form.name} onChange={(e) => f("name", e.target.value)} maxLength={200} required />
+          </div>
+          <div className="form-field">
+            <label className="form-label" htmlFor="hol-date">Date <span className="required">*</span></label>
+            <AppInput id="hol-date" type="date" value={form.date} onChange={(e) => f("date", e.target.value)} required />
+          </div>
+          <label className="flex items-center gap-2 text-[0.825rem] text-text-secondary">
+            <AppCheckbox checked={form.isRecurring} onChange={(e) => f("isRecurring", e.target.checked)} />
+            Recurring annually
+          </label>
         </div>
-        <div className="form-field">
-          <label className="form-label" htmlFor="hol-date">Date <span className="required">*</span></label>
-          <AppInput id="hol-date" type="date" value={form.date} onChange={(e) => f("date", e.target.value)} required />
-        </div>
-        <label className="flex items-center gap-2 text-[0.825rem] text-text-secondary">
-          <AppCheckbox checked={form.isRecurring} onChange={(e) => f("isRecurring", e.target.checked)} />
-          Recurring annually
-        </label>
-      </Drawer>
+      </AppDrawer>
 
-      <Drawer
+      <AppDrawer
         open={showImport}
         title="Bulk Import Holidays"
         onClose={() => setShowImport(false)}
@@ -190,24 +190,26 @@ export function Holidays() {
           </>
         }
       >
-        <p className="text-[0.825rem] text-text-secondary mb-3">
-          Paste one holiday per line in the format:
-          <br />
-          <code className="font-mono text-[0.8rem]">Holiday Name, YYYY-MM-DD, true/false</code>
-          <br />
-          The third column (recurring) is optional and defaults to false.
-        </p>
-        {importError && <div className="alert alert-error mb-3">{importError}</div>}
-        <AppTextarea
-          className="font-mono text-[0.8rem] resize-y"
-          rows={10}
-          placeholder={"Christmas Day, 2026-12-25, true\nNew Year's Day, 2026-01-01, true"}
-          value={importText}
-          onChange={(e) => setImportText(e.target.value)}
-        />
-      </Drawer>
+        <div className="drawer-section">
+          <p className="text-[0.825rem] text-text-secondary">
+            Paste one holiday per line in the format:
+            <br />
+            <code className="font-mono text-[0.8rem]">Holiday Name, YYYY-MM-DD, true/false</code>
+            <br />
+            The third column (recurring) is optional and defaults to false.
+          </p>
+          {importError && <div className="alert alert-error">{importError}</div>}
+          <AppTextarea
+            className="font-mono text-[0.8rem] resize-y"
+            rows={10}
+            placeholder={"Christmas Day, 2026-12-25, true\nNew Year's Day, 2026-01-01, true"}
+            value={importText}
+            onChange={(e) => setImportText(e.target.value)}
+          />
+        </div>
+      </AppDrawer>
 
-      <ConfirmModal
+      <AppModal
         open={!!deleteId}
         title="Delete Holiday?"
         body="This will permanently remove this holiday from the calendar."
@@ -236,16 +238,20 @@ export function Holidays() {
         <div className="card-header mgmt-card-head">
           <div className="card-title">
             Holidays - {year}
-            <span className="mgmt-count-pill">{holidays.length} holiday{holidays.length === 1 ? "" : "s"}</span>
+            <span className="mgmt-count-pill">{totalCount} holiday{totalCount === 1 ? "" : "s"}</span>
           </div>
           <AppButton variant="outline" size="sm">Export</AppButton>
         </div>
-        <AppDataTable
+        <ServerDataTable
           columns={columns}
           data={holidays}
+          totalCount={totalCount}
+          query={tableQuery}
+          onQueryChange={setTableQuery}
           rowKey={h => h.id}
           searchPlaceholder="Search holidays…"
           emptyText={`No holidays for ${year}.`}
+          loading={loading}
         />
       </div>
     </section>

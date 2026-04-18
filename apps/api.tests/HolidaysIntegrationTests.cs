@@ -70,10 +70,9 @@ public class HolidaysIntegrationTests : IClassFixture<CustomWebApplicationFactor
         var response = await client.GetAsync("/api/v1/holidays?year=2026");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var body = await response.Content.ReadAsStringAsync();
-        var holidays = JsonSerializer.Deserialize<JsonElement[]>(body);
-        Assert.NotNull(holidays);
-        Assert.True(holidays!.Length >= 1, "Expected at least one seeded holiday for 2026");
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var items = body.RootElement.GetProperty("items");
+        Assert.True(items.GetArrayLength() >= 1, "Expected at least one seeded holiday for 2026");
     }
 
     [Fact]

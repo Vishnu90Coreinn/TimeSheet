@@ -2,8 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { apiFetch } from "../api/client";
 import { SkeletonPage } from "./Skeleton";
 import { EmptyApprovals } from "./EmptyState";
-import type { ApprovalItem, LeaveRequest } from "../types";
+import type { ApprovalItem, LeaveRequest, PagedResponse, User } from "../types";
 import { AppButton, AppCheckbox, AppInput, AppSelect } from "./ui";
+import { avatarColor } from "../utils/avatar";
 
 type Tab = "all" | "timesheets" | "leave";
 type StatsPeriod = "thisWeek" | "thisMonth" | "custom";
@@ -112,13 +113,6 @@ function waitingTone(days: number): "green" | "amber" | "red" {
   if (days > 5) return "red";
   if (days >= 2) return "amber";
   return "green";
-}
-
-const AVATAR_PALETTE = ["#818cf8", "#a78bfa", "#34d399", "#60a5fa", "#f472b6", "#fb923c", "#facc15", "#4ade80", "#38bdf8", "#f87171"];
-function avatarColor(name: string): string {
-  let n = 0;
-  for (const c of name) n = (n * 31 + c.charCodeAt(0)) & 0xffff;
-  return AVATAR_PALETTE[n % AVATAR_PALETTE.length];
 }
 
 const CAL_MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -334,8 +328,18 @@ export function Approvals() {
 
   function loadData() {
     Promise.all([
-      apiFetch("/approvals/pending-timesheets").then(async (r) => { if (r.ok) setTsPending(await r.json()); }),
-      apiFetch("/leave/requests/pending").then(async (r) => { if (r.ok) setLeavePending(await r.json()); }),
+      apiFetch("/approvals/pending-timesheets?page=1&pageSize=200").then(async (r) => {
+        if (r.ok) {
+          const d = await r.json() as PagedResponse<PendingTimesheetItem>;
+          setTsPending(d.items);
+        }
+      }),
+      apiFetch("/leave/requests/pending?page=1&pageSize=200").then(async (r) => {
+        if (r.ok) {
+          const d = await r.json() as PagedResponse<LeaveRequest>;
+          setLeavePending(d.items);
+        }
+      }),
       apiFetch(statsQuery()).then(async (r) => { if (r.ok) setStats(await r.json()); }),
     ]).finally(() => setLoading(false));
   }
@@ -468,11 +472,15 @@ export function Approvals() {
 
   const openDelegateModal = async () => {
     try {
-      const r = await apiFetch("/users");
-      if (r.ok) {
-        const users: { id: string; username: string; displayName: string; role: string }[] = await r.json();
-        setDelegateUsers(users.filter((u) => u.role === "manager" || u.role === "admin"));
-      }
+    const r = await apiFetch("/users?page=1&pageSize=200");
+    if (r.ok) {
+      const users = await r.json() as PagedResponse<User>;
+      setDelegateUsers(
+        users.items
+          .filter((u) => u.role === "manager" || u.role === "admin")
+          .map((u) => ({ id: u.id, username: u.username, displayName: u.username }))
+      );
+    }
     } catch {
       setDelegateUsers([]);
     }

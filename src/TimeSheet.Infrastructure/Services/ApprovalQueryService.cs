@@ -1,62 +1,89 @@
-using Microsoft.EntityFrameworkCore;
-using TimeSheet.Domain.Enums;
-using TimeSheet.Infrastructure.Persistence;
+using TimeSheet.Application.Common.Models;
+using TimeSheet.Domain.Interfaces;
 using AppInterfaces = TimeSheet.Application.Common.Interfaces;
 
 namespace TimeSheet.Infrastructure.Services;
 
-public class ApprovalQueryService(TimeSheetDbContext context) : AppInterfaces.IApprovalQueryService
+public class ApprovalQueryService(
+    IApprovalReadRepository approvalReadRepository,
+    ITimesheetRepository timesheetRepository,
+    IApprovalDelegationRepository delegationRepository) : AppInterfaces.IApprovalQueryService
 {
     public async Task<Guid?> GetTimesheetOwnerAsync(Guid timesheetId, CancellationToken ct = default)
-        => await context.Timesheets
-            .AsNoTracking()
-            .Where(t => t.Id == timesheetId)
-            .Select(t => (Guid?)t.UserId)
-            .SingleOrDefaultAsync(ct);
+        => await approvalReadRepository.GetTimesheetOwnerAsync(timesheetId, ct);
 
-    public async Task<List<AppInterfaces.ApprovalActionResult>> GetHistoryAsync(
-        Guid timesheetId, CancellationToken ct = default)
-        => await context.ApprovalActions
-            .AsNoTracking()
-            .Where(x => x.TimesheetId == timesheetId)
-            .OrderByDescending(x => x.ActionedAtUtc)
+    public async Task<List<AppInterfaces.ApprovalActionResult>> GetHistoryAsync(Guid timesheetId, CancellationToken ct = default)
+        => (await approvalReadRepository.GetHistoryAsync(timesheetId, ct))
             .Select(x => new AppInterfaces.ApprovalActionResult(
                 x.Id,
                 x.TimesheetId,
                 x.ManagerUserId,
-                x.ManagerUser.Username,
-                x.Action.ToString().ToLowerInvariant(),
+                x.ManagerUsername,
+                x.Action,
                 x.Comment,
                 x.ActionedAtUtc))
-            .ToListAsync(ct);
+            .ToList();
 
-    public async Task<AppInterfaces.ApprovalStatsResult> GetStatsAsync(
-        Guid managerId, DateTime fromUtc, DateTime toUtc, CancellationToken ct = default)
+    public async Task<AppInterfaces.ApprovalStatsResult> GetStatsAsync(Guid managerId, DateTime fromUtc, DateTime toUtc, CancellationToken ct = default)
     {
-        var actionsInRange = await context.ApprovalActions
-            .AsNoTracking()
-            .Where(a => a.ManagerUserId == managerId
-                && a.ActionedAtUtc >= fromUtc
-                && a.ActionedAtUtc < toUtc)
-            .ToListAsync(ct);
+        var stats = await approvalReadRepository.GetStatsAsync(managerId, fromUtc, toUtc, ct);
+        return new AppInterfaces.ApprovalStatsResult(stats.ApprovedThisMonth, stats.RejectedThisMonth, stats.AvgResponseHours);
+    }
 
-        var approved = actionsInRange.Count(a => a.Action == ApprovalActionType.Approved);
-        var rejected = actionsInRange.Count(a => a.Action == ApprovalActionType.Rejected);
+    public async Task<PagedResult<AppInterfaces.PendingApprovalTimesheetResult>> GetPendingTimesheetsPageAsync(
+        Guid managerId,
+        string? search,
+        bool? hasMismatch,
+        string sortBy,
+        bool descending,
+        int page,
+        int pageSize,
+        CancellationToken ct = default)
+    {
+        var managerIds = new HashSet<Guid> { managerId };
 
-        var actionWithTs = await context.ApprovalActions
-            .AsNoTracking()
-            .Where(a => a.ManagerUserId == managerId
-                && a.ActionedAtUtc >= fromUtc
-                && a.ActionedAtUtc < toUtc)
-            .Join(context.Timesheets, a => a.TimesheetId, t => t.Id,
-                (a, t) => new { a.ActionedAtUtc, t.SubmittedAtUtc })
-            .Where(x => x.SubmittedAtUtc != null)
-            .ToListAsync(ct);
+        var activeDelegations = await delegationRepository.GetActiveDelegationsForDelegateAsync(managerId, ct);
+        foreach (var delegation in activeDelegations)
+            managerIds.Add(delegation.FromUserId);
 
-        double? avgResponseHours = actionWithTs.Count > 0
-            ? Math.Round(actionWithTs.Average(x => (x.ActionedAtUtc - x.SubmittedAtUtc!.Value).TotalHours), 1)
-            : null;
+        var (rows, totalCount, effectivePage) = await timesheetRepository.GetPendingForManagersPageAsync(
+            managerIds.ToList(),
+            search,
+            hasMismatch,
+            sortBy,
+            descending,
+            page,
+            pageSize,
+            ct);
 
-        return new AppInterfaces.ApprovalStatsResult(approved, rejected, avgResponseHours);
+        var delegatedByManagerId = activeDelegations
+            .Where(d => d.FromUser is not null)
+            .ToDictionary(d => d.FromUserId, d => d.FromUser.Username);
+
+        var items = rows.Select(r => new AppInterfaces.PendingApprovalTimesheetResult(
+            r.TimesheetId,
+            r.UserId,
+            r.Username,
+            r.DisplayName,
+            r.WorkDate,
+            r.EnteredMinutes,
+            r.Status,
+            r.SubmittedAtUtc,
+            r.HasMismatch,
+            r.MismatchReason,
+            r.ManagerId.HasValue && delegatedByManagerId.TryGetValue(r.ManagerId.Value, out var delegatedFrom)
+                ? delegatedFrom
+                : null)).ToList();
+
+        var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)pageSize));
+
+        return new PagedResult<AppInterfaces.PendingApprovalTimesheetResult>(
+            items,
+            effectivePage,
+            pageSize,
+            totalCount,
+            totalPages,
+            sortBy,
+            descending ? "desc" : "asc");
     }
 }

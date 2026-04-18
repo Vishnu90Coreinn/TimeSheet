@@ -60,6 +60,7 @@ public class ProfileService(
         if (user is null) return PasswordChangeOutcome.NotFound;
         if (!passwordHasher.Verify(currentPassword, user.PasswordHash)) return PasswordChangeOutcome.InvalidCurrentPassword;
         user.PasswordHash = passwordHasher.Hash(newPassword);
+        user.MustChangePasswordOnLogin = false;
         await unitOfWork.SaveChangesAsync(ct);
         return PasswordChangeOutcome.Success;
     }

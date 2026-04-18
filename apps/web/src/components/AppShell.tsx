@@ -10,7 +10,13 @@ import { CommandPalette } from "./CommandPalette";
 import { ShortcutsPanel } from "./ShortcutsPanel";
 import { ThemeToggle } from "./ThemeToggle";
 import { useTenantSettings } from "../contexts/TenantSettingsContext";
-import { Palette as PaletteIcon, Shield as ShieldIcon, ScrollText as ScrollTextIcon } from "lucide-react";
+import {
+  LayoutDashboard, Clock, CalendarDays, BarChart3,
+  CircleCheck, Users, Briefcase, UserCog, Tag, Star,
+  CalendarClock, ClipboardList, Palette, ShieldCheck,
+  ScrollText, KeyRound, LogOut as LogOutLucide,
+  ChevronRight, LayoutGrid, Search,
+} from "lucide-react";
 
 interface NavItem {
   view: View;
@@ -22,23 +28,29 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { view: "dashboard",       label: "Dashboard",      icon: <DashboardIcon />,    group: "main" },
-  { view: "timesheets",      label: "Timesheets",     icon: <ClockIcon />,        group: "main" },
-  { view: "leave",           label: "Leave",          icon: <CalendarIcon />,     group: "main" },
-  { view: "reports",         label: "Reports",        icon: <ChartIcon />,        group: "main" },
-  { view: "approvals",       label: "Approvals",      icon: <CheckIcon />,        group: "manager", badgeVariant: "danger" },
-  { view: "team",            label: "Team Status",    icon: <TeamIcon />,         group: "manager" },
-  { view: "admin",           label: "Admin Hub",      icon: <LayoutGridIcon />,   group: "admin" },
-  { view: "projects",        label: "Projects",       icon: <FolderIcon />,       group: "admin" },
-  { view: "users",           label: "Users",          icon: <UsersIcon />,       group: "admin" },
-  { view: "categories",      label: "Categories",     icon: <TagIcon />,         group: "admin" },
-  { view: "holidays",        label: "Holidays",       icon: <StarIcon />,        group: "admin" },
-  { view: "leave-policies",  label: "Leave Policies", icon: <LeavePolicyIcon />, group: "admin" },
-  { view: "work-policies",   label: "Work Policies",  icon: <BriefcaseIcon />,   group: "admin" },
-  { view: "branding",          label: "Branding",         icon: <PaletteIcon size={18} />,    group: "admin" },
-  { view: "retention-policy",  label: "Data Retention",   icon: <ShieldIcon size={18} />,     group: "admin" },
-  { view: "audit-logs",        label: "Audit Logs",       icon: <ScrollTextIcon size={18} />, group: "admin" },
-  { view: "password-policy",   label: "Password Policy",  icon: <ShieldCheckIcon />,          group: "admin" },
+  { view: "dashboard",       label: "Dashboard",      icon: <LayoutDashboard size={16} strokeWidth={1.5} />,  group: "main" },
+  { view: "timesheets",      label: "Timesheets",     icon: <Clock size={16} strokeWidth={1.5} />,            group: "main" },
+  { view: "leave",           label: "Leave",          icon: <CalendarDays size={16} strokeWidth={1.5} />,     group: "main" },
+  { view: "reports",         label: "Reports",        icon: <BarChart3 size={16} strokeWidth={1.5} />,        group: "main" },
+  { view: "approvals",       label: "Approvals",      icon: <CircleCheck size={16} strokeWidth={1.5} />,      group: "manager", badgeVariant: "danger" },
+  { view: "team",            label: "Team Status",    icon: <Users size={16} strokeWidth={1.5} />,            group: "manager" },
+  { view: "admin",           label: "Admin Hub",      icon: <LayoutGrid size={16} strokeWidth={1.5} />,       group: "admin" },
+  { view: "projects",        label: "Projects",       icon: <Briefcase size={16} strokeWidth={1.5} />,        group: "admin" },
+  { view: "users",           label: "Users",          icon: <UserCog size={16} strokeWidth={1.5} />,          group: "admin" },
+  { view: "categories",      label: "Categories",     icon: <Tag size={16} strokeWidth={1.5} />,              group: "admin" },
+  { view: "holidays",        label: "Holidays",       icon: <Star size={16} strokeWidth={1.5} />,             group: "admin" },
+  { view: "leave-policies",  label: "Leave Policies", icon: <CalendarClock size={16} strokeWidth={1.5} />,    group: "admin" },
+  { view: "work-policies",   label: "Work Policies",  icon: <ClipboardList size={16} strokeWidth={1.5} />,    group: "admin" },
+  { view: "branding",          label: "Branding",        icon: <Palette size={16} strokeWidth={1.5} />,       group: "admin" },
+  { view: "retention-policy",  label: "Data Retention",  icon: <ShieldCheck size={16} strokeWidth={1.5} />,   group: "admin" },
+  { view: "audit-logs",        label: "Audit Logs",      icon: <ScrollText size={16} strokeWidth={1.5} />,    group: "admin" },
+  { view: "password-policy",   label: "Password Policy", icon: <KeyRound size={16} strokeWidth={1.5} />,      group: "admin" },
+];
+
+const ADMIN_GROUPS: { key: string; label: string; views: View[] }[] = [
+  { key: "people",    label: "People & Organization", views: ["users", "projects", "categories"] },
+  { key: "timeLeave", label: "Time & Leave",          views: ["holidays", "leave-policies", "work-policies"] },
+  { key: "system",    label: "System",                views: ["branding", "audit-logs", "retention-policy", "password-policy"] },
 ];
 
 const VIEW_LABELS: Record<View, string> = {
@@ -85,6 +97,22 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
   const [pendingCount, setPendingCount] = useState(0);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = window.localStorage.getItem("shell.admin.groups");
+      return saved ? JSON.parse(saved) : { people: false, timeLeave: false, system: false };
+    } catch {
+      return { people: false, timeLeave: false, system: false };
+    }
+  });
+
+  function toggleGroup(key: string) {
+    setCollapsedGroups(prev => {
+      const next = { ...prev, [key]: !prev[key] };
+      window.localStorage.setItem("shell.admin.groups", JSON.stringify(next));
+      return next;
+    });
+  }
   const initials = session.username.slice(0, 2).toUpperCase();
   const roleKey = session.role.toLowerCase();
   const isAdminManagementView =
@@ -229,45 +257,25 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
         <div className="shell-topnav__right">
           <button
             type="button"
+            className="topbar-search-btn"
             onClick={() => setPaletteOpen(true)}
             title="Command palette (⌘K)"
-            style={{
-              display: "flex", alignItems: "center", gap: 6,
-              background: "var(--color-n-100, #f0f0f0)",
-              border: "1px solid var(--color-n-200, #e5e7eb)",
-              borderRadius: 7,
-              padding: "5px 10px",
-              cursor: "pointer",
-              fontSize: "0.78rem",
-              color: "#6b7280",
-            }}
           >
-            <span style={{ fontSize: "0.80rem" }}>🔍</span>
+            <Search size={14} strokeWidth={1.75} />
             <span>Search</span>
-            <kbd style={{
-              fontSize: "0.68rem",
-              background: "var(--color-n-0, #fff)",
-              border: "1px solid var(--color-n-200, #e5e7eb)",
-              borderRadius: 4,
-              padding: "1px 5px",
-              fontFamily: "inherit",
-            }}>⌘K</kbd>
+            <kbd>⌘K</kbd>
           </button>
           <ThemeToggle />
           <NotificationBell />
           <div className="topbar-divider" />
-          <div className="topbar-user" title="My Profile" onClick={onNavigateProfile}>
-            <div
-              className="w-7 h-7 rounded-md flex items-center justify-center text-[0.65rem] font-bold text-white shrink-0"
-              style={{ background: "linear-gradient(135deg, var(--brand-500), var(--brand-700))" }}
-            >
-              {initials}
-            </div>
-            <div>
-              <div className="text-[0.8rem] font-semibold text-text-primary leading-[1.2]">{session.username}</div>
-              <div className="text-[0.68rem] text-text-tertiary capitalize">{session.role}</div>
-            </div>
-          </div>
+          <button
+            type="button"
+            className="topbar-avatar-btn"
+            onClick={onNavigateProfile}
+            title={`${session.username} — My Profile`}
+          >
+            <div className="topbar-avatar-icon">{initials}</div>
+          </button>
         </div>
       </header>
 
@@ -328,22 +336,63 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
 
             {adminItems.length > 0 && (
               <div className="nav-section">
-                <span className="nav-section-label">Admin</span>
-                {adminItems.map(renderNavItem)}
+                <span className="nav-section-label">Administration</span>
+                {/* Admin Hub — pinned shortcut to admin dashboard */}
+                {adminItems.filter(i => i.view === "admin").map(renderNavItem)}
+                {/* Collapsible sub-groups */}
+                {ADMIN_GROUPS.map(group => {
+                  const groupItems = group.views
+                    .map(v => adminItems.find(i => i.view === v))
+                    .filter((i): i is NonNullable<typeof i> => Boolean(i));
+                  if (groupItems.length === 0) return null;
+                  const isOpen = !collapsedGroups[group.key];
+                  return (
+                    <div key={group.key}>
+                      <button
+                        type="button"
+                        className={`nav-subgroup-header${isOpen ? " open" : ""}`}
+                        onClick={() => toggleGroup(group.key)}
+                      >
+                        <ChevronRight size={12} strokeWidth={2} className="subgroup-chevron" />
+                        <span>{group.label}</span>
+                      </button>
+                      {isOpen && (
+                        <div className="nav-subgroup-items">
+                          {groupItems.map(renderNavItem)}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
 
-          {/* Footer — logout */}
+          {/* Footer — identity + sign out */}
           <div className="sidebar-footer">
+            <div className="sidebar-identity">
+              <button
+                type="button"
+                className="sidebar-identity-row"
+                onClick={() => { onNavigateProfile(); setMobileOpen(false); }}
+                title="My Profile"
+              >
+                <div className="sidebar-identity-avatar">{initials}</div>
+                <div className="sidebar-identity-info">
+                  <div className="sidebar-identity-name">{session.username}</div>
+                  <div className="sidebar-identity-role">{session.role}</div>
+                </div>
+              </button>
+            </div>
+            <div className="sidebar-identity-separator" />
             <button
               type="button"
               className="nav-item nav-item--danger"
               onClick={onLogout}
-              data-tooltip="Sign Out"
+              data-tooltip="Sign out"
             >
-              <LogoutIcon />
-              <span>Sign Out</span>
+              <LogOutLucide size={16} strokeWidth={1.5} />
+              <span>Sign out</span>
             </button>
           </div>
         </aside>
@@ -375,7 +424,7 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
   );
 }
 
-/* ─── Inline SVG icons (18×18) ────────────────────────────── */
+/* ─── Structural SVG icons (not nav icons) ─────────────────── */
 function HamburgerIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -390,140 +439,6 @@ function ChevronIcon({ collapsed }: { collapsed: boolean }) {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       {collapsed ? <polyline points="9 18 15 12 9 6" /> : <polyline points="15 18 9 12 15 6" />}
-    </svg>
-  );
-}
-function DashboardIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-      <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
-    </svg>
-  );
-}
-function ClockIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-    </svg>
-  );
-}
-function CalendarIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
-      <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-    </svg>
-  );
-}
-function ChartIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
-      <line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/>
-    </svg>
-  );
-}
-function CheckIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-      <polyline points="22 4 12 14.01 9 11.01"/>
-    </svg>
-  );
-}
-function FolderIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-    </svg>
-  );
-}
-function TagIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
-      <line x1="7" y1="7" x2="7.01" y2="7"/>
-    </svg>
-  );
-}
-function UsersIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-      <circle cx="9" cy="7" r="4"/>
-      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-    </svg>
-  );
-}
-function StarIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-    </svg>
-  );
-}
-function LogoutIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-      <polyline points="16 17 21 12 16 7"/>
-      <line x1="21" y1="12" x2="9" y2="12"/>
-    </svg>
-  );
-}
-/** Leave Policies — calendar with an X mark (distinct from CalendarIcon) */
-function LeavePolicyIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="3" y="4" width="18" height="18" rx="2"/>
-      <line x1="16" y1="2" x2="16" y2="6"/>
-      <line x1="8" y1="2" x2="8" y2="6"/>
-      <line x1="3" y1="10" x2="21" y2="10"/>
-      <line x1="9" y1="16" x2="15" y2="16"/>
-      <line x1="12" y1="13" x2="12" y2="19"/>
-    </svg>
-  );
-}
-/** Team Status — group of people with activity pulse */
-function TeamIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-      <circle cx="9" cy="7" r="4"/>
-      <polyline points="16 11 18 13 22 9"/>
-    </svg>
-  );
-}
-/** Admin Hub — 2×2 grid of squares */
-function LayoutGridIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="3" y="3" width="7" height="7" rx="1"/>
-      <rect x="14" y="3" width="7" height="7" rx="1"/>
-      <rect x="3" y="14" width="7" height="7" rx="1"/>
-      <rect x="14" y="14" width="7" height="7" rx="1"/>
-    </svg>
-  );
-}
-/** Work Policies — briefcase icon (distinct from any clock) */
-function BriefcaseIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="2" y="7" width="20" height="14" rx="2"/>
-      <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
-      <line x1="12" y1="12" x2="12" y2="12"/>
-      <line x1="8" y1="12" x2="16" y2="12"/>
-    </svg>
-  );
-}
-/** Password Policy — shield with checkmark */
-function ShieldCheckIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-      <polyline points="9 12 11 14 15 10"/>
     </svg>
   );
 }

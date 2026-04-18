@@ -212,7 +212,7 @@ export function TimesheetExportModal({ open, onClose }: Props) {
       {/* Backdrop */}
       <div
         ref={overlayRef}
-        style={{ position: "fixed", inset: 0, zIndex: 50, background: "rgba(16,16,26,0.45)" }}
+        className="modal-overlay"
         onClick={e => { if (e.target === overlayRef.current) onClose(); }}
         aria-hidden="true"
       />
@@ -222,22 +222,8 @@ export function TimesheetExportModal({ open, onClose }: Props) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="export-modal-title"
-        style={{
-          position: "fixed",
-          zIndex: 60,
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          width: "100%",
-          maxWidth: 480,
-          background: "var(--n-0)",
-          border: "1px solid var(--border-default)",
-          borderRadius: 16,
-          boxShadow: "0 20px 60px rgba(16,16,26,0.18), 0 4px 16px rgba(16,16,26,0.10)",
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-        }}
+        className="modal-box"
+        style={{ maxWidth: 480 }}
       >
         {/* ── Header ── */}
         <div style={{

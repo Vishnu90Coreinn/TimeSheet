@@ -13,3 +13,7 @@ apps/web/tsconfig.tsbuildinfo
 /.dotnet-home
 /.superpowers/brainstorm/18259-1774715466
 /.claude/settings.local.json
+/graphify-out
+/docs/superpowers/plans
+*.txt
+*.graphify_python

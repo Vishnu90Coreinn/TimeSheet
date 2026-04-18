@@ -10,6 +10,7 @@ import { InstallPrompt } from "./components/InstallPrompt";
 import { ToastContainer } from "./components/ToastContainer";
 import { Approvals } from "./components/Approvals";
 import { TeamStatus } from "./components/TeamStatus";
+import { CapacityPlanning } from "./components/CapacityPlanning";
 import { Profile } from "./components/Profile";
 import { Categories } from "./components/Admin/Categories";
 import { Dashboard } from "./components/Dashboard";
@@ -34,7 +35,7 @@ import type { View } from "./types";
 
 export function hasViewAccess(role: string, view: View): boolean {
   if (view === "admin" || view === "projects" || view === "categories" || view === "users" || view === "holidays" || view === "leave-policies" || view === "work-policies" || view === "branding" || view === "retention-policy" || view === "audit-logs" || view === "password-policy") return role === "admin";
-  if (view === "approvals") return role === "manager" || role === "admin";
+  if (view === "approvals" || view === "capacity") return role === "manager" || role === "admin";
   return true;
 }
 
@@ -49,6 +50,7 @@ const VIEW_PATHS: Record<View, string> = {
   reports:          "/reports",
   approvals:        "/approvals",
   team:             "/team",
+  capacity:         "/capacity",
   projects:         "/projects",
   categories:       "/categories",
   users:            "/users",
@@ -78,7 +80,7 @@ function AppRoutes() {
   const showOnboarding = Boolean(session && !onboardingCompletedAt);
 
   const nav = useMemo(
-    () => ["dashboard", "timesheets", "leave", "reports", ...(isManager ? ["approvals", "team"] : []), ...(isAdmin ? ["admin", "projects", "categories", "users", "holidays", "leave-policies", "work-policies", "branding", "retention-policy", "audit-logs", "password-policy"] : [])] as View[],
+    () => ["dashboard", "timesheets", "leave", "reports", ...(isManager ? ["approvals", "team", "capacity"] : []), ...(isAdmin ? ["admin", "projects", "categories", "users", "holidays", "leave-policies", "work-policies", "branding", "retention-policy", "audit-logs", "password-policy"] : [])] as View[],
     [isAdmin, isManager]
   );
 
@@ -125,6 +127,7 @@ function AppRoutes() {
           <Route path="/profile"    element={<ErrorBoundary><Profile onBack={() => navigate(-1)} /></ErrorBoundary>} />
           {isManager && <Route path="/approvals"  element={<ErrorBoundary><Approvals /></ErrorBoundary>} />}
           {isManager && <Route path="/team"       element={<ErrorBoundary><TeamStatus /></ErrorBoundary>} />}
+          {isManager && <Route path="/capacity"   element={<ErrorBoundary><CapacityPlanning /></ErrorBoundary>} />}
           {isAdmin   && <Route path="/admin"        element={<ErrorBoundary><AdminHub onNavigate={view => navigate(`/${view}`)} /></ErrorBoundary>} />}
           {isAdmin   && <Route path="/projects"   element={<ErrorBoundary><Projects /></ErrorBoundary>} />}
           {isAdmin   && <Route path="/categories" element={<ErrorBoundary><Categories /></ErrorBoundary>} />}

@@ -15,7 +15,7 @@ import {
   LayoutDashboard, Clock, CalendarDays, BarChart3,
   CircleCheck, Users, Briefcase, UserCog, Tag, Star,
   CalendarClock, ClipboardList, Palette, ShieldCheck,
-  ScrollText, KeyRound, LogOut as LogOutLucide,
+  ScrollText, KeyRound, CreditCard, LogOut as LogOutLucide,
   ChevronRight, LayoutGrid, Search,
 } from "lucide-react";
 
@@ -47,12 +47,13 @@ const NAV_ITEMS: NavItem[] = [
   { view: "retention-policy",  label: "Data Retention",  icon: <ShieldCheck size={16} strokeWidth={1.5} />,   group: "admin" },
   { view: "audit-logs",        label: "Audit Logs",      icon: <ScrollText size={16} strokeWidth={1.5} />,    group: "admin" },
   { view: "password-policy",   label: "Password Policy", icon: <KeyRound size={16} strokeWidth={1.5} />,      group: "admin" },
+  { view: "billing",           label: "Billing",         icon: <CreditCard size={16} strokeWidth={1.5} />,    group: "admin" },
 ];
 
 const ADMIN_GROUPS: { key: string; label: string; views: View[] }[] = [
   { key: "people",    label: "People & Organization", views: ["users", "projects", "categories"] },
   { key: "timeLeave", label: "Time & Leave",          views: ["holidays", "leave-policies", "work-policies"] },
-  { key: "system",    label: "System",                views: ["branding", "audit-logs", "retention-policy", "password-policy"] },
+  { key: "system",    label: "System",                views: ["branding", "audit-logs", "retention-policy", "password-policy", "billing"] },
 ];
 
 const VIEW_LABELS: Record<View, string> = {
@@ -75,6 +76,7 @@ const VIEW_LABELS: Record<View, string> = {
   "retention-policy": "Data Retention",
   "audit-logs": "Audit Logs",
   "password-policy": "Password Policy",
+  billing: "Billing & Subscription",
 };
 
 interface AppShellProps {

@@ -29,13 +29,14 @@ import { RetentionPolicy } from "./components/Admin/RetentionPolicy";
 import { AuditLogViewer } from "./components/Admin/AuditLogViewer";
 import { AdminHub } from "./components/Admin/AdminHub";
 import { PasswordPolicy } from "./components/Admin/PasswordPolicy";
+import { Billing } from "./components/Admin/Billing";
 import { ConsentBanner } from "./components/ConsentBanner";
 import { useSession } from "./hooks/useSession";
 import { SignalRProvider } from "./contexts/SignalRContext";
 import type { View } from "./types";
 
 export function hasViewAccess(role: string, view: View): boolean {
-  if (view === "admin" || view === "projects" || view === "categories" || view === "users" || view === "holidays" || view === "leave-policies" || view === "work-policies" || view === "branding" || view === "retention-policy" || view === "audit-logs" || view === "password-policy") return role === "admin";
+  if (view === "admin" || view === "projects" || view === "categories" || view === "users" || view === "holidays" || view === "leave-policies" || view === "work-policies" || view === "branding" || view === "retention-policy" || view === "audit-logs" || view === "password-policy" || view === "billing") return role === "admin";
   if (view === "approvals" || view === "capacity") return role === "manager" || role === "admin";
   return true;
 }
@@ -64,6 +65,7 @@ const VIEW_PATHS: Record<View, string> = {
   "audit-logs":       "/audit-logs",
   admin:              "/admin",
   "password-policy":  "/password-policy",
+  billing:            "/billing",
 };
 
 const PATH_VIEWS: Record<string, View> = Object.fromEntries(
@@ -81,7 +83,7 @@ function AppRoutes() {
   const showOnboarding = Boolean(session && !onboardingCompletedAt);
 
   const nav = useMemo(
-    () => ["dashboard", "timesheets", "leave", "reports", ...(isManager ? ["approvals", "team", "capacity"] : []), ...(isAdmin ? ["admin", "projects", "categories", "users", "holidays", "leave-policies", "work-policies", "branding", "retention-policy", "audit-logs", "password-policy"] : [])] as View[],
+    () => ["dashboard", "timesheets", "leave", "reports", ...(isManager ? ["approvals", "team", "capacity"] : []), ...(isAdmin ? ["admin", "projects", "categories", "users", "holidays", "leave-policies", "work-policies", "branding", "retention-policy", "audit-logs", "password-policy", "billing"] : [])] as View[],
     [isAdmin, isManager]
   );
 
@@ -140,6 +142,7 @@ function AppRoutes() {
           {isAdmin   && <Route path="/retention-policy" element={<ErrorBoundary><RetentionPolicy /></ErrorBoundary>} />}
           {isAdmin   && <Route path="/audit-logs"       element={<ErrorBoundary><AuditLogViewer /></ErrorBoundary>} />}
           {isAdmin   && <Route path="/password-policy"  element={<ErrorBoundary><PasswordPolicy /></ErrorBoundary>} />}
+          {isAdmin   && <Route path="/billing"          element={<ErrorBoundary><Billing /></ErrorBoundary>} />}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </AppShell>

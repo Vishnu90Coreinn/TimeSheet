@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, AlertTriangle, X } from "lucide-react";
 import { apiFetch } from "../api/client";
 import { useSignalREvent, HUB_EVENTS } from "../contexts/SignalRContext";
 import { AttendanceWidget } from "./AttendanceWidget";
@@ -1799,6 +1799,45 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
 // ── Root ──────────────────────────────────────────────────────────────────────
 interface EmpState { employee: EmployeeData; week: WeekSummary; leaveBalances: LeaveBalance[]; activeProjectCount: number; }
 
+function UpgradeBanner({ onNavigateBilling }: { onNavigateBilling: () => void }) {
+  const DISMISS_KEY = "billing.upgrade-banner.dismissed";
+  const [dismissed, setDismissed] = useState(() => !!window.localStorage.getItem(DISMISS_KEY));
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    if (dismissed) return;
+    apiFetch("/billing/usage").then(r => r.ok ? r.json() : null).then(u => {
+      if (u && u.userLimit > 0 && u.activeUsers / u.userLimit >= 0.8) setShow(true);
+    }).catch(() => {});
+  }, [dismissed]);
+
+  if (!show || dismissed) return null;
+
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 12, padding: "12px 16px",
+      background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.3)",
+      borderRadius: 10, marginBottom: 20,
+    }}>
+      <AlertTriangle size={16} color="#d97706" strokeWidth={2} style={{ flexShrink: 0 }} />
+      <p style={{ flex: 1, fontSize: "0.85rem", color: "var(--text-primary, #111)", margin: 0 }}>
+        <strong>Seat limit approaching.</strong> Your organization is using 80%+ of its available seats.{" "}
+        <button type="button" onClick={onNavigateBilling} style={{ background: "none", border: "none", padding: 0, color: "var(--brand-500, #6366f1)", fontWeight: 600, cursor: "pointer", fontSize: "inherit" }}>
+          View Billing →
+        </button>
+      </p>
+      <button
+        type="button"
+        aria-label="Dismiss"
+        onClick={() => { window.localStorage.setItem(DISMISS_KEY, "1"); setDismissed(true); }}
+        style={{ background: "none", border: "none", padding: 4, cursor: "pointer", color: "var(--text-secondary, #6b7280)", display: "flex" }}
+      >
+        <X size={14} strokeWidth={2} />
+      </button>
+    </div>
+  );
+}
+
 export function Dashboard({ role, username, onboardingCompletedAt, onNavigate }: DashboardProps) {
   const { timeZoneId } = useTimezone();
   const [empState, setEmpState] = useState<EmpState | null>(null);
@@ -1914,6 +1953,7 @@ export function Dashboard({ role, username, onboardingCompletedAt, onNavigate }:
         role={role}
         onboardingCompletedAt={onboardingCompletedAt ?? null}
       />
+      {role === "admin" && <UpgradeBanner onNavigateBilling={() => handleNavigate("billing")} />}
       {empState && <EmployeeDashboard {...empState} username={username} onNavigate={handleNavigate} timeZoneId={timeZoneId} />}
       {mgrData && <ManagerDashboard data={mgrData} username={username} onNavigate={handleNavigate} />}
       {adminData && <AdminDashboard data={adminData} username={username} onNavigate={handleNavigate} />}

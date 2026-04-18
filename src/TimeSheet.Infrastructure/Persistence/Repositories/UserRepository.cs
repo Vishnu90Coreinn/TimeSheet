@@ -121,4 +121,9 @@ public class UserRepository(TimeSheetDbContext context) : IUserRepository
             .Include(u => u.Manager)
             .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
             .FirstOrDefaultAsync(u => u.Id == id, ct);
+
+    public async Task<User?> GetByIdWithRefreshTokensAsync(Guid id, CancellationToken ct = default)
+        => await _dbSet
+            .Include(u => u.RefreshTokens)
+            .FirstOrDefaultAsync(u => u.Id == id, ct);
 }

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TimeSheet.Api.Dtos;
 using TimeSheet.Application.Common.Models;
+using TimeSheet.Application.Profile.Commands;
 using TimeSheet.Application.Profile.Queries;
 
 namespace TimeSheet.Api.Controllers;
@@ -51,6 +52,32 @@ public class ProfileController(ISender mediator) : ControllerBase
     {
         var result = await mediator.Send(new ChangePasswordCommand(request.CurrentPassword, request.NewPassword), ct);
         return result.IsSuccess ? NoContent() : Fail(result);
+    }
+
+    [HttpGet("security-question")]
+    public async Task<IActionResult> GetSecurityQuestionStatus(CancellationToken ct)
+    {
+        var userId = GetCurrentUserId();
+        if (userId == Guid.Empty) return Unauthorized();
+        var result = await mediator.Send(new GetSecurityQuestionStatusQuery(userId), ct);
+        if (!result.IsSuccess) return Fail(result);
+        return Ok(new SecurityQuestionStatusResponse(result.Value!.HasQuestion, result.Value.Question));
+    }
+
+    [HttpPut("security-question")]
+    public async Task<IActionResult> SetSecurityQuestion([FromBody] SetSecurityQuestionRequest request, CancellationToken ct)
+    {
+        var userId = GetCurrentUserId();
+        if (userId == Guid.Empty) return Unauthorized();
+        var result = await mediator.Send(new SetSecurityQuestionCommand(userId, request.Question, request.Answer, request.CurrentPassword), ct);
+        return result.IsSuccess ? NoContent() : Fail(result);
+    }
+
+    private Guid GetCurrentUserId()
+    {
+        var claim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)
+                    ?? User.FindFirst("sub");
+        return claim is not null && Guid.TryParse(claim.Value, out var id) ? id : Guid.Empty;
     }
 
     [HttpGet("notification-preferences")]

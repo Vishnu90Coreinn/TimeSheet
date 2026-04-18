@@ -1534,3 +1534,249 @@ Role/Permission Impact:
 
 Audit/Logging Impact:
 ```
+
+---
+
+## Backlog — Unimplemented Features (Audited 2026-04-10)
+
+> Produced by graphify + SESSION_NOTES audit. **122 items** across 14 categories.
+> Priority rating: 🔴 High (broken or blocks other work) · 🟡 Medium · 🟢 Low/future
+
+---
+
+### Core / Clean Architecture
+
+| ID | Task | Priority |
+|----|------|----------|
+| CA-071 | Reports queries with direct DTO projections (bypass repo layer for perf) | 🟡 |
+| CA-072 | Dashboard queries per role (Employee / Manager / Admin) | 🟡 |
+| CA-074 | Profile CQRS commands: UpdateProfile, ChangePassword, UpdateAvatar | 🔴 |
+| CA-076 | Unit tests for all Command handlers (mocked IRepository + IUnitOfWork) | 🟡 |
+| CA-077 | Unit tests for all Query handlers | 🟡 |
+| CA-095 | Deferred: LeaveController calendar endpoints + `TimesheetsController.DeleteEntry` still use EF directly | 🟢 |
+| CA-096 | Update README with new Clean Architecture solution structure diagram | 🟢 |
+
+---
+
+### Reports & Export (Broken — Ships Corrupt Files)
+
+| ID | Task | Priority |
+|----|------|----------|
+| TSK-RPT-008 | True Excel export — currently returns CSV bytes with Excel MIME (corrupt when opened). Add `ClosedXML` or `EPPlus`, formatted `.xlsx` with headers, auto-column widths, frozen top row | 🔴 |
+| TSK-RPT-009 | True PDF export — currently returns CSV bytes with PDF MIME. Add `QuestPDF` or `PdfSharpCore`, formatted A4 report with title, date range, table, footer | 🔴 |
+
+---
+
+### Notification Preferences
+
+| ID | Task | Priority |
+|----|------|----------|
+| TSK-NTF-008 | Per-user configurable notification preferences — opt-in/out per notification type (timesheet, leave, approval, etc.) | 🟡 |
+
+---
+
+### Saved & Scheduled Reports
+
+| ID | Task | Priority |
+|----|------|----------|
+| TSK-SVR-001 | `SavedReports` table: `{ id, userId, name, reportKey, filtersJson, scheduleType (none/weekly/monthly), scheduleDayOfWeek, scheduleHour, recipientEmailsJson, lastRunAt, createdAt }` | 🟡 |
+| TSK-SVR-002 | `GET /reports/saved` — user's saved reports list | 🟡 |
+| TSK-SVR-003 | `POST /reports/saved` — save current filter set as named report | 🟡 |
+| TSK-SVR-004 | `PUT /reports/saved/{id}` — update name / schedule / recipients | 🟡 |
+| TSK-SVR-005 | `DELETE /reports/saved/{id}` | 🟡 |
+| TSK-SVR-006 | `GET /reports/saved/{id}/run` — execute saved report with stored filters; same DTO as live report | 🟡 |
+| TSK-SVR-007 | `ReportSchedulerService` background service — checks saved reports due for delivery, generates CSV, sends via `SmtpClient` or stub email service, updates `lastRunAt` | 🟡 |
+| TSK-SVR-008 | "Save Current Filters" button on Reports page → modal: name input + optional schedule (frequency, day/time, recipients) | 🟡 |
+| TSK-SVR-009 | Saved reports list in Reports page left panel / dropdown — click to reload filters | 🟡 |
+| TSK-SVR-010 | "Manage Saved Reports" sub-page: list with last run time, edit schedule, delete | 🟡 |
+
+---
+
+### Approval Delegation
+
+| ID | Task | Priority |
+|----|------|----------|
+| TSK-DEL-001 | `ApprovalDelegations` table: `{ id, fromUserId, toUserId, fromDate, toDate, isActive, createdAt }`. Constraint: one active delegation per `fromUserId` | 🟡 |
+| TSK-DEL-002 | `GET /approvals/delegation` — current active delegation | 🟡 |
+| TSK-DEL-003 | `POST /approvals/delegation` — validate `toUserId` is manager/admin; validate no date overlap | 🟡 |
+| TSK-DEL-004 | `DELETE /approvals/delegation/{id}` — revoke delegation | 🟡 |
+| TSK-DEL-005 | Modify `GET /approvals/pending-timesheets` — if calling user is delegate, also return delegating manager's items | 🟡 |
+| TSK-DEL-006 | Modify approve/reject APIs — record `ActedByUserId` + `DelegatedFromUserId` in `ApprovalActions` | 🟡 |
+| TSK-DEL-007 | "Delegate Approvals" section in Profile or Approvals page — select user, date range, save | 🟡 |
+| TSK-DEL-008 | Active delegation banner on Approvals page: "You are approving on behalf of [name] until [date]. [Revoke]" | 🟡 |
+| TSK-DEL-009 | Delegated items visually tagged in approval list: "via [delegating manager]" | 🟡 |
+
+---
+
+### Command Palette
+
+| ID | Task | Priority |
+|----|------|----------|
+| TSK-CMD-001 | `CommandPalette.tsx` modal overlay triggered by `Cmd+K` / `Ctrl+K` | 🟡 |
+| TSK-CMD-002 | Static command list: navigate all views, open create forms (New Entry, Apply Leave, New User, New Project) | 🟡 |
+| TSK-CMD-003 | Dynamic search: fuzzy match against loaded users (admin), projects, recent timesheets | 🟡 |
+| TSK-CMD-004 | Keyboard navigation: ↑/↓ to move, Enter to execute, Esc to close, type to filter | 🟡 |
+| TSK-CMD-005 | `?` key opens shortcut hints modal listing all available shortcuts | 🟡 |
+| TSK-CMD-006 | Global shortcuts: `N` = new entry (Timesheets), `S` = submit week, `A` = approve selected (Approvals), `/` = focus search | 🟡 |
+| TSK-CMD-007 | Mount palette globally in `AppShell.tsx`; pass navigation handler | 🟡 |
+
+---
+
+### SignalR Real-Time
+
+| ID | Task | Priority |
+|----|------|----------|
+| SR-001 | Install `Microsoft.AspNetCore.SignalR` | 🟡 |
+| SR-002 | `TimeSheetHub.cs` in `apps/api/Hubs/` — groups: `user-{userId}`, `manager-{managerId}`, `all` | 🟡 |
+| SR-003 | Map hub in `Program.cs`: `app.MapHub<TimeSheetHub>("/hubs/timesheet")` | 🟡 |
+| SR-004 | Add CORS policy for SignalR WebSocket upgrade | 🟡 |
+| SR-005 | Publish `TimesheetStatusChanged` event from UnitOfWork → `IHubContext<TimeSheetHub>` → `user-{userId}` group | 🟡 |
+| SR-006 | Publish `LeaveStatusChanged` event | 🟡 |
+| SR-007 | Publish `TeamClockIn` event from `AttendanceController.CheckIn` → `manager-{managerId}` group | 🟡 |
+| SR-008 | `GET /api/v1/notifications/count` lightweight endpoint | 🟡 |
+| SR-009 | Install `@microsoft/signalr`: `npm install @microsoft/signalr -w apps/web` | 🟡 |
+| SR-010 | `useSignalR.ts` hook — manages connection lifecycle, auto-reconnect, typed message handlers | 🟡 |
+| SR-011 | `SignalRProvider.tsx` — context that establishes connection after login; wrap in `App.tsx` after session confirmed | 🟡 |
+| SR-012 | Dashboard — subscribe to `DashboardUpdated`; refresh KPI counters without full reload | 🟡 |
+| SR-013 | Approvals page — subscribe to `TimesheetSubmitted`; toast "New timesheet submitted by [name]" + auto-refresh list | 🟡 |
+| SR-014 | Timesheets page — subscribe to `TimesheetStatusChanged` for own timesheets; update status badges live | 🟡 |
+| SR-015 | Leave page — subscribe to `LeaveStatusChanged` | 🟡 |
+| SR-016 | Notification bell — subscribe to `NewNotification`; increment unread count + pulse animation | 🟡 |
+| SR-017 | Connection status indicator in topbar (green dot = connected, yellow = reconnecting, hidden when stable) | 🟡 |
+
+---
+
+### Billing & Subscription
+
+| ID | Task | Priority |
+|----|------|----------|
+| BL-001 | `Subscription` entity: `Id`, `TenantId`, `Plan` (Free/Starter/Pro/Enterprise), `Status` (Active/Cancelled/PastDue), `UserLimit`, `CurrentUserCount`, `BillingCycleEnd` | 🟢 |
+| BL-002 | EF migration `Sprint31_Billing` | 🟢 |
+| BL-003 | `GET /api/v1/billing/subscription` — admin only | 🟢 |
+| BL-004 | `GET /api/v1/billing/invoices` — mock invoice history | 🟢 |
+| BL-005 | `GET /api/v1/billing/usage` — `{ activeUsers, userLimit, timesheetCount, storageUsedMb }` | 🟢 |
+| BL-006 | Add `"billing"` to `View` type + route `/billing` (admin only) | 🟢 |
+| BL-007 | `Billing.tsx` page: Current Plan card, Usage meters, Invoice history table | 🟢 |
+| BL-008 | Plan card: plan name, status badge, renewal date, user count progress bar, "Upgrade Plan" button (no-op) | 🟢 |
+| BL-009 | Usage meters: animated progress bars for active users, timesheet entries, storage. Red at 80%+ | 🟢 |
+| BL-010 | Invoice table: date, amount, status (Paid/Pending), download link (stub) | 🟢 |
+| BL-011 | Upgrade prompt banner on Dashboard when user count > 80% of limit. Dismissible via `localStorage` | 🟢 |
+
+---
+
+### SSO / OAuth
+
+| ID | Task | Priority |
+|----|------|----------|
+| SSO-001 | Install `Microsoft.AspNetCore.Authentication.Google` + `Microsoft.AspNetCore.Authentication.MicrosoftAccount` | 🟢 |
+| SSO-002 | Add SSO config to `appsettings.json` | 🟢 |
+| SSO-003 | `GET /api/v1/auth/sso/google` — OAuth redirect | 🟢 |
+| SSO-004 | `GET /api/v1/auth/sso/google/callback` — find or create User by email; return JWT + refresh token | 🟢 |
+| SSO-005 | Same pattern for Microsoft (`/sso/microsoft`, `/sso/microsoft/callback`) | 🟢 |
+| SSO-006 | Add `SsoProvider` (enum: None/Google/Microsoft) + `SsoSubject` to `User` entity — migration `Sprint32_SsoFields` | 🟢 |
+| SSO-007 | `GET /api/v1/auth/sso/providers` — returns configured providers so frontend shows/hides buttons | 🟢 |
+| SSO-008 | `Login.tsx` — fetch `/auth/sso/providers` on mount; show "Continue with Google" / "Continue with Microsoft" buttons | 🟢 |
+| SSO-009 | SSO button styling: branded SVG logos, full-width, above email/password form | 🟢 |
+| SSO-010 | Handle OAuth redirect return: detect `?token=...&refresh=...` query params; call `login()`, redirect to dashboard | 🟢 |
+| SSO-011 | Admin SSO config page under Settings: connected providers, enable/disable, domain restriction field | 🟢 |
+
+---
+
+### Public API + Webhooks
+
+| ID | Task | Priority |
+|----|------|----------|
+| API-001 | `ApiKey` entity: `Id`, `UserId`, `Name`, `KeyHash` (bcrypt), `Prefix` (first 8 chars), `Scopes`, `LastUsedAt`, `ExpiresAt`, `CreatedAt` | 🟢 |
+| API-002 | EF migration `Sprint33_ApiKeys` | 🟢 |
+| API-003 | `ApiKeyAuthenticationHandler` — reads `X-Api-Key` header, validates hash, sets `ClaimsPrincipal` | 🟢 |
+| API-004 | Register API key auth scheme in `Program.cs` | 🟢 |
+| API-005 | `ApiKeysController`: `GET /developer/keys`, `POST /developer/keys` (generate + show once), `DELETE /developer/keys/{id}` | 🟢 |
+| API-006 | `Webhook` entity: `Id`, `UserId`, `Url`, `Events`, `Secret`, `IsActive`, `LastTriggeredAt` | 🟢 |
+| API-007 | EF migration `Sprint33_Webhooks` | 🟢 |
+| API-008 | `WebhooksController`: CRUD endpoints | 🟢 |
+| API-009 | `WebhookDispatchService` — sends signed `POST` requests (HMAC-SHA256 `X-Signature` header) on: `timesheet.submitted`, `timesheet.approved`, `leave.approved`, `user.created` | 🟢 |
+| API-010 | `WebhookLog` entity + `GET /developer/webhooks/{id}/deliveries` — last 50 delivery attempts with status/response | 🟢 |
+| API-011 | Add `"developer"` to `View` type; route `/developer` (admin only) | 🟢 |
+| API-012 | `Developer.tsx` — tabbed page: "API Keys" tab + "Webhooks" tab | 🟢 |
+| API-013 | API Keys tab: table of keys; "Create Key" → modal with name + scope checkboxes → show full key once with copy button + warning | 🟢 |
+| API-014 | Webhooks tab: table with URL, events, status, last triggered; "Add Webhook" modal; delivery log expandable row | 🟢 |
+| API-015 | Use `useConfirm` for all delete actions | 🟢 |
+
+---
+
+### AI Smart Fill
+
+| ID | Task | Priority |
+|----|------|----------|
+| AI-001 | Install Anthropic NuGet; store `ANTHROPIC_API_KEY` in environment / Key Vault | 🟢 |
+| AI-002 | `AiService.cs` — `SuggestTimesheetEntries(userId, weekStart)`: fetch last 4 weeks, build prompt, call Claude claude-sonnet-4-6, return suggested entries JSON | 🟢 |
+| AI-003 | `POST /api/v1/ai/suggest-entries` | 🟢 |
+| AI-004 | `POST /api/v1/ai/explain-anomaly` — given anomaly alert ID, return plain-English explanation + suggested action | 🟢 |
+| AI-005 | `Timesheets.tsx` — "Smart Fill" button in weekly header: call `/ai/suggest-entries`, show suggestions modal with checkboxes, "Apply selected" adds draft entries | 🟢 |
+| AI-006 | Suggestions modal: project, category, hours, description + editable hours; "Apply All" + "Apply Selected" | 🟢 |
+| AI-007 | `Dashboard.tsx` — anomaly alert cards: add "Explain" button → call `/ai/explain-anomaly` → show in tooltip/popover | 🟢 |
+| AI-008 | Loading states for all AI calls | 🟢 |
+| AI-009 | Error handling: if AI call fails, `toast.error("Smart Fill unavailable", "Try again later.")` | 🟢 |
+
+---
+
+### Capacity Planning
+
+| ID | Task | Priority |
+|----|------|----------|
+| CP-001 | `GET /api/v1/capacity/team?weekStart=&weeks=4` — per-user, per-week allocated vs available hours | 🟡 |
+| CP-002 | `GET /api/v1/capacity/projects?month=` — per-project hours breakdown across team | 🟡 |
+| CP-003 | `GET /api/v1/capacity/overallocated` | 🟡 |
+| CP-004 | Add `"capacity"` to `View` type; route `/capacity` (manager + admin) | 🟡 |
+| CP-005 | `CapacityPlanning.tsx` — two-tab page: "Team Heatmap" + "Project Allocation" | 🟡 |
+| CP-006 | Team Heatmap tab: grid of users × weeks, colour-coded: green (<80%), amber (80–100%), red (>100%); hover shows hours | 🟡 |
+| CP-007 | Project Allocation tab: horizontal stacked bar per project — allocated vs budget hours | 🟡 |
+| CP-008 | Overallocation banner: if any user overallocated next week, show warning with names | 🟡 |
+| CP-009 | Week navigator controls | 🟡 |
+
+---
+
+### Slack / Teams Integration
+
+| ID | Task | Priority |
+|----|------|----------|
+| SL-001 | `SlackIntegration` entity: `Id`, `WorkspaceId`, `AccessToken` (encrypted), `BotUserId`, `WebhookUrl`, `IsActive` | 🟢 |
+| SL-002 | EF migration `Sprint35_Integrations` | 🟢 |
+| SL-003 | `POST /api/v1/integrations/slack/oauth` | 🟢 |
+| SL-004 | `POST /api/v1/integrations/slack/actions` | 🟢 |
+| SL-005 | `SlackNotificationService` — Block Kit messages: timesheet submitted (with Approve/Reject buttons for managers), leave approved (for employees) | 🟢 |
+| SL-006 | Background job: daily digest at 9am per user timezone — pending approvals summary to manager's Slack DM | 🟢 |
+| SL-007 | Microsoft Teams integration (same pattern as Slack) | 🟢 |
+| SL-008 | `Integrations.tsx` admin page (`/integrations`): cards for Slack and Teams with Connect/status | 🟢 |
+| SL-009 | Slack card: OAuth "Connect with Slack" button; when connected shows workspace name, bot user, disconnect, digest toggle | 🟢 |
+| SL-010 | Teams card | 🟢 |
+| SL-011 | `Profile.tsx` — "Connected Apps" section: user links personal Slack account for DM notifications | 🟢 |
+| SL-012 | Add `"integrations"` to nav (admin only) | 🟢 |
+
+---
+
+### Deferred UI (Acknowledged, Low Priority)
+
+| ID | Task | Notes |
+|----|------|-------|
+| TSH-F-005 | Separate Attendance/Timer descriptions | Cards already visually distinct |
+| TSH-F-012 | Configurable week start day | Needs `WorkPolicy.weekStartDay` backend field first |
+| TZ-013 | Topbar live clock | Optional / cosmetic |
+
+---
+
+### Async Export Upgrade (Scalability Gap — identified by graphify 2026-04-10)
+
+The current `TimesheetExportController` runs export synchronously on the HTTP thread (blocks until CSV/Excel/PDF is built and returned). At scale this exhausts the thread pool on large date ranges.
+
+The `SCALABILITY_10K_PLAN.md` Phase 2 describes the async job pattern already. The service layer (`TimesheetExportService.BuildExportAsync`) is already abstracted and ready to move off-thread.
+
+| ID | Task | Priority |
+|----|------|----------|
+| EXP-ASYNC-001 | `ExportJob` entity: `Id`, `RequestedByUserId`, `Status` (Queued/Processing/Done/Failed), `FiltersJson`, `Format`, `FilePathOrBlob`, `CreatedAt`, `CompletedAt`, `ErrorMessage` | 🟡 |
+| EXP-ASYNC-002 | EF migration for `ExportJobs` table | 🟡 |
+| EXP-ASYNC-003 | `POST /export` → enqueue job → `202 Accepted` + `{ jobId }` | 🟡 |
+| EXP-ASYNC-004 | `GET /export/{id}/status` → `{ status, progress }` | 🟡 |
+| EXP-ASYNC-005 | `GET /export/{id}/download` → stream file (stream from disk or blob) | 🟡 |
+| EXP-ASYNC-006 | `ExportJobWorker` background service — dequeues jobs, calls `TimesheetExportService.BuildExportAsync`, writes to disk/blob, updates status | 🟡 |
+| EXP-ASYNC-007 | Update `TimesheetExportModal.tsx` — poll status endpoint, show progress bar, "Download" button appears when done | 🟡 |

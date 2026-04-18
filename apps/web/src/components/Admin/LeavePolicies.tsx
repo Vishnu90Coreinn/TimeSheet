@@ -1,11 +1,11 @@
 /**
  * LeavePolicies.tsx — Pulse SaaS design v3.0
  */
-import { FormEvent, useEffect, useState, type ReactNode } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { apiFetch } from "../../api/client";
 import type { LeavePolicy, LeavePolicyAlloc, LeaveType, PagedResponse } from "../../types";
-import { AppButton, AppCheckbox, AppIconButton, AppInput, AppTableShell } from "../ui";
+import { AppBadge, AppButton, AppCheckbox, AppDrawer, AppIconButton, AppInput, AppModal, AppTableShell } from "../ui";
 import { ServerDataTable, type ServerColumnDef, type ServerTableQuery } from "../ui";
 import { useToast } from "../../contexts/ToastContext";
 
@@ -16,41 +16,6 @@ type PolicyForm = {
 };
 
 const BLANK: PolicyForm = { name: "", isActive: true, allocations: {} };
-
-function Drawer({ open, title, onClose, children, footer }: { open: boolean; title: string; onClose: () => void; children: ReactNode; footer?: ReactNode }) {
-  if (!open) return null;
-  return (
-    <>
-      <div className="drawer-overlay" onClick={onClose} />
-      <div className="drawer" role="dialog" aria-modal="true">
-        <div className="drawer-header">
-          <div className="drawer-title">{title}</div>
-          <button className="drawer-close" onClick={onClose} aria-label="Close">
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><line x1="1" y1="1" x2="12" y2="12"/><line x1="12" y1="1" x2="1" y2="12"/></svg>
-          </button>
-        </div>
-        <div className="drawer-body">{children}</div>
-        {footer && <div className="drawer-footer">{footer}</div>}
-      </div>
-    </>
-  );
-}
-
-function ConfirmModal({ open, title, body, onConfirm, onCancel }: { open: boolean; title: string; body: string; onConfirm: () => void; onCancel: () => void }) {
-  if (!open) return null;
-  return (
-    <div className="modal-overlay" onClick={onCancel}>
-      <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-title">{title}</div>
-        <div className="modal-body">{body}</div>
-        <div className="modal-actions">
-          <AppButton variant="ghost" size="sm" onClick={onCancel}>Cancel</AppButton>
-          <AppButton variant="danger" size="sm" onClick={onConfirm}>Delete</AppButton>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function AllocPills({ allocs }: { allocs: LeavePolicyAlloc[] }) {
   const nonZero = allocs.filter(a => a.daysPerYear > 0);
@@ -210,8 +175,8 @@ export function LeavePolicies() {
       sortValue: p => Number(p.isActive),
       width: "100px",
       render: p => p.isActive
-        ? <span className="badge badge-success">Active</span>
-        : <span className="badge badge-neutral">Inactive</span>,
+        ? <AppBadge variant="success">Active</AppBadge>
+        : <AppBadge variant="neutral">Inactive</AppBadge>,
     },
     {
       key: "actions",
@@ -234,7 +199,7 @@ export function LeavePolicies() {
 
   return (
     <section className="flex flex-col gap-6">
-      <Drawer open={!!editing} title={drawerTitle} onClose={() => setEditing(null)}
+      <AppDrawer open={!!editing} title={drawerTitle} onClose={() => setEditing(null)}
         footer={
           <>
             <AppButton variant="primary" onClick={() => void save()}>Save Policy</AppButton>
@@ -284,9 +249,9 @@ export function LeavePolicies() {
             </div>
           </div>
         )}
-      </Drawer>
+      </AppDrawer>
 
-      <ConfirmModal
+      <AppModal
         open={!!deleteId}
         title="Delete Leave Policy?"
         body="This will permanently delete the policy. Users assigned to it will lose their leave entitlements."
@@ -379,10 +344,14 @@ export function LeavePolicies() {
                 {leaveTypes.map((t) => (
                   <tr key={t.id}>
                     <td><strong>{t.name}</strong></td>
-                    <td>{t.isActive ? <span className="badge badge-success">Active</span> : <span className="badge badge-neutral">Inactive</span>}</td>
+                    <td>{t.isActive ? <AppBadge variant="success">Active</AppBadge> : <AppBadge variant="neutral">Inactive</AppBadge>}</td>
                   </tr>
                 ))}
-                {leaveTypes.length === 0 && <tr className="empty-row"><td colSpan={2}>No leave types defined.</td></tr>}
+                {leaveTypes.length === 0 && (
+                  <tr><td colSpan={2} style={{ textAlign: "center", padding: "24px 16px" }}>
+                    <span style={{ color: "var(--text-tertiary)", fontSize: 13 }}>No leave types defined.</span>
+                  </td></tr>
+                )}
               </tbody>
             </table>
           </AppTableShell>

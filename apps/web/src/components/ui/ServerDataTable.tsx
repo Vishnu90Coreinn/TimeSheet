@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { AppPagination } from "./AppPagination";
+import { EmptyState, EmptySearch } from "../EmptyState";
 
 export interface ServerColumnDef<T> {
   key: string;
@@ -198,8 +199,11 @@ export function ServerDataTable<T>({
               ))
             ) : data.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} style={{ ...tdBase, padding: "32px 20px", textAlign: "center" }}>
-                  <span style={{ color: "var(--text-tertiary)", fontSize: 13 }}>{emptyText}</span>
+                <td colSpan={columns.length} style={{ ...tdBase, padding: "40px 20px", textAlign: "center" }}>
+                  {query.search.trim()
+                    ? <EmptySearch query={query.search} />
+                    : <EmptyState size="sm" title={emptyText} />
+                  }
                 </td>
               </tr>
             ) : (

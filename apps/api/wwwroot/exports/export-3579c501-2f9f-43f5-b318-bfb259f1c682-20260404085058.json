@@ -1,0 +1,73 @@
+﻿{
+  "exportedAt": "2026-04-04T08:50:58.0109691Z",
+  "profile": {
+    "Username": "admin",
+    "DisplayName": "Great Admin",
+    "Email": "admin@timesheet.local"
+  },
+  "timesheetEntries": [
+    {
+      "WorkDate": "2026-03-27",
+      "Minutes": 180,
+      "Notes": "[10:00-13:00] bnmbnm"
+    },
+    {
+      "WorkDate": "2026-03-26",
+      "Minutes": 72,
+      "Notes": "[08:05-09:17] fghghfgh"
+    },
+    {
+      "WorkDate": "2026-03-20",
+      "Minutes": 241,
+      "Notes": "[19:13-23:14] TestData"
+    },
+    {
+      "WorkDate": "2026-03-17",
+      "Minutes": 120,
+      "Notes": "[13:00-15:00] Task 17 1"
+    },
+    {
+      "WorkDate": "2026-03-17",
+      "Minutes": 120,
+      "Notes": "[14:00-16:00] zdssad"
+    },
+    {
+      "WorkDate": "2026-03-17",
+      "Minutes": 240,
+      "Notes": "[09:00-13:00] Test 17"
+    },
+    {
+      "WorkDate": "2026-03-16",
+      "Minutes": 180,
+      "Notes": "[13:24-16:24] TEst"
+    },
+    {
+      "WorkDate": "2026-03-15",
+      "Minutes": 307,
+      "Notes": "[02:51-07:58] TTest"
+    },
+    {
+      "WorkDate": "2026-03-14",
+      "Minutes": 60,
+      "Notes": "[Development]"
+    }
+  ],
+  "leaveRequests": [
+    {
+      "LeaveDate": "2026-03-26",
+      "Status": "Approved"
+    },
+    {
+      "LeaveDate": "2026-03-18",
+      "Status": "Approved"
+    },
+    {
+      "LeaveDate": "2026-03-17",
+      "Status": "Approved"
+    },
+    {
+      "LeaveDate": "2026-03-16",
+      "Status": "Approved"
+    }
+  ]
+}

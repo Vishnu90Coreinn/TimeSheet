@@ -22,7 +22,7 @@ public class AuthController(ISender mediator) : ControllerBase
             return Unauthorized(new { message = result.Error });
 
         var v = result.Value!;
-        return Ok(new LoginResponse(v.AccessToken, v.RefreshToken, v.UserId, v.Username, v.Email, v.Role, v.OnboardingCompletedAt, v.LeaveWorkflowVisitedAt));
+        return Ok(new LoginResponse(v.AccessToken, v.RefreshToken, v.UserId, v.Username, v.Email, v.Role, v.OnboardingCompletedAt, v.LeaveWorkflowVisitedAt, v.MustChangePassword));
     }
 
     [HttpPost("refresh")]
@@ -33,7 +33,34 @@ public class AuthController(ISender mediator) : ControllerBase
             return Fail(result);
 
         var v = result.Value!;
-        return Ok(new LoginResponse(v.AccessToken, v.RefreshToken, v.UserId, v.Username, v.Email, v.Role, v.OnboardingCompletedAt, v.LeaveWorkflowVisitedAt));
+        return Ok(new LoginResponse(v.AccessToken, v.RefreshToken, v.UserId, v.Username, v.Email, v.Role, v.OnboardingCompletedAt, v.LeaveWorkflowVisitedAt, v.MustChangePassword));
+    }
+
+    [HttpGet("security-question")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetSecurityQuestion([FromQuery] string username, CancellationToken ct)
+    {
+        var result = await mediator.Send(new GetSecurityQuestionQuery(username), ct);
+        if (!result.IsSuccess) return Fail(result);
+        return Ok(new GetSecurityQuestionResponse(result.Value!));
+    }
+
+    [HttpPost("forgot-password/verify")]
+    [AllowAnonymous]
+    public async Task<IActionResult> VerifySecurityAnswer([FromBody] VerifySecurityAnswerRequest request, CancellationToken ct)
+    {
+        var result = await mediator.Send(new VerifySecurityAnswerCommand(request.Username, request.Answer), ct);
+        if (!result.IsSuccess) return Fail(result);
+        var v = result.Value!;
+        return Ok(new VerifySecurityAnswerResponse(v.ResetToken, v.ExpiresAtUtc.ToString("O")));
+    }
+
+    [HttpPost("forgot-password/reset")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request, CancellationToken ct)
+    {
+        var result = await mediator.Send(new ResetPasswordCommand(request.ResetToken, request.NewPassword), ct);
+        return result.IsSuccess ? NoContent() : Fail(result);
     }
 
     [Authorize]

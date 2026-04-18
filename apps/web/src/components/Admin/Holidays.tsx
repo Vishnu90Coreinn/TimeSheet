@@ -1,54 +1,14 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { apiFetch } from "../../api/client";
 import type { Holiday, PagedResponse } from "../../types";
-import { AppButton, AppCheckbox, AppIconButton, AppInput, AppTextarea } from "../ui";
+import { AppBadge, AppButton, AppCheckbox, AppDrawer, AppIconButton, AppInput, AppModal, AppTextarea } from "../ui";
 import { ServerDataTable, type ServerColumnDef, type ServerTableQuery } from "../ui";
 import { useToast } from "../../contexts/ToastContext";
+import { fmtDateLong as fmtDate } from "../../utils/date";
 
 type HolidayForm = { name: string; date: string; isRecurring: boolean };
 const BLANK: HolidayForm = { name: "", date: "", isRecurring: false };
-
-function fmtDate(iso: string): string {
-  if (!iso) return "—";
-  const d = new Date(iso.includes("T") ? iso : `${iso}T00:00:00`);
-  return d.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
-}
-
-function Drawer({ open, title, onClose, children, footer }: { open: boolean; title: string; onClose: () => void; children: ReactNode; footer?: ReactNode }) {
-  if (!open) return null;
-  return (
-    <>
-      <div className="drawer-overlay" onClick={onClose} />
-      <div className="drawer" role="dialog" aria-modal="true">
-        <div className="drawer-header">
-          <div className="drawer-title">{title}</div>
-          <button className="drawer-close" onClick={onClose} aria-label="Close">
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><line x1="1" y1="1" x2="12" y2="12"/><line x1="12" y1="1" x2="1" y2="12"/></svg>
-          </button>
-        </div>
-        <div className="drawer-body">{children}</div>
-        {footer && <div className="drawer-footer">{footer}</div>}
-      </div>
-    </>
-  );
-}
-
-function ConfirmModal({ open, title, body, onConfirm, onCancel }: { open: boolean; title: string; body: string; onConfirm: () => void; onCancel: () => void }) {
-  if (!open) return null;
-  return (
-    <div className="modal-overlay" onClick={onCancel}>
-      <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-title">{title}</div>
-        <div className="modal-body">{body}</div>
-        <div className="modal-actions">
-          <AppButton variant="ghost" size="sm" onClick={onCancel}>Cancel</AppButton>
-          <AppButton variant="danger" size="sm" onClick={onConfirm}>Delete</AppButton>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export function Holidays() {
   const toast = useToast();
@@ -168,7 +128,7 @@ export function Holidays() {
       width: "140px",
       render: h => h.isRecurring
         ? <span className="badge bg-purple-100 text-purple-700 border border-purple-300">Annual</span>
-        : <span className="badge badge-neutral">Once</span>,
+        : <AppBadge variant="neutral">Once</AppBadge>,
     },
     {
       key: "actions",
@@ -191,7 +151,7 @@ export function Holidays() {
 
   return (
     <section className="flex flex-col gap-6">
-      <Drawer
+      <AppDrawer
         open={!!editing}
         title={drawerTitle}
         onClose={() => setEditing(null)}
@@ -217,9 +177,9 @@ export function Holidays() {
             Recurring annually
           </label>
         </div>
-      </Drawer>
+      </AppDrawer>
 
-      <Drawer
+      <AppDrawer
         open={showImport}
         title="Bulk Import Holidays"
         onClose={() => setShowImport(false)}
@@ -247,9 +207,9 @@ export function Holidays() {
             onChange={(e) => setImportText(e.target.value)}
           />
         </div>
-      </Drawer>
+      </AppDrawer>
 
-      <ConfirmModal
+      <AppModal
         open={!!deleteId}
         title="Delete Holiday?"
         body="This will permanently remove this holiday from the calendar."

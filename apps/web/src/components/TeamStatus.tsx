@@ -9,6 +9,8 @@ import { apiFetch } from "../api/client";
 import { StatusBadge, toBadgeStatus } from "./StatusBadge";
 import type { TeamMemberStatus, PagedResponse } from "../types";
 import { AppButton } from "./ui";
+import { useToast } from "../contexts/ToastContext";
+import { todayIso as sharedTodayIso } from "../utils/date";
 
 type Filter = "all" | "missing" | "needs-approval" | "on-leave";
 
@@ -21,10 +23,7 @@ const FILTER_LABELS: Record<Filter, string> = {
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
 
-function todayIso(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
+function todayIso() { return sharedTodayIso(); }
 
 function fmtLocalTime(isoUtc: string | null): string | null {
   if (!isoUtc) return null;
@@ -444,12 +443,13 @@ function RowSkeleton() {
 
 export function TeamStatus() {
   const navigate = useNavigate();
+  const toast = useToast();
   const [members, setMembers] = useState<TeamMemberStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [date, setDate] = useState(todayIso());
   const [filter, setFilter] = useState<Filter>("all");
   const [reminding, setReminding] = useState<Set<string>>(new Set());
-  const [toast, setToast] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const load = useCallback(async (d: string) => {
     setLoading(true);
@@ -459,21 +459,43 @@ export function TeamStatus() {
       setMembers(page.items);
     }
     setLoading(false);
+    setSelectedIds(new Set());
   }, []);
 
   useEffect(() => { void load(date); }, [load, date]);
-
-  function showToast(msg: string) {
-    setToast(msg);
-    setTimeout(() => setToast(null), 3000);
-  }
 
   async function remind(userId: string, username: string) {
     setReminding(prev => new Set(prev).add(userId));
     const r = await apiFetch(`/manager/remind/${userId}`, { method: "POST" });
     setReminding(prev => { const s = new Set(prev); s.delete(userId); return s; });
-    if (r.ok || r.status === 204) showToast(`Reminder sent to ${username}.`);
-    else showToast("Failed to send reminder.");
+    if (r.ok || r.status === 204) toast.success(`Reminder sent to ${username}`);
+    else toast.error("Failed to send reminder");
+  }
+
+  async function remindBulk() {
+    const targets = filtered.filter(m =>
+      selectedIds.has(m.userId) && m.todayTimesheetStatus === "missing"
+    );
+    if (targets.length === 0) return;
+    await Promise.all(targets.map(m => apiFetch(`/manager/remind/${m.userId}`, { method: "POST" })));
+    toast.success(`Reminders sent`, `${targets.length} member${targets.length !== 1 ? "s" : ""} notified`);
+    setSelectedIds(new Set());
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const s = new Set(prev);
+      s.has(id) ? s.delete(id) : s.add(id);
+      return s;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (selectedIds.size === filtered.length && filtered.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map(m => m.userId)));
+    }
   }
 
   // C3 — Summary counts for filter chips
@@ -534,16 +556,7 @@ export function TeamStatus() {
   ];
 
   return (
-    <>
-      {/* Toast */}
-      {toast && (
-        <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 9999, background: "#111827", color: "#fff", borderRadius: 10, padding: "10px 18px", fontSize: 13, fontWeight: 600, boxShadow: "0 4px 16px rgba(0,0,0,0.22)", display: "flex", alignItems: "center", gap: 8 }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
-          {toast}
-        </div>
-      )}
-
-      <section style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+    <section style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
         {/* ── Page Header ─────────────────────────────────────────────────────── */}
         <div className="page-header">
@@ -608,6 +621,36 @@ export function TeamStatus() {
             })}
           </div>
 
+          {/* Bulk action bar — slides in when rows are selected */}
+          {selectedIds.size > 0 && (
+            <div style={{
+              display: "flex", alignItems: "center", gap: 12,
+              padding: "10px 16px",
+              background: "var(--brand-50, #eef2ff)",
+              borderBottom: "1px solid var(--brand-200, #c7d2fe)",
+            }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--brand-700, #4338ca)", flex: 1 }}>
+                {selectedIds.size} member{selectedIds.size !== 1 ? "s" : ""} selected
+              </span>
+              {filtered.some(m => selectedIds.has(m.userId) && m.todayTimesheetStatus === "missing") && (
+                <AppButton
+                  variant="primary"
+                  size="sm"
+                  onClick={() => void remindBulk()}
+                >
+                  Remind Selected
+                </AppButton>
+              )}
+              <AppButton
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedIds(new Set())}
+              >
+                Deselect All
+              </AppButton>
+            </div>
+          )}
+
           {/* Body */}
           {loading ? (
             <div>
@@ -634,12 +677,22 @@ export function TeamStatus() {
               <table className="data-table" style={{ tableLayout: "fixed", width: "100%" }} role="grid">
                 <thead>
                   <tr>
-                    <th style={{ width: "22%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Member</th>
+                    <th style={{ width: "3%", padding: "0 0 0 16px" }}>
+                      <input
+                        type="checkbox"
+                        aria-label="Select all"
+                        checked={selectedIds.size === filtered.length && filtered.length > 0}
+                        ref={el => { if (el) el.indeterminate = selectedIds.size > 0 && selectedIds.size < filtered.length; }}
+                        onChange={toggleSelectAll}
+                        style={{ cursor: "pointer", accentColor: "var(--brand-500)" }}
+                      />
+                    </th>
+                    <th style={{ width: "20%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Member</th>
                     <th style={{ width: "13%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Attendance</th>
                     <th style={{ width: "11%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       <ClockIcon />Check-in
                     </th>
-                    <th style={{ width: "20%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Week Progress</th>
+                    <th style={{ width: "19%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Week Progress</th>
                     <th style={{ width: "12%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Timesheet</th>
                     <th style={{ width: "22%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       Actions
@@ -649,6 +702,7 @@ export function TeamStatus() {
                 <tbody>
                   {filtered.map(m => {
                     const isReminding = reminding.has(m.userId);
+                    const isSelected = selectedIds.has(m.userId);
                     const tsStatus = toBadgeStatus(m.todayTimesheetStatus);
                     const attStatus = toBadgeStatus(m.attendance === "onLeave" ? "on-leave" : m.attendance);
 
@@ -660,7 +714,23 @@ export function TeamStatus() {
                       : undefined;
 
                     return (
-                      <tr key={m.userId} style={rowAccent ? { borderLeft: `3px solid ${rowAccent}` } : {}}>
+                      <tr
+                        key={m.userId}
+                        style={{
+                          ...(rowAccent ? { borderLeft: `3px solid ${rowAccent}` } : {}),
+                          ...(isSelected ? { background: "var(--brand-25, #f5f3ff)" } : {}),
+                        }}
+                      >
+                        {/* Checkbox */}
+                        <td style={{ padding: "0 0 0 16px" }}>
+                          <input
+                            type="checkbox"
+                            aria-label={`Select ${m.displayName || m.username}`}
+                            checked={isSelected}
+                            onChange={() => toggleSelect(m.userId)}
+                            style={{ cursor: "pointer", accentColor: "var(--brand-500)" }}
+                          />
+                        </td>
                         {/* Member */}
                         <td>
                           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -743,7 +813,6 @@ export function TeamStatus() {
           )}
         </div>
 
-      </section>
-    </>
+    </section>
   );
 }

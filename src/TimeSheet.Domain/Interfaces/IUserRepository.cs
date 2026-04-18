@@ -21,6 +21,7 @@ public interface IUserRepository
     void Add(User user);
     void Update(User user);
     Task<User?> GetWithDetailsAsync(Guid id, CancellationToken ct = default);
+    Task<User?> GetByIdWithRefreshTokensAsync(Guid id, CancellationToken ct = default);
 }
 
 public record PagedUserRow(

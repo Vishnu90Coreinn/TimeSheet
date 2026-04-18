@@ -79,7 +79,16 @@
       "mcp__stitch__generate_screen_from_text",
       "mcp__stitch__list_screens",
       "Bash(sqlcmd:*)",
-      "Bash(find /d/GitHubRepository/TimeSheet/apps/web/src -name useToast* -o -name toast*)"
+      "Bash(find /d/GitHubRepository/TimeSheet/apps/web/src -name useToast* -o -name toast*)",
+      "Bash(find D:/GitHubRepository/TimeSheet -path */Migrations/* -name *audit* -o -path */Migrations/* -name *Audit*)",
+      "Bash(find D:/GitHubRepository/TimeSheet/apps/api -name *.cs -not -path */obj/*)",
+      "Bash(find D:/GitHubRepository/TimeSheet -name schema.sql -o -name *.sql)",
+      "Bash(find D:/GitHubRepository/TimeSheet -name *.Tests.csproj -o -name *.test.tsx -o -name *.spec.ts)",
+      "Bash(find D:/GitHubRepository/TimeSheet -name *.Tests.csproj)",
+      "Bash(find D:/GitHubRepository/TimeSheet -name *TimesheetExport* -o -name *Export*Test*)",
+      "Bash(find D:/GitHubRepository/TimeSheet/apps/api.tests -name *.cs)",
+      "Bash(find D:/GitHubRepository/TimeSheet/src/TimeSheet.Application/Timesheets/Commands -type f -name *.cs)",
+      "Bash(find D:/GitHubRepository/TimeSheet -name *.cs -path *Enums* -type f)"
     ]
   }
 }

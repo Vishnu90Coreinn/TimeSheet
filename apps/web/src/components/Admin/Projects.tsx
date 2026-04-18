@@ -1,41 +1,16 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { Pencil, PauseCircle, PlayCircle } from "lucide-react";
 import { apiFetch } from "../../api/client";
 import type { PagedResponse, Project } from "../../types";
-import { AppButton, AppCheckbox, AppIconButton, AppInput, AppSelect, ServerDataTable, type ServerColumnDef, type ServerTableQuery } from "../ui";
+import { AppBadge, AppButton, AppCheckbox, AppDrawer, AppIconButton, AppInput, AppSelect, ServerDataTable, type ServerColumnDef, type ServerTableQuery } from "../ui";
 import { useToast } from "../../contexts/ToastContext";
+import { avatarColor } from "../../utils/avatar";
 
 type ProjectForm = { name: string; code: string; isActive: boolean };
 const BLANK: ProjectForm = { name: "", code: "", isActive: true };
 
 function initials(name: string): string {
   return name.split(/[\s_]+/).map((p) => p[0] ?? "").join("").toUpperCase().slice(0, 2) || "?";
-}
-
-const AVATAR_PALETTE = ["#6366f1", "#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444", "#ec4899"];
-function avatarColor(name: string): string {
-  let n = 0;
-  for (const c of name) n = (n * 31 + c.charCodeAt(0)) & 0xffff;
-  return AVATAR_PALETTE[n % AVATAR_PALETTE.length];
-}
-
-function Drawer({ open, title, onClose, children, footer }: { open: boolean; title: string; onClose: () => void; children: ReactNode; footer?: ReactNode }) {
-  if (!open) return null;
-  return (
-    <>
-      <div className="drawer-overlay" onClick={onClose} />
-      <div className="drawer" role="dialog" aria-modal="true">
-        <div className="drawer-header">
-          <div className="drawer-title">{title}</div>
-          <button className="drawer-close" onClick={onClose} aria-label="Close">
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><line x1="1" y1="1" x2="12" y2="12"/><line x1="12" y1="1" x2="1" y2="12"/></svg>
-          </button>
-        </div>
-        <div className="drawer-body">{children}</div>
-        {footer && <div className="drawer-footer">{footer}</div>}
-      </div>
-    </>
-  );
 }
 
 export function Projects() {
@@ -144,10 +119,10 @@ export function Projects() {
       sortable: true,
       width: "160px",
       render: p => p.isArchived
-        ? <span className="badge badge-neutral">Archived</span>
+        ? <AppBadge variant="neutral">Archived</AppBadge>
         : p.isActive
-          ? <span className="badge badge-success">Active</span>
-          : <span className="badge badge-warning">Inactive</span>,
+          ? <AppBadge variant="success">Active</AppBadge>
+          : <AppBadge variant="warning">Inactive</AppBadge>,
     },
     {
       key: "budget",
@@ -182,7 +157,7 @@ export function Projects() {
 
   return (
     <section className="flex flex-col gap-6">
-      <Drawer
+      <AppDrawer
         open={!!editing}
         title={drawerTitle}
         onClose={() => setEditing(null)}
@@ -208,7 +183,7 @@ export function Projects() {
             Active
           </label>
         </div>
-      </Drawer>
+      </AppDrawer>
 
       <div className="page-header">
         <div>

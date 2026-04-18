@@ -1,6 +1,8 @@
 using MediatR;
+using TimeSheet.Application.Common;
 using TimeSheet.Application.Common.Interfaces;
 using TimeSheet.Application.Common.Models;
+using TimeSheet.Domain.Interfaces;
 
 namespace TimeSheet.Application.Profile.Queries;
 
@@ -49,12 +51,22 @@ public class UpdateAvatarCommandHandler(IProfileService service, ICurrentUserSer
     }
 }
 
-public class ChangePasswordCommandHandler(IProfileService service, ICurrentUserService currentUserService)
+public class ChangePasswordCommandHandler(
+    IProfileService service,
+    ICurrentUserService currentUserService,
+    IPasswordPolicyRepository policyRepo)
     : IRequestHandler<ChangePasswordCommand, Result>
 {
     public async Task<Result> Handle(ChangePasswordCommand request, CancellationToken cancellationToken)
     {
         if (currentUserService.UserId == Guid.Empty) return Result.Forbidden("Unauthorized.");
+
+        // Validate new password against policy
+        var policy = await policyRepo.GetAsync(cancellationToken) ?? new Domain.Entities.PasswordPolicy();
+        var errors = PasswordValidator.Validate(request.NewPassword ?? string.Empty, policy);
+        if (errors.Length > 0)
+            return Result.ValidationFailure(string.Join(" ", errors));
+
         var outcome = await service.ChangePasswordAsync(currentUserService.UserId, request.CurrentPassword, request.NewPassword, cancellationToken);
         return outcome switch
         {

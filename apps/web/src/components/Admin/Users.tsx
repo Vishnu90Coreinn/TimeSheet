@@ -1,10 +1,27 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../../api/client";
 import type { Department, LeavePolicy, PagedResponse, User, WorkPolicy } from "../../types";
 import { History, Pencil, UserCheck, UserX } from "lucide-react";
-import { AppButton, AppCheckbox, AppIconButton, AppInput, AppSelect, ServerDataTable, type ServerColumnDef, type ServerTableQuery } from "../ui";
+import { AppBadge, AppButton, AppCheckbox, AppDrawer, AppIconButton, AppInput, AppSelect, ServerDataTable, type ServerColumnDef, type ServerTableQuery } from "../ui";
 import { useToast } from "../../contexts/ToastContext";
+import { avatarColor } from "../../utils/avatar";
+
+function KeyIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="7" cy="17" r="4"/><path d="M10.85 13.15L19 5l-2 4 4-2-2 4 4-2-2 4"/>
+    </svg>
+  );
+}
+
+function BanIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+    </svg>
+  );
+}
 
 type UserForm = {
   username: string;
@@ -50,32 +67,6 @@ function initials(name: string): string {
   return name.split(/[\s_]+/).map((p) => p[0] ?? "").join("").toUpperCase().slice(0, 2) || "?";
 }
 
-const AVATAR_PALETTE = ["#818cf8", "#a78bfa", "#34d399", "#60a5fa", "#f472b6", "#fb923c", "#4ade80", "#38bdf8"];
-function avatarColor(name: string): string {
-  let n = 0;
-  for (const c of name) n = (n * 31 + c.charCodeAt(0)) & 0xffff;
-  return AVATAR_PALETTE[n % AVATAR_PALETTE.length];
-}
-
-function Drawer({ open, title, onClose, children, footer }: { open: boolean; title: string; onClose: () => void; children: ReactNode; footer?: ReactNode }) {
-  if (!open) return null;
-  return (
-    <>
-      <div className="drawer-overlay" onClick={onClose} />
-      <div className="drawer" role="dialog" aria-modal="true">
-        <div className="drawer-header">
-          <div className="drawer-title">{title}</div>
-          <button className="drawer-close" onClick={onClose} aria-label="Close">
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><line x1="1" y1="1" x2="12" y2="12"/><line x1="12" y1="1" x2="1" y2="12"/></svg>
-          </button>
-        </div>
-        <div className="drawer-body">{children}</div>
-        {footer && <div className="drawer-footer">{footer}</div>}
-      </div>
-    </>
-  );
-}
-
 export function Users() {
   const navigate = useNavigate();
   const toast = useToast();
@@ -99,6 +90,13 @@ export function Users() {
   const [form, setForm] = useState<UserForm>(BLANK);
   const [error, setError] = useState("");
   const [showPwd, setShowPwd] = useState(false);
+
+  // Reset password
+  const [resetPasswordResult, setResetPasswordResult] = useState<{ userId: string; username: string; tempPassword: string } | null>(null);
+  const [copyDone, setCopyDone] = useState(false);
+
+  // Revoke sessions
+  const [revokeConfirmUserId, setRevokeConfirmUserId] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -216,6 +214,27 @@ export function Users() {
     void load();
   }
 
+  async function resetPassword(u: User) {
+    const r = await apiFetch(`/users/${u.id}/reset-password`, { method: "POST" });
+    if (r.ok) {
+      const d = await r.json() as { temporaryPassword: string };
+      setResetPasswordResult({ userId: u.id, username: u.username, tempPassword: d.temporaryPassword });
+      setCopyDone(false);
+    } else {
+      toast.error("Reset failed", `Could not reset password for ${u.username}.`);
+    }
+  }
+
+  async function revokeSessions(u: User) {
+    const r = await apiFetch(`/users/${u.id}/revoke-sessions`, { method: "POST" });
+    setRevokeConfirmUserId(null);
+    if (r.ok || r.status === 204) {
+      toast.success("Sessions revoked", `Sessions revoked for ${u.username}.`);
+    } else {
+      toast.error("Revoke failed", `Could not revoke sessions for ${u.username}.`);
+    }
+  }
+
   function toggleUserSelect(id: string) {
     setSelectedUserIds((prev) => {
       const next = new Set(prev);
@@ -296,13 +315,13 @@ export function Users() {
       width: "100px",
       sortable: true,
       render: (u) => u.isActive
-        ? <span className="badge badge-success">Active</span>
-        : <span className="badge badge-neutral">Inactive</span>,
+        ? <AppBadge variant="success">Active</AppBadge>
+        : <AppBadge variant="neutral">Inactive</AppBadge>,
     },
     {
       key: "actions",
       label: "Actions",
-      width: "110px",
+      width: "160px",
       render: (u) => (
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           <AppIconButton tone="edit" onClick={() => openEdit(u)} title={`Edit ${u.username}`} aria-label={`Edit ${u.username}`}>
@@ -314,6 +333,29 @@ export function Users() {
           <AppIconButton tone={u.isActive ? "danger" : "success"} onClick={() => void toggleActive(u)} title={`${u.isActive ? "Deactivate" : "Activate"} ${u.username}`} aria-label={`${u.isActive ? "Deactivate" : "Activate"} ${u.username}`}>
             {u.isActive ? <UserX size={14} /> : <UserCheck size={14} />}
           </AppIconButton>
+          <AppIconButton
+            tone="edit"
+            onClick={() => void resetPassword(u)}
+            title={`Reset password for ${u.username}`}
+            aria-label={`Reset password for ${u.username}`}
+          >
+            <KeyIcon />
+          </AppIconButton>
+          {revokeConfirmUserId === u.id ? (
+            <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+              <AppButton variant="danger" size="sm" style={{ padding: "2px 6px", fontSize: "0.72rem", minHeight: 0 }} onClick={() => void revokeSessions(u)}>Revoke?</AppButton>
+              <AppButton variant="ghost" size="sm" style={{ padding: "2px 6px", fontSize: "0.72rem", minHeight: 0 }} onClick={() => setRevokeConfirmUserId(null)}>✕</AppButton>
+            </div>
+          ) : (
+            <AppIconButton
+              tone="danger"
+              onClick={() => setRevokeConfirmUserId(u.id)}
+              title={`Revoke sessions for ${u.username}`}
+              aria-label={`Revoke sessions for ${u.username}`}
+            >
+              <BanIcon />
+            </AppIconButton>
+          )}
         </div>
       ),
     },
@@ -323,7 +365,43 @@ export function Users() {
 
   return (
     <section className="flex flex-col gap-6">
-      <Drawer open={!!editing} title={drawerTitle} onClose={() => setEditing(null)}
+      {/* Reset Password modal */}
+      {resetPasswordResult && (
+        <div className="modal-overlay" onClick={() => setResetPasswordResult(null)}>
+          <div className="modal-box" onClick={e => e.stopPropagation()} style={{ maxWidth: 440 }}>
+            <div className="modal-title">Temporary Password</div>
+            <div className="modal-body">
+              <p className="text-[0.85rem] text-text-secondary mb-4">
+                Share this password with <strong>{resetPasswordResult.username}</strong>. They will be required to change it on their next login.
+              </p>
+              <div className="flex gap-2 items-center">
+                <input
+                  readOnly
+                  value={resetPasswordResult.tempPassword}
+                  className="input-field font-mono text-[0.85rem] flex-1"
+                  style={{ fontFamily: "monospace", background: "var(--n-50)", border: "1px solid var(--border-subtle)" }}
+                />
+                <AppButton
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    void navigator.clipboard.writeText(resetPasswordResult.tempPassword);
+                    setCopyDone(true);
+                    setTimeout(() => setCopyDone(false), 2000);
+                  }}
+                >
+                  {copyDone ? "Copied!" : "Copy"}
+                </AppButton>
+              </div>
+            </div>
+            <div className="modal-actions">
+              <AppButton variant="primary" size="sm" onClick={() => setResetPasswordResult(null)}>Close</AppButton>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <AppDrawer open={!!editing} title={drawerTitle} onClose={() => setEditing(null)}
         footer={
           <>
             <AppButton variant="primary" onClick={() => void save()}>Save</AppButton>
@@ -415,7 +493,7 @@ export function Users() {
             Active
           </label>
         </div>
-      </Drawer>
+      </AppDrawer>
 
       <div className="page-header">
         <div>

@@ -1,4 +1,5 @@
 import { Mail } from "lucide-react";
+import { AppBadge } from "../../../ui";
 
 export function EmailsTab() {
   return (
@@ -10,7 +11,7 @@ export function EmailsTab() {
       <p className="text-[0.8rem] max-w-xs" style={{ color: "var(--text-secondary, #64748b)" }}>
         Customise the logo, header colour, and footer text in system notification emails. Ships in Sprint 42.
       </p>
-      <span className="badge badge-info text-[0.72rem]">Coming soon</span>
+      <AppBadge variant="info" className="text-[0.72rem]">Coming soon</AppBadge>
     </div>
   );
 }

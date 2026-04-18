@@ -111,10 +111,9 @@ public class LeaveController(ISender mediator, IHubContext<TimeSheetHub> hub, Ti
         if (leaveRequest != null)
         {
             var status = request.Approve ? "approved" : "rejected";
-            await hub.Clients.Group($"user-{leaveRequest.UserId}").SendAsync(
-                TimeSheetHub.LeaveStatusChanged,
-                new { status },
-                ct);
+            var group = hub.Clients.Group($"user-{leaveRequest.UserId}");
+            await group.SendAsync(TimeSheetHub.LeaveStatusChanged, new { status }, ct);
+            await group.SendAsync(TimeSheetHub.NewNotification, new { }, ct);
         }
 
         return result.ToActionResult();

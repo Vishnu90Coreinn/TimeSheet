@@ -86,7 +86,9 @@ public class ApprovalsController(ISender mediator, IHubContext<TimeSheetHub> hub
         var ts = await db.Timesheets.AsNoTracking().FirstOrDefaultAsync(t => t.Id == id, ct);
         if (ts != null)
         {
-            await hub.Clients.Group($"user-{ts.UserId}").SendAsync(TimeSheetHub.TimesheetStatusChanged, new { timesheetId = id, status = "approved" }, ct);
+            var group = hub.Clients.Group($"user-{ts.UserId}");
+            await group.SendAsync(TimeSheetHub.TimesheetStatusChanged, new { timesheetId = id, status = "approved" }, ct);
+            await group.SendAsync(TimeSheetHub.NewNotification, new { }, ct);
             await hub.Clients.All.SendAsync(TimeSheetHub.DashboardUpdated, new { }, ct);
         }
 
@@ -101,7 +103,11 @@ public class ApprovalsController(ISender mediator, IHubContext<TimeSheetHub> hub
 
         var ts = await db.Timesheets.AsNoTracking().FirstOrDefaultAsync(t => t.Id == id, ct);
         if (ts != null)
-            await hub.Clients.Group($"user-{ts.UserId}").SendAsync(TimeSheetHub.TimesheetStatusChanged, new { timesheetId = id, status = "rejected" }, ct);
+        {
+            var group = hub.Clients.Group($"user-{ts.UserId}");
+            await group.SendAsync(TimeSheetHub.TimesheetStatusChanged, new { timesheetId = id, status = "rejected" }, ct);
+            await group.SendAsync(TimeSheetHub.NewNotification, new { }, ct);
+        }
 
         return Ok(new { message = "Action completed." });
     }
@@ -114,7 +120,11 @@ public class ApprovalsController(ISender mediator, IHubContext<TimeSheetHub> hub
 
         var ts = await db.Timesheets.AsNoTracking().FirstOrDefaultAsync(t => t.Id == id, ct);
         if (ts != null)
-            await hub.Clients.Group($"user-{ts.UserId}").SendAsync(TimeSheetHub.TimesheetStatusChanged, new { timesheetId = id, status = "draft" }, ct);
+        {
+            var group = hub.Clients.Group($"user-{ts.UserId}");
+            await group.SendAsync(TimeSheetHub.TimesheetStatusChanged, new { timesheetId = id, status = "draft" }, ct);
+            await group.SendAsync(TimeSheetHub.NewNotification, new { }, ct);
+        }
 
         return Ok(new { message = "Action completed." });
     }

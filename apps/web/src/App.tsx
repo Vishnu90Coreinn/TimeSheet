@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Navigate, Route, Routes, useNavigate, useLocation } from "react-router-dom";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { ToastProvider } from "./contexts/ToastContext";
@@ -80,6 +80,10 @@ function AppRoutes() {
   const isAdmin   = session?.role === "admin";
   const isManager = session?.role === "manager" || isAdmin;
   const onboardingCompletedAt = session?.onboardingCompletedAt ?? null;
+
+  // "View as" role — lets admin/manager preview different dashboard perspectives
+  const [viewAsRole, setViewAsRole] = useState<string>(() => session?.role ?? "employee");
+  useEffect(() => { if (session?.role) setViewAsRole(session.role); }, [session?.role]);
   const showOnboarding = Boolean(session && !onboardingCompletedAt);
 
   const nav = useMemo(
@@ -119,11 +123,13 @@ function AppRoutes() {
         onNavigate={(v) => navigate(VIEW_PATHS[v])}
         onNavigateProfile={() => navigate("/profile")}
         onLogout={() => { logout(); navigate("/login"); }}
+        viewAsRole={viewAsRole}
+        onChangeViewAsRole={setViewAsRole}
       >
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/login" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/dashboard"  element={<ErrorBoundary><Dashboard role={session.role} username={session.username} onboardingCompletedAt={onboardingCompletedAt} /></ErrorBoundary>} />
+          <Route path="/dashboard"  element={<ErrorBoundary><Dashboard role={viewAsRole} username={session.username} onboardingCompletedAt={onboardingCompletedAt} /></ErrorBoundary>} />
           <Route path="/timesheets" element={<ErrorBoundary><Timesheets /></ErrorBoundary>} />
           <Route path="/leave"      element={<ErrorBoundary><Leave isManager={isManager} isAdmin={isAdmin} /></ErrorBoundary>} />
           <Route path="/reports"    element={<ErrorBoundary><Reports /></ErrorBoundary>} />

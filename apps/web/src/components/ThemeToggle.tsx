@@ -19,29 +19,13 @@ export function ThemeToggle() {
 
   return (
     <button
+      type="button"
       onClick={cycle}
-      title={`Theme: ${current.label} (click to change)`}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "0.3rem",
-        background: "none",
-        border: "1px solid var(--color-n-200, #e5e7eb)",
-        borderRadius: 7,
-        padding: "4px 9px",
-        cursor: "pointer",
-        fontSize: "0.78rem",
-        color: "var(--color-text-secondary, #64647a)",
-        transition: "background 0.15s",
-      }}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.background = "var(--color-n-50, #f5f5f7)";
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.background = "none";
-      }}
+      className="icon-btn"
+      title={`Theme: ${current.label} — click to change`}
+      aria-label={`Switch theme (current: ${current.label})`}
     >
-      <span style={{ fontSize: "0.9rem" }}>{current.icon}</span>
+      <span style={{ fontSize: "1rem", lineHeight: 1 }}>{current.icon}</span>
     </button>
   );
 }

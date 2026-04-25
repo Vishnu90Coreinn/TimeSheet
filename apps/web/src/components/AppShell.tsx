@@ -87,9 +87,11 @@ interface AppShellProps {
   onNavigateProfile: () => void;
   onLogout: () => void;
   children: ReactNode;
+  viewAsRole?: string;
+  onChangeViewAsRole?: (role: string) => void;
 }
 
-export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, onLogout, children }: AppShellProps) {
+export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, onLogout, children, viewAsRole, onChangeViewAsRole }: AppShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
@@ -245,6 +247,7 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
     <>
       {/* ── Topbar ── */}
       <header className="shell-topnav">
+        {/* Left — hamburger + breadcrumb */}
         <div className="shell-topnav__left">
           <button
             type="button"
@@ -260,25 +263,53 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
             <span className="breadcrumb-current">{VIEW_LABELS[view] ?? view}</span>
           </nav>
         </div>
+
+        {/* Center — dashboard role-view tabs (admin / manager only) */}
+        <div className="shell-topnav__center">
+          {view === "dashboard" && onChangeViewAsRole && (roleKey === "admin" || roleKey === "manager") && (
+            <div className="topbar-role-tabs" role="tablist" aria-label="Dashboard view">
+              <button
+                type="button"
+                role="tab"
+                className={`topbar-role-tab${viewAsRole === "employee" ? " active" : ""}`}
+                aria-selected={viewAsRole === "employee"}
+                onClick={() => onChangeViewAsRole("employee")}
+              >
+                Employee
+              </button>
+              <button
+                type="button"
+                role="tab"
+                className={`topbar-role-tab${viewAsRole === "manager" ? " active" : ""}`}
+                aria-selected={viewAsRole === "manager"}
+                onClick={() => onChangeViewAsRole("manager")}
+              >
+                Manager
+              </button>
+              {roleKey === "admin" && (
+                <button
+                  type="button"
+                  role="tab"
+                  className={`topbar-role-tab${viewAsRole === "admin" ? " active" : ""}`}
+                  aria-selected={viewAsRole === "admin"}
+                  onClick={() => onChangeViewAsRole("admin")}
+                >
+                  Admin
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Right — actions group + reconnecting + avatar */}
         <div className="shell-topnav__right">
-          <button
-            type="button"
-            className="topbar-search-btn"
-            onClick={() => setPaletteOpen(true)}
-            title="Command palette (⌘K)"
-          >
-            <Search size={14} strokeWidth={1.75} />
-            <span>Search</span>
-            <kbd>⌘K</kbd>
-          </button>
-          <ThemeToggle />
           {signalRState === "reconnecting" && (
             <span
               title="Reconnecting to live updates…"
               style={{
                 display: "inline-flex", alignItems: "center", gap: 4,
-                fontSize: "0.72rem", color: "var(--n-500, #6b7280)",
-                padding: "2px 6px", borderRadius: 6,
+                fontSize: "0.72rem", color: "var(--n-500)",
+                padding: "2px 8px", borderRadius: 6,
                 background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)",
               }}
               aria-label="Reconnecting to live updates"
@@ -287,7 +318,23 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
               Reconnecting
             </span>
           )}
-          <NotificationBell />
+
+          {/* Grouped: search + notification + theme */}
+          <div className="topbar-actions-group">
+            <button
+              type="button"
+              className="topbar-search-btn"
+              onClick={() => setPaletteOpen(true)}
+              title="Command palette (⌘K)"
+            >
+              <Search size={14} strokeWidth={1.75} />
+              <span>Search or jump to…</span>
+              <kbd>⌘K</kbd>
+            </button>
+            <NotificationBell />
+            <ThemeToggle />
+          </div>
+
           <div className="topbar-divider" />
           <button
             type="button"

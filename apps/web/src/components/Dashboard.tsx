@@ -1667,9 +1667,7 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
   const [submittedCount, setSubmittedCount] = useState<number>(0);
   const [totalStaff, setTotalStaff] = useState<number>(0);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
-  const [showExportMenu, setShowExportMenu] = useState(false);
   const [period, setPeriod] = useState<"week" | "month" | "quarter" | "ytd">("month");
-  const exportRef = useRef<HTMLDivElement>(null);
 
   // Anomaly alerts state
   const [anomalies, setAnomalies] = useState<AnomalyNotification[]>([]);
@@ -1785,29 +1783,6 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
                 {PERIOD_TAB_LABELS[p]}
               </button>
             ))}
-          </div>
-
-          {/* Export split button */}
-          <div ref={exportRef} className="relative">
-            <div className="btn-split">
-              <button className="btn btn-outline btn-sm btn-split__main">
-                <IconDownload size={14} /> Export report
-              </button>
-              <button
-                className="btn btn-outline btn-sm btn-split__chevron"
-                onClick={() => setShowExportMenu(v => !v)}
-                aria-label="Export options"
-              >
-                <IconChevronDown />
-              </button>
-            </div>
-            {showExportMenu && (
-              <div className="dash-export-menu">
-                {[["📄 PDF", "pdf"], ["📊 CSV", "csv"], ["🔗 Copy link", "link"]].map(([label, type]) => (
-                  <button key={type} onClick={() => setShowExportMenu(false)} className="dash-export-item">{label}</button>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* Analytics shortcut */}

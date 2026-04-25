@@ -2665,7 +2665,8 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
   display: flex;
   align-items: center;
   gap: 2px;
-  background: var(--n-100);
+  background: var(--n-0);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--r-md);
   padding: 3px;
 }

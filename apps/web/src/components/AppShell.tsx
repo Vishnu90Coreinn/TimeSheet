@@ -268,24 +268,6 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
         <div className="shell-topnav__center">
           {view === "dashboard" && onChangeViewAsRole && (roleKey === "admin" || roleKey === "manager") && (
             <div className="topbar-role-tabs" role="tablist" aria-label="Dashboard view">
-              <button
-                type="button"
-                role="tab"
-                className={`topbar-role-tab${viewAsRole === "employee" ? " active" : ""}`}
-                aria-selected={viewAsRole === "employee"}
-                onClick={() => onChangeViewAsRole("employee")}
-              >
-                Employee
-              </button>
-              <button
-                type="button"
-                role="tab"
-                className={`topbar-role-tab${viewAsRole === "manager" ? " active" : ""}`}
-                aria-selected={viewAsRole === "manager"}
-                onClick={() => onChangeViewAsRole("manager")}
-              >
-                Manager
-              </button>
               {roleKey === "admin" && (
                 <button
                   type="button"
@@ -297,6 +279,24 @@ export function AppShell({ session, view, nav, onNavigate, onNavigateProfile, on
                   Admin
                 </button>
               )}
+              <button
+                type="button"
+                role="tab"
+                className={`topbar-role-tab${viewAsRole === "manager" ? " active" : ""}`}
+                aria-selected={viewAsRole === "manager"}
+                onClick={() => onChangeViewAsRole("manager")}
+              >
+                Manager
+              </button>
+              <button
+                type="button"
+                role="tab"
+                className={`topbar-role-tab${viewAsRole === "employee" ? " active" : ""}`}
+                aria-selected={viewAsRole === "employee"}
+                onClick={() => onChangeViewAsRole("employee")}
+              >
+                Employee
+              </button>
             </div>
           )}
         </div>

@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { Navigate, Route, Routes, useNavigate, useLocation } from "react-router-dom";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { ToastProvider } from "./contexts/ToastContext";
@@ -81,9 +81,11 @@ function AppRoutes() {
   const isManager = session?.role === "manager" || isAdmin;
   const onboardingCompletedAt = session?.onboardingCompletedAt ?? null;
 
-  // "View as" role — lets admin/manager preview different dashboard perspectives
-  const [viewAsRole, setViewAsRole] = useState<string>(() => session?.role ?? "employee");
-  useEffect(() => { if (session?.role) setViewAsRole(session.role); }, [session?.role]);
+  // "View as" role — lets admin/manager preview different dashboard perspectives.
+  // null = use the real session role (no override). Resets automatically when
+  // the user logs out / switches accounts because session.role changes.
+  const [viewAsRoleOverride, setViewAsRoleOverride] = useState<string | null>(null);
+  const viewAsRole = viewAsRoleOverride ?? session?.role ?? "employee";
   const showOnboarding = Boolean(session && !onboardingCompletedAt);
 
   const nav = useMemo(
@@ -124,7 +126,7 @@ function AppRoutes() {
         onNavigateProfile={() => navigate("/profile")}
         onLogout={() => { logout(); navigate("/login"); }}
         viewAsRole={viewAsRole}
-        onChangeViewAsRole={setViewAsRole}
+        onChangeViewAsRole={setViewAsRoleOverride}
       >
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />

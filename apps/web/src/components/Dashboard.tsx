@@ -2213,6 +2213,13 @@ export function Dashboard({ role, username, onboardingCompletedAt, onNavigate }:
   };
 
   useEffect(() => {
+    // Clear previous role's data immediately so only the new role renders
+    setEmpState(null);
+    setMgrData(null);
+    setAdminData(null);
+    setLoading(true);
+    setError(false);
+
     if (role === "employee") {
       Promise.all([
         apiFetch("/dashboard/employee").then(r => r.ok ? r.json() : null),

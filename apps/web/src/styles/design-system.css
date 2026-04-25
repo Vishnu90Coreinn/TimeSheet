@@ -1,6 +1,6 @@
 /* ============================================================
    TimeSheet Design System — v2.0 (Pulse SaaS)
-   Brand: Gold #c9a84c  |  Fonts: Bricolage Grotesque + Plus Jakarta Sans
+   Brand: Indigo #6366f1  |  Fonts: Plus Jakarta Sans (display/UI) + Inter (body) + JetBrains Mono
    ============================================================ */
 
 @import "tailwindcss";
@@ -75,12 +75,13 @@
   --breakpoint-lg: 1280px;
 
   /* Fonts */
-  --font-sans:    'Plus Jakarta Sans', -apple-system, sans-serif;
-  --font-display: 'Bricolage Grotesque', -apple-system, sans-serif;
-  --font-mono:    'JetBrains Mono', 'Fira Code', monospace;
+  --font-sans:    'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-body:    'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 }
 
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 /* ── Tokens ───────────────────────────────────────────────── */
 :root {
@@ -181,10 +182,10 @@
   --content-max:     1440px;
 
   /* Typography */
-  --font-display: 'Bricolage Grotesque', -apple-system, sans-serif;
-  --font-sans:    'Plus Jakarta Sans', -apple-system, sans-serif;
-  --font-body:    'Plus Jakarta Sans', -apple-system, sans-serif;
-  --font-mono:    'JetBrains Mono', 'Fira Code', monospace;
+  --font-display: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-sans:    'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-body:    'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 
   /* -- Keep old aliases so existing components don't break -- */
   --color-primary:         var(--brand-600);

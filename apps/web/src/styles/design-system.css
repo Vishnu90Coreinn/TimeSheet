@@ -689,7 +689,7 @@
 .shell-sidebar {
   width: var(--sidebar-width);
   flex-shrink: 0;
-  background: var(--n-25);
+  background: var(--color-background);
   border-right: 1px solid var(--border-subtle);
   box-shadow: none;
   display: flex;

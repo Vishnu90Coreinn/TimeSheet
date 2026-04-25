@@ -2660,6 +2660,40 @@ button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
   border-color: var(--border-subtle);
 }
 
+/* Period pill tabs — inline in admin header (Week / Month / Quarter / YTD) */
+.dash-period-tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--n-100);
+  border-radius: var(--r-md);
+  padding: 3px;
+}
+.dash-period-tab {
+  height: 28px;
+  padding: 0 12px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  background: none;
+  border: none;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  font-family: var(--font-sans);
+  white-space: nowrap;
+  line-height: 1;
+}
+.dash-period-tab:hover { background: var(--n-50); color: var(--text-primary); }
+.dash-period-tab.active {
+  background: var(--success);
+  color: #fff;
+  font-weight: 600;
+}
+[data-theme="dark"] .dash-period-tabs { background: var(--n-100); }
+[data-theme="dark"] .dash-period-tab:hover { background: var(--n-150); }
+[data-theme="dark"] .dash-period-tab.active { background: var(--success); color: #fff; }
+
 /* Export dropdown menu */
 .dash-export-menu {
   position: absolute; top: calc(100% + 4px); right: 0; z-index: 50;

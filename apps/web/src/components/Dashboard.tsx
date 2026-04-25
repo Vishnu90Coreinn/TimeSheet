@@ -10,6 +10,7 @@ import type { LeaveBalance, OvertimeSummary, TeamLeaveEntry, PagedResponse, Proj
 import { OnboardingChecklist } from "./OnboardingChecklist";
 import { useTimezone } from "../hooks/useTimezone";
 import { AppBadge, AppButton } from "./ui";
+import { useTenantSettings } from "../contexts/TenantSettingsContext";
 
 interface DashboardProps { role: string; username: string; onboardingCompletedAt?: string | null; onNavigate?: (view: string) => void; }
 
@@ -1667,7 +1668,7 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
   const [totalStaff, setTotalStaff] = useState<number>(0);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
   const [showExportMenu, setShowExportMenu] = useState(false);
-  const [period, setPeriod] = useState<"today" | "week" | "30d" | "quarter">("30d");
+  const [period, setPeriod] = useState<"week" | "month" | "quarter" | "ytd">("month");
   const exportRef = useRef<HTMLDivElement>(null);
 
   // Anomaly alerts state
@@ -1711,8 +1712,27 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
   }, []);
 
   const PERIOD_LABELS: Record<string, string> = {
-    today: "Today", week: "This Week", "30d": "Last 30 Days", quarter: "This Quarter",
+    week: "This Week", month: "This Month", quarter: "This Quarter", ytd: "Year to Date",
   };
+  const PERIOD_TAB_LABELS: Record<string, string> = {
+    week: "Week", month: "Month", quarter: "Quarter", ytd: "YTD",
+  };
+
+  const { appName: companyName } = useTenantSettings();
+
+  // Days left until end of current month
+  const daysToMonthEnd = (() => {
+    const now = new Date();
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return Math.max(1, Math.ceil((end.getTime() - now.getTime()) / 86400000));
+  })();
+
+  // "Week of Apr 14" label
+  const weekOfStr = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  })();
 
   // Synthetic sparkline: 6 values trending toward billablePct
   const sparklineValues = [
@@ -1730,17 +1750,48 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
 
   return (
     <div className="flex flex-col gap-[var(--space-4)]">
-      <div className="flex flex-col gap-[var(--space-2)]">
-        <div className="page-header">
-          <div>
-            <h1 className="page-title">{greeting(username)}</h1>
-            <div className="page-subtitle">Organisation overview — {todayStr()}</div>
+      {/* Header — "Company pulse" style */}
+      <div className="page-header" style={{ alignItems: "flex-start" }}>
+        <div>
+          <h1 className="page-title">
+            Company pulse
+            {companyName && companyName !== "TimeSheet" && (
+              <span className="text-[var(--text-tertiary)] font-normal"> · {companyName}</span>
+            )}
+          </h1>
+          <div className="page-subtitle" style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+            <span>Week of {weekOfStr}</span>
+            {totalStaff > 0 && (
+              <>
+                <span style={{ color: "var(--border-strong)" }}>·</span>
+                <strong style={{ color: "var(--text-primary)", fontWeight: 600 }}>{totalStaff} active users</strong>
+              </>
+            )}
+            <span style={{ color: "var(--border-strong)" }}>·</span>
+            <span>Monthly close in <strong style={{ color: "var(--warning)", fontWeight: 600 }}>{daysToMonthEnd} days</strong></span>
           </div>
+        </div>
+
+        {/* Right: period tabs + export + analytics */}
+        <div className="flex items-center gap-[var(--space-3)]" style={{ flexShrink: 0 }}>
+          {/* Period tabs */}
+          <div className="dash-period-tabs">
+            {(["week", "month", "quarter", "ytd"] as const).map(p => (
+              <button
+                key={p}
+                onClick={() => setPeriod(p)}
+                className={`dash-period-tab${period === p ? " active" : ""}`}
+              >
+                {PERIOD_TAB_LABELS[p]}
+              </button>
+            ))}
+          </div>
+
           {/* Export split button */}
           <div ref={exportRef} className="relative">
             <div className="btn-split">
               <button className="btn btn-outline btn-sm btn-split__main">
-                <IconDownload size={14} /> Export
+                <IconDownload size={14} /> Export report
               </button>
               <button
                 className="btn btn-outline btn-sm btn-split__chevron"
@@ -1753,38 +1804,29 @@ function AdminDashboard({ data, username, onNavigate }: { data: AdminData; usern
             {showExportMenu && (
               <div className="dash-export-menu">
                 {[["📄 PDF", "pdf"], ["📊 CSV", "csv"], ["🔗 Copy link", "link"]].map(([label, type]) => (
-                  <button
-                    key={type}
-                    onClick={() => { setShowExportMenu(false); }}
-                    className="dash-export-item"
-                  >{label}</button>
+                  <button key={type} onClick={() => setShowExportMenu(false)} className="dash-export-item">{label}</button>
                 ))}
               </div>
             )}
           </div>
-        </div>
-        {/* Period selector sub-row */}
-        <div className="flex items-center gap-[8px]">
-          <span className="text-[0.72rem] text-[var(--text-tertiary)] font-medium whitespace-nowrap">Viewing data for:</span>
-          <div className="dash-period-selector">
-            {(["today", "week", "30d", "quarter"] as const).map(p => (
-              <button
-                key={p}
-                onClick={() => setPeriod(p)}
-                className={`dash-period-btn${period === p ? " dash-period-btn--active" : ""}`}
-              >{PERIOD_LABELS[p]}</button>
-            ))}
-          </div>
+
+          {/* Analytics shortcut */}
+          <button
+            className="btn btn-sm"
+            style={{ background: "var(--success)", color: "#fff", border: "none", gap: 6 }}
+            onClick={() => onNavigate?.("reports")}
+          >
+            <IconBarChart size={14} color="#fff" /> Analytics
+          </button>
         </div>
       </div>
 
-      {/* Freshness bar */}
-      <div className="dash-freshness-bar">
-        <time dateTime={lastRefreshed.toISOString()} className="font-medium">{relativeTime(lastRefreshed)}</time>
-        <button
-          onClick={() => window.location.reload()}
-          className="dash-refresh-btn"
-        >
+      {/* Freshness — minimal, right-aligned */}
+      <div className="flex items-center justify-end gap-[var(--space-3)]">
+        <time dateTime={lastRefreshed.toISOString()} className="text-[0.72rem] text-[var(--text-tertiary)]">
+          {relativeTime(lastRefreshed)}
+        </time>
+        <button onClick={() => window.location.reload()} className="dash-refresh-btn">
           <IconRefresh size={12} /> Refresh
         </button>
       </div>
